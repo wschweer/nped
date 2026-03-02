@@ -1,0 +1,14 @@
+.*,
+.qped
+.nped
+.nped.json
+.nped-project.json
+Session-*
+build
+nped.log
+test.cpp
+core-*
+.cache
+.qt
+TODO
+.idea

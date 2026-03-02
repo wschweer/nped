@@ -1,0 +1,43 @@
+//=============================================================================
+//  nped Program Editor
+//
+//  Copyright (C) 2025-2026 Werner Schweer
+//
+//  This program is free software; you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License version 2
+//  as published by the Free Software Foundation and appearing in
+//  the file LICENCE.GPL
+//=============================================================================
+
+#include <QDir>
+#include <QString>
+#include <QFile>
+#include <QProcess>
+#include <QStringList>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+
+#include "logger.h"
+#include "editor.h"
+
+//---------------------------------------------------------
+//   initProject
+//---------------------------------------------------------
+
+bool Editor::initProject()
+      {
+      //
+      // lookup CmakeLists.txt
+      //
+      QDir cwd(".");
+      while (!cwd.exists("CMakeLists.txt")) {
+            if (!cwd.cdUp()) {
+                  Debug("no CMakeLists.txt found");
+                  return false;
+                  }
+            }
+//      _projectRoot = cwd.absoluteFilePath("CmakeLists.txt");
+      _projectRoot = cwd.absolutePath();
+      return true;
+      }
