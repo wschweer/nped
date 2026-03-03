@@ -21,15 +21,15 @@
 
 class File;
 
-static const char* macroProperty       = "//##P";
-static const char* macroProperty0      = "//##P0";
-static const char* macroProperty1      = "//##P1";
-static const char* macroProperty2      = "//##P2";
-static const char* macroProperty3      = "//##P3";
-static const char* macroProperty4      = "//JSON";
+static constexpr char macroProperty[]  = "//##P";
+static constexpr char macroProperty0[] = "//##P0";
+static constexpr char macroProperty1[] = "//##P1";
+static constexpr char macroProperty2[] = "//##P2";
+static constexpr char macroProperty3[] = "//##P3";
+static constexpr char macroProperty4[] = "//JSON";
 
-static const char* startReplaceSignature = "//##<";
-static const char* endReplaceSignature   = "//##>";
+static constexpr char startReplaceSignature[] = "//##<";
+static constexpr char endReplaceSignature[]   = "//##>";
 
 //---------------------------------------------------------
 //   MarkerDefinition
@@ -84,10 +84,7 @@ class Mark
       int col1{0};
       int col2{};
       Marker type{Marker::Normal};
-      bool operator==(const Mark& other) const
-            {
-            return col1 == other.col1 && col2 == other.col2 && type == other.type;
-            }
+      bool operator==(const Mark& other) const { return col1 == other.col1 && col2 == other.col2 && type == other.type; }
       };
 
 //---------------------------------------------------------
@@ -98,8 +95,7 @@ class Marks : public std::vector<Mark>
       {
     public:
       void add(const Mark& m);
-      void init(int n)
-            {
+      void init(int n) {
             clear();
             push_back(Mark(0, n, Marker::Normal));
             }
@@ -135,10 +131,7 @@ class Line : QString
 
     public:
       Line() {}
-      Line(const QString& s, const Pos& t = Pos(), QChar m = QChar(' '),
-           QColor c = QColorConstants::Black)
-          : QString(s)
-            {
+      Line(const QString& s, const Pos& t = Pos(), QChar m = QChar(' '), QColor c = QColorConstants::Black) : QString(s) {
             _label.tag   = t;
             _label.text  = m;
             _label.color = c;
@@ -165,18 +158,15 @@ class Line : QString
       const QString& qstring() const { return static_cast<const QString&>(*this); }
       QChar operator[](int idx) const { return idx >= size() ? QChar(' ') : QString::at(idx); }
       bool empty() const { return QString::isEmpty(); }
-      void insert(int idx, QChar c)
-            {
+      void insert(int idx, QChar c) {
             QString::insert(idx, c);
             _marks.init(size());
             }
-      void removeAt(int idx)
-            {
+      void removeAt(int idx) {
             QString::removeAt(idx);
             _marks.init(size());
             }
-      void operator+=(const Line& l)
-            {
+      void operator+=(const Line& l) {
             QString::append(static_cast<QString>(l));
             _marks.init(size());
             }
@@ -201,7 +191,7 @@ class Lines : public QList<Line>
     public:
       Lines() {}
       Lines(const QStringList&);
-      Lines(const QString& s) : Lines(s.split('\n')) { }
+      Lines(const QString& s) : Lines(s.split('\n')) {}
       Lines(const QVector<Line> l);
       QString join(QChar c) const;
       QStringList toStringList();

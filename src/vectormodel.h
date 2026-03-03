@@ -68,12 +68,12 @@ template <typename T> class VectorModel : public QAbstractListModel
       virtual const std::vector<T*>& data() const { return v; }
       virtual std::vector<T*>& data() { return v; }
       virtual const T* data(size_t idx) const {
-            if (idx < 0 || idx >= v.size())
+            if (idx >= v.size())
                   return nullptr;
             return v[idx];
             }
       virtual T* data(size_t idx) {
-            if (idx < 0 || idx >= v.size())
+            if (idx >= v.size())
                   return nullptr;
             return v[idx];
             }

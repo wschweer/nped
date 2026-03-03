@@ -1192,18 +1192,19 @@ bool Agent::commitGitChanges(const QString& commitMessage) {
 //   saveStatus
 //---------------------------------------------------------
 void Agent::saveStatus() {
-      if (currentSessionFileName.isEmpty() || chatHistory.empty())
+      // chatHistory is considered empty if it contains only the system manifest
+      if (currentSessionFileName.isEmpty() || chatHistory.size() <= 1)
             return;
 
       QFile file(currentSessionFileName);
       if (file.open(QIODevice::WriteOnly)) {
-            // Speichere einfach das komplette Array als formatierte JSON-Datei
+            // simply save the complete array as a formatted JSON file
             std::string dump = chatHistory.dump(4);
             file.write(dump.c_str(), dump.length());
             file.close();
             }
       else {
-            Critical("Konnte Session-Datei {} nicht speichern.", currentSessionFileName.toStdString());
+            Critical("Could not save session file: {}", currentSessionFileName);
             }
       }
 

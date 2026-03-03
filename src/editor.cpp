@@ -496,7 +496,7 @@ Kontext* Editor::lookupKontext(const QString& path) {
 //---------------------------------------------------------
 
 void Editor::setCurrentKontext(size_t idx) {
-      if (idx < 0 || idx >= _kontextList.size()) {
+      if (idx >= _kontextList.size()) {
             Critical("====bad current context index {} size {}", idx, _kontextList.size());
             return;
             }
