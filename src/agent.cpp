@@ -45,7 +45,7 @@
 using json = nlohmann::json;
 
 //---------------------------------------------------------
-//   Agent  (Konstruktor)
+//   Agent (Constructor)
 //---------------------------------------------------------
 
 Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e), currentReply(nullptr) {
@@ -55,7 +55,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e), currentR
 
       QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
-      // --- 1. Tool-Leiste & Modell-Auswahl ---
+      // --- 1. Toolbar & Model Selection ---
       toolBar = new QToolBar(this);
       toolBar->setStyleSheet("QToolButton {"
                              "  border: 1px solid #888;"
@@ -108,7 +108,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e), currentR
                   }
 
             if (chatDisplay) {
-                  chatDisplay->append(QString("<br><i>[System: Modus gewechselt zu <b>%1</b>]</i>")
+                  chatDisplay->append(QString("<br><i>[System: Mode changed to <b>%1</b>]</i>")
                                           .arg(checked ? "Build (read/write)" : "Plan (read only)"));
                   }
             });
@@ -126,7 +126,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e), currentR
       toolBar->addWidget(configButton);
       connect(configButton, &QToolButton::clicked, this, &Agent::openConfigDialog);
 
-      // Initiale Farbe setzen (Plan-Modus)
+      // Initial color (Plan mode)
       if (auto* button = qobject_cast<QToolButton*>(toolBar->widgetForAction(modeToggleAction))) {
             button->setStyleSheet("QToolButton { background-color: #d0f0d0; border: 1px solid #8c8; color: #050; border-radius: 3px; "
                                   "padding: 4px 8px; margin: 0px 4px; }"
@@ -135,12 +135,12 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e), currentR
             }
       mainLayout->addWidget(toolBar);
 
-      // --- 2. Chat-Anzeige ---
+      // --- 2. Chat Display ---
       chatDisplay = new QTextEdit(this);
       chatDisplay->setReadOnly(true);
       mainLayout->addWidget(chatDisplay);
 
-      // --- 3. Eingabefeld ---
+      // --- 3. Input Field ---
       QHBoxLayout* inputLayout = new QHBoxLayout();
       statusLabel              = new QLabel(">", this);
       userInput                = new QPlainTextEdit(this);
@@ -176,7 +176,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e), currentR
 
 //---------------------------------------------------------
 //   getConfigPath
-//    Hilfsfunktion für den Pfad
+// Helper function for the path
 //---------------------------------------------------------
 
 QString getConfigPath() {
@@ -208,62 +208,59 @@ void Agent::setCurrentModel(const QString& s) {
 //---------------------------------------------------------
 
 void Agent::connectToServer(const QString& url) {
-      model.baseUrl = url;
+    model.baseUrl = url;
 
-      currentRetryCount  = 0;
-      retryPause         = 2000;
-      rateLimitResetTime = QDateTime();
+    currentRetryCount  = 0;
+    retryPause         = 2000;
+    rateLimitResetTime = QDateTime();
 
-      chatHistory = json::array();
-      json systemMsg;
-      systemMsg["role"] = "system";
+    chatHistory = json::array();
+    json systemMsg;
+    systemMsg["role"] = "system";
 
-      std::string manifest = "Du bist ein erfahrener C++ Entwickler. "
-                             "Deine Aufgabe ist es, Code im Projekt zu analysieren, zu schreiben und Build-Fehler zu beheben.\n\n"
-                             "FEHLERANALYSE-REGELN:\n"
-                             "1. Wenn ein Build fehlschlägt, analysiere den Output von 'run_build'.\n"
-                             "2. Suche nach Zeilen wie 'file.cpp:42:10: error: ...'.\n"
-                             "3. Nutze 'read_file', um den Kontext um die fehlerhafte Zeile zu lesen.\n"
-                             "4. Nutze 'modify_file', um den Fehler gezielt zu korrigieren.\n\n"
+    std::string manifest = "You are an experienced C++ developer. "
+                           "Your task is to analyze and write code in the project and to fix build errors.\n\n"
+                           "ERROR ANALYSIS RULES:\n"
+                           "1. If a build fails, analyze the output of 'run_build'.\n"
+                           "2. Look for lines like 'file.cpp:42:10: error: ...'.\n"
+                           "3. Use 'read_file' to read the context around the faulty line.\n"
+                           "4. Use 'modify_file' to correct the error in a targeted manner.\n\n"
+                           "TOOL FORMAT:\n"
+                           "Answer exclusively in JSON format when you call a tool:\n"
+                           "{\n"
+                           "  \"tool\": \"modify_file\",\n"
+                           "  \"args\": {\n"
+                           "    \"path\": \"src/main.cpp\",\n"
+                           "    \"find\": \"old code\",\n"
+                           "    \"replace\": \"new code\"\n"
+                           "  }\n"
+                           "}\n\n"
+                           "PROJECT STRUCTURE:\n"
+                           "Standard Qt6 layout. The build directory is './build'. Use CMake.\n"
+                           "Do not invent your own tasks and never act on your own authority! "
+                           "Preferably use the replace_in_file tool for changes to files. Make sure that the "
+                           "'search' parameter is absolutely identical to the text in the file, including all whitespace! "
+                           "Use the run_build_command tool to compile the project and check if errors occur. "
+                           "Use ninja as the project type and not Makefile.";
 
-                             "TOOL-FORMAT:\n"
-                             "Antworte ausschließlich im JSON-Format, wenn du ein Tool aufrufst:\n"
-                             "{\n"
-                             "  \"tool\": \"modify_file\",\n"
-                             "  \"args\": {\n"
-                             "    \"path\": \"src/main.cpp\",\n"
-                             "    \"find\": \"alter code\",\n"
-                             "    \"replace\": \"neuer code\"\n"
-                             "  }\n"
-                             "}\n\n"
+    QString fullPath = _editor->projectRoot() + "/agents.md";
+    QFile file(fullPath);
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&file);
+        manifest += "\n" + in.readAll().toStdString();
+    }
+    systemMsg["content"] = manifest;
+    chatHistory.push_back(systemMsg);
 
-                             "PROJEKT-STRUKTUR:\n"
-                             "Standard-Qt6-Layout. Build-Verzeichnis ist './build'. Nutze CMake.\n"
+    streamBuffer.clear();
+    currentAssistantMessage.clear();
+    currentToolCalls = json::array();
 
-                             "Denke dir keine eigenen Aufgaben aus und handle niemals eigenmächtig! "
-                             "Nutze für Änderungen an Dateien bevorzugt das Tool replace_in_file. Achte darauf, dass der "
-                             "'search'-Parameter absolut identisch mit dem Text in der Datei ist, inklusive aller Leerzeichen! "
-                             "Nutze das Tool run_build_command um das Projekts zu kompilieren und überprüfe, ob Fehler auftreten. "
-                             "Verwende ninja als projekt typ und nicht Makefile ";
-
-      QString fullPath = _editor->projectRoot() + "/agents.md";
-      QFile file(fullPath);
-      if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QTextStream in(&file);
-            manifest += "\n" + in.readAll().toStdString();
-            }
-      systemMsg["content"] = manifest;
-      chatHistory.push_back(systemMsg);
-
-      streamBuffer.clear();
-      currentAssistantMessage.clear();
-      currentToolCalls = json::array();
-
-      if (chatDisplay) {
-            chatDisplay->clear();
-            chatDisplay->append("<i>[System: Neue Session gestartet. Bereit.]</i><br>");
-            }
-      }
+    if (chatDisplay) {
+        chatDisplay->clear();
+        chatDisplay->append("<i>[System: New session started. Ready.]</i><br>");
+    }
+}
 
 //---------------------------------------------------------
 //   fetchModels
@@ -313,7 +310,7 @@ void Agent::sendMessage() {
       if (rateLimitResetTime.isValid() && QDateTime::currentDateTime() < rateLimitResetTime) {
             qint64 secondsLeft = QDateTime::currentDateTime().secsTo(rateLimitResetTime);
             chatDisplay->append(
-                QString("<br><font color='orange'><b>[Rate Limit]:</b> Bitte warte noch %1 Sekunden...</font><br>").arg(secondsLeft));
+                QString("<br><font color='orange'><b>[Rate Limit]:</b> Please wait %1 more seconds...</font><br>").arg(secondsLeft));
             return;
             }
       QString text = userInput->toPlainText().trimmed();
@@ -336,49 +333,49 @@ void Agent::sendMessage() {
       }
 
 void Agent::trimHistory() {
-      const int MAX_MSG = 20; // Behalte nur die letzten 20 Nachrichten
+      const int MAX_MSG = 20; // Keep only the last 20 messages
       if (chatHistory.size() <= MAX_MSG)
             return;
 
-      // Wir brauchen einen neuen Container
+      // We need a new container
       json newHistory = json::array();
 
-      // 1. System Prompt immer behalten!
+      // 1. Always keep system prompt!
       if (!chatHistory.empty())
             newHistory.push_back(chatHistory[0]);
 
-      // 2. Berechne, ab wo wir kopieren (die letzten N)
+      // 2. Calculate where to start copying from (the last N)
       unsigned startIdx = chatHistory.size() - (MAX_MSG - 1);
 
-      // Sicherstellen, dass wir nicht mitten in einem Tool-Flow schneiden
-      // Wenn die Nachricht am startIdx ein "tool_result" ist, brauchen wir zwingend
-      // den "tool_use" davor!
+      // Make sure we don't cut in the middle of a tool flow
+      // If the message at startIdx is a "tool_result", we need it
+      // the "tool_use" before!
       while (startIdx < chatHistory.size()) {
             const auto& msg = chatHistory[startIdx];
 
-            // Prüfen, ob wir gerade ein verwaistes Tool-Result haben
+            // Check if we just have an orphaned tool result
             bool isToolResult = (msg.value("role", "") == "tool") ||
                                 (msg.value("role", "") == "user" && msg.contains("content") && msg["content"].is_array());
 
             if (isToolResult) {
-                  // Wir dürfen nicht hier schneiden, wir müssen eins früher anfangen
+                  // We can't cut here, we have to start one earlier
                   startIdx--;
                   }
             else {
-                  break; // Alles okay, das ist eine "saubere" Nachricht (meist User-Text)
+                  break; // Everything okay, this is a "clean" message (usually user text)
                   }
 
             if (startIdx <= 1)
-                  break; // Nicht den System-Prompt überschreiben
+                  break; // Do not overwrite the system prompt
             }
 
-      // 3. Den Rest kopieren
+      // 3. Copy the rest
       for (size_t i = startIdx; i < chatHistory.size(); ++i)
             newHistory.push_back(chatHistory[i]);
 
       chatHistory = newHistory;
 
-      // Loggen zur Kontrolle
+      // Log for control
       Debug("History trimmed to {} messages.", chatHistory.size());
       }
 
@@ -429,12 +426,12 @@ void Agent::sendChatRequest() {
             anthropicRequest["max_tokens"] = 4096;
             anthropicRequest["stream"]     = true;
 
-            // --- KORREKTUR: Tool-Definitionen für Anthropic transformieren ---
+            // --- CORRECTION: Transform tool definitions for Anthropic ---
             json anthropicTools = json::array();
             for (const auto& t : toolsDefinition) {
                   if (t.contains("function")) {
                         json tool = t["function"];
-                        // Anthropic nutzt 'input_schema' statt 'parameters'
+                        // Anthropic uses 'input_schema' instead of 'parameters'
                         if (tool.contains("parameters")) {
                               tool["input_schema"] = tool["parameters"];
                               tool.erase("parameters");
@@ -465,10 +462,10 @@ void Agent::sendChatRequest() {
                         anthropicMessages.push_back(toolMsg);
                         }
                   else if (role == "assistant") {
-                        // Anthropic erwartet tool_calls als content-Array mit type="tool_use",
-                        // nicht als separaten "tool_calls"-Key (OpenAI/Ollama-Format).
-                        // Konvertierung ist nötig, damit Folge-Requests nach Tool-Calls nicht
-                        // mit HTTP 400 scheitern.
+                        // Anthropic expects tool_calls as a content array with type="tool_use",
+                        // not as a separate "tool_calls" key (OpenAI/Ollama format).
+                        // Conversion is necessary so that subsequent requests after tool calls do not
+                        // fail with HTTP 400.
                         if (msg.contains("tool_calls") && msg["tool_calls"].is_array()) {
                               json contentArray = json::array();
                               if (msg.contains("content") && msg["content"].is_string() && !msg["content"].get<std::string>().empty()) {
@@ -493,7 +490,7 @@ void Agent::sendChatRequest() {
                               anthropicMessages.push_back(converted);
                               }
                         else {
-                              // Normale Assistenten-Antwort ohne Tool-Calls: direkt übernehmen
+                              // Normal assistant response without tool calls: adopt directly
                               anthropicMessages.push_back(msg);
                               }
                         }
@@ -507,7 +504,7 @@ void Agent::sendChatRequest() {
             anthropicRequest["messages"] = anthropicMessages;
             payload                      = QString::fromStdString(anthropicRequest.dump()).toUtf8();
             }
-      else { // Ollama als Standard
+      else { // Ollama as standard
             url = QUrl(model.baseUrl + "/api/chat");
             request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
@@ -542,48 +539,48 @@ void Agent::handleChatReadyRead() {
       if (!currentReply)
             return;
 
-      // Header-Analyse für Anthropic Rate Limits ---
+      // Header analysis for Anthropic Rate Limits ---
       if (model.interface == "anthropic") {
-            // Prüfen, wann das Limit zurückgesetzt wird
+            // Check when the limit is reset
             QByteArray resetHeader = currentReply->rawHeader("anthropic-ratelimit-reset");
             if (!resetHeader.isEmpty()) {
-                  // Anthropic sendet ISO 8601 Datum
+                  // Anthropic sends ISO 8601 date
                   QDateTime resetTime = QDateTime::fromString(QString::fromUtf8(resetHeader), Qt::ISODate);
                   if (resetTime.isValid() && resetTime > QDateTime::currentDateTime()) {
-                        // Wir merken uns global, wann wir wieder dürfen
+                        // We remember globally when we are allowed again
                         rateLimitResetTime = resetTime;
                         }
                   }
 
-            // Optional: Warnung wenn Tokens knapp werden (drosseln)
+            // Optional: Warning when tokens run low (throttle)
             QByteArray remainingHeader = currentReply->rawHeader("anthropic-ratelimit-tokens-remaining");
             if (!remainingHeader.isEmpty()) {
                   int remaining = remainingHeader.toInt();
-                  if (remaining < 2000) // Puffer von 2000 Tokens
-                        Debug("Rate Limit Warnung: Nur noch {} Tokens übrig.", remaining);
+                  if (remaining < 2000) // Buffer of 2000 tokens
+                        Debug("Rate Limit Warning: Only {} tokens left.", remaining);
                   }
             }
       int statusCode = currentReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
       if (statusCode >= 400) {
-            // Bei einem HTTP-Fehler lesen wir einfach alles am Stück aus,
-            // da es wahrscheinlich kein Stream, sondern ein einzelnes JSON-Fehlerobjekt ist.
+            // In case of an HTTP error, we just read everything at once,
+            // as it is probably not a stream, but a single JSON error object.
             QByteArray errorData = currentReply->readAll();
             QString errorString  = QString::fromUtf8(errorData);
 
             if (statusCode == 503) {
                   QString msg =
-                      QString("Server überlastet (503). Mache Pause von %1 Sekunden und versuche es erneut...").arg(retryPause / 1000.0);
+                      QString("Server overloaded (503). Pause for %1 seconds and try again...").arg(retryPause / 1000.0);
                   chatDisplay->append(QString("<br><font color='orange'><b>[Info]:</b> %1</font><br>").arg(msg));
                   Warning("{}", msg.toStdString());
                   isRetrying = true;
                   }
             else {
                   chatDisplay->append(
-                      QString("<br><font color='red'><b>[HTTP Fehler %1]:</b> %2</font><br>").arg(statusCode).arg(errorString));
+                      QString("<br><font color='red'><b>[HTTP Error %1]:</b> %2</font><br>").arg(statusCode).arg(errorString));
                   Critical("HTTP Error {}: {}", statusCode, errorString.toStdString());
                   }
 
-            // Verbindung abbrechen, da eh keine nützlichen Daten mehr kommen
+            // Abort connection, as no more useful data will come anyway
             currentReply->abort();
             return;
             }
@@ -596,39 +593,39 @@ void Agent::handleChatReadyRead() {
             if (line.isEmpty())
                   continue;
 
-            // SSE Prefix (Server-Sent Events) von Gemini/OpenAI filtern
+            // Filter SSE Prefix (Server-Sent Events) from Gemini/OpenAI
             if (line.startsWith("data: ")) {
                   line = line.mid(6);
                   if (line == "[DONE]")
-                        continue; // Ende des Streams
+                        continue; // End of stream
                   }
-            // SSE Prefix für Anthropic-Events
+            // SSE Prefix for Anthropic-Events
             if (line.startsWith("event: ")) {
                   currentAnthropicEventType = line.mid(7);
-                  continue; // Nächste Zeile (data:) enthält den Inhalt
+                  continue; // Next line (data:) contains the content
                   }
             try {
                   auto j = json::parse(line.toStdString());
-                  // --- 0. Fehlerbehandlung (Gemini/OpenAI & Ollama) ---
+                  // --- 0. Error handling (Gemini/OpenAI & Ollama) ---
                   if (j.contains("error")) {
-                        std::string errorMessage = "Unbekannter API Fehler";
+                        std::string errorMessage = "Unknown API Error";
 
-                        // Gemini/OpenAI verpackt Details oft in ein Objekt
+                        // Gemini/OpenAI often packs details into an object
                         if (j["error"].is_object() && j["error"].contains("message"))
                               errorMessage = j["error"]["message"].get<std::string>();
-                        // Fallback, falls der Fehler als simpler String kommt
+                        // Fallback, if the error comes as a simple string
                         else if (j["error"].is_string())
                               errorMessage = j["error"].get<std::string>();
 
-                        // Fehler rot im Chat anzeigen
+                        // Show error red in chat
                         QTextCursor cursor = chatDisplay->textCursor();
                         cursor.movePosition(QTextCursor::End);
                         chatDisplay->setTextCursor(cursor);
                         chatDisplay->insertHtml(
-                            QString("<br><font color='red'><b>[API Fehler]:</b> %1</font><br>").arg(QString::fromStdString(errorMessage)));
+                            QString("<br><font color='red'><b>[API Error]:</b> %1</font><br>").arg(QString::fromStdString(errorMessage)));
                         chatDisplay->verticalScrollBar()->setValue(chatDisplay->verticalScrollBar()->maximum());
-                        Critical("API Fehler empfangen: {}", errorMessage);
-                        // continue; // Mit der nächsten Zeile weitermachen
+                        Critical("API Error received: {}", errorMessage);
+                        // continue; // Continue with the next line
                         }
                   // --- 1. Ollama Format ---
                   else if (j.contains("message")) {
@@ -666,23 +663,23 @@ void Agent::handleChatReadyRead() {
                                     chatDisplay->horizontalScrollBar()->setValue(chatDisplay->horizontalScrollBar()->minimum());
                                     }
 
-                              // Tool-Calls im Stream zusammensetzen (Chunking)
+                              // Assemble tool calls in stream (chunking)
                               if (delta.contains("tool_calls")) {
                                     for (const auto& tc : delta["tool_calls"]) {
                                           int index = 0;
 
-                                          // --- 1. Robuste Index-Ermittlung ---
+                                          // --- 1. Robust index detection ---
                                           if (tc.contains("index")) {
                                                 index = tc["index"].get<int>();
                                                 }
                                           else {
-                                                // Fallback: Fehlt der Index, prüfen wir den Inhalt des Chunks
+                                                // Fallback: If index is missing, check content of chunk
                                                 if (openAIToolCallAssembler.empty()) {
                                                       index = 0;
                                                       }
                                                 else {
-                                                      // Wenn eine ID oder ein Name mitgeschickt wird, startet ein NEUES Tool.
-                                                      // Wenn nur Argumente kommen, ist es die Fortsetzung des ALTEN Tools.
+                                                      // If an ID or name is sent, a NEW tool starts.
+                                                      // If only arguments come, it is the continuation of the OLD tool.
                                                       if (tc.contains("id") || (tc.contains("function") && tc["function"].contains("name")))
                                                             index = openAIToolCallAssembler.rbegin()->first + 1;
                                                       else
@@ -690,7 +687,7 @@ void Agent::handleChatReadyRead() {
                                                       }
                                                 }
 
-                                          // --- 2. Assembler initialisieren ---
+                                          // --- 2. Initialize assembler ---
                                           if (openAIToolCallAssembler.find(index) == openAIToolCallAssembler.end()) {
                                                 openAIToolCallAssembler[index] = {
                                                          {    "type",                        "function"},
@@ -698,11 +695,11 @@ void Agent::handleChatReadyRead() {
                                                       };
                                                 }
 
-                                          // --- 3. Daten zuweisen ---
+                                          // --- 3. Assign data ---
                                           if (tc.contains("id"))
                                                 openAIToolCallAssembler[index]["id"] = tc["id"];
 
-                                          // NEU: thought_signature für Gemini zwingend erhalten!
+                                          // NEW: thought_signature for Gemini must be preserved!
                                           if (tc.contains("extra_content"))
                                                 openAIToolCallAssembler[index]["extra_content"] = tc["extra_content"];
 
@@ -727,7 +724,7 @@ void Agent::handleChatReadyRead() {
                         if (j.contains("delta")) {
                               std::string type = j["delta"].value("type", "");
 
-                              // Fall A: Text-Stream (Antwort des Assistenten)
+                              // Case A: Text stream (assistant's response)
                               if (type == "text_delta" && j["delta"].contains("text")) {
                                     std::string chunk        = j["delta"]["text"].get<std::string>();
                                     currentAssistantMessage += chunk;
@@ -738,43 +735,43 @@ void Agent::handleChatReadyRead() {
                                     chatDisplay->verticalScrollBar()->setValue(chatDisplay->verticalScrollBar()->maximum());
                                     chatDisplay->horizontalScrollBar()->setValue(chatDisplay->horizontalScrollBar()->minimum());
                                     }
-                              // Fall B: Tool-Stream (JSON Argumente aufbauen)
+                              // Case B: Tool stream (build JSON arguments)
                               else if (type == "input_json_delta" && j["delta"].contains("partial_json")) {
                                     int index                = j["index"].get<int>();
                                     std::string partialInput = j["delta"]["partial_json"].get<std::string>();
 
-                                    // Sicherstellen, dass der Eintrag existiert (content_block_start
-                                    // könnte im Stream noch nicht angekommen sein)
+                                    // Make sure the entry exists (content_block_start
+                                    // might not have arrived in the stream yet)
                                     if (!anthropicToolCallAssembler.count(index)) {
-                                          Debug("input_json_delta: index {} noch nicht im Assembler, initialisiere leer", index);
+                                          Debug("input_json_delta: index {} not yet in assembler, initialize empty", index);
                                           anthropicToolCallAssembler[index] = json::object();
                                           }
                                     if (!anthropicToolCallAssembler[index].contains("input"))
                                           anthropicToolCallAssembler[index]["input"] = "";
 
-                                    // JSON-Fragment anhängen
+                                    // Append JSON fragment
                                     anthropicToolCallAssembler[index]["input"] =
                                         anthropicToolCallAssembler[index]["input"].get<std::string>() + partialInput;
                                     }
                               }
                         }
                   else if (currentAnthropicEventType == "content_block_start") {
-                        // ... (Dieser Block war korrekt und kann so bleiben) ...
+                        // ... (This block was correct and can remain as is) ...
                         if (j.contains("content_block") && j["content_block"]["type"] == "tool_use") {
                               int index                         = j["index"].get<int>();
                               anthropicToolCallAssembler[index] = j["content_block"];
-                              // Initialisiere input string sicherheitshalber leer
+                              // Initialize input string empty for safety
                               anthropicToolCallAssembler[index]["input"] = "";
                               }
                         }
                   }
             catch (const json::parse_error& e) {
-                  // Bei Streaming normal, dass ab und zu kaputte Fragmente auftauchen.
-                  // Im Debug-Modus hilfreich zu sehen, sonst einfach ignorieren.
+                  // Normal for streaming that broken fragments appear from time to time.
+                  // Helpful to see in debug mode, otherwise just ignore.
                   Debug("Parse Warning: {} | Raw Line: {}", e.what(), line.toStdString());
                   }
             catch (const std::exception& e) {
-                  Critical("Unerwarteter Fehler im Chat-Stream: {}", e.what());
+                  Critical("Unexpected error in chat stream: {}", e.what());
                   }
             }
       }
@@ -789,46 +786,46 @@ void Agent::handleChatFinished() {
             return;
             }
 
-      // --- FEHLERBEHANDLUNG & BACKOFF LOGIK ---
+      // --- ERROR HANDLING & BACKOFF LOGIC ---
       if (currentReply && currentReply->error() != QNetworkReply::NoError) {
             int statusCode = currentReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
 
-            // Fall 1: Rate Limit (429) oder Server Overload (503/500/502/504)
+            // Case 1: Rate Limit (429) or Server Overload (503/500/502/504)
             if (statusCode == 429 || (statusCode >= 500 && statusCode < 600)) {
 
                   if (currentRetryCount < maxRetries) {
                         int waitMs = 0;
-                        // A: Rate Limit (429) -> Headers respektieren
+                        // A: Rate Limit (429) -> respect headers
                         if (statusCode == 429) {
-                              // KORREKTUR: "Retry-After" als Raw Header lesen, da es kein Enum dafür gibt
+                              // CORRECTION: Read "Retry-After" as raw header, as there is no enum for it
                               QByteArray retryAfterRaw = currentReply->rawHeader("Retry-After");
 
                               if (!retryAfterRaw.isEmpty()) {
-                                    // Anthropic/OpenAI senden hier meist Sekunden als Integer
+                                    // Anthropic/OpenAI usually send seconds as integer here
                                     waitMs = retryAfterRaw.toInt() * 1000;
                                     }
 
-                              // Fallback: Wenn wir Anthropic Reset Time schon in readyRead gesetzt haben
+                              // Fallback: If we have already set Anthropic Reset Time in readyRead
                               else if (rateLimitResetTime.isValid()) {
                                     waitMs = QDateTime::currentDateTime().msecsTo(rateLimitResetTime);
                                     }
 
-                              // Fallback: Standard Exponential wenn keine Header da sind
+                              // Fallback: Standard Exponential if no headers are there
                               if (waitMs <= 0)
                                     waitMs = 1000 * std::pow(2, currentRetryCount);
 
-                              // Sicherheitszuschlag (Jitter)
+                              // Safety margin (jitter)
                               waitMs += (rand() % 500);
 
                               chatDisplay->append(
-                                  QString("<br><font color='orange'><b>[Rate Limit]:</b> Pause für %1 Sekunden...</font><br>")
+                                  QString("<br><font color='orange'><b>[Rate Limit]:</b> Pause for %1 seconds...</font><br>")
                                       .arg(waitMs / 1000.0));
                               }
-                        // B: Server Fehler (5xx) -> Exponential Backoff
+                        // B: Server Error (5xx) -> Exponential Backoff
                         else {
                               waitMs = 2000 * std::pow(2, currentRetryCount);
                               chatDisplay->append(
-                                  QString("<br><font color='orange'><b>[Server Fehler %1]:</b> Retry %2/%3 in %4s...</font><br>")
+                                  QString("<br><font color='orange'><b>[Server Error %1]:</b> Retry %2/%3 in %4s...</font><br>")
                                       .arg(statusCode)
                                       .arg(currentRetryCount + 1)
                                       .arg(maxRetries)
@@ -839,59 +836,59 @@ void Agent::handleChatFinished() {
                         currentReply = nullptr;
 
                         currentRetryCount++;
-                        isRetrying = true; // Flag setzen
+                        isRetrying = true; // Set flag
 
-                        // Timer starten für nächsten Versuch
+                        // Start timer for next attempt
                         QTimer::singleShot(waitMs, this, &Agent::sendChatRequest);
                         return;
                         }
                   else {
                         chatDisplay->append(
-                            QString("<br><font color='red'><b>[Abbruch]:</b> Zu viele Versuche (%1).</font><br>").arg(maxRetries));
+                            QString("<br><font color='red'><b>[Abort]:</b> Too many attempts (%1).</font><br>").arg(maxRetries));
                         }
                   }
 
             QString errorMessage;
 
-            // Spezifische Meldung für den Timeout-Fall generieren
+            // Generate specific message for timeout case
             if (currentReply->error() == QNetworkReply::TimeoutError) {
-                  errorMessage = "Timeout: Der LL-Server hat nicht innerhalb von 60 Sekunden geantwortet. Eventuell lädt das "
-                                 "Modell noch oder der Server hängt.";
+                  errorMessage = "Timeout: The LL server did not respond within 60 seconds. Maybe the "
+                                 "model is still loading or the server is hanging.";
                   }
             else {
                   errorMessage = currentReply->errorString();
                   }
 
-            Debug("Netzwerk/API-Fehler: {}", errorMessage.toStdString());
+            Debug("Network/API error: {}", errorMessage.toStdString());
 
-            // Dem Nutzer den Fehler im UI anzeigen
-            chatDisplay->append(QString("<br><font color='red'><b>[Verbindungsabbruch]:</b> %1</font><br>").arg(errorMessage));
+            // Show the error to the user in the UI
+            chatDisplay->append(QString("<br><font color='red'><b>[Connection abort]:</b> %1</font><br>").arg(errorMessage));
 
             currentReply->deleteLater();
             currentReply      = nullptr;
             currentRetryCount = 0;
 
-            // Wichtig: UI wieder freigeben!
+            // Important: Release UI again!
             setInputEnabled(true);
             userInput->setFocus();
             return;
             }
-      // 1. Gemini Tool-Calls aus dem Stream finalisieren
+      // 1. Finalize Gemini tool calls from stream
       for (auto& [index, tc] : openAIToolCallAssembler) {
             try {
-                  // Argumente vom String zurück ins Objekt parsen
+                  // Parse arguments from string back into object
                   std::string argsStr         = tc["function"]["arguments"].get<std::string>();
                   tc["function"]["arguments"] = argsStr.empty() ? json::object() : json::parse(argsStr);
 
-                  // Generiere Fallback-ID, falls API keine mitgeliefert hat
+                  // Generate fallback ID if API did not provide one
                   if (!tc.contains("id"))
                         tc["id"] = "call_" + std::to_string(rand());
                   currentToolCalls.push_back(tc);
                   }
             catch (const json::parse_error& e) {
-                  Debug("LLM hat defektes JSON in den Tool-Argumenten generiert: {}", e.what());
+                  Debug("LLM generated defective JSON in tool arguments: {}", e.what());
 
-                  // Fehler an das Modell melden, damit es sich selbst korrigieren kann!
+                  // Report error to the model so it can correct itself!
                   tc["function"]["arguments"] = {
                            {"error_info", "JSON Parse Error: " + std::string(e.what())}
                         };
@@ -902,22 +899,22 @@ void Agent::handleChatFinished() {
             }
       openAIToolCallAssembler.clear();
 
-      // 2. Anthropic Tool-Calls finalisieren
+      // 2. Finalize Anthropic tool calls
       for (auto const& [index, tc] : anthropicToolCallAssembler) {
             try {
                   json finalToolCall;
                   finalToolCall["type"] = "function";
-                  finalToolCall["id"]   = tc.value("id", ""); // ID direkt aus tc
+                  finalToolCall["id"]   = tc.value("id", ""); // ID directly from tc
 
                   json function;
-                  // KORREKTUR: Anthropic legt 'name' direkt in 'tc' ab, nicht in 'function'
+                  // CORRECTION: Anthropic places 'name' directly in 'tc', not in 'function'
                   function["name"] = tc.value("name", "unknown_tool");
 
-                  // Das 'input' Feld bei Anthropic enthält die Argumente
+                  // The 'input' field at Anthropic contains the arguments
                   if (tc.contains("input")) {
                         if (tc["input"].is_string()) {
                               std::string inputStr = tc["input"].get<std::string>();
-                              // FIX: Leere Strings abfangen, sonst wirft json::parse eine Exception
+                              // FIX: Catch empty strings, otherwise json::parse throws an exception
 
                               if (QString::fromStdString(inputStr).trimmed().isEmpty())
                                     function["arguments"] = json::object();
@@ -931,7 +928,7 @@ void Agent::handleChatFinished() {
                                     }
                               }
                         else {
-                              // tc["input"] ist bereits ein JSON-Objekt -> direkt übernehmen
+                              // tc["input"] is already a JSON object -> adopt directly
                               function["arguments"] = tc["input"];
                               }
 
@@ -941,7 +938,7 @@ void Agent::handleChatFinished() {
                   }
             catch (const json::parse_error& e) {
                   Debug("Anthropic JSON Parse Error: {}", e.what());
-                  // ... Fehler-Handling wie gehabt
+                  // ... error handling as before
                   }
             }
       anthropicToolCallAssembler.clear();
@@ -953,13 +950,13 @@ void Agent::handleChatFinished() {
       currentRetryCount = 0;
       isRetrying        = false;
 
-      // Assistenten-Antwort zur Historie hinzufügen
+      // Add assistant response to history
       json assistantMsg;
       assistantMsg["role"] = "assistant";
 
       if (!currentToolCalls.empty()) {
             if (model.interface == "anthropic") {
-                  // Anthropic erwartet eine andere Struktur für die Tool-Antworten in der History
+                  // Anthropic expects a different structure for tool responses in history
                   json contentArray = json::array();
                   if (!currentAssistantMessage.empty()) {
                         json textBlock;
@@ -988,12 +985,12 @@ void Agent::handleChatFinished() {
 
       chatHistory.push_back(assistantMsg);
 
-      updateChatDisplay(); // SOFORT RENDERN
+      updateChatDisplay(); // RENDER IMMEDIATELY
 
-      // --- Agenten-Aktion: Tools ausführen ---
+      // --- Agent action: Execute tools ---
       if (!currentToolCalls.empty()) {
 
-            // Container für Anthropic: Alle Ergebnisse müssen in EINE Nachricht gesammelt werden
+            // Container for Anthropic: All results must be collected in ONE message
             json anthropicContentArray = json::array();
 
             for (const auto& toolCall : currentToolCalls) {
@@ -1003,20 +1000,20 @@ void Agent::handleChatFinished() {
                   QString result = executeTool(funcName, args);
 
                   if (model.interface == "anthropic") {
-                        // ANTHROPIC: Ergebnis sammeln, aber noch nicht senden
+                        // ANTHROPIC: Collect result, but do not send yet
                         json toolResult;
                         toolResult["type"]        = "tool_result";
                         toolResult["tool_use_id"] = toolCall.value("id", "");
                         toolResult["content"]     = result.toStdString();
 
-                        // Fehlerindikation für das Modell, falls das Tool fehlschlug (optional)
-                        if (result.startsWith("Error:") || result.startsWith("Fehler:"))
+                        // Error indication for the model, if the tool failed (optional)
+                        if (result.startsWith("Error:") || result.startsWith("Error:"))
                               toolResult["is_error"] = true;
 
                         anthropicContentArray.push_back(toolResult);
                         }
                   else {
-                        // OPENAI / OLLAMA: Jedes Tool ist eine eigene Nachricht
+                        // OPENAI / OLLAMA: Every tool is its own message
                         json toolResponseMsg;
                         toolResponseMsg["role"] = "tool";
                         toolResponseMsg["name"] = funcName;
@@ -1027,7 +1024,7 @@ void Agent::handleChatFinished() {
                         }
                   }
 
-            // NACH der Schleife: Die gesammelten Anthropic-Ergebnisse als EINE Nachricht pushen
+            // AFTER the loop: Push the collected Anthropic results as ONE message
             if (model.interface == "anthropic") {
                   json toolResponseMsg;
                   toolResponseMsg["role"]    = "user";
@@ -1037,7 +1034,7 @@ void Agent::handleChatFinished() {
 
             updateChatDisplay(); // Update UI
 
-            // Ergebnis an LLM zurücksenden
+            // Send result back to LLM
             retryPause = 2000;
             sendChatRequest();
             return;
@@ -1052,7 +1049,7 @@ void Agent::handleChatFinished() {
 //---------------------------------------------------------
 
 void Agent::saveSettings() {
-      // Als JSON speichern
+      // Save as JSON
       QJsonArray array;
       for (const auto& m : _models) {
             if (m.isLocal)
@@ -1113,27 +1110,27 @@ void Agent::loadSettings() {
 //---------------------------------------------------------
 
 void Agent::startNewSession() {
-      // 1. Alten Stand speichern
+      // 1. Save old state
       saveStatus();
 
-      // 2. Prüfen und in Git committen
-      QString commitMsg = "Auto-commit: Ende von Session " + QFileInfo(currentSessionFileName).fileName();
+      // 2. Check and commit to Git
+      QString commitMsg = "Auto-commit: End of session " + QFileInfo(currentSessionFileName).fileName();
       commitGitChanges(commitMsg);
 
-      // 3. UI und Historie zurücksetzen
+      // 3. Reset UI and history
       chatHistory = json::array();
       chatDisplay->clear();
       streamBuffer.clear();
       currentAssistantMessage.clear();
       currentToolCalls = json::array();
 
-      // 4. Neuen Dateinamen generieren
+      // 4. Generate new file name
       currentSessionFileName = generateSessionFileName();
 
-      // 5. System-Prompt wieder initialisieren (Kopie aus connectToServer)
+      // 5. Re-initialize system prompt (copy from connectToServer)
       json systemMsg;
       systemMsg["role"]    = "system";
-      std::string manifest = "Du bist ein erfahrener C++ Entwickler... (hier dein Manifest)";
+      std::string manifest = "You are an experienced C++ developer... (here your manifest)";
 
       QString fullPath = _editor->projectRoot() + "/agents.md";
       QFile file(fullPath);
@@ -1144,11 +1141,11 @@ void Agent::startNewSession() {
       systemMsg["content"] = manifest;
       chatHistory.push_back(systemMsg);
 
-      // 6. Bestätigung im UI
+      // 6. Confirmation in UI
       chatDisplay->append(
-          QString("<i>[System: Neue Session gestartet: <b>%1</b>]</i><br>").arg(QFileInfo(currentSessionFileName).fileName()));
+          QString("<i>[System: New session started: <b>%1</b>]</i><br>").arg(QFileInfo(currentSessionFileName).fileName()));
 
-      // Fokus wieder ins Eingabefeld setzen
+      // Set focus back to input field
       userInput->setFocus();
       }
 
@@ -1164,27 +1161,27 @@ bool Agent::commitGitChanges(const QString& commitMessage) {
       QProcess process;
       process.setWorkingDirectory(projRoot);
 
-      // 1. Prüfen, ob es uncommittete Änderungen gibt
+      // 1. Check for uncommitted changes
       process.start("git", QStringList() << "status" << "--porcelain");
       process.waitForFinished();
       QByteArray output = process.readAllStandardOutput();
 
       if (output.trimmed().isEmpty()) {
-            Debug("Git: Keine Änderungen gefunden. Überspringe Commit.");
+            Debug("Git: No changes found. Skip commit.");
             return false;
             }
 
-      chatDisplay->append("<i>[System: Änderungen erkannt, führe Git Auto-Commit aus...]</i>");
+      chatDisplay->append("<i>[System: Changes detected, executing Git auto-commit...]</i>");
 
-      // 2. Alle Änderungen stagen (git add .)
+      // 2. Stage all changes (git add .)
       process.start("git", QStringList() << "add" << ".");
       process.waitForFinished();
 
-      // 3. Änderungen committen
+      // 3. Commit changes
       process.start("git", QStringList() << "commit" << "-m" << commitMessage);
       process.waitForFinished();
 
-      chatDisplay->append("<i>[System: Git Auto-Commit erfolgreich durchgeführt.]</i>");
+      chatDisplay->append("<i>[System: Git auto-commit successfully completed.]</i>");
       return true;
       }
 
@@ -1219,7 +1216,7 @@ void Agent::loadStatus() {
       QString projRoot = QDir::cleanPath(_editor->projectRoot());
       QDir dir(projRoot);
       QStringList filters;
-      filters << "Session-*.json"; // GEÄNDERT: Wir suchen nur noch .json
+      filters << "Session-*.json"; // CHANGED: We only search for .json now
 
       QFileInfoList files = dir.entryInfoList(filters, QDir::Files, QDir::Time);
 
@@ -1229,36 +1226,35 @@ void Agent::loadStatus() {
             QFile file(currentSessionFileName);
             if (file.open(QIODevice::ReadOnly)) {
                   try {
-                        // 1. Gedächtnis laden
+                        // 1. Load memory
                         chatHistory = json::parse(file.readAll().toStdString());
 
-                        // 2. Visuelle Darstellung generieren
+                        // 2. Generate visual representation
                         updateChatDisplay();
 
-                        chatDisplay->append("<br><i>[System: Letzte Session (" + files.first().fileName() + ") fortgesetzt.]</i><br>");
+                        chatDisplay->append("<br><i>[System: Last session (" + files.first().fileName() + ") continued.]</i><br>");
 
-                        // Nach unten scrollen
+                        // Scroll down
                         QTextCursor cursor = chatDisplay->textCursor();
                         cursor.movePosition(QTextCursor::End);
                         chatDisplay->setTextCursor(cursor);
                         }
                   catch (const std::exception& e) {
-                        Critical("Fehler beim Laden der JSON-Historie: {}", e.what());
+                        Critical("Error loading JSON history: {}", e.what());
                         chatHistory = json::array();
                         }
                   }
             }
       else {
-            // Keine Dateien gefunden -> Neue Session starten
+            // No files found -> Start new session
             currentSessionFileName = generateSessionFileName();
-            chatDisplay->append("<i>[System: Keine vorherige Session gefunden. Neue Session gestartet.]</i><br>");
+            chatDisplay->append("<i>[System: No previous session found. New session started.]</i><br>");
 
             chatHistory = json::array();
             json systemMsg;
             systemMsg["role"] = "system";
 
-            std::string manifest = "Du bist ein erfahrener C++ Entwickler. Deine Aufgabe ist es, Code im Projekt zu analysieren, zu "
-                                   "schreiben und Build-Fehler zu beheben.";
+            std::string manifest = "You are an experienced C++ developer. Your task is to analyze and write code in the project and to fix build errors.";
             QString fullPath     = projRoot + "/agents.md";
             QFile manifestFile(fullPath);
             if (manifestFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
