@@ -195,14 +195,18 @@ Fira Code wird von den meisten Browsern unterstützt und du kannst dir in den Co
 
 Nped kann nur Schriften verwenden, die nichtproportional (Monospace) sind.
 
-
 ### Language Server
 
 Für die "C" Sprachfamilie: c, c++
 
       sudo apt install clangd
 
-Für Qt qml
+### LLM
+#### Ollama
+
+Ollama wird über die Url http://localhost:11434 angesprochen. Wenn der Ollama Server beim Start von NPed
+erreichbar ist werden die verfügbaren LLM's automatisch ermittelt und können
+im Pulldownmenü angezeigt werden.
 
 
 ### Core Dumps
@@ -222,13 +226,3 @@ dann:
 
       sudo systemctl stop apport.service
       sudo systemctl disable apport.service
-
-## Implementation Anmerkungen
-
-### Text
-
-Der Text besteht aus einem Vektor von Zeilen. Auf eine Textzeile kann per Index zugegriffen
-werden.
-
-* der Text kann leer sein
-* ein gültiger Index ist 0 - sizeof(lines)-1

@@ -228,15 +228,15 @@ void Agent::connectToServer(const QString& url) {
                            "TOOL FORMAT:\n"
                            "Answer exclusively in JSON format when you call a tool:\n"
                            "{\n"
-                           "  \"tool\": \"modify_file\",\n"
+                           "  \"tool\": \"replace_in_file\",\n"
                            "  \"args\": {\n"
                            "    \"path\": \"src/main.cpp\",\n"
-                           "    \"find\": \"old code\",\n"
+                           "    \"search\": \"old code\",\n"
                            "    \"replace\": \"new code\"\n"
                            "  }\n"
                            "}\n\n"
                            "PROJECT STRUCTURE:\n"
-                           "Standard Qt6 layout. The build directory is './build'. Use CMake.\n"
+                           "Standard Qt6 layout. The build directory is './build'. Use CMake with ninja.\n"
                            "Do not invent your own tasks and never act on your own authority! "
                            "Preferably use the replace_in_file tool for changes to files. Make sure that the "
                            "'search' parameter is absolutely identical to the text in the file, including all whitespace! "
@@ -1114,8 +1114,8 @@ void Agent::startNewSession() {
       saveStatus();
 
       // 2. Check and commit to Git
-      QString commitMsg = "Auto-commit: End of session " + QFileInfo(currentSessionFileName).fileName();
-      commitGitChanges(commitMsg);
+//      QString commitMsg = "Auto-commit: End of session " + QFileInfo(currentSessionFileName).fileName();
+//      commitGitChanges(commitMsg);
 
       // 3. Reset UI and history
       chatHistory = json::array();
@@ -1186,12 +1186,52 @@ bool Agent::commitGitChanges(const QString& commitMessage) {
       }
 
 //---------------------------------------------------------
+//   generateSessionFileName
+//---------------------------------------------------------
+
+QString Agent::generateSessionFileName() {
+      if (!_editor)
+            return "";
+
+      QString projRoot = QDir::cleanPath(_editor->projectRoot());
+      QDate date       = QDate::currentDate();
+      QString dateStr  = date.toString("dd-MM-yyyy");
+
+      QDir dir(projRoot);
+      QStringList filters;
+      // GEÄNDERT: Suche nach .json
+      filters << QString("Session-%1-*.json").arg(dateStr);
+      QFileInfoList files = dir.entryInfoList(filters, QDir::Files, QDir::Name);
+
+      int maxNum = 0;
+      for (const QFileInfo& fi : files) {
+            QString name      = fi.baseName();
+            QStringList parts = name.split('-');
+            if (parts.size() >= 5) {
+                  int num = parts.last().toInt();
+                  if (num > maxNum)
+                        maxNum = num;
+                  }
+            }
+
+      QString newNum = QString::number(maxNum + 1).rightJustified(2, '0');
+      return QString("%1/.nped/Session-%2-%3.json").arg(projRoot, dateStr, newNum);
+      }
+
+//---------------------------------------------------------
 //   saveStatus
 //---------------------------------------------------------
+
 void Agent::saveStatus() {
       // chatHistory is considered empty if it contains only the system manifest
       if (currentSessionFileName.isEmpty() || chatHistory.size() <= 1)
             return;
+
+      Debug("session <{}>", currentSessionFileName);
+      QString path = QFileInfo(currentSessionFileName).absolutePath();
+      QDir dir;
+      dir.mkpath(path);
+      Debug("mkpath <{}>", path);
 
       QFile file(currentSessionFileName);
       if (file.open(QIODevice::WriteOnly)) {
@@ -1214,7 +1254,7 @@ void Agent::loadStatus() {
             return;
 
       QString projRoot = QDir::cleanPath(_editor->projectRoot());
-      QDir dir(projRoot);
+      QDir dir(projRoot + "/.nped");
       QStringList filters;
       filters << "Session-*.json"; // CHANGED: We only search for .json now
 

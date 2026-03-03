@@ -675,40 +675,6 @@ QString Agent::replaceInFile(const QString& ipath, const QString& searchStr, con
       }
 
 //---------------------------------------------------------
-//   generateSessionFileName
-//---------------------------------------------------------
-
-QString Agent::generateSessionFileName() {
-      if (!_editor)
-            return "";
-
-      QString projRoot = QDir::cleanPath(_editor->projectRoot());
-      QDate date       = QDate::currentDate();
-      QString dateStr  = date.toString("dd-MM-yyyy");
-
-      QDir dir(projRoot);
-      QStringList filters;
-      // GEÄNDERT: Suche nach .json
-      filters << QString("Session-%1-*.json").arg(dateStr);
-      QFileInfoList files = dir.entryInfoList(filters, QDir::Files, QDir::Name);
-
-      int maxNum = 0;
-      for (const QFileInfo& fi : files) {
-            QString name      = fi.baseName();
-            QStringList parts = name.split('-');
-            if (parts.size() >= 5) {
-                  int num = parts.last().toInt();
-                  if (num > maxNum)
-                        maxNum = num;
-                  }
-            }
-
-      QString newNum = QString::number(maxNum + 1).rightJustified(2, '0');
-      // GEÄNDERT: Generiere .json
-      return QString("%1/Session-%2-%3.json").arg(projRoot, dateStr, newNum);
-      }
-
-//---------------------------------------------------------
 // Tool: getGitStatus
 //---------------------------------------------------------
 
