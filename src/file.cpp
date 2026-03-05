@@ -382,6 +382,7 @@ void File::setViewMode(ViewMode m, const Pos&) {
             case ViewMode::SearchResults:
             case ViewMode::GitVersion:
             case ViewMode::Bugs: break;
+            case ViewMode::WebView: break;
             }
       }
 

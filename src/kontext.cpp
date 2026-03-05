@@ -296,6 +296,7 @@ void Kontext::setViewMode(ViewMode m) {
                         case ViewMode::SearchResults: map = &file()->searchResults(); break;
                         case ViewMode::GitVersion: break;
                         case ViewMode::File: break; // cannot happen
+                        case ViewMode::WebView: break; // cannot happen
                         }
                   if (map) {
                         if (_cursor.filePos.row >= map->size())
@@ -310,6 +311,7 @@ void Kontext::setViewMode(ViewMode m) {
             case ViewMode::Bugs: switchToLineMap(file()->bugs()); break;
             case ViewMode::SearchResults: switchToLineMap(file()->searchResults()); break;
             case ViewMode::GitVersion: break;
+            case ViewMode::WebView: break;
             }
       updateSelection();
       editor->update();

@@ -21,7 +21,23 @@ class File;
 class Kontext;
 class QPoint;
 
-enum class ViewMode { File, Functions, Bugs, GitVersion, SearchResults };
+//---------------------------------------------------------
+//   ViewMode
+//---------------------------------------------------------
+
+enum class ViewMode {
+      File,             // text source
+      Functions,        // filter functions and methods
+      Bugs,             // ls annotations
+      GitVersion,
+      SearchResults,
+      WebView
+      };
+
+//---------------------------------------------------------
+//   MoveType
+//---------------------------------------------------------
+
 enum class MoveType {
       Normal,           // move FilePos + ScreenPos, adjust ScreenPos
       Roll,             // move ScreenPos, adjust FilePos
@@ -106,4 +122,5 @@ class Kontext : public QObject
       void moveCursorTopLine();
       void moveCursorBottomLine();
       void fixScreenCursor(Cursor& c);
+      void toggleViewMode();
       };

@@ -53,7 +53,7 @@ class EditWidget : public QWidget
       void markerClicked(int row);
 
     public:
-      static const int BORDER{4};
+      static constexpr qreal BORDER{4.0};
       EditWidget(QWidget* parent, Editor*);
       QSize textSize() const;
       int rows() const { return textSize().height(); }

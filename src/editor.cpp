@@ -43,6 +43,7 @@
 #include "commands.h"
 #include "completion.h"
 #include "agent.h"
+#include "webview.h"
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -78,7 +79,7 @@ bool KeyLogger::eventFilter(QObject* obj, QEvent* event) {
             clear();
       keys[n++]    = e->keyCombination();
       bool partial = false;
-      for (auto& a : editor()->pedActions()) {
+      for (auto& a : *actions) {
             for (const auto& sc : a.seq) {
                   int i = 0;
                   for (; i < 4; ++i)
@@ -86,11 +87,9 @@ bool KeyLogger::eventFilter(QObject* obj, QEvent* event) {
                               break;
                   if (i == 4) {
                         partial = false;
-                        editor()->startCmd();
-                        a.func();
-                        editor()->endCmd();
+                        emit triggered(&a);
                         clear();
-                        editor()->keyLabel()->setText("");
+                        emit keyLabelChanged("");
                         return true;
                         }
                   else if ((i >= n) && (sc[i] != QKeyCombination::fromCombined(0)))
@@ -99,7 +98,7 @@ bool KeyLogger::eventFilter(QObject* obj, QEvent* event) {
             }
       if (!partial)
             clear();
-      editor()->keyLabel()->setText(QKeySequence(keys[0], keys[1], keys[2], keys[3]).toString(QKeySequence::NativeText));
+      emit keyLabelChanged(QKeySequence(keys[0], keys[1], keys[2], keys[3]).toString(QKeySequence::NativeText));
       return QObject::eventFilter(obj, event);
       }
 
@@ -111,13 +110,19 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       if (!initProject())
             Critical("init project failed");
       loadProjectStatus();
-      KeyLogger* kl = new KeyLogger(this);
+      KeyLogger* kl = new KeyLogger(&_pedActions, this);
+      connect(kl, &KeyLogger::triggered, [this](Action* a) {
+            startCmd();
+            a->func();
+            endCmd();
+            keyLabel()->setText("");
+            });
+      connect(kl, &KeyLogger::keyLabelChanged, [this](QString s) { _keyLabel->setText(s); });
 
       // Associate a KeySequence with a function which performs an editor action.
       // The function is surrounded by an startCmd() and an endCmd() call.
 
       _pedActions = {
-
          Action(CMD_QUIT, [this] { quitCmd(); }),
          Action(CMD_SAVE_QUIT, [this] { saveQuitCmd(); }),
 
@@ -186,7 +191,11 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
          Action(CMD_SELECT_ROW, [this] { rowSelect(); }),
          Action(CMD_SELECT_COL, [this] { colSelect(); }),
          Action(CMD_FORMAT, [this] { formatting(); }),
-         Action(CMD_VIEW_FUNCTIONS, [this] { kontext()->setViewMode(ViewMode::Functions); }),
+         Action(CMD_VIEW_FUNCTIONS,
+                [this] {
+                      kontext()->toggleViewMode();
+                      updateViewMode();
+                      }),
          Action(CMD_VIEW_BUGS, [this] { kontext()->setViewMode(ViewMode::Bugs); }),
          Action(CMD_SEARCH_NEXT, [this] { searchNext(); }),
          Action(CMD_SEARCH_PREV, [this] { searchPrev(); }),
@@ -200,7 +209,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
          Action(CMD_EXPAND_MACROS, [this] { kontext()->file()->expandMacros(); }),
          Action(CMD_COMPLETIONS, [this] { requestCompletions(); }),
          Action(CMD_FUNCTION_HEADER, [this] { kontext()->createFunctionHeader(); }),
-         Action(CMD_GIT_TOGGLE, [this] { gitButton->setChecked(!gitButton->isChecked()); }),
+         Action(CMD_GIT_TOGGLE, [this] { _gitButton->setChecked(!_gitButton->isChecked()); }),
          Action(CMD_FOLD_ALL, [this] { foldAll(); }),
          Action(CMD_UNFOLD_ALL, [this] { unfoldAll(); }),
          Action(CMD_FOLD_TOGGLE, [this] { foldToggle(); }),
@@ -242,9 +251,14 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
 
       connect(infoButton, &QToolButton::toggled, [this] { agent->setVisible(infoButton->isChecked()); });
 
+      _stack      = new QStackedWidget(this);
       hScroll     = new QScrollBar(Qt::Horizontal);
       vScroll     = new QScrollBar(Qt::Vertical);
       _editWidget = new EditWidget(nullptr, this);
+      _mdWidget   = new MarkdownWebView(this, this);
+      _stack->addWidget(_editWidget);
+      _stack->addWidget(_mdWidget);
+
       _editWidget->setFocus();
       connect(_editWidget, &EditWidget::markerClicked, [this](int row) {
             kontext()->file()->toggleFold(row);
@@ -252,7 +266,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             });
 
       grid->addWidget(hboxW, 0, 0, 1, 2);
-      grid->addWidget(_editWidget, 1, 0);
+      grid->addWidget(_stack, 1, 0);
       grid->addWidget(vScroll, 1, 1);
       grid->addWidget(hScroll, 2, 0);
 
@@ -271,15 +285,15 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       //    Git
       //*****************************************
 
-      gitButton = new QToolButton();
-      gitButton->setText("G");
-      gitButton->setCheckable(true);
-      gitButton->setChecked(false);
-      hbox->addWidget(gitButton, 0, Qt::AlignRight);
+      _gitButton = new QToolButton();
+      _gitButton->setText("G");
+      _gitButton->setCheckable(true);
+      _gitButton->setChecked(false);
+      hbox->addWidget(_gitButton, 0, Qt::AlignRight);
 
-      connect(gitButton, &QToolButton::toggled, [this] {
+      connect(_gitButton, &QToolButton::toggled, [this] {
             updateGitHistory();
-            gitPanel->setVisible(gitButton->isChecked());
+            gitPanel->setVisible(_gitButton->isChecked());
             });
 
       gitPanel = new QListView(box);
@@ -305,7 +319,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       //    StatusBar
       //*****************************************
 
-      auto sbw = new QWidget(); // statusBar();
+      auto sbw = new QWidget();
       grid->addWidget(sbw, 3, 0, 1, 2);
 
       auto sb = new QHBoxLayout(sbw);
@@ -381,6 +395,69 @@ Editor::~Editor() {
             if (ls.client) {
                   ls.client->stop();
                   delete ls.client;
+                  }
+            }
+      }
+
+//-----------------------------------------------------------------------------
+//   updateViewMode
+//    The main editor window is stacked:
+//          index 0:    editWidget, used for all view modes except WebView
+//          index 1:    mdWidget, used for view mode WebView
+//-----------------------------------------------------------------------------
+
+void Editor::updateViewMode() {
+      auto viewMode = kontext()->viewMode();
+      switch (viewMode) {
+            default:
+            case ViewMode::File:
+                  if (_stack->currentIndex() != 0)
+                        _stack->setCurrentIndex(0);
+                  _editWidget->setFocus();
+                  break;
+
+            case ViewMode::WebView: {
+                  if (_stack->currentIndex() != 1)
+                        _stack->setCurrentIndex(1);
+                  _mdWidget->setFocus();
+                  auto lid = kontext()->file()->languageId();
+                  if (lid == "markdown")
+                        _mdWidget->setMarkdown(kontext()->file()->plainText());
+                  else if (lid == "html")
+                        _mdWidget->setHtml(kontext()->file()->plainText());
+                  } break;
+
+//            case ViewMode::Functions:
+//                kontext()->setViewMode(ViewMode::Functions);
+//                  break;
+            }
+      }
+
+//---------------------------------------------------------
+//   toggleViewMode
+//---------------------------------------------------------
+
+void Kontext::toggleViewMode() {
+      const auto& l = file()->languageId();
+      if (l == "cpp" || l == "c") {
+#if 0
+            switch (_viewMode) {
+                  default:
+                  case ViewMode::Functions:
+                        _viewMode = ViewMode::File;
+                        break;
+                  case ViewMode::File:
+                        _viewMode = ViewMode::Functions;
+                        break;
+                        }
+#endif
+            setViewMode(ViewMode::Functions);
+            }
+      else if (l == "markdown" || l == "html") {
+            switch (_viewMode) {
+                  default:
+                  case ViewMode::File: _viewMode = ViewMode::WebView; break;
+                  case ViewMode::WebView: _viewMode = ViewMode::File; break;
                   }
             }
       }
@@ -752,11 +829,12 @@ void Editor::saveQuitCmd() {
 
 void Editor::initFont() {
       _font = QFont(fontFamily);
-      _font.setPointSizeF(_fontSize);
-      //      _font.setWeight(QFont::Weight(fontWeight));
       _font.setFixedPitch(true);
-      QFontMetricsF fm(_font);
-      _fw = fm.horizontalAdvance("x", QTextOption());
+      _font.setPointSizeF(_fontSize);
+
+      //      _font.setWeight(QFont::Weight(fontWeight));
+      QFontMetricsF fm(_font, _editWidget);
+      _fw = fm.horizontalAdvance(QChar('x'));
       _fh = fm.lineSpacing();
       _fa = fm.ascent();
       _fd = fm.descent();
@@ -766,12 +844,11 @@ void Editor::initFont() {
       f.setPointSizeF(_fontSize);
       tabBar->setFont(f);
       infoButton->setFont(f);
-      gitButton->setFont(f);
+      _gitButton->setFont(f);
       urlLabel->setFont(f);
       lineLabel->setFont(f);
       colLabel->setFont(f);
       _keyLabel->setFont(f);
-      statusBar()->setFont(f);
       qApp->setFont(f);
       emit fontChanged(f);
       }
@@ -813,7 +890,7 @@ void Editor::saveStatus() {
       j["aiModel"]   = agent->currentModel().toStdString();
       j["search"]    = searchPattern.pattern().toStdString();
       j["replace"]   = replace.toStdString();
-      j["gitPanel"]  = gitButton->isChecked();
+      j["gitPanel"]  = _gitButton->isChecked();
 
       json kontexte = json::array();
       for (const auto k : _kontextList) {
@@ -934,7 +1011,7 @@ bool Editor::loadStatus(int argc, char** argv) {
 
                   if (j.contains("gitPanel")) {
                         bool val = j["gitPanel"].get<bool>();
-                        gitButton->setChecked(val);
+                        _gitButton->setChecked(val);
                         }
 
                   if (loadFiles && j.contains("kontexte") && j["kontexte"].is_array()) {
@@ -972,9 +1049,8 @@ bool Editor::loadStatus(int argc, char** argv) {
                   }
             }
 
-      if (!stateRestored) {
+      if (!stateRestored)
             setGeometry(0, 0, w, h);
-            }
       for (int i = 0; i < argc; ++i)
             addFileInitial(argv[i]);
 
@@ -1094,6 +1170,8 @@ void Editor::nextKontext() {
       kontext()->file()->undo()->endMacro();
       setCurrentKontext((_currentKontext + 1) % _kontextList.size());
       kontext()->file()->undo()->beginMacro();
+      updateViewMode();
+      _editWidget->setFocus();
       }
 
 //---------------------------------------------------------
@@ -1107,6 +1185,8 @@ void Editor::prevKontext() {
             idx = _kontextList.size() - 1;
       setCurrentKontext(idx);
       kontext()->file()->undo()->beginMacro();
+      updateViewMode();
+      _editWidget->setFocus();
       }
 
 //---------------------------------------------------------

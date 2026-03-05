@@ -97,10 +97,9 @@ int main(int argc, char** argv) {
                   default: usage("bad argument"); return -1;
                   }
             }
-      argc -= optind;
-      argv += optind;
-
-      Editor e(argc, argv);
+      int fileArgc = argc - optind;
+      char** fileArgv = argv + optind;
+      Editor e(fileArgc, fileArgv);
       e.show();
       app.exec();
       return 0;

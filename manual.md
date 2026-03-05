@@ -1,18 +1,18 @@
 # NPEd Manual
 
-##Übersicht
+## Übersicht
 
 NPed (Program Editor) ist ein moderner C++23 und Qt6-basierter Texteditor bzw. eine leichtgewichtige IDE.
 
 Hier ist eine Übersicht der zentralen Funktionen und Architekturmerkmale des Projekts:
 
-####Kernfunktionen des Editors
+#### Kernfunktionen des Editors
   * Multifile-Verwaltung: Öffnen und Bearbeiten mehrerer Dateien in Tabs (TabBar). Tabs visualisieren den Dateistatus farblich (z. B. rot für modifiziert, blau für schreibgeschützt).
   * Kontext-Management: Jeder Tab und jede geöffnete Datei wird in einem Kontext verwaltet, der u.a. die Cursor-Position und den Verlauf (History) speichert. Dies ermöglicht einfaches Navigieren (Vor/Zurück) im Code.
   * Standard-Editing: Undo/Redo-Stack (undo.cpp), Suche & Ersetzen mit Regulären Ausdrücken (search.cpp), Code Folding, sowie zeilen- und spaltenweises Auswählen (Pick/Put).
   * Syntax-Highlighting & Formatting: Automatisiertes Formatieren und Pretty-Printing des Codes (pretty.cpp).
 
-####Language Server Protocol (LSP) Integration
+#### Language Server Protocol (LSP) Integration
 
 Über den eingebauten LSclient kann der Editor mit Sprachservern kommunizieren (z.B. clangd für C/C++). Daraus resultieren fortgeschrittene IDE-Funktionen:
 
@@ -21,26 +21,26 @@ Hier ist eine Übersicht der zentralen Funktionen und Architekturmerkmale des Pr
   * Hover-Informationen: Anzeigen von Typen- oder Dokumentationshinweisen beim Verweilen mit dem Cursor.
   * Refactoring: Kontextweites Umbenennen von Symbolen (Rename).
 
-####Integrierter KI-Agent (AgentUI)
+#### Integrierter KI-Agent (AgentUI)
 
 Das wohl herausstechendste Merkmal ist die enge Integration eines KI-Agenten (agent.cpp, agentui.cpp), der aktiv in die Entwicklung eingreifen kann:
 
-*     Modell-Unterstützung: Kompatibel mit lokalen Modellen (via Ollama) sowie Cloud-Modellen (Gemini, Anthropic).
-*     Werkzeuge (Tool-Calling): Der Agent hat direkten Lese- und Schreibzugriff auf das Projekt. Er kann Dateien lesen, ändern und erstellen (handleReadFile, handleModifyFile), Verzeichnisse auflisten, oder das Projekt nach Texten und Symbolen durchsuchen (handleSearchProject, handleFindSymbol).
-*     Projekt-Builds: Der Agent kann Build-Kommandos im Projekt ausführen (runBuildCommand), um z. B. CMake oder Make anzustoßen.
-*     Web-Recherche: Der Agent kann gezielt Web-Dokumentationen abrufen (fetchWebDocumentation).
+  * Modell-Unterstützung: Kompatibel mit lokalen Modellen (via Ollama) sowie Cloud-Modellen (Gemini, Anthropic).
+  * Werkzeuge (Tool-Calling): Der Agent hat direkten Lese- und Schreibzugriff auf das Projekt. Er kann Dateien lesen, ändern und erstellen (handleReadFile, handleModifyFile), Verzeichnisse auflisten, oder das Projekt nach Texten und Symbolen durchsuchen (handleSearchProject, handleFindSymbol).
+  * Projekt-Builds: Der Agent kann Build-Kommandos im Projekt ausführen (runBuildCommand), um z. B. CMake oder Make anzustoßen.
+  * Web-Recherche: Der Agent kann gezielt Web-Dokumentationen abrufen (fetchWebDocumentation).
 
-###Git-Integration
+### Git-Integration
 Der Editor hat native Git-Unterstützung integriert (basierend auf libgit2 in git.cpp):
 
-*     Abrufen von Git-Status, Diffs und Logs.
-*     Grafisches Git-Panel und Git-History-Ansicht im Editorfenster.
-*     Der KI-Agent selbst kann automatisiert Commits erstellen (createGitCommit), sobald er Aufgaben erledigt hat.
+  * Abrufen von Git-Status, Diffs und Logs.
+  * Grafisches Git-Panel und Git-History-Ansicht im Editorfenster.
+  * Der KI-Agent selbst kann automatisiert Commits erstellen (createGitCommit), sobald er Aufgaben erledigt hat.
 
-###Architektur und Technik
-*     C++23 & CMake: Modernes C++ gepaart mit einem CMake-Buildsystem.
-*     Qt6: Verwendet für die grafische Benutzeroberfläche (Widgets, Splitter, Menüs). Styling erfolgt auch über Qt Stylesheets (style.qss).
-*     Bibliotheken: Nutzt nlohmann::json stark für das Parsen und Erzeugen von LSP-Nachrichten, LLM-Prompts/Tool-Calls und das Speichern von Settings/Sitzungen.
+### Architektur und Technik
+  * C++23 & CMake: Modernes C++ gepaart mit einem CMake-Buildsystem.
+  * Qt6: Verwendet für die grafische Benutzeroberfläche (Widgets, Splitter, Menüs). Styling erfolgt auch über Qt Stylesheets (style.qss).
+  * Bibliotheken: Nutzt nlohmann::json stark für das Parsen und Erzeugen von LSP-Nachrichten, LLM-Prompts/Tool-Calls und das Speichern von Settings/Sitzungen.
 
 Zusammenfassend ist nped also ein intelligenter Code-Editor, der LSP für präzise statische Code-Analyse mit LLM-basierten KI-Agenten kombiniert, um Entwicklungsaufgaben zu automatisieren.
 NPed ist ein Source-Code Editor mit speziellen Features für C und C++.
@@ -114,7 +114,7 @@ kann auch in einem Projekt Unterverzeichnis gestartet werden.
 Für Informationen über das gesamte Projekt kontaktiert Ped einen Languageserver. Für c++ wird dazu der clangd
 Languageserver gestartet.
 Der LS parst den aktuellen Quellcode und benötigt dazu die gleiche Umgebung wie beim späteren Compilerlauf damit
-er z.B. alle Headerdateien findet. Dazu muss man CMake anweisen, eine Datei "compile_commands.json" zu erzeugen die
+er z.B. alle Headerdateien findet. Dazu muss man CMake anweisen, eine Datei ``compile_commands.json`` zu erzeugen die
 genau diese Informationen enthält.
 
 CMake wird dazu wie folgt aufgerufen:
@@ -125,26 +125,104 @@ Cmake schreibt dann die "compile_commands.json" ins build-Verzeichnis "build".
 Wird Ped innerhalb des Projektverzeichnisses oder eines Projekt Unterverzeichnis gestartet, findet der clangd
 LS alles weitere automatisch.
 
-### Annotation
+### **Globale Kommandos**
 
-### Goto Definition
+      [F1]                Sichert geänderte Dateien und Beendet den Editor.
+      [Shift+F1]          Sichert
+      [Ctrl+K, Ctrl+Q]    Beendet den Editor **ohne** geänderte Dateien zurückzuschreiben.
+      [Escape]            "Enter" Kommando: öffnet Eingabefenster auf der Statuszeile zur Eingabe von Parmetern
+      [Enter <name> F3]   öffnet Datei `name` in neuem Kontextfenster
 
-### Goto Symbol Definition
 
-### Goto Implementation
+### **Cursor Kommandos**
 
-### Hover Help
+      [Ctrl+D oder Cursor-Rechts]  CMD_CHAR_RIGHT
+      [Ctrl+S oder `Cursor-Links]  CMD_CHAR_LEFT
+      [Up;    Ctrl+E]              CMD_LINE_UP
+      [Down;  Ctrl+X]              CMD_LINE_DOWN
+      [Ctrl+Q,  Ctrl+S]            CMD_LINE_START
+      [Ctrl+Q,  Ctrl+D]            CMD_LINE_END
+      [Ctrl+Q,  Ctrl+E]            CMD_LINE_TOP
+      [Ctrl+Q,  Ctrl+X]            CMD_LINE_BOTTOM
+      [Ctrl+R;  PageUp]            CMD_PAGE_UP
+      [Ctrl+C;  PageDown]          CMD_PAGE_DOWN
+      [Ctrl+Q,  Ctrl+R]            CMD_FILE_BEGIN
+      [Ctrl+Q,  Ctrl+C]            CMD_FILE_END
+      [Ctrl+A]                     CMD_WORD_LEFT
+      [Ctrl+F]                     CMD_WORD_RIGHT
+      [Enter <nn> Ctrl+G]          gehe nach Zeile nn
 
-### Formatierung
+### **Text verändern**
 
-      Ctrl + O, Ctrl + F      Formatiert die aktuelle Datei
+      [Ctrl+Z]                     CMD_UNDO
+      [Shift+Ctrl+Z]               CMD_REDO
+      [Delete; Backspace]          CMD_RUBOUT
+      [Ctrl+G]                     CMD_CHAR_DELETE
+      [Ctrl+N]                     CMD_INSERT_LINE
+      [F8]                         CMD_PICK
+      [F9]                         CMD_PUT
+      [Ctrl+Y]                     CMD_DELETE_LINE
+      [Ctrl+Q,  Ctrl+Y]            CMD_DELETE_LINE_RIGHT
+      [Ctrl+T]                     CMD_DELETE_WORD
 
-### Code Completion
+
+### **Datei Kommandos**
+
+      [Ctrl+K,  Ctrl+S]            CMD_SAVE
+      [Ctrl+K,  Ctrl+K; F4]        CMD_KONTEXT_COPY
+      [Ctrl+K,  Ctrl+J; Shift+F3]  CMD_KONTEXT_PREV
+      [Ctrl+K,  Ctrl+L; F3]        CMD_KONTEXT_NEXT
+      [Ctrl+K,  Ctrl+I]            CMD_SHOW_BRACKETS
+      [Ctrl+Up]                    CMD_KONTEXT_UP
+      [Ctrl+Down]                  CMD_KONTEXT_DOWN
+      [F5]                         CMD_SELECT_ROW
+      [F6]                         CMD_SELECT_COL
+      [Ctrl+O,  Ctrl+W]            CMD_ENTER_WORD
+
+
+### **Suchen/Ersetzen**
+
+      [Enter <text> F7]               suche nach `text`
+      [Enter <suchen>/<ersetzen> F7]  suche `suchen` und ersetze durch `ersetzen`
+      [F7]                            vorwärts weitersuchen
+      [SHIFT+F7]                      rückwärts weitersuchen
+      [Ctrl+O, Ctrl+R]                projektweites umbenennen über den Language Server
+
+
+### **IDE Kommandos**
+
+      [Ctrl+K,  Ctrl+M]             CMD_SHOW_LEVEL
+#### **``Ctrl+O,  Ctrl+F``** Formatiert eine Datei
+Das Format Kommando wird zum Language Server geschickt. Es muss ein LS für den aktuellen Filetyp
+konfiguriert und verfügbar sein und er muss das Format Kommando unterstützen. Für C/C++ funktioniert
+das mit dem clangd LanguageServer prima.
+
+#### **``Ctrl+V``** Schaltet auf eine andere Ansicht der aktuellen Datei.
+Für Markdown- sowie Html-Dateien
+wird von der editierbaren Textdarstellung auf eine gerenderte 'nur lesen' Darstellung umgeschaltet.
+<p>Für C/C++ Dateien wird
+eine Liste von Funktions- bzw. Methodennamen gezeigt. Du kannst den Cursor auf eine Funktion positionieren und wieder in
+die Textdarstellung zurückschalten um blitzschnell zu dieser Funktion zu navigieren.
+
+      [Ctrl+B]                      CMD_VIEW_BUGS
+      [F10]                         CMD_GOTO_TYPE_DEFINITION
+      [F11]                         CMD_GOTO_IMPLEMENTATION
+      [F12]                         CMD_GOTO_DEFINITION
+      [Ctrl+O, Ctrl+E]              CMD_EXPAND_MACROS
+      [Ctrl+Tab; Shift+Tab]         CMD_COMPLETIONS
+      [Ctrl+M]                      CMD_FOLD_ALL
+      [Ctrl+Shift+M]                CMD_UNFOLD_ALL
+      [Ctrl+<]                      CMD_FOLD_TOGGLE
+      [Ctrl+O, Ctrl+H]              CMD_FUNCTION_HEADER
+      [Ctrl+O, Ctrl+G]              CMD_GIT_TOGGLE
+      [Ctrl+F12]                    CMD_GOTO_BACK
+      [Ctrl+H]                      CMD_SHOW_INFO
+      [Enter <name> Ctrl+F]         Erzeugt leere c++ Funktion mit Namen `name`
 
 
 ## Code Expander
 
-Der Code Expander ist ein experimentelles Feature in PEd, um c++ Code via Python script zu erzeugen.
+Der Code Expander ist ein experimentelles Feature in NPed, um C++ Code via Python script zu erzeugen.
 Die Python Scripte sind als C Kommentare getarnt und werden beim Schreiben der Sourcedatei ausgeführt.
 Python Output wird dabei hinter dem Script in die Datei eingefügt.
 

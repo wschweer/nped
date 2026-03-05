@@ -23,8 +23,8 @@
 #include <QResizeEvent>
 #include <QDialog>
 #include <QListView>
+#include <QTextEdit>
 #include <vector>
-
 #include "file.h"
 #include "completion.h"
 #include "git.h"
@@ -45,13 +45,13 @@ class HistoryLineEdit;
 class QShortcut;
 class QTimer;
 class HistoryLineEdit;
-class QTextEdit;
 class QSplitter;
 class QToolButton;
 class QListWidget;
 class CompletionsPopup;
 class QProgressBar;
 class Agent;
+class MarkdownWebView;
 
 //---------------------------------------------------------
 //   Match
@@ -167,7 +167,9 @@ class Editor : public QMainWindow
       LanguageServerList languageServers;
 
       QWidget* enter;
+      QStackedWidget* _stack;
       EditWidget* _editWidget;
+      MarkdownWebView* _mdWidget;
       size_t _currentKontext{0};
       QLabel* urlLabel;
       QLabel* lineLabel;
@@ -176,7 +178,6 @@ class Editor : public QMainWindow
 
       TabBar* tabBar{nullptr};
       QWidget* eframe;
-      QStackedWidget* stack;
       QScrollBar* hScroll;
       QScrollBar* vScroll;
       HistoryLineEdit* enterLine;
@@ -190,7 +191,7 @@ class Editor : public QMainWindow
 
       QSplitter* splitter;
       QToolButton* infoButton;
-      QToolButton* gitButton;
+      QToolButton* _gitButton;
       QProgressBar* progressBar;
 
       QRegularExpression searchPattern;
@@ -227,23 +228,17 @@ class Editor : public QMainWindow
 
       bool enterActive{false};
 
-      void quitCmd();
-      void saveQuitCmd();
       void initFont();
       void saveStatus();
       void saveProjectStatus();
       bool loadStatus(int argc, char** argv);
       void loadProjectStatus();
-      void enterCmd();
       void initEnterWidget();
 
       void addKontext(Kontext* k, int idx = -1);
       void removeKontext(int idx);
       void setCurrentKontext(size_t idx);
       void setCurrentKontext(Kontext*);
-      void nextKontext();
-      void prevKontext();
-      void copyKontext();
 
       void leaveEnter();
       void rubout();
@@ -350,6 +345,17 @@ class Editor : public QMainWindow
       std::vector<File*>& getFiles() { return files; }
       QString settingsLLModel() { return _settingsLLModel; }
       Kontext* addFile(const QString& path);
+
+      void enterCmd();
+      void quitCmd();
+      void nextKontext();
+      void prevKontext();
+      void copyKontext();
+      void saveQuitCmd();
+
+      QToolButton* gitButton() { return _gitButton; }
+      QStackedWidget* stack() { return _stack; }
+      void updateViewMode();
       };
 
 //---------------------------------------------------------
@@ -361,12 +367,18 @@ class KeyLogger : public QObject
       Q_OBJECT
       std::array<QKeyCombination, 4> keys;
       int n;
+      Editor* _editor;
+      std::vector<Action>* actions;
 
     protected:
       bool eventFilter(QObject*, QEvent*) override;
 
+    signals:
+      void triggered(Action*);
+      void keyLabelChanged(QString);
+
     public:
-      KeyLogger(QObject* parent = nullptr) : QObject(parent) { clear(); }
-      Editor* editor() { return static_cast<Editor*>(parent()); }
+      std::vector<Action> _pedActions;
+      KeyLogger(std::vector<Action>* a, QObject* parent = nullptr) : QObject(parent), actions(a) { clear(); }
       void clear();
       };

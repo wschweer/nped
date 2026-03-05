@@ -51,13 +51,15 @@ struct FileType {
 //    order matters
 //---------------------------------------------------------
 
-static const std::array<const FileType, 7> fileTypes = {
+static const std::array<const FileType, 9> fileTypes = {
       FileType({".*\\.cpp"},     "cpp",      "clangd",   6,    true,  false, false, false),
       FileType({".*\\.c"},       "c",        "clangd",   6,    true,  false, false, false),
       FileType({".*\\.html"},    "html",     "vscode-html",   4,    false, false, false, false),
       FileType({".*\\.h"},       "cpp",      "clangd",   6,    true,  true,  false, true),
       FileType({".*\\.py"},      "python",   "pylsp",    6,    false, false, false, false),
-      FileType({".*\\.qml"},     "qml",      "qmlls",   4,    false, false, false, false),
+      FileType({".*\\.qml"},     "qml",      "qmlls",    4,    false, false, false, false),
+      FileType({".*\\.md"},      "markdown", "none",     6,    false, false, false, false),
+      FileType({".*\\.html"},    "html",     "none",     6,    false, false, false, false),
       FileType({"Makefile"},     "makefile", "none",     6,    false, false, true,  false),
       };
 

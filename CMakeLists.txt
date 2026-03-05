@@ -23,7 +23,13 @@ find_package(Qt6 REQUIRED COMPONENTS
       Gui
       Widgets
       Network
+      WebEngineCore
+      WebEngineWidgets
       )
+
+find_library(MD4C_LIB md4c)
+find_library(MD4C_HTML_LIB md4c-html)
+
 
 include_directories(
       ${PROJECT_SOURCE_DIR}
@@ -64,6 +70,7 @@ qt_add_executable(nped
       src/agentui.cpp
       src/configdialog.cpp
       src/tools.cpp
+      src/webview.cpp
       )
 
 qt_add_resources(nped files
@@ -76,6 +83,10 @@ target_link_libraries(nped PRIVATE
       Qt::Gui
       Qt::Widgets
       Qt::Network
+      Qt::WebEngineCore
+      Qt::WebEngineWidgets
       pthread
       git2
+      md4c-html
+      md4c
       )
