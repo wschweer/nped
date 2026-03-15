@@ -88,63 +88,9 @@ json OllamaClient::prompt(QNetworkRequest* request) {
             history.push_back(jmsg);
             }
       requestJson["messages"] = history;
-      streamBuffer.clear();
       currentContent.clear();
       return requestJson;
       };
-
-//---------------------------------------------------------
-//   dataReceived
-//---------------------------------------------------------
-
-void OllamaClient::dataReceived(QNetworkReply* reply) {
-      QByteArray newData = reply->readAll();
-      //      Debug("READ <{}>", newData);
-      streamBuffer.append(newData);
-
-      // Der Stream liefert oft Fragmente wie: [ {obj1}, {obj2} ...
-      // Wir entfernen führende [ oder , um die Objekte einzeln zu parsen
-      std::string content = streamBuffer.toStdString();
-
-      // Einfacher heuristischer Splitter für JSON-Objekte im Array
-      size_t startPos = 0;
-      while ((startPos = content.find('{', startPos)) != std::string::npos) {
-            int braceCount = 0;
-            size_t endPos  = std::string::npos;
-
-            for (size_t i = startPos; i < content.length(); ++i) {
-                  if (content[i] == '{')
-                        braceCount++;
-                  else if (content[i] == '}')
-                        braceCount--;
-
-                  if (braceCount == 0) {
-                        endPos = i;
-                        break;
-                        }
-                  }
-            if (endPos != std::string::npos) {
-                  std::string jsonObject = content.substr(startPos, endPos - startPos + 1);
-                  try {
-                        Debug("parse <{}>", jsonObject);
-                        auto j = json::parse(jsonObject);
-                        processJsonItem(j); // Hilfsfunktion zur Verarbeitung
-                        }
-                  catch (const json::parse_error&) {
-                        // Fragment ist noch nicht vollständig
-                        break;
-                        }
-                  startPos = endPos + 1;
-                  // Puffer bis hierhin leeren
-                  streamBuffer.remove(0, static_cast<int>(startPos));
-                  content  = streamBuffer.toStdString();
-                  startPos = 0;
-                  }
-            else {
-                  break; // Kein vollständiges Objekt gefunden
-                  }
-            }
-      }
 
 //---------------------------------------------------------
 //   processJsonItem
@@ -161,7 +107,7 @@ void OllamaClient::processJsonItem(const json& item) {
       if (message.contains("content")) {
             std::string s = message["content"];
             if (!s.empty()) {
-                  agent->chatDisplay->handleIncomingChunk("", QString::fromStdString(s));
+                  emit incomingChunk("", QString::fromStdString(s));
                   currentContent += s;
                   }
             }
@@ -288,7 +234,7 @@ void OllamaClient::dataFinished(QNetworkReply* reply) {
                         result = agent->truncateOutput(result, Agent::kChatResultMaxChars);
                         std::string s =
                             std::format("\n\n<i>[System: Führe Tool aus: {}({})]</i>\n\n```\n{}\n```\n\n", functionName, argsStr, result);
-                        agent->chatDisplay->handleIncomingChunk(QString::fromStdString(thinking), QString::fromStdString(s));
+                        emit incomingChunk(QString::fromStdString(thinking), QString::fromStdString(s));
                         }
                   catch (const json::parse_error& e) {
                         Debug("Parse Error: {}", e.what());

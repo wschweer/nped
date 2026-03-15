@@ -122,6 +122,7 @@ class Agent : public QWidget
       static const QString kPlanStyle;
       static const QString kBuildStyle;
 
+      QByteArray streamBuffer;
       std::vector<json> mcpTools;
       Editor* _editor;
       QToolBar* toolBar;
@@ -140,7 +141,7 @@ class Agent : public QWidget
       Model model;
       LLMClient* llm{nullptr};
 
-      bool isExecuteMode{false};
+      bool _isExecuteMode{true};
       bool isRetrying{false};
       int retryPause{2000};
       int currentRetryCount{0};
@@ -150,6 +151,7 @@ class Agent : public QWidget
       Models _models;
 
       // Hilfsfunktionen
+      void processData();
       std::vector<json> getMCPTools() const;
       QString currentSessionFileName;
       bool commitGitChanges(const QString& commitMessage);
@@ -225,20 +227,23 @@ class Agent : public QWidget
       Models& models() { return _models; }
       const Models& models() const { return _models; }
       Models filteredModels() const {
-          Models result;
-          for (const auto& m : _models) {
-              if (!m.isLocal) result.append(m);
-          }
-          return result;
-      }
+            Models result;
+            for (const auto& m : _models)
+                  if (!m.isLocal)
+                        result.append(m);
+            return result;
+            }
       void setModels(const Models& m) {
-          if (_models == m) return;
-          _models = m;
-          saveSettings();
-          emit modelsChanged();
-      }
+            if (_models == m)
+                  return;
+            _models = m;
+            saveSettings();
+            emit modelsChanged();
+            }
       QString currentModel() const { return model.name; }
       void setCurrentModel(const QString& s);
+      bool isExecuteMode() const { return _isExecuteMode; }
+      void setExecuteMode(bool);
 
       void saveSettings();
       void loadSettings();

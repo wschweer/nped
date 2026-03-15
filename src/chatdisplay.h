@@ -18,6 +18,7 @@
 
 class ChatDisplay : public MarkdownWebView
       {
+      Q_OBJECT
       QString currentStreamingThought;
       QString currentStreamingText;
 
@@ -42,11 +43,12 @@ class ChatDisplay : public MarkdownWebView
             auto s = QString("startNewStreamingMessage('%1');").arg(role);
             page()->runJavaScript(s);
             }
-      void handleIncomingChunk(const QString& thoughtChunk, const QString& textChunk);
       void appendStaticHtml(const QString& role, const QString& html, const QString& thoughtHtml = "");
 
       void setDarkMode(bool enabled) override;
       //      void setHtml(const QString&) { Critical("not impl."); }
       void setMarkdown(const QString&) { Critical("not impl."); };
       void append(const QString& t) { appendMessage("system", t); }
+    public slots:
+      void handleIncomingChunk(const QString& thoughtChunk, const QString& textChunk);
       };

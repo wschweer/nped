@@ -937,11 +937,12 @@ void Editor::saveStatus() {
       QByteArray splitterState = splitter->saveState();
       j["splitter"]            = splitterState.toHex().toStdString();
 
-      j["aiVisible"] = agent->isVisible();
-      j["aiModel"]   = agent->currentModel().toStdString();
-      j["search"]    = searchPattern.pattern().toStdString();
-      j["replace"]   = replace.toStdString();
-      j["gitPanel"]  = _gitButton->isChecked();
+      j["aiVisible"]    = agent->isVisible();
+      j["aiModel"]      = agent->currentModel().toStdString();
+      j["aiExecuteMode"] = agent->isExecuteMode();
+      j["search"]       = searchPattern.pattern().toStdString();
+      j["replace"]      = replace.toStdString();
+      j["gitPanel"]     = _gitButton->isChecked();
 
       json kontexte = json::array();
       for (const auto k : _kontextList) {
@@ -1045,6 +1046,11 @@ bool Editor::loadStatus(int argc, char** argv) {
                         bool v = j["aiVisible"].get<bool>();
                         agent->setVisible(v);
                         infoButton->setChecked(v);
+                        }
+
+                  if (j.contains("aiExecuteMode")) {
+                        bool v = j["aiExecuteMode"].get<bool>();
+                        agent->setExecuteMode(v);
                         }
 
                   if (j.contains("aiModel"))

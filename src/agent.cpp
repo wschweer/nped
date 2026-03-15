@@ -111,12 +111,12 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e), currentR
 
       modeToggleAction = new QAction("Plan", this);
       modeToggleAction->setCheckable(true);
-      modeToggleAction->setChecked(isExecuteMode);
+      modeToggleAction->setChecked(_isExecuteMode);
 
       connect(this, &Agent::modelChanged, [this] { modelButton->setText(currentModel()); });
 
       connect(modeToggleAction, &QAction::toggled, this, [this](bool checked) {
-            isExecuteMode = checked;
+            _isExecuteMode = checked;
             modeToggleAction->setText(checked ? "Build" : "Plan");
 
             if (auto* button = qobject_cast<QToolButton*>(toolBar->widgetForAction(modeToggleAction))) {
@@ -147,10 +147,20 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e), currentR
 
       // Initial color (Plan mode)
       if (auto* button = qobject_cast<QToolButton*>(toolBar->widgetForAction(modeToggleAction))) {
-            button->setStyleSheet("QToolButton { background-color: #d0f0d0; border: 1px solid #8c8; color: #050; border-radius: 3px; "
-                                  "padding: 4px 8px; margin: 0px 4px; }"
-                                  "QToolButton:hover { background-color: #c0e0c0; }"
-                                  "QToolButton:pressed { background-color: #b0d0b0; }");
+            if (_isExecuteMode) {
+                  button->setStyleSheet("QToolButton { background-color: #f0d0d0; border: 1px solid #c88; color: #500; "
+                                        "border-radius: 3px; padding: 4px 8px; margin: 0px 4px; }"
+                                        "QToolButton:hover { background-color: #e0c0c0; }"
+                                        "QToolButton:pressed { background-color: #d0b0b0; }");
+                  modeToggleAction->setText("Build");
+                  }
+            else {
+                  button->setStyleSheet("QToolButton { background-color: #d0f0d0; border: 1px solid #8c8; color: #050; border-radius: 3px; "
+                                        "padding: 4px 8px; margin: 0px 4px; }"
+                                        "QToolButton:hover { background-color: #c0e0c0; }"
+                                        "QToolButton:pressed { background-color: #b0d0b0; }");
+                  modeToggleAction->setText("Plan");
+                  }
             }
       mainLayout->addWidget(toolBar);
 
@@ -194,13 +204,38 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e), currentR
       connect(
           chatDisplay, &QWebEngineView::loadFinished, this,
           [this] {
-                Debug("=================load status callback");
                 loadStatus();
                 },
           Qt::QueuedConnection | Qt::SingleShotConnection);
       fetchModels();
       spinnerTimer = new QTimer(this);
       connect(spinnerTimer, &QTimer::timeout, this, &Agent::updateSpinner);
+      }
+
+//---------------------------------------------------------
+//   setExecuteMode
+//---------------------------------------------------------
+
+void Agent::setExecuteMode(bool checked) {
+      _isExecuteMode = checked;
+      modeToggleAction->setChecked(checked);
+
+      // Update the text and style directly
+      modeToggleAction->setText(checked ? "Build" : "Plan");
+      if (auto* button = qobject_cast<QToolButton*>(toolBar->widgetForAction(modeToggleAction))) {
+            if (checked) {
+                  button->setStyleSheet("QToolButton { background-color: #f0d0d0; border: 1px solid #c88; color: #500; "
+                                        "border-radius: 3px; padding: 4px 8px; margin: 0px 4px; }"
+                                        "QToolButton:hover { background-color: #e0c0c0; }"
+                                        "QToolButton:pressed { background-color: #d0b0b0; }");
+                  }
+            else {
+                  button->setStyleSheet("QToolButton { background-color: #d0f0d0; border: 1px solid #8c8; color: #050; "
+                                        "border-radius: 3px; padding: 4px 8px; margin: 0px 4px; }"
+                                        "QToolButton:hover { background-color: #c0e0c0; }"
+                                        "QToolButton:pressed { background-color: #b0d0b0; }");
+                  }
+            }
       }
 
 //---------------------------------------------------------
@@ -219,15 +254,13 @@ QString getConfigPath() {
 //---------------------------------------------------------
 
 void Agent::setCurrentModel(const QString& s) {
-      Debug("{}", s);
-      if (model.name == s) {
-            Debug("model already set");
+      if (model.name == s)
             return;
-            }
       for (const auto& m : _models) {
             if (m.name == s) {
-                  model              = m;
-                  llm                = llmFactory(this, &model, mcpTools);
+                  model = m;
+                  llm   = llmFactory(this, &model, mcpTools);
+                  connect(llm, &LLMClient::incomingChunk, chatDisplay, &ChatDisplay::handleIncomingChunk);
                   currentRetryCount  = 0;
                   retryPause         = 2000;
                   rateLimitResetTime = QDateTime();
@@ -330,29 +363,6 @@ void Agent::sendMessage() {
       }
 
 //---------------------------------------------------------
-//   sendMessage2
-//---------------------------------------------------------
-
-void Agent::sendMessage2() {
-      setInputEnabled(false);
-      retryPause = 2000;
-
-      QNetworkRequest request;
-      trimHistory();
-      json jsonPayLoad   = llm->prompt(&request);
-      QByteArray payload = QString::fromStdString(jsonPayLoad.dump()).toUtf8();
-
-      Debug("send <{}>", jsonPayLoad.dump(3));
-      request.setTransferTimeout(60000 * 5);
-
-      chatDisplay->startNewStreamingMessage(model.name);
-
-      currentReply = networkManager->post(request, payload);
-      connect(currentReply, &QNetworkReply::readyRead, this, &Agent::handleChatReadyRead);
-      connect(currentReply, &QNetworkReply::finished, this, &Agent::handleChatFinished);
-      }
-
-//---------------------------------------------------------
 //   trimHistory
 //---------------------------------------------------------
 
@@ -428,6 +438,30 @@ std::string Agent::truncateOutput(const std::string& text, int maxChars) {
       }
 
 //---------------------------------------------------------
+//   sendMessage2
+//---------------------------------------------------------
+
+void Agent::sendMessage2() {
+      setInputEnabled(false);
+      retryPause = 2000;
+
+      streamBuffer.clear();
+      QNetworkRequest request;
+      trimHistory();
+      json jsonPayLoad   = llm->prompt(&request);
+      QByteArray payload = QString::fromStdString(jsonPayLoad.dump()).toUtf8();
+
+      //      Debug("send <{}>", jsonPayLoad.dump(3));
+      request.setTransferTimeout(60000 * 5);
+
+      chatDisplay->startNewStreamingMessage(model.name);
+
+      currentReply = networkManager->post(request, payload);
+      connect(currentReply, &QNetworkReply::readyRead, this, &Agent::handleChatReadyRead);
+      connect(currentReply, &QNetworkReply::finished, this, &Agent::handleChatFinished);
+      }
+
+//---------------------------------------------------------
 //   handleChatReadyRead
 //---------------------------------------------------------
 
@@ -436,7 +470,9 @@ void Agent::handleChatReadyRead() {
             Critical("no currentReply");
             return;
             }
-      llm->dataReceived(currentReply);
+      QByteArray newData = currentReply->readAll();
+      streamBuffer.append(newData);
+      processData();
       }
 
 //---------------------------------------------------------
@@ -448,9 +484,66 @@ void Agent::handleChatFinished() {
             Critical("no currentReply");
             return;
             }
-      // Client signalisieren, dass der Stream fertig ist
+      QByteArray newData = currentReply->readAll();
+      streamBuffer.append(newData);
+      processData();
       llm->dataFinished(currentReply);
       saveStatus();
+      }
+
+//---------------------------------------------------------
+//   processData
+//---------------------------------------------------------
+
+void Agent::processData() {
+      std::string content = streamBuffer.toStdString();
+
+      while (!content.empty()) {
+            // Suche den Anfang des nächsten Objekts
+            size_t startPos = content.find('{');
+            if (startPos == std::string::npos) {
+                  streamBuffer.clear(); // Kein Objektanfang gefunden, Puffer verwerfen
+                  break;
+                  }
+
+            bool foundValidObject = false;
+
+            // Wir versuchen progressiv zu parsen, beginnend von startPos bis zum Ende des Strings
+            // nlohmann::json::parse wirft eine Exception, wenn das JSON unvollständig ist.
+            for (size_t len = 1; len <= content.length() - startPos; ++len) {
+                  std::string potentialJson = content.substr(startPos, len);
+
+                  // Check, ob das Ende plausibel aussieht (schließende Klammer)
+                  if (potentialJson.back() != '}')
+                        continue;
+
+                  try {
+                        // accept() ist schneller als parse(), da es kein Objekt im Speicher baut
+                        if (json::accept(potentialJson)) {
+                              auto j = json::parse(potentialJson);
+                              llm->processJsonItem(j);
+
+                              // Puffer aktualisieren
+                              size_t consumed = startPos + len;
+                              streamBuffer.remove(0, static_cast<int>(consumed));
+                              content = streamBuffer.toStdString();
+
+                              foundValidObject = true;
+                              break; // Zurück zum Anfang der while-Schleife
+                              }
+                        }
+                  catch (const json::parse_error&) {
+                        // Noch nicht vollständig oder korrupt, weitersuchen
+                        continue;
+                        }
+                  }
+
+            if (!foundValidObject) {
+                  // Wir haben kein vollständiges Objekt im aktuellen Puffer gefunden
+                  // Wir behalten den Rest für den nächsten dataReceived-Call
+                  break;
+                  }
+            }
       }
 
 //---------------------------------------------------------
@@ -464,11 +557,11 @@ void Agent::saveSettings() {
             if (m.isLocal)
                   continue;
             QJsonObject obj;
-            obj["name"]      = m.name;
-            obj["url"]       = m.baseUrl;
-            obj["key"]       = m.apiKey;
-            obj["modelId"]   = m.modelIdentifier;
-            obj["api"]       = m.api;
+            obj["name"]    = m.name;
+            obj["url"]     = m.baseUrl;
+            obj["key"]     = m.apiKey;
+            obj["modelId"] = m.modelIdentifier;
+            obj["api"]     = m.api;
             array.append(obj);
             }
 
@@ -545,7 +638,7 @@ SessionInfo Agent::getSessionInfo() const {
                   Debug("bad filename <{}>", fileInfo.baseName());
                   continue;
                   }
-            Debug("<{}> {} {} {} {}", fileInfo.baseName(), parts[0], parts[1], parts[2], parts[3], parts[4]);
+//            Debug("<{}> {} {} {} {}", fileInfo.baseName(), parts[0], parts[1], parts[2], parts[3], parts[4]);
             QDate currentDate(parts[3].toInt(), parts[2].toInt(), parts[1].toInt());
             int currentNumber = parts[4].toInt();
 
@@ -598,8 +691,6 @@ void Agent::startNewSession() {
       saveStatus();
       chatHistory.clear();
       updateChatDisplay();
-      //      currentAssistantMessage.clear();
-      //      currentToolCalls = json::array();
 
       currentSessionFileName = sessionName(true);
       chatDisplay->append(QString("<i>[System: New session started: <b>%1</b>]</i><br>").arg(QFileInfo(currentSessionFileName).fileName()));
@@ -650,7 +741,7 @@ void Agent::saveStatus() {
       if (currentSessionFileName.isEmpty())
             return;
 
-      Debug("session <{}>", currentSessionFileName);
+//      Debug("session <{}>", currentSessionFileName);
       QString path = QFileInfo(currentSessionFileName).absolutePath();
       QDir dir;
       dir.mkpath(path);

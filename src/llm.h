@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <QObject>
 #include <QString>
 #include <QUrl>
 #include <string>
@@ -28,14 +29,15 @@ class Agent;
 //   LLMClient
 //---------------------------------------------------------
 
-class LLMClient
+class LLMClient : public QObject
       {
+      Q_OBJECT
     protected:
       Agent* agent;
 
     public:
       Model* model;
-      LLMClient(Agent* a, Model* m) {
+      LLMClient(Agent* a, Model* m) : QObject(nullptr) {
             agent = a;
             model = m;
             }
@@ -43,10 +45,11 @@ class LLMClient
 
       virtual QString name() const                  = 0;
       virtual json prompt(QNetworkRequest* request) = 0;
-      virtual void dataReceived(QNetworkReply*)     = 0;
+      virtual void processJsonItem(const json& item) = 0;
       virtual void dataFinished(QNetworkReply*)     = 0;
-      virtual json toolCalls() const                = 0;
-      virtual void clearToolCalls()                 = 0;
+
+    signals:
+      void incomingChunk(const QString& thought, const QString& text);
       };
 
 extern LLMClient* llmFactory(Agent*, Model* m, const std::vector<json>& mcpTools);

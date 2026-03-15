@@ -165,7 +165,7 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
            functionName == "get_git_status" || functionName == "get_git_diff" || functionName == "get_git_log");
 
       // 2. Entwurfs-Modus Check
-      if (!isExecuteMode && !isReadOnlyTool) {
+      if (!isExecuteMode() && !isReadOnlyTool) {
             // Schreib-Tools simulieren, um den Denkprozess der KI nicht zu unterbrechen
             return "Plan Mode Active: The tool '" + functionName +
                    "' was NOT executed. This is a read-only simulation. Changes were NOT saved to disk.";
@@ -625,7 +625,7 @@ QString Agent::getGitLog(int limit) {
 
 QString Agent::createGitCommit(const QString& message) {
       // Wenn der Agent im Entwurfs-Modus ist, blockieren wir Schreibvorgänge
-      if (!isExecuteMode)
+      if (!isExecuteMode())
             return "Plan Mode Active: Commit '" + message + "' was NOT executed. This is a read-only simulation. No commit was created.";
 
       QString projRoot = QDir::cleanPath(_editor->projectRoot());

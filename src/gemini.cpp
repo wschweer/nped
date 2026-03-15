@@ -52,12 +52,13 @@ GeminiClient::GeminiClient(Agent* a, Model* m, const std::vector<json>& mcps) : 
 //---------------------------------------------------------
 
 json GeminiClient::prompt(QNetworkRequest* request) {
-      Debug("===");
       request->setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
       request->setRawHeader("x-goog-api-key", model->apiKey.toUtf8());
 
       QUrl url(model->baseUrl);
       request->setUrl(url);
+
+      _currentToolCalls.clear();
 
       json requestJson;
       requestJson["model"] = model->modelIdentifier.toStdString();
@@ -65,7 +66,7 @@ json GeminiClient::prompt(QNetworkRequest* request) {
             requestJson["tools"] = tools;
 
       json history = json::array();
-      Debug("chat-history: <{}>", agent->chatHistory.dump(3));
+      //      Debug("chat-history: <{}>", agent->chatHistory.dump(3));
       for (auto msg : agent->chatHistory) {
             json jmsg;
             if (msg["role"] == "function") {
@@ -79,11 +80,9 @@ json GeminiClient::prompt(QNetworkRequest* request) {
 
                   // Falls diese Nachricht Tool-Calls enthielt, müssen diese
                   // im korrekten Format zurückgesendet werden
-                  for (const auto& part : msg["parts"]) {
-                        if (part.contains("functionCall")) {
+                  for (const auto& part : msg["parts"])
+                        if (part.contains("functionCall"))
                               parts.push_back(part);
-                        }
-                  }
                   jmsg["parts"] = parts;
                   }
 
@@ -105,63 +104,9 @@ json GeminiClient::prompt(QNetworkRequest* request) {
                {           "topP",                                                     0.95}
             };
 
-      streamBuffer.clear();
       currentContent.clear();
       return requestJson;
       };
-
-//---------------------------------------------------------
-//   dataReceived
-//---------------------------------------------------------
-
-void GeminiClient::dataReceived(QNetworkReply* reply) {
-      QByteArray newData = reply->readAll();
-      Debug("Received: <{}>", newData.data());
-      streamBuffer.append(newData);
-
-      // Der Stream liefert oft Fragmente wie: [ {obj1}, {obj2} ...
-      // Wir entfernen führende [ oder , um die Objekte einzeln zu parsen
-      std::string content = streamBuffer.toStdString();
-
-      // Einfacher heuristischer Splitter für JSON-Objekte im Array
-      size_t startPos = 0;
-      while ((startPos = content.find('{', startPos)) != std::string::npos) {
-            int braceCount = 0;
-            size_t endPos  = std::string::npos;
-
-            for (size_t i = startPos; i < content.length(); ++i) {
-                  if (content[i] == '{')
-                        braceCount++;
-                  else if (content[i] == '}')
-                        braceCount--;
-
-                  if (braceCount == 0) {
-                        endPos = i;
-                        break;
-                        }
-                  }
-
-            if (endPos != std::string::npos) {
-                  std::string jsonObject = content.substr(startPos, endPos - startPos + 1);
-                  try {
-                        auto j = json::parse(jsonObject);
-                        processJsonItem(j); // Hilfsfunktion zur Verarbeitung
-                        }
-                  catch (const json::parse_error&) {
-                        // Fragment ist noch nicht vollständig
-                        break;
-                        }
-                  startPos = endPos + 1;
-                  // Puffer bis hierhin leeren
-                  streamBuffer.remove(0, static_cast<int>(startPos));
-                  content  = streamBuffer.toStdString();
-                  startPos = 0;
-                  }
-            else {
-                  break; // Kein vollständiges Objekt gefunden
-                  }
-            }
-      }
 
 //---------------------------------------------------------
 //   processJsonItem
@@ -192,6 +137,7 @@ void GeminiClient::processJsonItem(const json& item) {
                         }
                   if (part.contains("functionCall"))
                         _currentToolCalls.push_back(part);
+                  //                  else
                   currentContent["parts"].push_back(part);
                   }
             currentContent["role"] = content["role"];
@@ -252,7 +198,7 @@ void GeminiClient::dataFinished(QNetworkReply* reply) {
                         isRetrying = true; // Set flag
 
                         // Start timer for next attempt
-                        //TODO                        QTimer::singleShot(waitMs, this, &Agent::sendChatRequest);
+                        QTimer::singleShot(waitMs, agent, &Agent::sendMessage2);
                         return;
                         }
                   else {
@@ -279,15 +225,18 @@ void GeminiClient::dataFinished(QNetworkReply* reply) {
             agent->chatDisplay->append(QString("<br><font color='red'><b>[Connection abort]:</b> %1</font><br>").arg(errorMessage));
             return;
             }
-      QByteArray newData = reply->readAll();
-      Debug("Received: <{}>", newData.data());
       agent->chatHistory.push_back(currentContent);
 
+      Debug("===ToolCalls {}", _currentToolCalls.size());
       if (!_currentToolCalls.empty()) {
             std::string thinking;
             for (const auto& call : _currentToolCalls) {
                   try {
                         // Argumente von String/JSON-Fragmenten in ein JSON-Objekt umwandeln
+                        if (!call.contains("functionCall")) {
+                              Critical("ToolCall does not contain <functionCall>");
+                              continue;
+                              }
                         json fc            = call["functionCall"];
                         json args          = fc["args"];
                         std::string result = agent->executeTool(fc["name"], args);
@@ -324,12 +273,13 @@ void GeminiClient::dataFinished(QNetworkReply* reply) {
                   catch (...) {
                         Critical("Unexpected error");
                         }
-                  _currentToolCalls.clear();
-                  reply->deleteLater();
-                  reply = nullptr;
-                  agent->sendMessage2(); // TODO: keep busy
                   }
+            _currentToolCalls.clear();
+            reply->deleteLater();
+            reply = nullptr;
+            agent->sendMessage2();
             }
+
       else {
             reply->deleteLater();
             reply = nullptr;

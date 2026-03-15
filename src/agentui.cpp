@@ -89,8 +89,7 @@ bool Agent::eventFilter(QObject* obj, QEvent* event) {
 
 void Agent::openConfigDialog() {
       configDialog->open();
-      configDialog->move((_editor->width() - configDialog->width()) / 2,
-                         (_editor->height() - configDialog->height()) / 2);
+      configDialog->move((_editor->width() - configDialog->width()) / 2, (_editor->height() - configDialog->height()) / 2);
       }
 
 //---------------------------------------------------------
@@ -127,15 +126,13 @@ void Agent::updateChatDisplay() {
                   }
 
             auto truncate = [](const QString& s) {
-                  return s.length() > kChatResultMaxChars
-                             ? s.left(kChatResultMaxChars) + "\n... [Output abgeschnitten]"
-                             : s;
+                  return s.length() > kChatResultMaxChars ? s.left(kChatResultMaxChars) + "\n... [Output abgeschnitten]" : s;
                   };
 
             if (role == "user" && isAnthropicToolResult) {
-                  QString r = truncate(contentText);
-                  md += "> **Tool Result**\n";
-                  md += "> ```text\n> " + r.replace("\n", "\n> ") + "\n> ```\n\n";
+                  QString r  = truncate(contentText);
+                  md        += "> **Tool Result**\n";
+                  md        += "> ```text\n> " + r.replace("\n", "\n> ") + "\n> ```\n\n";
                   }
             else if (role == "user") {
                   if (!contentText.isEmpty())
@@ -160,10 +157,10 @@ void Agent::updateChatDisplay() {
                                     }
                   }
             else if (role == "tool") {
-                  std::string name = msg.value("name", "unknown_tool");
-                  QString r        = truncate(contentText);
-                  md += "> **Tool Run (" + QString::fromStdString(name) + ")**\n";
-                  md += "> ```text\n> " + r.replace("\n", "\n> ") + "\n> ```\n\n";
+                  std::string name  = msg.value("name", "unknown_tool");
+                  QString r         = truncate(contentText);
+                  md               += "> **Tool Run (" + QString::fromStdString(name) + ")**\n";
+                  md               += "> ```text\n> " + r.replace("\n", "\n> ") + "\n> ```\n\n";
                   }
             }
 

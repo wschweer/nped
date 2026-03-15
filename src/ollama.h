@@ -19,7 +19,7 @@
 
 class OllamaClient : public LLMClient
       {
-      QByteArray streamBuffer;
+      Q_OBJECT
       std::string currentContent;
       json _currentToolCalls;
       json tools;
@@ -27,14 +27,10 @@ class OllamaClient : public LLMClient
       bool isRetrying{false};
       int maxRetries{12};
 
-      void processJsonItem(const json& item);
-
     public:
       OllamaClient(Agent*, Model* m, const std::vector<json>& mcps);
       virtual QString name() const override { return "ollama"; }
       virtual json prompt(QNetworkRequest* request) override;
-      virtual void dataReceived(QNetworkReply*) override;
+      virtual void processJsonItem(const json& item) override;
       virtual void dataFinished(QNetworkReply*) override;
-      virtual json toolCalls() const override { return _currentToolCalls; }
-      virtual void clearToolCalls() override { _currentToolCalls.clear(); }
       };
