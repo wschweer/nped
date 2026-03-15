@@ -15,6 +15,7 @@
 #include <QList>
 #include <QDateTime>
 #include <map>
+#include <QQuickWidget>
 
 #include "types.h"
 #include "llm.h"
@@ -73,15 +74,26 @@ class MCPToolBuilder
 //---------------------------------------------------------
 
 struct Model {
+      Q_GADGET
+      Q_PROPERTY(QString name MEMBER name)
+      Q_PROPERTY(QString modelIdentifier MEMBER modelIdentifier)
+      Q_PROPERTY(QString baseUrl MEMBER baseUrl)
+      Q_PROPERTY(QString apiKey MEMBER apiKey)
+      Q_PROPERTY(QString api MEMBER api)
+      Q_PROPERTY(bool isLocal MEMBER isLocal)
+
+    public:
       QString name;
       QString modelIdentifier;
       QString baseUrl;
       QString apiKey;
       QString api;  // "ollama", "gemini", "anthropic", "openai"
       bool isLocal; // true für Ollama
+      bool operator==(const Model& other) const = default;
       };
 
 using Models = QList<Model>;
+Q_DECLARE_METATYPE(Model)
 
 //---------------------------------------------------------
 //   SessionInfo
@@ -100,6 +112,11 @@ struct SessionInfo {
 class Agent : public QWidget
       {
       Q_OBJECT
+      QML_ELEMENT
+      QML_UNCREATABLE("no")
+
+      Q_PROPERTY(Models models READ models WRITE setModels NOTIFY modelsChanged)
+      Q_PROPERTY(Models filteredModels READ filteredModels NOTIFY modelsChanged)
 
       // Stylesheet-Konstanten für Plan/Build-Button (Punkt 6)
       static const QString kPlanStyle;
@@ -194,6 +211,7 @@ class Agent : public QWidget
 
     signals:
       void modelChanged();
+      void modelsChanged();
 
     public:
       explicit Agent(Editor* e, QWidget* parent = nullptr);
@@ -206,6 +224,19 @@ class Agent : public QWidget
       static QString configPath();
       Models& models() { return _models; }
       const Models& models() const { return _models; }
+      Models filteredModels() const {
+          Models result;
+          for (const auto& m : _models) {
+              if (!m.isLocal) result.append(m);
+          }
+          return result;
+      }
+      void setModels(const Models& m) {
+          if (_models == m) return;
+          _models = m;
+          saveSettings();
+          emit modelsChanged();
+      }
       QString currentModel() const { return model.name; }
       void setCurrentModel(const QString& s);
 

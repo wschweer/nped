@@ -40,8 +40,12 @@ LLMClient* llmFactory(Agent* agent, Model* model, const std::vector<json>& mcps)
                   client = new GeminiClient(agent, model, mcps);
             else if (model->api == "ollama")
                   client = new OllamaClient(agent, model, mcps);
-            else
-                  Fatal("unknown llm interface <{}>", model->api);
+            else {
+                  Critical("unknown llm interface <{}>", model->api);
+                  client = new OllamaClient(agent, model, mcps);
+                  client->model = model;
+                  return client;
+                  }
             if (client)
                   clientList.push_back(client);
             }

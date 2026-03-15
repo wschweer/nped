@@ -27,7 +27,6 @@
 
 #include "agent.h"
 #include "editor.h"
-#include "configdialog.h"
 #include "logger.h"
 
 //---------------------------------------------------------

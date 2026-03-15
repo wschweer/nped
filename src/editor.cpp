@@ -123,7 +123,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       qRegisterMetaType<ShortcutConfig>("ShortcutConfig");
       qRegisterMetaType<FileTypeConfig>("FileTypeConfig");
       qRegisterMetaType<LanguageServerConfig>("LanguageServerConfig");
-      qRegisterMetaType<AiModelConfig>("AiModelConfig");
+      qRegisterMetaType<Model>("Model");
 
       if (!initProject())
             Critical("init project failed");

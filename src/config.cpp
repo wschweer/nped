@@ -57,13 +57,13 @@ QDataStream& operator>>(QDataStream& in, LanguageServerConfig& v) {
       return in;
       }
 
-QDataStream& operator<<(QDataStream& out, const AiModelConfig& v) {
-      out << v.name << v.baseUrl << v.apiKey << v.interface << v.isLocal;
+QDataStream& operator<<(QDataStream& out, const Model& v) {
+      out << v.name << v.modelIdentifier << v.baseUrl << v.apiKey << v.api << v.isLocal;
       return out;
       }
 
-QDataStream& operator>>(QDataStream& in, AiModelConfig& v) {
-      in >> v.name >> v.baseUrl >> v.apiKey >> v.interface >> v.isLocal;
+QDataStream& operator>>(QDataStream& in, Model& v) {
+      in >> v.name >> v.modelIdentifier >> v.baseUrl >> v.apiKey >> v.api >> v.isLocal;
       return in;
       }
 
@@ -150,15 +150,9 @@ void Editor::loadDefaults() {
                { "qmlls",  "/usr/bin/qmlls",                   ""}
             };
 
-      _aiModels = {
-               {"Ollama Local",                    "http://localhost:11434", "nopass", "ollama",  true},
-               {  "Gemini Pro", "https://generativelanguage.googleapis.com",       "", "gemini", false}
-            };
-
       emit shortcutsChanged();
       emit fileTypesChanged();
       emit languageServersConfigChanged();
-      emit aiModelsChanged();
       }
 
 //---------------------------------------------------------
@@ -194,16 +188,18 @@ void Editor::setLanguageServersConfig(const QList<LanguageServerConfig>& l) {
       emit languageServersConfigChanged();
       }
 
+#if 0
 //---------------------------------------------------------
 //   setAiModels
 //---------------------------------------------------------
 
-void Editor::setAiModels(const QList<AiModelConfig>& m) {
+void Editor::setAiModels(const QList<Model>& m) {
       if (_aiModels == m)
             return;
       _aiModels = m;
       emit aiModelsChanged();
       }
+#endif
 
 //---------------------------------------------------------
 //   resetToDefaults
@@ -246,11 +242,6 @@ void Editor::saveSettings() {
             lsList << QVariant::fromValue(l);
       settings.setValue("languageServers", lsList);
 
-      QVariantList aiList;
-      for (const auto& m : _aiModels)
-            aiList << QVariant::fromValue(m);
-      settings.setValue("aiModels", aiList);
-
       Debug("save darkMode {}", darkMode());
       settings.setValue("darkMode", darkMode());
       }
@@ -276,7 +267,6 @@ void Editor::loadSettings() {
       loadList("shortcuts", _shortcuts);
       loadList("fileTypes", _fileTypes);
       loadList("languageServers", _languageServersConfig);
-      loadList("aiModels", _aiModels);
 #endif
       setDarkMode(settings.value("darkMode", darkMode()).toBool());
       }
@@ -300,6 +290,7 @@ ConfigDialogWrapper::ConfigDialogWrapper(Editor* editor, QWidget* parent) : QDia
       // Zugriff auf diesen Dialog für QML ermöglichen (für close/accept/reject)
       _quickWidget->rootContext()->setContextProperty("dialog", this);
       _quickWidget->rootContext()->setContextProperty("config", editor);
+      _quickWidget->rootContext()->setContextProperty("agent", editor->getAgent());
 
       // Lade die QML Datei aus dem Modul "Nped.Config"
       // Hinweis: Durch die CMake Policy QTP0001 ist der Pfad standardisiert:

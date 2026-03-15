@@ -1,14 +1,3 @@
-//=============================================================================
-//  nped Program Editor
-//
-//  Copyright (C) 2026 Werner Schweer
-//
-//  This program is free software; you can redistribute it and/or modify
-//  it under the terms of the GNU General Public License version 2
-//  as published by the Free Software Foundation and appearing in
-//  the file LICENCE.GPL
-//=============================================================================
-
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -385,7 +374,7 @@ Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             clip: true
-                            model: config.aiModels
+                            model: agent.filteredModels
                             spacing: 15
 
                             footer: Button {
@@ -393,16 +382,16 @@ Rectangle {
                                 flat: true
                                 Material.foreground: Material.accent
                                 onClicked: {
-                                    var list = config.aiModels
-                                    list.push({name: "New Model", interface: "ollama", baseUrl: "http://localhost:11434", apiKey: "", isLocal: true})
-                                    config.aiModels = list
+                                    var list = agent.models
+                                    list.push({name: "New Model", modelIdentifier: "", api: "ollama", baseUrl: "http://localhost:11434", apiKey: "", isLocal: true})
+                                    agent.models = list
                                     }
                                 }
 
                             delegate: Rectangle {
                                 width: ListView.view.width - 20
                                 height: aiLayout.implicitHeight + 30
-                                anchors.horizontalCenter: parent.horizontalCenter
+//                                anchors.horizontalCenter: parent.horizontalCenter
 
                                 // Card Styling
                                 color: Material.theme === Material.Dark ? "#424242" : "#ffffff"
@@ -429,20 +418,31 @@ Rectangle {
                                         text: modelData.name
                                         Layout.fillWidth: true
                                         font.bold: true
-                                        onEditingFinished: { var l=config.aiModels; l[index].name=text; config.aiModels=l }
+                                        onEditingFinished: { var l=agent.models; l[index].name=text; agent.models=l }
                                         }
 
-                                    Label { text: "Interface:"; Layout.alignment: Qt.AlignRight }
+                                    Label { text: "Api:"; Layout.alignment: Qt.AlignRight }
                                     ComboBox {
                                         Layout.fillWidth: true
                                         model: ["ollama", "gemini", "anthropic", "openai"]
 
                                         // Setzt den Index basierend auf dem String im Model
-                                        currentIndex: indexOfValue(modelData.interface)
+                                        Component.onCompleted: {
+                                            var idx = find(modelData.api);
+                                            currentIndex = idx >= 0 ? idx : 0
+                                            }
 
                                         onActivated: {
-                                            var l=config.aiModels; l[index].interface=currentText; config.aiModels=l
+                                            var l=agent.models; l[index].api=currentText; agent.models=l
                                             }
+                                        }
+
+                                    Label { text: "Model ID:"; Layout.alignment: Qt.AlignRight }
+                                    TextField {
+                                        text: modelData.modelIdentifier
+                                        Layout.fillWidth: true
+                                        placeholderText: "e.g. gpt-4, llama3"
+                                        onEditingFinished: { var l=agent.models; l[index].modelIdentifier=text; agent.models=l }
                                         }
 
                                     // --- Connection Details ---
@@ -451,7 +451,7 @@ Rectangle {
                                         text: modelData.baseUrl
                                         Layout.fillWidth: true
                                         placeholderText: "https://api.example.com"
-                                        onEditingFinished: { var l=config.aiModels; l[index].baseUrl=text; config.aiModels=l }
+                                        onEditingFinished: { var l=agent.models; l[index].baseUrl=text; agent.models=l }
                                         }
 
                                     Label { text: "API Key:"; Layout.alignment: Qt.AlignRight }
@@ -460,29 +460,21 @@ Rectangle {
                                         Layout.fillWidth: true
                                         echoMode: TextInput.Password // Versteckt den Key
                                         placeholderText: "sk-..."
-                                        onEditingFinished: { var l=config.aiModels; l[index].apiKey=text; config.aiModels=l }
+                                        onEditingFinished: { var l=agent.models; l[index].apiKey=text; agent.models=l }
                                         }
 
-                                    // --- Switches & Actions ---
-                                    Label { text: "Local Run:"; Layout.alignment: Qt.AlignRight }
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        Switch {
-                                            checked: modelData.isLocal
-                                            onToggled: { var l=config.aiModels; l[index].isLocal=checked; config.aiModels=l }
-                                            }
-
-                                        Item { Layout.fillWidth: true } // Spacer
-
-                                        Button {
-                                            text: "Delete"
-                                            flat: true
-                                            Material.foreground: Material.Red
-                                            onClicked: {
-                                                var list = config.aiModels
-                                                list.splice(index, 1)
-                                                config.aiModels = list
-                                                }
+                                    // --- Actions ---
+                                    Item { Layout.columnSpan: 2; height: 5 } // Spacer
+                                    Button {
+                                        Layout.columnSpan: 2
+                                        Layout.alignment: Qt.AlignRight
+                                        text: "Delete"
+                                        flat: true
+                                        Material.foreground: Material.Red
+                                        onClicked: {
+                                            var list = agent.models
+                                            list.splice(index, 1)
+                                            agent.models = list
                                             }
                                         }
                                     }

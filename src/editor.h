@@ -29,6 +29,7 @@
 #include "file.h"
 #include "completion.h"
 #include "git.h"
+#include "agent.h"
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -182,32 +183,9 @@ struct LanguageServerConfig {
       bool operator==(const LanguageServerConfig& other) const = default;
       };
 
-//---------------------------------------------------------
-//   AiModelConfig
-// Wrapper für AI Model (adaptiert von agent.h für QML)
-//---------------------------------------------------------
-
-struct AiModelConfig {
-      Q_GADGET
-      Q_PROPERTY(QString name MEMBER name)
-      Q_PROPERTY(QString baseUrl MEMBER baseUrl)
-      Q_PROPERTY(QString apiKey MEMBER apiKey)
-      Q_PROPERTY(QString interface MEMBER interface)
-      Q_PROPERTY(bool isLocal MEMBER isLocal)
-
-    public:
-      QString name;
-      QString baseUrl;
-      QString apiKey;
-      QString interface;
-      bool isLocal;
-      bool operator==(const AiModelConfig& other) const = default;
-      };
-
 Q_DECLARE_METATYPE(ShortcutConfig)
 Q_DECLARE_METATYPE(FileTypeConfig)
 Q_DECLARE_METATYPE(LanguageServerConfig)
-Q_DECLARE_METATYPE(AiModelConfig)
 
 //---------------------------------------------------------
 //   Match
@@ -322,7 +300,6 @@ class Editor : public QMainWindow
       Q_PROPERTY(QList<FileTypeConfig> fileTypes READ fileTypes WRITE setFileTypes NOTIFY fileTypesChanged)
       Q_PROPERTY(QList<LanguageServerConfig> languageServersConfig READ languageServersConfig WRITE setLanguageServersConfig NOTIFY
                      languageServersConfigChanged)
-      Q_PROPERTY(QList<AiModelConfig> aiModels READ aiModels WRITE setAiModels NOTIFY aiModelsChanged)
       Q_PROPERTY(QStringList monospacedFonts READ monospacedFonts CONSTANT)
       Q_PROPERTY(bool darkMode READ darkMode WRITE setDarkMode NOTIFY darkModeChanged)
       Q_PROPERTY(QColor fgColor READ fgColor WRITE setFgColor NOTIFY fgColorChanged)
@@ -331,7 +308,6 @@ class Editor : public QMainWindow
       QList<ShortcutConfig> _shortcuts;
       QList<FileTypeConfig> _fileTypes;
       QList<LanguageServerConfig> _languageServersConfig;
-      QList<AiModelConfig> _aiModels;
 
       std::vector<File*> files;
       Vector<Kontext*> _kontextList;
@@ -456,7 +432,6 @@ class Editor : public QMainWindow
       void shortcutsChanged();
       void fileTypesChanged();
       void languageServersConfigChanged();
-      void aiModelsChanged();
       void configApplied(); // Signal an Editor Core, Daten neu zu laden
       void darkModeChanged(bool);
       void fgColorChanged();
@@ -552,14 +527,13 @@ class Editor : public QMainWindow
       QList<ShortcutConfig> shortcuts() const { return _shortcuts; }
       QList<FileTypeConfig> fileTypes() const { return _fileTypes; }
       QList<LanguageServerConfig> languageServersConfig() const { return _languageServersConfig; }
-      QList<AiModelConfig> aiModels() const { return _aiModels; }
       void loadDefaults();
       void loadSettings();
       void saveSettings();
       void setShortcuts(const QList<ShortcutConfig>& s);
       void setFileTypes(const QList<FileTypeConfig>& f);
       void setLanguageServersConfig(const QList<LanguageServerConfig>& l);
-      void setAiModels(const QList<AiModelConfig>& m);
+      void setAiModels(const QList<Model>& m);
       void resetToDefaults();
       bool darkMode() const { return _darkMode; }
       void setDarkMode(bool v) {
@@ -635,6 +609,3 @@ QDataStream& operator>>(QDataStream& in, FileTypeConfig& v);
 
 QDataStream& operator<<(QDataStream& out, const LanguageServerConfig& v);
 QDataStream& operator>>(QDataStream& in, LanguageServerConfig& v);
-
-QDataStream& operator<<(QDataStream& out, const AiModelConfig& v);
-QDataStream& operator>>(QDataStream& in, AiModelConfig& v);

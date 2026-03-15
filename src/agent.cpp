@@ -44,8 +44,12 @@
 #include "llm.h"
 #include "chatdisplay.h"
 
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
+
 static std::string manifest = "You are an experienced C++ developer. "
                               "Your task is to analyze and write code in the project and to fix build errors.\n\n"
+                              "Use modern c++. Prefer object oriented design and use modern design patterns.\n"
                               "ERROR ANALYSIS RULES:\n"
                               "1. If a build fails, analyze the output of 'run_build'.\n"
                               "2. Look for lines like 'file.cpp:42:10: error: ...'.\n"
@@ -66,11 +70,7 @@ static std::string manifest = "You are an experienced C++ developer. "
                               "Do not invent your own tasks and never act on your own authority! "
                               "Preferably use the replace_in_file tool for changes to files. Make sure that the "
                               "'search' parameter is absolutely identical to the text in the file, including all whitespace! "
-                              "Use the run_build_command tool to compile the project and check if errors occur. "
-                              "Use ninja as the project type and not Makefile.";
-
-#include <nlohmann/json.hpp>
-using json = nlohmann::json;
+                              "Use the run_build_command tool to compile the project and check if errors occur. ";
 
 //---------------------------------------------------------
 //   Agent (Constructor)
@@ -468,7 +468,7 @@ void Agent::saveSettings() {
             obj["url"]       = m.baseUrl;
             obj["key"]       = m.apiKey;
             obj["modelId"]   = m.modelIdentifier;
-            obj["interface"] = m.api;
+            obj["api"]       = m.api;
             array.append(obj);
             }
 
@@ -502,7 +502,7 @@ void Agent::loadSettings() {
             m.baseUrl         = obj["url"].toString();
             m.apiKey          = obj["key"].toString();
             m.modelIdentifier = obj["modelId"].toString();
-            m.api             = obj["interface"].toString();
+            m.api             = obj["api"].toString();
             m.isLocal         = false;
 
             _models.push_back(m);
