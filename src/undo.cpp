@@ -20,8 +20,7 @@
 //   UndoCommand
 //---------------------------------------------------------
 
-UndoCommand::~UndoCommand()
-      {
+UndoCommand::~UndoCommand() {
       for (auto c : childList)
             delete c;
       }
@@ -30,8 +29,7 @@ UndoCommand::~UndoCommand()
 //   UndoCommand::cleanup
 //---------------------------------------------------------
 
-void UndoCommand::cleanup(bool undo)
-      {
+void UndoCommand::cleanup(bool undo) {
       for (auto c : childList)
             c->cleanup(undo);
       }
@@ -40,8 +38,7 @@ void UndoCommand::cleanup(bool undo)
 //   undo
 //---------------------------------------------------------
 
-void UndoCommand::undo()
-      {
+void UndoCommand::undo() {
       int n = childList.size();
       for (int i = n - 1; i >= 0; --i)
             childList[i]->undo();
@@ -52,8 +49,7 @@ void UndoCommand::undo()
 //   redo
 //---------------------------------------------------------
 
-void UndoCommand::redo()
-      {
+void UndoCommand::redo() {
       int n = childList.size();
       for (int i = 0; i < n; ++i)
             childList[i]->redo();
@@ -64,8 +60,7 @@ void UndoCommand::redo()
 //   unwind
 //---------------------------------------------------------
 
-void UndoCommand::unwind()
-      {
+void UndoCommand::unwind() {
       while (!childList.isEmpty()) {
             UndoCommand* c = childList.takeLast();
             c->undo();
@@ -77,8 +72,7 @@ void UndoCommand::unwind()
 //   UndoStack
 //---------------------------------------------------------
 
-UndoStack::~UndoStack()
-      {
+UndoStack::~UndoStack() {
       int idx = 0;
       for (auto c : list)
             c->cleanup(idx++ < curIdx);
@@ -89,8 +83,7 @@ UndoStack::~UndoStack()
 //   beginMacro
 //---------------------------------------------------------
 
-void UndoStack::beginMacro()
-      {
+void UndoStack::beginMacro() {
       if (curCmd) {
             Fatal("already active");
             return;
@@ -103,8 +96,7 @@ void UndoStack::beginMacro()
 //    the undo macro will not be recorded if rollback is true
 //-------------------------------------------------------------------
 
-void UndoStack::endMacro(bool rollback)
-      {
+void UndoStack::endMacro(bool rollback) {
       if (curCmd == 0) {
             Fatal("not active");
             return;
@@ -130,8 +122,7 @@ void UndoStack::endMacro(bool rollback)
 //   push
 //---------------------------------------------------------
 
-void UndoStack::push(UndoCommand* cmd)
-      {
+void UndoStack::push(UndoCommand* cmd) {
       //      Debug("{}", cmd->name());
       if (_active) // do not record command if not active
             push1(cmd);
@@ -142,8 +133,7 @@ void UndoStack::push(UndoCommand* cmd)
 //   push1
 //---------------------------------------------------------
 
-void UndoStack::push1(UndoCommand* cmd)
-      {
+void UndoStack::push1(UndoCommand* cmd) {
       if (!curCmd)
             Fatal("no active command");
       else
@@ -154,8 +144,7 @@ void UndoStack::push1(UndoCommand* cmd)
 //   pop
 //---------------------------------------------------------
 
-void UndoStack::pop()
-      {
+void UndoStack::pop() {
       if (!curCmd) {
             Debug("no active command");
             }
@@ -169,8 +158,7 @@ void UndoStack::pop()
 //   undo
 //---------------------------------------------------------
 
-void UndoStack::undo()
-      {
+void UndoStack::undo() {
       if (canUndo()) {
             list[--curIdx]->undo();
             setDirty(cleanIdx != curIdx);
@@ -182,8 +170,7 @@ void UndoStack::undo()
 //   redo
 //---------------------------------------------------------
 
-void UndoStack::redo()
-      {
+void UndoStack::redo() {
       if (canRedo()) {
             list[curIdx++]->redo();
             setDirty(cleanIdx != curIdx);
@@ -197,8 +184,7 @@ void UndoStack::redo()
 //   reset
 //---------------------------------------------------------
 
-void UndoStack::reset()
-      {
+void UndoStack::reset() {
       delete curCmd;
       qDeleteAll(list);
       list.clear();
@@ -212,8 +198,7 @@ void UndoStack::reset()
 //   flip
 //---------------------------------------------------------
 
-void Patch::flip()
-      {
+void Patch::flip() {
       std::reverse(items.begin(), items.end());
       file->patch(items);
       emit file->cursorChanged(redo ? p1 : p2);

@@ -52,22 +52,20 @@ struct FileType {
 //---------------------------------------------------------
 
 static const std::array<const FileType, 9> fileTypes = {
-      FileType({".*\\.cpp"},     "cpp",      "clangd",   6,    true,  false, false, false),
-      FileType({".*\\.c"},       "c",        "clangd",   6,    true,  false, false, false),
-      FileType({".*\\.html"},    "html",     "vscode-html",   4,    false, false, false, false),
-      FileType({".*\\.h"},       "cpp",      "clangd",   6,    true,  true,  false, true),
-      FileType({".*\\.py"},      "python",   "pylsp",    6,    false, false, false, false),
-      FileType({".*\\.qml"},     "qml",      "qmlls",    4,    false, false, false, false),
-      FileType({".*\\.md"},      "markdown", "none",     6,    false, false, false, false),
-      FileType({".*\\.html"},    "html",     "none",     6,    false, false, false, false),
-      FileType({"Makefile"},     "makefile", "none",     6,    false, false, true,  false),
+   FileType({".*\\.cpp$"}, "cpp", "clangd", 6, true, false, false, false),
+   FileType({".*\\.c$"}, "c", "clangd", 6, true, false, false, false),
+   FileType({".*\\.html$"}, "html", "vscode-html", 4, false, false, false, false),
+   FileType({".*\\.h$"}, "cpp", "clangd", 6, true, true, false, true),
+   FileType({".*\\.py$"}, "python", "pylsp", 6, false, false, false, false),
+   FileType({".*\\.qml$"}, "qml", "qmlls", 4, false, false, false, false),
+   FileType({".*\\.md$"}, "markdown", "none", 6, false, false, false, false),
+   FileType({".*\\.html$"}, "html", "none", 6, false, false, false, false),
+   FileType({"Makefile$"}, "makefile", "none", 6, false, false, true, false),
       };
 
-static constexpr FileType defaultFileType = {
-   std::vector<const char*>(), "", "none", 6, false, false, false, false};
+static constexpr FileType defaultFileType = {std::vector<const char*>(), "", "none", 6, false, false, false, false};
 
 enum class Codec { ISO_LATIN, UTF8 };
-
 
 //---------------------------------------------------------
 //   File
@@ -90,14 +88,13 @@ class File : public QObject
       Lines _gitVersion;
 
       std::vector<GitHistory*> _gitHistory;
-      int _currentGitHistory { 0 };
+      int _currentGitHistory{0};
 
       QString _languageId{"c++"};
       int _version{1};
       const FileType* fileType = &defaultFileType;
 
-      QFile::Permissions mode{QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup |
-                              QFile::ReadOther};
+      QFile::Permissions mode{QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther};
       QFileInfo _fi;
       int referenceCount{0};
       ASTNode astTopNode;
@@ -112,9 +109,9 @@ class File : public QObject
       bool posValid(const Pos& pos) const;
 
     signals:
-      void fileChanged();           // trigger language server update?
-      void cursorChanged(Cursor);   // undo requests a new kontext cursor position
-      void modifiedChanged();       // signal to tabBar
+      void fileChanged();         // trigger language server update?
+      void cursorChanged(Cursor); // undo requests a new kontext cursor position
+      void modifiedChanged();     // signal to tabBar
 
     public slots:
       void toggleFold(int row);
@@ -144,12 +141,10 @@ class File : public QObject
       void setBugs(const Lines& map);
       const Lines& kollaps() const { return _kollaps; }
       const Lines& bugs() const { return _bugs; }
-
       const std::vector<GitHistory*>& gitHistory() const { return _gitHistory; }
       std::vector<GitHistory*>& gitHistory() { return _gitHistory; }
       const GitHistory* gitHistory(int idx) const { return _gitHistory[idx]; }
       Lines& gitVersion() { return _gitVersion; }
-
       const Lines& searchResults() const { return _searchResults; }
       Lines& searchResults() { return _searchResults; }
       void setSearchResults(const Lines& map);
@@ -189,9 +184,14 @@ class File : public QObject
       void foldAll(bool);
       void unfold(int row);
       int nextRow(int row) const;
-      int nextRowIfAvailable(int row) const { int nrow = nextRow(row); return (nrow == -1) ? row : nrow; }
+      int nextRowIfAvailable(int row) const {
+            int nrow = nextRow(row);
+            return (nrow == -1) ? row : nrow;
+            }
       int previousRow(int row) const;
-      int previousRowIfAvailable(int row) const { int prow = previousRow(row); return (prow == -1) ? row : prow; }
-
+      int previousRowIfAvailable(int row) const {
+            int prow = previousRow(row);
+            return (prow == -1) ? row : prow;
+            }
       bool searchReplace(const QString& search, const QString& replaceText);
       };

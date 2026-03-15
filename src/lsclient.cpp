@@ -42,18 +42,10 @@ struct LServer {
 
 static std::vector<LServer> lServer = {
          {     "clangd",
-               "clangd",
-            {
-                  "--query-driver",
-                  "--log=error",
-                  "--completion-style=detailed",
-                  "--compile-commands-dir=build",
-                  "--background-index"
-                  }
-            },
-         {"vscode-html",          "vscode-html-languageserver",                                                                            {"--stdio"}},
-         {      "pylsp",                               "pylsp",                                                                                     {}},
-         {      "qmlls", "/home/ws/Qt/6.11.0/gcc_64/bin/qmlls",                                                                                     {}}
+    "clangd", {"--query-driver", "--log=error", "--completion-style=detailed", "--compile-commands-dir=build", "--background-index"}                                            },
+         {"vscode-html",          "vscode-html-languageserver",                                                                                                            {"--stdio"}},
+         {      "pylsp",                               "pylsp",                                                                                                                     {}},
+         {      "qmlls", "/home/ws/Qt/6.11.0/gcc_64/bin/qmlls",                                                                                                                     {}}
       };
 
 //---------------------------------------------------------
@@ -62,6 +54,7 @@ static std::vector<LServer> lServer = {
 
 LSclient* LSclient::createClient(Editor* editor, const std::string& name) {
       for (const auto& s : lServer) {
+            Debug("<{}> -- <{}>", s.name, name);
             if (s.name == name) {
                   auto* lc = new LSclient(editor, name);
                   if (!lc->start(s.path, s.arguments)) {
@@ -364,9 +357,10 @@ void LSclient::readerLoop() {
                                     }
                               if (!readHeader) {
                                     if (message.length() >= contentLength) {
-                                          processMessage(message.substr(0, contentLength));
-                                          message    = message.substr(contentLength, std::string::npos);
-                                          readHeader = true;
+                                          if (processMessage(message.substr(0, contentLength))) {
+                                                message    = message.substr(contentLength, std::string::npos);
+                                                readHeader = true;
+                                                }
                                           }
                                     else
                                           break; // read more
@@ -710,9 +704,10 @@ void LSclient::handleDiagnostics(const json& params) {
 //---------------------------------------------------------
 //   processMessage
 //    runs in LSclient outThread context
+//    return false on error
 //---------------------------------------------------------
 
-void LSclient::processMessage(const std::string& message) {
+bool LSclient::processMessage(const std::string& message) {
       json response;
       try {
             response = json::parse(message);
@@ -722,14 +717,20 @@ void LSclient::processMessage(const std::string& message) {
             }
       if (response.contains("error")) {
             Debug("Server error: {}", response["error"]["message"].dump(4));
-            return;
+            return false;
             }
       if (response.contains("id")) {
             //*********************************************
             //    handle responses
             //*********************************************
-            int id = response["id"];
-            emit responseReceived(id, response);
+            try {
+                  int id = response["id"];
+                  emit responseReceived(id, response);
+                  }
+            catch (...) {
+                  Debug("Server error: {}", response.dump(4));
+                  return false;
+                  }
             }
       else {
             //*********************************************
@@ -737,6 +738,7 @@ void LSclient::processMessage(const std::string& message) {
             //*********************************************
             emit notificationReceived(response);
             }
+      return true;
       }
 
 //---------------------------------------------------------

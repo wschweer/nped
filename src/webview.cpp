@@ -15,7 +15,6 @@
 #include <QLabel>
 
 #include "webview.h"
-#include "commands.h"
 #include "kontext.h"
 
 //---------------------------------------------------------
@@ -23,53 +22,51 @@
 //---------------------------------------------------------
 
 MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_parent), editor(e) {
-      setZoomFactor(1.5);
+      _darkMode = e->darkMode();
+      Debug("darkMode {}", _darkMode);
       textActions = {
-         Action(CMD_QUIT, [this] { editor->quitCmd(); }),
-         Action(CMD_SAVE_QUIT, [this] { editor->saveQuitCmd(); }),
+         Action(e->getSC(Cmd::CMD_QUIT), [this] { editor->quitCmd(); }),
+         Action(e->getSC(Cmd::CMD_SAVE_QUIT), [this] { editor->saveQuitCmd(); }),
 
-         Action(CMD_LINE_UP, [this] { scrollLineUp(); }),
-         Action(CMD_LINE_DOWN, [this] { scrollLineDown(); }),
-         Action(CMD_FILE_BEGIN, [this] { scrollToTop(); }),
-         Action(CMD_FILE_END, [this] { scrollToBottom(); }),
-         Action(CMD_PAGE_UP, [this] { scrollPageUp(); }),
-         Action(CMD_PAGE_DOWN, [this] { scrollPageDown(); }),
+         Action(e->getSC(Cmd::CMD_LINE_UP), [this] { scrollLineUp(); }),
+         Action(e->getSC(Cmd::CMD_LINE_DOWN), [this] { scrollLineDown(); }),
+         Action(e->getSC(Cmd::CMD_FILE_BEGIN), [this] { scrollToTop(); }),
+         Action(e->getSC(Cmd::CMD_FILE_END), [this] { scrollToBottom(); }),
+         Action(e->getSC(Cmd::CMD_PAGE_UP), [this] { scrollPageUp(); }),
+         Action(e->getSC(Cmd::CMD_PAGE_DOWN), [this] { scrollPageDown(); }),
 #if 0
-         Action(CMD_LINE_TOP, [] { }),
-         Action(CMD_LINE_BOTTOM, [] {}),
-         Action(CMD_ENTER, [] {}),
+         Action(e->getSC(Cmd::CMD_LINE_TOP), [] { }),
+         Action(e->getSC(Cmd::CMD_LINE_BOTTOM), [] {}),
+         Action(e->getSC(Cmd::CMD_ENTER), [] {}),
 #endif
-         Action(CMD_SAVE, [this] { editor->kontext()->file()->save(); }),
-         Action(CMD_KONTEXT_COPY, [this] { editor->copyKontext(); }),
-         Action(CMD_KONTEXT_PREV, [this] { editor->prevKontext(); }),
-         Action(CMD_KONTEXT_NEXT, [this] { editor->nextKontext(); }),
+         Action(e->getSC(Cmd::CMD_SAVE), [this] { editor->kontext()->file()->save(); }),
+         Action(e->getSC(Cmd::CMD_KONTEXT_COPY), [this] { editor->copyKontext(); }),
+         Action(e->getSC(Cmd::CMD_KONTEXT_PREV), [this] { editor->prevKontext(); }),
+         Action(e->getSC(Cmd::CMD_KONTEXT_NEXT), [this] { editor->nextKontext(); }),
 
-         Action(CMD_KONTEXT_UP, [this] { editor->kontext()->moveCursorRel(0, -1, MoveType::Roll); }),
-         Action(CMD_KONTEXT_DOWN, [this] { editor->kontext()->moveCursorRel(0, 1, MoveType::Roll); }),
-         Action(CMD_PICK, [] {}),
-         Action(CMD_SELECT_ROW, [] {}),
-         Action(CMD_SELECT_COL, [] {}),
-         Action(CMD_VIEW_FUNCTIONS,
+         Action(e->getSC(Cmd::CMD_KONTEXT_UP), [this] { editor->kontext()->moveCursorRel(0, -1, MoveType::Roll); }),
+         Action(e->getSC(Cmd::CMD_KONTEXT_DOWN), [this] { editor->kontext()->moveCursorRel(0, 1, MoveType::Roll); }),
+         Action(e->getSC(Cmd::CMD_PICK), [] {}),
+         Action(e->getSC(Cmd::CMD_SELECT_ROW), [] {}),
+         Action(e->getSC(Cmd::CMD_SELECT_COL), [] {}),
+         Action(e->getSC(Cmd::CMD_VIEW_FUNCTIONS),
                 [this] {
                       editor->kontext()->toggleViewMode();
                       editor->updateViewMode();
                       }),
-         Action(CMD_SEARCH_NEXT, [] {}),
-         Action(CMD_SEARCH_PREV, [] {}),
-         Action(CMD_GIT_TOGGLE, [this] { editor->gitButton()->setChecked(!editor->gitButton()->isChecked()); }),
+         Action(e->getSC(Cmd::CMD_SEARCH_NEXT), [] {}),
+         Action(e->getSC(Cmd::CMD_SEARCH_PREV), [] {}),
+         Action(e->getSC(Cmd::CMD_GIT_TOGGLE), [this] { editor->gitButton()->setChecked(!editor->gitButton()->isChecked()); }),
             };
 
       kl = new KeyLogger(&textActions, this);
-      installEventFilter(kl);
-
       connect(kl, &KeyLogger::triggered, [this](Action* a) {
             editor->startCmd();
             a->func();
             editor->endCmd();
             });
-      connect(kl, &KeyLogger::keyLabelChanged, [this](QString s) {
-            editor->keyLabel()->setText(s);
-            });
+      connect(kl, &KeyLogger::keyLabelChanged, [this](QString s) { editor->keyLabel()->setText(s); });
+      installEventFilter(kl);
       }
 
 //---------------------------------------------------------
@@ -79,9 +76,8 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
 
 void MarkdownWebView::childEvent(QChildEvent* event) {
       if (event->type() == QEvent::ChildAdded) {
-            // Wenn ein Kind hinzugefügt wird, prüfen wir, ob wir darauf lauschen müssen
             QObject* child = event->child();
-            if (child)
+            if (child && kl)
                   child->installEventFilter(kl);
             }
       QWebEngineView::childEvent(event);
@@ -105,7 +101,6 @@ void MarkdownWebView::installFilterOnProxy() {
 
 void MarkdownWebView::setHtml(const QString& _html) {
       _currentRawHtml = _html;
-      Debug("Setting direct HTML content. Length: {}", _html.length());
       QWebEngineView::setHtml(_html);
       }
 
@@ -114,6 +109,7 @@ void MarkdownWebView::setHtml(const QString& _html) {
 //---------------------------------------------------------
 
 void MarkdownWebView::setDarkMode(bool enabled) {
+      Debug("darkMode {} -> {}", _darkMode, enabled);
       if (_darkMode == enabled)
             return;
 
@@ -129,36 +125,48 @@ void MarkdownWebView::setDarkMode(bool enabled) {
 //---------------------------------------------------------
 
 void MarkdownWebView::setMarkdown(const QString& _markdown) {
-      _currentRawMarkdown = _markdown; // Speichern für späteren Reload
+      _currentRawMarkdown = _markdown;
 
       if (_markdown.isEmpty()) {
             setHtml("");
             return;
             }
 
-      QString _convertedHtml = renderMarkdownToHtml(_markdown);
+      // 1. [TOC] Platzhalter ersetzen
+      // Wir machen das im Markdown-String, bevor er gerendert wird.
+      // Damit md4c das nicht als Text rendert, ersetzen wir es durch HTML.
+      QString _processedMarkdown = _markdown;
+      if (_processedMarkdown.contains("[TOC]")) {
+            // Wir ersetzen es durch einen div-Container
+            _processedMarkdown.replace("[TOC]", "\n<div id='table-of-contents'></div>\n");
+            }
 
-      QString _css    = _darkMode ? getGithubDarkCss() : getGithubCss();
-      QString _assets = getHighlightJsAssets(_darkMode);
+      // 2. Konvertierung (nutzt jetzt processedMarkdown)
+      QString _convertedHtml = renderMarkdownToHtml(_processedMarkdown);
+
+      // ... CSS und Assets holen ...
+      QString _css             = _darkMode ? getGithubDarkCss() : getGithubCss();
+      QString _highlightAssets = getHighlightJsAssets(_darkMode);
+      QString _anchorScript    = getAnchorJs();
+
+      // 3. Das neue ToC-Script holen
+      QString _tocScript = getTocJs();
 
       QString _fullHtml = QString::fromStdString(std::format(
           R"(<!DOCTYPE html>
         <html>
         <head>
             <meta charset="utf-8">
-            <style>
-                {}
-                /* Override für Highlight.js Hintergrund im Darkmode,
-                   damit es nahtlos in den pre-Block passt */
-                .hljs {{ background: transparent !important; }}
-            </style>
+            <style>{}</style>
             {}
         </head>
         <body class="markdown-body">
             {}
-        </body>
+            {} {} </body>
         </html>)",
-          _css.toStdString(), _assets.toStdString(), _convertedHtml.toStdString()));
+          _css.toStdString(), _highlightAssets.toStdString(), _convertedHtml.toStdString(), _anchorScript.toStdString(),
+          _tocScript.toStdString() // Hier wird das Skript eingefügt
+          ));
 
       setHtml(_fullHtml);
       }
@@ -182,7 +190,8 @@ QString MarkdownWebView::getHighlightJsAssets(bool darkMode) const {
                 }});
             }});
         </script>
-    )", theme.toStdString()));
+    )",
+                                                theme.toStdString()));
       }
 
 //---------------------------------------------------------
@@ -203,7 +212,8 @@ QString MarkdownWebView::renderMarkdownToHtml(const QString& _markdown) {
       std::string _stdMarkdown = _markdown.toStdString();
 
       // GFM-Flags: Tabellen, Tasklisten, Durchgestrichen, Autolinks
-      unsigned int _flags = MD_DIALECT_GITHUB;
+      // unsigned int _flags = MD_DIALECT_GITHUB | MD_FLAG_NOINDENTEDCODEBLOCKS;
+      unsigned int _flags = MD_DIALECT_GITHUB | MD_FLAG_HARD_SOFT_BREAKS;
 
       int _result = md_html(_stdMarkdown.c_str(), static_cast<MD_SIZE>(_stdMarkdown.size()), md4c_callback, &_output, _flags, 0);
 
@@ -211,8 +221,6 @@ QString MarkdownWebView::renderMarkdownToHtml(const QString& _markdown) {
             Critical("Markdown conversion failed with code: {}", _result);
             return "<b>Error: Markdown rendering failed.</b>";
             }
-
-      Debug("Markdown rendering successful.");
       return _output;
       }
 
@@ -244,6 +252,75 @@ QString MarkdownWebView::getGithubCss() const {
         .markdown-body table th, .markdown-body table td { border: 1px solid #d0d7de; padding: 6px 13px; }
         .markdown-body table tr { background-color: #ffffff; border-top: 1px solid #hsla(210,18%,87%,1); }
         .markdown-body table tr:nth-child(2n) { background-color: #f6f8fa; }
+      /* Anker Styling (GitHub Style) */
+.anchor {
+    float: left;
+    padding-right: 4px;
+    margin-left: -20px;
+    line-height: 1;
+    text-decoration: none;
+    cursor: pointer;
+    opacity: 0; /* Standardmäßig unsichtbar */
+}
+
+/* Sichtbar machen beim Hover über die Überschrift */
+h1:hover .anchor, h2:hover .anchor, h3:hover .anchor,
+h4:hover .anchor, h5:hover .anchor, h6:hover .anchor {
+    opacity: 1;
+}
+
+.anchor:focus {
+    opacity: 1;
+}
+
+/* Icon Farbe anpassen */
+.anchor svg {
+    fill: currentColor; /* Nimmt Textfarbe an */
+}
+      /* ToC Container Styling */
+#table-of-contents {
+    background-color: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 24px;
+    width: fit-content;
+    min-width: 200px;
+    max-width: 100%;
+}
+
+.toc-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 1.2em;
+}
+
+.toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.toc-item {
+    margin: 4px 0;
+}
+
+.toc-item a {
+    text-decoration: none;
+    color: #0969da;
+}
+
+.toc-item a:hover {
+    text-decoration: underline;
+}
+
+/* Einrückungen für Hierarchie */
+.toc-h1 { padding-left: 0px; font-weight: 600; }
+.toc-h2 { padding-left: 15px; }
+.toc-h3 { padding-left: 30px; font-size: 0.95em; }
+.toc-h4 { padding-left: 45px; font-size: 0.9em; }
+.toc-h5 { padding-left: 60px; font-size: 0.9em; font-style: italic; }
+.toc-h6 { padding-left: 75px; }
     )";
       }
 
@@ -256,24 +333,19 @@ QString MarkdownWebView::getGithubDarkCss() const {
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
             line-height: 1.5; padding: 32px; max-width: 980px; margin: 0 auto;
-
-            /* DARK MODE FARBEN */
-            color: #c9d1d9;             /* Text: Helles Grau */
-            background-color: #0d1117;  /* Hintergrund: Sehr dunkles Blau-Grau */
+            color: #c9d1d9;
+            background-color: #0d1117;
             scroll-behavior: smooth;
         }
 
-        /* Überschriften */
         .markdown-body h1, .markdown-body h2 {
             border-bottom: 1px solid #21262d;
             color: #e6edf3;
         }
 
-        /* Links */
         .markdown-body a { color: #58a6ff; text-decoration: none; }
         .markdown-body a:hover { text-decoration: underline; }
 
-        /* Inline Code (`...`) */
         .markdown-body code {
             background-color: rgba(110,118,129,0.4);
             border-radius: 6px;
@@ -282,7 +354,6 @@ QString MarkdownWebView::getGithubDarkCss() const {
             color: #c9d1d9;
         }
 
-        /* Code Blöcke (```...```) */
         .markdown-body pre {
             background-color: #161b22;
             border-radius: 6px;
@@ -291,14 +362,6 @@ QString MarkdownWebView::getGithubDarkCss() const {
             border: 1px solid #30363d;
         }
 
-        /* Zitate */
-        .markdown-body blockquote {
-            border-left: .25em solid #30363d;
-            color: #8b949e;
-            padding: 0 1em;
-        }
-
-        /* Tabellen */
         .markdown-body table th, .markdown-body table td {
             border: 1px solid #30363d;
             padding: 6px 13px;
@@ -311,11 +374,37 @@ QString MarkdownWebView::getGithubDarkCss() const {
             background-color: #161b22;
         }
 
-        /* Scrollbars dunkel machen (Webkit spezifisch) */
-        ::-webkit-scrollbar { width: 10px; height: 10px; }
-        ::-webkit-scrollbar-track { background: #0d1117; }
-        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 5px; }
-        ::-webkit-scrollbar-thumb:hover { background: #8b949e; }
+        /* Anker Styling */
+        .anchor {
+            float: left;
+            padding-right: 4px;
+            margin-left: -20px;
+            line-height: 1;
+            text-decoration: none;
+            cursor: pointer;
+            opacity: 0;
+        }
+
+        h1:hover .anchor, h2:hover .anchor, h3:hover .anchor {
+            opacity: 1;
+        }
+
+        .anchor svg {
+            fill: currentColor;
+        }
+
+        /* ToC Container */
+        #table-of-contents {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            padding: 16px;
+            margin-bottom: 24px;
+            border-radius: 6px;
+        }
+
+        .toc-title { color: #e6edf3; font-weight: 600; margin-bottom: 8px; }
+        .toc-item a { color: #58a6ff; text-decoration: none; }
+        .toc-item a:hover { text-decoration: underline; }
     )";
       }
 
@@ -381,4 +470,110 @@ void MarkdownWebView::scrollToTop() {
 
 void MarkdownWebView::scrollToBottom() {
       page()->runJavaScript("window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });");
+      }
+
+//---------------------------------------------------------
+//   getAnchorJs
+//---------------------------------------------------------
+
+QString MarkdownWebView::getAnchorJs() const {
+      return R"(
+        <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const headers = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
+            const idMap = {};
+
+            headers.forEach(header => {
+                // 1. Text holen
+                let text = header.textContent;
+
+                // 2. GitHub-Style ID Generierung
+                let slug = text.toLowerCase()
+                    .replace(/[^a-z0-9\s-]/g, '') // Nur Buchstaben, Zahlen, Leerzeichen, Bindestriche
+                    .trim()
+                    .replace(/\s+/g, '-'); // Leerzeichen durch Bindestriche ersetzen
+
+                if (!slug) slug = "section";
+
+                // 3. Duplikate behandeln (z.B. zwei mal "Introduction")
+                let uniqueSlug = slug;
+                let count = 1;
+                while (idMap[uniqueSlug]) {
+                    uniqueSlug = slug + '-' + count;
+                    count++;
+                }
+                idMap[uniqueSlug] = true;
+
+                // 4. ID setzen
+                header.id = uniqueSlug;
+
+                // 5. Link-Icon (Anchor) hinzufügen
+                // SVG Pfad für das Kettensymbol (GitHub Style)
+                const anchorIcon = '<svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg>';
+
+                const link = document.createElement('a');
+                link.className = 'anchor';
+                link.href = '#' + uniqueSlug;
+                link.innerHTML = anchorIcon;
+
+                // Link VOR dem Text einfügen
+                header.insertBefore(link, header.firstChild);
+            });
+        });
+        </script>
+    )";
+      }
+
+//---------------------------------------------------------
+//   getTocJs
+//---------------------------------------------------------
+
+QString MarkdownWebView::getTocJs() const {
+      return R"(
+        <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Container suchen
+            const tocContainer = document.getElementById('table-of-contents');
+            if (!tocContainer) return; // Kein [TOC] Marker im Text gefunden
+
+            const headers = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
+            if (headers.length === 0) return;
+
+            const tocList = document.createElement('ul');
+            tocList.className = 'toc-list';
+
+            headers.forEach(header => {
+                // Nur Header aufnehmen, die eine ID haben (durch unser Anchor-Script)
+                if (!header.id) return;
+
+                const li = document.createElement('li');
+
+                // Klasse für Einrückung basierend auf Tag-Name (h1, h2...)
+                li.className = 'toc-item toc-' + header.tagName.toLowerCase();
+
+                const link = document.createElement('a');
+                link.href = '#' + header.id;
+                link.textContent = header.textContent; // Text ohne das Link-Icon
+
+                li.appendChild(link);
+                tocList.appendChild(li);
+            });
+
+            const title = document.createElement('div');
+            title.className = 'toc-title';
+            title.textContent = 'Inhaltsverzeichnis';
+
+            tocContainer.appendChild(title);
+            tocContainer.appendChild(tocList);
+        });
+        </script>
+    )";
+      }
+
+//---------------------------------------------------------
+//   append
+//---------------------------------------------------------
+
+void MarkdownWebView::append(const QString& s) {
+      setMarkdown(_currentRawMarkdown + s);
       }

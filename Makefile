@@ -7,7 +7,7 @@ export LOGFILE=/home/ws/github/nped/nped.log
 
 nped:
 	#export QT_FATAL_WARNINGS=true
-	cd build; cmake --build . --parallel 32 && cd .. && build/nped
+	cd build; cmake --build . --parallel 32 && cd .. && build/nped src/editor.cpp
 
 #
 #     "test" target

@@ -25,7 +25,14 @@ find_package(Qt6 REQUIRED COMPONENTS
       Network
       WebEngineCore
       WebEngineWidgets
+      Qml
+      Quick
+      QuickControls2
+      QuickWidgets
       )
+
+qt_policy(SET QTP0001 NEW)
+qt_policy(SET QTP0004 NEW)
 
 find_library(MD4C_LIB md4c)
 find_library(MD4C_HTML_LIB md4c-html)
@@ -67,10 +74,36 @@ qt_add_executable(nped
       src/git.cpp
       src/pretty.cpp
       src/agent.cpp
-      src/agentui.cpp
-      src/configdialog.cpp
+#      src/agentui.cpp
       src/tools.cpp
       src/webview.cpp
+      src/config.cpp
+      src/llm.cpp
+      src/ollama.cpp
+      src/gemini.cpp
+#      src/anthropic.cpp
+#      src/openai.cpp
+      src/chatdisplay.cpp
+      )
+
+qt_add_resources(nped "qmls"
+      FILES qtquickcontrols2.conf
+      )
+qt_add_resources(nped "mages"
+      FILES images/Git-Icon-1788C.svg
+      FILES images/configure.svg
+      )
+
+qt_add_qml_module(nped
+    URI "Nped.Config"
+    VERSION 1.0
+    SOURCES
+
+    QML_FILES
+        qml/ConfigDialog.qml
+        qml/SettingsCategory.qml
+        qml/InputRow.qml
+        qml/GuiPanel.qml
       )
 
 qt_add_resources(nped files
@@ -85,6 +118,10 @@ target_link_libraries(nped PRIVATE
       Qt::Network
       Qt::WebEngineCore
       Qt::WebEngineWidgets
+      Qt::Qml
+      Qt::Quick
+      Qt::QuickControls2
+      Qt::QuickWidgets
       pthread
       git2
       md4c-html

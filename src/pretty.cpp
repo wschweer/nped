@@ -23,16 +23,13 @@
 //   markToken
 //---------------------------------------------------------
 
-void Line::markCppToken(int col1, int col2, const QString& token)
-      {
-      static const std::vector<const char*> flowKeywords{
-         "if",      "else", "for",   "while",  "do",      "continue",  "break",
-         "return",  "try",  "catch", "class",  "struct",  "namespace", "switch",
-         "default", "case", "enum",  "public", "private", "protected"};
+void Line::markCppToken(int col1, int col2, const QString& token) {
+      static const std::vector<const char*> flowKeywords{"if",      "else", "for",   "while",  "do",      "continue",  "break",
+                                                         "return",  "try",  "catch", "class",  "struct",  "namespace", "switch",
+                                                         "default", "case", "enum",  "public", "private", "protected"};
       static const std::vector<const char*> typeKeywords{
-         "void",  "bool",   "int",         "char",         "float",      "double",  "const",
-         "auto",  "static", "static_cast", "dynamic_cast", "const_cast", "new",     "delete",
-         "using", "true",   "false",       "nullptr",      "constexpr",  "virtual", "override"};
+         "void",       "bool", "int",    "char",  "float", "double", "const",   "auto",      "static",  "static_cast", "dynamic_cast",
+         "const_cast", "new",  "delete", "using", "true",  "false",  "nullptr", "constexpr", "virtual", "override"};
 
       for (const auto& key : flowKeywords) {
             if (key == token) {
@@ -52,8 +49,7 @@ void Line::markCppToken(int col1, int col2, const QString& token)
 //   makePretty
 //---------------------------------------------------------
 
-void File::makePretty()
-      {
+void File::makePretty() {
       if (languageId() == "cpp") // we currently handle only cpp
             markCpp();
       }
@@ -62,8 +58,7 @@ void File::makePretty()
 //   markCpp
 //---------------------------------------------------------
 
-void File::markCpp()
-      {
+void File::markCpp() {
       bool inComment = false;
       bool inString  = false;
       bool inRString = false;
@@ -81,8 +76,7 @@ void File::markCpp()
                               }
                         }
                   else if (inRString) {
-                        if (i < l.size() - rStringPattern.size() &&
-                            l.qstring().mid(i).startsWith(rStringPattern)) {
+                        if (i < l.size() - rStringPattern.size() && l.qstring().mid(i).startsWith(rStringPattern)) {
                               inRString  = false;
                               i         += rStringPattern.size();
                               l.addMark(col1, i, Marker::String);
@@ -106,10 +100,10 @@ void File::markCpp()
                         }
                   //  look for 'R"xxx(' where xxx is rStringPattern
                   else if (l[i] == 'R' && i < (l.size() - 2) && l[i + 1] == '"') {
-                        inRString      = true;
-                        col1           = i;
-                        rStringPattern = "";
-                        i += 2;        // skip the 'R"'
+                        inRString       = true;
+                        col1            = i;
+                        rStringPattern  = "";
+                        i              += 2; // skip the 'R"'
                         while (i < l.size() && l[i] != '(')
                               rStringPattern += l[i++];
                         rStringPattern = ')' + rStringPattern + "\"";

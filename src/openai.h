@@ -11,25 +11,18 @@
 
 #pragma once
 
-#include <QString>
-#include <nlohmann/json.hpp>
-
-#include "types.h"
-
-// Alias für bessere Lesbarkeit
-using json = nlohmann::json;
+#include "llm.h"
 
 //---------------------------------------------------------
-//   ASTNode
+//   OpenAiClient
 //---------------------------------------------------------
 
-struct ASTNode {
-      QString role;
-      QString kind;
-      QString detail;
-      QString arcana;
-      Pos p1;
-      Pos p2;
-      std::vector<ASTNode> children;
-      void read(const json&);
+class OpenAiClient : public LLMClient
+      {
+
+    public:
+      OpenAiClient(Model* m, const std::vector<json>& mcps);
+      virtual json prompt(QNetworkRequest* request, const json& chatHistory) override;
+      virtual void dataReceived(Agent*, QNetworkReply*) override {}
+      virtual void dataFinished(Agent*, QNetworkReply*) override {};
       };

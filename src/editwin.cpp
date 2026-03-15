@@ -155,8 +155,7 @@ Pos EditWidget::pixelToChar(const QPointF& e) {
 //   screenPosToFilePos
 //---------------------------------------------------------
 
-Pos EditWidget::screenPosToFilePos(Pos screenPos)
-      {
+Pos EditWidget::screenPosToFilePos(Pos screenPos) {
       Kontext* k = editor->kontext();
       return Pos(screenPos.col + k->screenColumnOffset(), screenRowToFileRow(screenPos.row));
       }
@@ -165,24 +164,21 @@ Pos EditWidget::screenPosToFilePos(Pos screenPos)
 //   screenRowToFileRow
 //---------------------------------------------------------
 
-int EditWidget::screenRowToFileRow(int screenRow)
-      {
+int EditWidget::screenRowToFileRow(int screenRow) {
       // we only know the cursor position and use it as a start
       Kontext* k = editor->kontext();
-      Cursor c = k->cursor();
+      Cursor c   = k->cursor();
       File* file = k->file();
-      int n = screenRow - c.screenRow();
-      int row = c.fileRow();
+      int n      = screenRow - c.screenRow();
+      int row    = c.fileRow();
       if (n == 0)
             return row;
-      if (n > 0) {
+      if (n > 0)
             for (int i = 0; i < n; ++i)
                   row = file->nextRowIfAvailable(row);
-            }
-      else {
+      else
             for (int i = 0; i > n; --i)
                   row = file->previousRowIfAvailable(row);
-           }
       return row;
       }
 
@@ -200,7 +196,7 @@ void EditWidget::mousePressEvent(QMouseEvent* e) {
             emit markerClicked(filePos.row);
             return;
             }
-//      Debug("{} {} -- {} {}", filePos.col, filePos.row, screenPos.col, screenPos.row);
+      //      Debug("{} {} -- {} {}", filePos.col, filePos.row, screenPos.col, screenPos.row);
 
       Cursor c;
       c.filePos   = filePos;
@@ -335,11 +331,11 @@ void EditWidget::paintEvent(QPaintEvent* e) {
       painter.setRenderHint(QPainter::TextAntialiasing, true);
 
       DrawingContext dc;
-      dc.fh             = editor->fh();
-      dc.fw             = editor->fw();
-      dc.fa             = editor->fa();
-      dc.xo             = k->screenColumnOffset();
-//      dc.yo             = k->screenRowOffset();
+      dc.fh = editor->fh();
+      dc.fw = editor->fw();
+      dc.fa = editor->fa();
+      dc.xo = k->screenColumnOffset();
+      //      dc.yo             = k->screenRowOffset();
       dc.painter        = &painter;
       dc.bgColor        = editor->bgColor();
       dc.lb             = EditWidget::BORDER + lm; // left border in pixel

@@ -32,7 +32,7 @@ void dumpNode(const ASTNode& node, int level) {
 //---------------------------------------------------------
 
 void ASTNode::read(const json& v) {
-//      Debug("{}", v.dump(4));
+      //      Debug("{}", v.dump(4));
       arcana = QString::fromStdString(v.value("arcana", ""));
       kind   = QString::fromStdString(v.value("kind", ""));
       role   = QString::fromStdString(v.value("role", ""));

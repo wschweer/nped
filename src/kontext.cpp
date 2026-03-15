@@ -295,7 +295,7 @@ void Kontext::setViewMode(ViewMode m) {
                         case ViewMode::Bugs: map = &file()->bugs(); break;
                         case ViewMode::SearchResults: map = &file()->searchResults(); break;
                         case ViewMode::GitVersion: break;
-                        case ViewMode::File: break; // cannot happen
+                        case ViewMode::File: break;    // cannot happen
                         case ViewMode::WebView: break; // cannot happen
                         }
                   if (map) {
@@ -518,12 +518,23 @@ void Kontext::moveCursorAbs(int col, int row) {
       if (row >= 0) {
             file()->unfold(row);
             _cursor.filePos.row = row;
-            if (row < screenRows() - ContextLines) // align top
-                  _cursor.screenPos.row = 0;
-            else if (row == file()->rows() - 1) // align bottom
-                  _cursor.screenPos.row = screenRows() - 1;
-            else
-                  _cursor.screenPos.row = screenRows() / 2; // aliggn center
+
+            // We want to move the cursor without scrolling the screen
+            // if possible.
+
+            int deltaRows    = row - _cursor.filePos.row;
+            int newScreenRow = _cursor.screenPos.row + deltaRows;
+            if (newScreenRow > ContextLines && newScreenRow < (screenRows() - ContextLines))
+                  _cursor.screenPos.row = newScreenRow;
+            else {
+                  // the screen must be scrolled to make the cursor visible
+                  if (row < screenRows() - ContextLines) // align top
+                        _cursor.screenPos.row = 0;
+                  else if (row == file()->rows() - 1) // align bottom
+                        _cursor.screenPos.row = screenRows() - 1;
+                  else
+                        _cursor.screenPos.row = screenRows() / 2; // aliggn center
+                  }
             }
       fixCursor();
       }

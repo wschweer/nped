@@ -23,8 +23,7 @@
 //    initSearch
 //---------------------------------------------------------
 
-bool Editor::initSearch(const QString& param)
-      {
+bool Editor::initSearch(const QString& param) {
       QString pattern;
 
       if (param.isEmpty()) {
@@ -64,8 +63,7 @@ bool Editor::initSearch(const QString& param)
 //   createMatchList
 //---------------------------------------------------------
 
-bool Editor::createMatchList()
-      {
+bool Editor::createMatchList() {
       if (!searchPattern.isValid() || searchPattern.pattern().isEmpty()) {
             msg("no valid search pattern");
             return false;
@@ -96,8 +94,7 @@ bool Editor::createMatchList()
 //   clearSearchMarks
 //---------------------------------------------------------
 
-void Editor::clearSearchMarks()
-      {
+void Editor::clearSearchMarks() {
       kontext()->file()->clearSearchMarks();
       }
 
@@ -105,21 +102,21 @@ void Editor::clearSearchMarks()
 //   searchNext
 //---------------------------------------------------------
 
-void Editor::searchNext()
-      {
+void Editor::searchNext() {
       if (createMatchList()) {
             for (const auto& m : matches) {
                   if ((m.line == kontext()->fileRow() && kontext()->fileCol() <= m.col1) || m.line > kontext()->fileRow()) {
                         if (doReplace) {
-                              int len = m.col2 - m.col1;
-                              Pos p1 = { m.col1, m.line };                       // replace position
-                              Pos p2 = { int(m.col1 + replace.size()), m.line}; // position after replace
-                              undoPatch(p1, len, replace, Cursor(p2, Pos()), Cursor(p1, Pos()));
+                              int len       = m.col2 - m.col1;
+                              Pos p1        = {m.col1, m.line};                       // replace position
+                              Pos p2        = {int(m.col1 + replace.size()), m.line}; // position after replace
+                              int rowOffset = kontext()->screenRowOffset();
+                              undoPatch(p1, len, replace, Cursor(p2, Pos(p2.col, p2.row - rowOffset)), // file position - screen position
+                                        Cursor(p1, Pos(p1.col, p1.row - rowOffset)));
                               }
                         else {
                               kontext()->moveCursorAbs(m.col2, m.line);
                               kontext()->file()->addMark(m.line, m.col1, m.col2, Marker::SearchHit);
-
                               }
                         return;
                         }
@@ -132,11 +129,10 @@ void Editor::searchNext()
 //   searchPrev
 //---------------------------------------------------------
 
-void Editor::searchPrev()
-      {
+void Editor::searchPrev() {
       if (!createMatchList())
             return;
-//      auto cursor = kontext()->cursor();
+      //      auto cursor = kontext()->cursor();
       for (int i = int(matches.size()) - 1; i >= 0; --i) {
             auto m = matches[i];
             if ((m.line == kontext()->fileRow() && kontext()->fileCol() > m.col2) || m.line < kontext()->fileRow()) {
@@ -151,8 +147,7 @@ void Editor::searchPrev()
 //   search
 //---------------------------------------------------------
 
-void Editor::search(const QString& s)
-      {
+void Editor::search(const QString& s) {
       if (!initSearch(s))
             return;
       searchNext();
@@ -162,22 +157,17 @@ void Editor::search(const QString& s)
 //   rename
 //---------------------------------------------------------
 
-void Editor::rename()
-      {
-      if (kontext()->file()->languageClient()) {
+void Editor::rename() {
+      if (kontext()->file()->languageClient())
             kontext()->file()->languageClient()->prepareRenameRequest(kontext());
-            }
       }
 
-void Editor::rename(Kontext*, const QString& name, int row, int col1, int col2)
-      {
+void Editor::rename(Kontext*, const QString& name, int row, int col1, int col2) {
       Debug("<{}> - {} {}-{}", name, row, col1, col2);
 
-      bool ok { false };
+      bool ok{false};
       QString origin = QString("Rename: <%1> to:").arg(name);
-      QString text = QInputDialog::getText(this, tr("Global Rename"),
-             origin, QLineEdit::Normal, name, &ok);
-      if (ok && !text.isEmpty() && text != name) {
+      QString text   = QInputDialog::getText(this, tr("Global Rename"), origin, QLineEdit::Normal, name, &ok);
+      if (ok && !text.isEmpty() && text != name)
             kontext()->file()->languageClient()->renameRequest(kontext(), text, row, col1);
-            }
       }

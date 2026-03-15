@@ -94,7 +94,7 @@ void Editor::showCompletions(const Completions& l) {
       completions = l;
       auto s      = kontext()->cursor().screenPos;
       auto k      = editWidget()->charPosToPixel(s) + QPoint(50, 0);
-//      auto pt     = editWidget()->mapToGlobal(k);
+      //      auto pt     = editWidget()->mapToGlobal(k);
       QFontMetricsF fm(completionsPopup->font());
       qreal _fw = fm.horizontalAdvance("x", QTextOption());
       qreal _fh = fm.lineSpacing();

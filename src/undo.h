@@ -53,7 +53,7 @@ class UndoStack : public QObject
       void setClean() {
             cleanIdx = curIdx;
             setDirty(false);
-      } // this is set by project->save()
+            } // this is set by project->save()
       bool canUndo() const { return curIdx > 0; }
       bool canRedo() const { return curIdx < list.size(); }
       bool dirty() const { return _dirty; }

@@ -16,6 +16,10 @@
 #include <QNetworkReply>
 #include <QDirIterator>
 #include <QPlainTextEdit>
+#include <list>
+#include <QEventLoop>
+#include <QTimer>
+
 #include "editor.h"
 #include "agent.h"
 #include "logger.h"
@@ -23,12 +27,11 @@
 #include "kontext.h"
 #include "file.h"
 #include "lsclient.h"
-#include <QEventLoop>
-#include <QTimer>
+#include "webview.h"
 
 //---------------------------------------------------------
-//   getToolsDefinition
-//
+//   getMCPTools
+//    return list of available tools
 //   ro read_file                   readFile(path)
 //   rw create_file                 createFile(path,content)
 //   rw modify_file                 modifiyFile(path,content)
@@ -43,240 +46,118 @@
 //   ro get_git_diff                getGitDiff(path="")
 //   ro get_git_log                 getGitLog(limit=5)
 //   rw create_git_commit           createGitCommit(msg)
+//
+//    {
+//    "name": "get_weather",
+//    "description": "Ruft das aktuelle Wetter ab",
+//    "parameters": {
+//    "type": "OBJECT",
+//    "properties": {
+//          "location": { "type": "STRING" }
+//          },
+//     "required": ["location"]
+//     }
 //---------------------------------------------------------
 
-json Agent::getToolsDefinition() {
-      std::string jsonStr = R"([
-      {
-            "type": "function",
-            "function": {
-                  "name": "read_file",
-                  "description": "read the content of a file",
-                  "parameters": {
-                        "type": "object",
-                        "properties": { "path": { "type": "string", "description": "Dateipfad" } },
-                        "required": ["path"],
-                        "additionalProperties": false
-                  }
-            }
-      },
-      {
-            "type": "function",
-            "function": {
-                  "name": "create_file",
-                  "description": "Erzeugt eine neue Datei.",
-                  "parameters": {
-                        "type": "object",
-                        "properties": {
-                              "path": { "type": "string" },
-                              "content": { "type": "string" }
-                        },
-                        "required": ["path", "content"],
-                        "additionalProperties": false
-                  }
-            }
-      },
-      {
-            "type": "function",
-            "function": {
-                  "name": "modify_file",
-                  "description": "Überschreibt eine existierende Datei mit neuem Inhalt.",
-                  "parameters": {
-                        "type": "object",
-                        "properties": {
-                              "path": { "type": "string" },
-                              "content": { "type": "string" }
-                        },
-                        "required": ["path", "content"],
-                        "additionalProperties": false
-                  }
-            }
-      },
-      {
-            "type": "function",
-            "function": {
-                  "name": "list_directory",
-                  "description": "Listet alle Dateien und Ordner in einem Verzeichnis auf.",
-                  "parameters": {
-                        "type": "object",
-                        "properties": { "path": { "type": "string", "description": "Dateipfad des Verzeichnisses" } },
-                        "required": ["path"],
-                        "additionalProperties": false
-                  }
-            }
-      },
-      {
-            "type": "function",
-            "function": {
-                  "name": "search_project",
-                  "description": "Durchsucht alle Dateien im Projekt nach einem Text. Beachtet dabei unsichtbare/ungespeicherte Editor-Puffer.",
-                  "parameters": {
-                        "type": "object",
-                        "properties": {
-                              "query": { "type": "string", "description": "Der gesuchte Text" },
-                              "file_pattern": { "type": "string", "description": "Optional: Dateimuster, z.B. *.cpp" }
-                        },
-                        "required": ["query"],
-                        "additionalProperties": false
-                  }
-            }
-      },
-      {
-            "type": "function",
-            "function": {
-                  "name": "read_file_lines",
-                  "description": "Liest gezielt bestimmte Zeilen einer Datei (anstatt head/tail).",
-                  "parameters": {
-                        "type": "object",
-                        "properties": {
-                              "path": { "type": "string" },
-                              "start_line": { "type": "integer" },
-                              "end_line": { "type": "integer" }
-                        },
-                        "required": ["path", "start_line", "end_line"],
-                        "additionalProperties": false
-                  }
-            }
-      },
-      {
-            "type": "function",
-            "function": {
-                  "name": "find_symbol",
-                  "description": "Nutzt den Language Server (LSP) um die Definition eines Symbols (Klasse, Funktion) im Projekt zu finden.",
-                  "parameters": {
-                        "type": "object",
-                        "properties": {
-                              "symbol": { "type": "string", "description": "Das zu suchende Symbol, z.B. MeineKlasse" }
-                        },
-                        "required": ["symbol"],
-                        "additionalProperties": false
-                  }
-            }
-      },
-      {
-            "type": "function",
-            "function": {
-                  "name": "fetch_web_documentation",
-                  "description": "Lädt den Inhalt einer URL per HTTP GET herunter (für API-Docs etc.).",
-                  "parameters": {
-                        "type": "object",
-                        "properties": { "url": { "type": "string", "description": "Die vollständige URL (inkl. http/https) " } },
-                        "required": ["url"],
-                        "additionalProperties": false
-                  }
-            }
-      },
-      {
-            "type": "function",
-            "function": {
-                  "name": "run_build_command",
-                  "description": "Führt einen Shell-Befehl (z.B. 'cmake ..' oder 'make') im 'build'-Ordner des CMake-Projekts aus.",
-                  "parameters": {
-                        "type": "object",
-                        "properties": {
-                              "command": { "type": "string", "description": "Der Build-Befehl" }
-                        },
-                        "required": ["command"],
-                        "additionalProperties": false
-                  }
-            }
-      },
-      {
-            "type": "function",
-            "function": {
-                  "name": "replace_in_file",
-                  "description": "Ersetzt einen exakten Textabschnitt (search) durch einen neuen Text (replace) in einer bestehenden Datei. Nutze dies für kleine Änderungen anstatt modify_file.",
-                  "parameters": {
-                        "type": "object",
-                        "properties": {
-                              "path": { "type": "string", "description": "Der Dateipfad" },
-                              "search": { "type": "string", "description": "Der exakte Text, der gesucht und überschrieben werden soll." },
-                              "replace": { "type": "string", "description": "Der neue Text, der eingefügt werden soll." }
-                        },
-                        "required": ["path", "search", "replace"],
-                        "additionalProperties": false
-                  }
-            }
-      },
-      {
-            "type": "function",
-            "function": {
-                  "name": "get_git_status",
-                  "description": "Liefert den aktuellen Git-Status. HINWEIS: Du brauchst und kennst den Projektpfad nicht. Das System führt diesen Befehl automatisch im korrekten Root-Verzeichnis aus. Rufe das Tool einfach ohne Parameter auf.",
-                  "parameters": {
-                        "type": "object",
-                        "properties": {},
-                        "additionalProperties": false
-                  }
-            }
-      },
-      {
-            "type": "function",
-            "function": {
-                  "name": "get_git_diff",
-                  "description": "Zeigt die uncommitteten Änderungen als Diff an. Nutze dies, um deine eigenen Änderungen oder die des Nutzers zu überprüfen.",
-                  "parameters": {
-                        "type": "object",
-                        "properties": {
-                              "path": {
-                                    "type": "string",
-                                    "description": "Dateipfad (optional, leer lassen für gesamtes Repo ) "}
-                                    },
-                        "additionalProperties" : false
-                        }
-                  }
-            },
-      {
-            "type": "function",
-            "function": {
-                  "name": "get_git_log",
-                  "description": "Zeigt die letzten Git-Commits an, um den Verlauf zu verstehen.",
-                  "parameters": {
-                        "type": "object",
-                        "properties": { "limit": { "type": "integer", "description": "Anzahl der angeforderten Commits (Standard: 5 ) "}
-                        },
-                  "additionalProperties" : false
-                  }
-            }
-      },
-      {
-            "type": "function",
-            "function": {
-                  "name": "create_git_commit",
-                  "description": "Staged alle Änderungen (git add .) und erstellt einen Commit. Nutze dies, wenn du eine Aufgabe erfolgreich abgeschlossen hast.",
-                  "parameters": {
-                        "type": "object",
-                        "properties": { "message": { "type": "string", "description": "Eine prägnante Commit-Nachricht" } },
-                        "required": ["message"],
-                        "additionalProperties": false
-                        }
-                  }
-            }
-      ])";
-
+std::vector<json> Agent::getMCPTools() const {
       try {
-            return json::parse(jsonStr);
-            }
+            std::vector<json> tools = json::array();
 
-      catch (const json::parse_error& e) {
-            Critical("FATAL: Fehler beim Parsen der internen toolsDefinition: {}", e.what());
-            return json::array();
+            // 1. File Operations
+            tools.push_back(MCPToolBuilder("read_file", "Reads the full content of a file from the local file system.")
+                                .add_parameter("path", "string", "The absolute or relative path to the file.")
+                                .build());
+
+            tools.push_back(MCPToolBuilder("create_file", "Creates a new file at the specified path with the provided content.")
+                                .add_parameter("path", "string", "The path where the file should be created.")
+                                .add_parameter("content", "string", "The initial content of the file.")
+                                .build());
+
+            tools.push_back(MCPToolBuilder("modify_file", "Completely overwrites an existing file with new content.")
+                                .add_parameter("path", "string", "The path to the file to be modified.")
+                                .add_parameter("content", "string", "The new content for the file.")
+                                .build());
+
+            tools.push_back(
+                MCPToolBuilder(
+                    "replace_in_file",
+                    "Replaces a specific text block with new content. Use this for targeted edits to avoid overwriting the whole file.")
+                    .add_parameter("path", "string", "The path to the file.")
+                    .add_parameter("search", "string", "The exact text string to be replaced.")
+                    .add_parameter("replace", "string", "The new text to insert.")
+                    .build());
+
+            tools.push_back(MCPToolBuilder("read_file_lines", "Reads a specific range of lines from a file (useful for large files).")
+                                .add_parameter("path", "string", "The path to the file.")
+                                .add_parameter("start_line", "integer", "The first line to read (1-indexed).")
+                                .add_parameter("end_line", "integer", "The last line to read.")
+                                .build());
+
+            // 2. Navigation & Search
+            tools.push_back(MCPToolBuilder("list_directory", "Lists all files and subdirectories within a given path.")
+                                .add_parameter("path", "string", "The directory path to inspect.")
+                                .build());
+
+            tools.push_back(MCPToolBuilder("search_project",
+                                           "Searches for a text query across all files in the project, including unsaved editor buffers.")
+                                .add_parameter("query", "string", "The text to search for.")
+                                .add_parameter("file_pattern", "string", "Optional glob pattern to filter files (e.g., '*.cpp').", false)
+                                .build());
+
+            tools.push_back(
+                MCPToolBuilder("find_symbol", "Uses the Language Server (LSP) to find the definition of a symbol like a class or function.")
+                    .add_parameter("symbol", "string", "The name of the symbol to locate (e.g., 'MyClass').")
+                    .build());
+
+            // 3. System & External
+            tools.push_back(
+                MCPToolBuilder("fetch_web_documentation",
+                               "Downloads content from a URL via HTTP GET. Use this to read external API docs or technical references.")
+                    .add_parameter("url", "string", "The full URL starting with http or https.")
+                    .build());
+
+            tools.push_back(MCPToolBuilder("run_build_command",
+                                           "Executes a shell command (like 'make' or 'cmake') within the project's build directory.")
+                                .add_parameter("command", "string", "The build command to execute.")
+                                .build());
+
+            // 4. Git Integration
+            tools.push_back(
+                MCPToolBuilder("get_git_status", "Returns the current git status of the repository. No parameters needed.").build());
+
+            tools.push_back(MCPToolBuilder("get_git_diff", "Shows uncommitted changes as a diff. Helps review edits before committing.")
+                                .add_parameter("path", "string", "Optional: path to a specific file to diff.", false)
+                                .build());
+
+            tools.push_back(MCPToolBuilder("get_git_log", "Displays the recent git commit history.")
+                                .add_parameter("limit", "integer", "Number of commits to retrieve (default: 5).", false)
+                                .build());
+
+            tools.push_back(MCPToolBuilder("create_git_commit", "Stages all current changes (git add .) and creates a new commit.")
+                                .add_parameter("message", "string", "A clear and concise commit message.")
+                                .build());
+            return tools;
             }
+      catch (const json::parse_error& e) {
+            Debug("Parse Error: {}", e.what());
+            }
+      return std::vector<json>();
       }
 
 //---------------------------------------------------------
 //   executeTool
 //---------------------------------------------------------
 
-QString Agent::executeTool(const std::string& functionName, const json& arguments) {
-      Debug("executeTool aufgerufen: {}", functionName);
+std::string Agent::executeTool(const std::string& functionName, const json& arguments) {
+      Debug("<{}>", functionName);
 
       // Hilfsfunktion: Limitiert die Zeilenlänge des Feedbacks im chatDisplay
+#if 0
       auto trim = [](const QString& s, int maxLen = 80) {
             QString res = s.length() > maxLen ? s.left(maxLen - 3) + "..." : s;
             return res.toHtmlEscaped(); // Gleichzeitig HTML Sonderzeichen maskieren
-            };
-
+                              };
+#endif
       // 1. Definiere, welche Tools harmlos sind (Nur-Lese-Zugriff)
       bool isReadOnlyTool =
           (functionName == "read_file" || functionName == "read_file_lines" || functionName == "search_project" ||
@@ -286,7 +167,7 @@ QString Agent::executeTool(const std::string& functionName, const json& argument
       // 2. Entwurfs-Modus Check
       if (!isExecuteMode && !isReadOnlyTool) {
             // Schreib-Tools simulieren, um den Denkprozess der KI nicht zu unterbrechen
-            return "Plan Mode Active: The tool '" + QString::fromStdString(functionName) +
+            return "Plan Mode Active: The tool '" + functionName +
                    "' was NOT executed. This is a read-only simulation. Changes were NOT saved to disk.";
             }
 
@@ -298,36 +179,30 @@ QString Agent::executeTool(const std::string& functionName, const json& argument
             if (!arguments.contains("command"))
                   return "Error: Parameter 'command' missing.";
             QString cmd = QString::fromStdString(arguments["command"].get<std::string>());
-            chatDisplay->append(QString("<b>[Build Command: %1]</b>").arg(trim(cmd)));
-            return runBuildCommand(cmd);
+            return runBuildCommand(cmd).toStdString();
             }
       else if (functionName == "fetch_web_documentation") {
             if (!arguments.contains("url"))
                   return "Error: Parameter 'url' missing.";
             QString url = QString::fromStdString(arguments["url"].get<std::string>());
-            chatDisplay->append(QString("<b>[Web Fetch: %1]</b>").arg(trim(url)));
-            return fetchWebDocumentation(url);
+            return fetchWebDocumentation(url).toStdString();
             }
       else if (functionName == "get_git_status") {
-            chatDisplay->append("<b>[Git: Status]</b>");
-            return getGitStatus();
+            return getGitStatus().toStdString();
             }
       else if (functionName == "get_git_diff") {
             QString p = arguments.contains("path") ? QString::fromStdString(arguments["path"].get<std::string>()) : "";
-            chatDisplay->append(QString("<b>[Git: Diff %1]</b>").arg(trim(p)));
-            return getGitDiff(p);
+            return getGitDiff(p).toStdString();
             }
       else if (functionName == "get_git_log") {
             int limit = arguments.contains("limit") ? arguments["limit"].get<int>() : 5;
-            chatDisplay->append(QString("<b>[Git: Log (%1 Commits)]</b>").arg(limit));
-            return getGitLog(limit);
+            return getGitLog(limit).toStdString();
             }
       else if (functionName == "create_git_commit") {
             if (!arguments.contains("message"))
                   return "Error: Parameter 'message' missing.";
             QString msg = QString::fromStdString(arguments["message"].get<std::string>());
-            chatDisplay->append(QString("<b>[Git: Commit -> '%1']</b>").arg(trim(msg)));
-            return createGitCommit(msg);
+            return createGitCommit(msg).toStdString();
             }
 
       //==========================================================
@@ -340,67 +215,61 @@ QString Agent::executeTool(const std::string& functionName, const json& argument
             QString query = QString::fromStdString(arguments["query"].get<std::string>());
             QString pattern =
                 arguments.contains("file_pattern") ? QString::fromStdString(arguments["file_pattern"].get<std::string>()) : "";
-            chatDisplay->append(QString("<b>[Search Project: %1]</b>").arg(trim(query)));
-            return searchProject(query, pattern);
+            return searchProject(query, pattern).toStdString();
             }
       else if (functionName == "find_symbol") {
             if (!arguments.contains("symbol"))
                   return "Error: Parameter 'symbol' missing.";
             QString symbol = QString::fromStdString(arguments["symbol"].get<std::string>());
-            chatDisplay->append(QString("<b>[Find Symbol: %1]</b>").arg(trim(symbol)));
-            return findSymbol(symbol);
+            return findSymbol(symbol).toStdString();
             }
       if (!arguments.contains("path"))
-            return QString("Error: Parameter 'path' missing for local file tool: %1").arg(functionName);
+            return "Error: Parameter 'path' missing for local file tool: " + functionName;
 
       QString path = QString::fromStdString(arguments["path"].get<std::string>());
 
       // WICHTIG: Pfad-Sicherheitscheck (Sandboxing)
       if (!isPathSafe(path)) {
             Debug("Sicherheitssperre gegriffen für Pfad: {}", path.toStdString());
-            return "Security Lock: Access denied! Path is outside of " + _editor->projectRoot();
+            return "Security Lock: Access denied! Path is outside of " + _editor->projectRoot().toStdString();
             }
 
       // Lokale Datei-Operationen ausführen
       if (functionName == "read_file") {
-            chatDisplay->append(QString("<b>[Read File: %1]</b>").arg(trim(path)));
-            return readFile(path);
+            QString result;
+            readFile(path, result);
+            return result.toStdString();
             }
       else if (functionName == "read_file_lines") {
             if (!arguments.contains("start_line") || !arguments.contains("end_line"))
                   return "Error: Parameters 'start_line' or 'end_line' missing.";
             int startLine = arguments["start_line"].get<int>();
             int endLine   = arguments["end_line"].get<int>();
-            chatDisplay->append(QString("<b>[Read File Lines: %1 (%2-%3)]</b>").arg(trim(path)).arg(startLine).arg(endLine));
-            return readFileLines(path, startLine, endLine);
+            return readFileLines(path, startLine, endLine).toStdString();
             }
       else if (functionName == "list_directory") {
-            chatDisplay->append(QString("<b>[List Directory: %1]</b>").arg(trim(path)));
-            return listDirectory(path);
+            return listDirectory(path).toStdString();
             }
       else if (functionName == "create_file") {
             if (!arguments.contains("content"))
                   return "Error: Parameter 'content' missing.";
             QString content = QString::fromStdString(arguments["content"].get<std::string>());
-            chatDisplay->append(QString("<b>[Create File: %1]</b>").arg(trim(path)));
-            return createFile(path, content);
+            return createFile(path, content).toStdString();
             }
       else if (functionName == "modify_file") {
             if (!arguments.contains("content"))
                   return "Error: Parameter 'content' missing.";
             QString content = QString::fromStdString(arguments["content"].get<std::string>());
-            chatDisplay->append(QString("<b>[Modify File: %1]</b>").arg(trim(path)));
-            return modifyFile(path, content);
+            return modifyFile(path, content).toStdString();
             }
       else if (functionName == "replace_in_file") {
             if (!arguments.contains("search") || !arguments.contains("replace"))
                   return "Error: Parameters 'search' or 'replace' missing.";
             QString search  = QString::fromStdString(arguments["search"].get<std::string>());
             QString replace = QString::fromStdString(arguments["replace"].get<std::string>());
-            chatDisplay->append(QString("<b>[Replace in File: %1]</b>").arg(trim(path)));
-            return replaceInFile(path, search, replace);
+            return replaceInFile(path, search, replace).toStdString();
             }
-      return "Error: Unknown tool (" + QString::fromStdString(functionName) + ").";
+      return "Error: Unknown tool (" + functionName + ").";
       }
 
 //---------------------------------------------------------
@@ -421,21 +290,27 @@ bool Agent::isPathSafe(const QString& path) {
 
 //---------------------------------------------------------
 //   readFile
+//    on error returns false
 //---------------------------------------------------------
 
-QString Agent::readFile(const QString& ipath) {
+bool Agent::readFile(const QString& ipath, QString& result) {
       QString path;
       if (!ipath.startsWith("/"))
             path = _editor->projectRoot() + "/" + ipath;
       else
             path = ipath;
       File* f = _editor->findFile(path);
-      if (f)
-            return f->plainText();
+      if (f) {
+            result = f->plainText();
+            return true;
+            }
       QFile file(path);
-      if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-            return "Error: Could not read file (" + file.errorString() + ")";
-      return QTextStream(&file).readAll();
+      if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            result = "Error: Could not read file (" + file.errorString() + ")";
+            return false;
+            }
+      result = QTextStream(&file).readAll();
+      return true;
       }
 
 //---------------------------------------------------------
@@ -443,7 +318,9 @@ QString Agent::readFile(const QString& ipath) {
 //---------------------------------------------------------
 
 QString Agent::readFileLines(const QString& path, int startLine, int endLine) {
-      QString content   = readFile(path);
+      QString content;
+      if (!readFile(path, content))
+            return content;
       QStringList lines = content.split('\n');
       QStringList result;
       for (int i = startLine - 1; i < endLine && i < lines.size(); ++i)
@@ -457,6 +334,7 @@ QString Agent::readFileLines(const QString& path, int startLine, int endLine) {
 //---------------------------------------------------------
 
 QString Agent::searchProject(const QString& query, const QString& filePattern) {
+      Debug("<{}> <{}>", query, filePattern);
       QString result;
       QString projRoot = QDir::cleanPath(_editor->projectRoot());
       QDir dir(projRoot);
@@ -471,8 +349,10 @@ QString Agent::searchProject(const QString& query, const QString& filePattern) {
             if (path.startsWith(".") || path.contains("/build/"))
                   continue;
             QString relativePath = dir.relativeFilePath(path);
-            QString content      = readFile(relativePath);
-            QStringList lines    = content.split('\n');
+            QString content;
+            if (!readFile(relativePath, content))
+                  continue;
+            QStringList lines = content.split('\n');
             for (int i = 0; i < lines.size(); ++i)
                   if (lines[i].contains(query))
                         result += relativePath + ":" + QString::number(i + 1) + ": " + lines[i].trimmed() + "\n";
@@ -483,6 +363,7 @@ QString Agent::searchProject(const QString& query, const QString& filePattern) {
             result.truncate(4000);
             result += "\n... [Too many results, output truncated]";
             }
+      Debug("result <{}>", result);
       return result;
       }
 
@@ -613,9 +494,8 @@ QString Agent::fetchWebDocumentation(const QString& urlString) {
       // Wenn wir 2 Megabyte an HTML-Code an das LLM zurückschicken,
       // sprengt das sofort das "Context Window" von Ollama und es stürzt ab.
       // Wir kappen die Antwort sicherheitshalber bei 8000 Zeichen.
-      const int MAX_CHARS = 8000;
-      if (content.length() > MAX_CHARS) {
-            content.truncate(MAX_CHARS);
+      if (content.length() > kWebFetchMaxChars) {
+            content.truncate(kWebFetchMaxChars);
             content += "\n\n... [ATTENTION SYSTEM: Documentation was truncated here because it was too large.]";
             }
 
@@ -713,9 +593,8 @@ QString Agent::getGitDiff(const QString& path) {
             return "There are no uncommitted changes.";
 
       // SICHERHEITS-LIMIT: Diffs können gigantisch werden!
-      const int MAX_CHARS = 6000;
-      if (result.length() > MAX_CHARS) {
-            result.truncate(MAX_CHARS);
+      if (result.length() > kGitDiffMaxChars) {
+            result.truncate(kGitDiffMaxChars);
             result += "\n\n... [ATTENTION SYSTEM: Diff truncated because it was too large for the context window.]";
             }
       return result;
@@ -828,14 +707,13 @@ QString Agent::runBuildCommand(const QString& command) {
 
       // 6. SICHERHEITS-LIMIT: Compiler-Logs können riesig sein!
       // Wenn wir zu viel Text senden, stürzt Ollama wegen "Context Window Overflow" ab.
-      const int MAX_CHARS = 4000;
-      if (result.length() > MAX_CHARS) {
+      if (result.length() > kBuildLogMaxChars) {
             // PRO-TIPP FÜR LLMs: Bei Compiler-Logs stehen die eigentlichen FEHLER (Error Summary)
             // fast immer GANZ UNTEN am Ende der Ausgabe. Wir schneiden also den unwichtigen
             // Anfang (z.B. "Scanning dependencies...") ab und behalten das Ende!
 
             QString truncated  = "[... BEGINNING OF LOG TRUNCATED DUE TO LENGTH ...]\n\n";
-            truncated         += result.right(MAX_CHARS);
+            truncated         += result.right(kBuildLogMaxChars);
             return truncated;
             }
 

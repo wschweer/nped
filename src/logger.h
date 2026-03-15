@@ -30,7 +30,7 @@ using namespace std;
 
 template <typename T>
       requires std::is_enum_v<T> and requires(std::underlying_type_t<T> x) {
-            { x | x } -> std::same_as<std::underlying_type_t<T>>;
+                  { x | x } -> std::same_as<std::underlying_type_t<T>>;
             T(x);
             }
 constexpr T operator|(T left, T right) {
@@ -40,7 +40,7 @@ constexpr T operator|(T left, T right) {
 
 template <typename T>
       requires std::is_enum_v<T> and requires(std::underlying_type_t<T> x) {
-            { x | x } -> std::same_as<std::underlying_type_t<T>>;
+                  { x | x } -> std::same_as<std::underlying_type_t<T>>;
             T(x);
             }
 constexpr T operator&(T left, T right) {
@@ -50,7 +50,7 @@ constexpr T operator&(T left, T right) {
 
 template <typename T>
       requires std::is_enum_v<T> and requires(T x) {
-            { x | x } -> std::same_as<T>;
+                  { x | x } -> std::same_as<T>;
             }
 constexpr T& operator|=(T& left, T right) {
       return left = left | right;
@@ -58,7 +58,7 @@ constexpr T& operator|=(T& left, T right) {
 
 template <typename T>
       requires std::is_enum_v<T> and requires(T x) {
-            { x & x } -> std::same_as<T>;
+                  { x & x } -> std::same_as<T>;
             }
 constexpr T& operator&=(T& left, T right) {
       return left = left & right;
@@ -114,7 +114,7 @@ class Logger
       };
 
 extern Logger logger;
-} // namespace Logger
+      } // namespace Logger
 #ifdef NDEBUG
 #define Debug(msg, ...) ;
 #define Info(msg, ...)
@@ -126,47 +126,47 @@ extern Logger logger;
 #define Debug(msg, ...)                                                                                                                    \
       do {                                                                                                                                 \
             Logger::logger.write(Logger::MsgType::Debug, {__FILE__, __LINE__, __FUNCTION__}, std::format(msg __VA_OPT__(, ) __VA_ARGS__)); \
-      } while (0)
+            } while (0)
 #define CDebug(cond, msg, ...)                                                                                                             \
       do {                                                                                                                                 \
             if (cond)                                                                                                                      \
                   Logger::logger.write(Logger::MsgType::Debug, {__FILE__, __LINE__, __FUNCTION__},                                         \
                                        std::format(msg __VA_OPT__(, ) __VA_ARGS__));                                                       \
-      } while (0)
+            } while (0)
 #define Info(msg, ...)                                                                                                                     \
       do {                                                                                                                                 \
             Logger::logger.write(Logger::MsgType::Info, {__FILE__, __LINE__, __FUNCTION__}, std::format(msg __VA_OPT__(, ) __VA_ARGS__));  \
-      } while (0)
+            } while (0)
 #define Log(msg, ...)                                                                                                                      \
       do {                                                                                                                                 \
             Logger::logger.write(Logger::MsgType::Log, {__FILE__, __LINE__, __FUNCTION__}, std::format(msg __VA_OPT__(, ) __VA_ARGS__));   \
-      } while (0)
+            } while (0)
 #define Warning(msg, ...)                                                                                                                  \
       do {                                                                                                                                 \
             Logger::logger.write(Logger::MsgType::Warning, {__FILE__, __LINE__, __FUNCTION__},                                             \
                                  std::format(msg __VA_OPT__(, ) __VA_ARGS__));                                                             \
-      } while (0)
+            } while (0)
 #define Critical(msg, ...)                                                                                                                 \
       do {                                                                                                                                 \
             Logger::logger.write(Logger::MsgType::Critical, {__FILE__, __LINE__, __FUNCTION__},                                            \
                                  std::format(msg __VA_OPT__(, ) __VA_ARGS__));                                                             \
-      } while (0)
+            } while (0)
 #define Printf(msg, ...)                                                                                                                   \
       do {                                                                                                                                 \
             Logger::logger.write(Logger::MsgType::Printf, {}, std::format(msg __VA_OPT__(, ) __VA_ARGS__));                                \
-      } while (0)
+            } while (0)
 #endif
 
 #define Fatal(msg, ...)                                                                                                                    \
       do {                                                                                                                                 \
             Logger::logger.write(Logger::MsgType::Fatal, {__FILE__, __LINE__, __FUNCTION__}, std::format(msg __VA_OPT__(, ) __VA_ARGS__)), \
                 ::abort();                                                                                                                 \
-      } while (0)
+            } while (0)
 
 #define Assert(x)                                                                                                                          \
       do {                                                                                                                                 \
             if (!(x)) {                                                                                                                    \
                   Logger::logger.write(Logger::MsgType::Fatal, {__FILE__, __LINE__, __FUNCTION__}, "Assert <" #x "> failed");              \
                   ::abort();                                                                                                               \
-            }                                                                                                                              \
-      } while (0)
+                  }                                                                                                                              \
+            } while (0)

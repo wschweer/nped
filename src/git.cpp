@@ -29,12 +29,10 @@
 //   Git
 //---------------------------------------------------------
 
-Git::Git()
-      {
+Git::Git() {
       }
 
-Git::~Git()
-      {
+Git::~Git() {
       git_repository_free(repo);
       git_libgit2_shutdown();
       }
@@ -43,11 +41,10 @@ Git::~Git()
 //   init
 //---------------------------------------------------------
 
-void Git::init()
-      {
+void Git::init() {
       git_libgit2_init();
 
-      QDir cwd = QDir::current();
+      QDir cwd  = QDir::current();
       repo_path = cwd.canonicalPath().toLocal8Bit();
 
       for (;;) {
@@ -67,8 +64,7 @@ void Git::init()
 //    Helper-Funktion zur Fehlerprüfung
 //---------------------------------------------------------
 
-bool Git::check_error(int error_code, const char* action)
-      {
+bool Git::check_error(int error_code, const char* action) {
       if (error_code < 0) {
             const git_error* e = git_error_last();
             Critical("Fehler bei {}: {}/{} - {}", action, error_code, e->klass, e->message);
@@ -81,13 +77,12 @@ bool Git::check_error(int error_code, const char* action)
 //   getHistory
 //---------------------------------------------------------
 
-void Git::getHistory(const QString& fn, std::vector<GitHistory*>& gh)
-      {
+void Git::getHistory(const QString& fn, std::vector<GitHistory*>& gh) {
       if (!initialized)
             return;
       const char* file_path = strdup(fn.toStdString().c_str());
-//      Debug("walk <{}>", fn);
-//      Debug("walk <{}>", file_path);
+      //      Debug("walk <{}>", fn);
+      //      Debug("walk <{}>", file_path);
 
       for (auto i : gh)
             delete i;
@@ -113,7 +108,7 @@ void Git::getHistory(const QString& fn, std::vector<GitHistory*>& gh)
       // ----------------------------------------------------
 
       git_oid oid;
-//      char short_hash[10] = {0}; // Für 7-stelligen Hash + Null-Terminator
+      //      char short_hash[10] = {0}; // Für 7-stelligen Hash + Null-Terminator
 
       // Schleife durch alle Commits
       while (git_revwalk_next(&oid, walker) == 0) {
@@ -180,8 +175,7 @@ void Git::getHistory(const QString& fn, std::vector<GitHistory*>& gh)
 //    oid   - BLOB OID
 //---------------------------------------------------------
 
-Lines Git::getFile(const git_oid* oid)
-      {
+Lines Git::getFile(const git_oid* oid) {
       if (!initialized)
             return Lines();
       git_blob* blob = nullptr;
@@ -194,8 +188,8 @@ Lines Git::getFile(const git_oid* oid)
             }
 
       const void* content = git_blob_rawcontent(blob);
-//      Debug("BLOB <{}>", (char*)content);
-      git_off_t size      = git_blob_rawsize(blob);
+      //      Debug("BLOB <{}>", (char*)content);
+      git_off_t size = git_blob_rawsize(blob);
 
       Lines l(QString::fromUtf8((const char*)content, size));
       for (const auto& ll : l)
@@ -210,8 +204,7 @@ Lines Git::getFile(const git_oid* oid)
 //   updateGitHistory
 //---------------------------------------------------------
 
-void Editor::updateGitHistory()
-      {
+void Editor::updateGitHistory() {
       if (!kontext() || !kontext()->file())
             return;
       QString fileName = kontext()->file()->fileName();
@@ -225,8 +218,7 @@ void Editor::updateGitHistory()
 //   showGitVersion
 //---------------------------------------------------------
 
-void File::showGitVersion(int row)
-      {
+void File::showGitVersion(int row) {
       _currentGitHistory = row;
       if (row == 0) {
             editor->kontext()->setViewMode(ViewMode::File);

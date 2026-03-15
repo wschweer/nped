@@ -58,7 +58,6 @@ struct Cursor {
 //---------------------------------------------------------
 
 enum class SelectionMode { NoSelect, RowSelect, ColSelect };
-
 struct Selection {
       SelectionMode mode;
       Cursor cursor;
@@ -104,7 +103,6 @@ struct PatchItem {
       int toRemove{0};
       QString insertText;
       void setRange(const Range& r, File*);
-
       bool empty() const { return toRemove == 0 && insertText.isEmpty(); }
       };
 

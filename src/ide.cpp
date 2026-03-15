@@ -25,8 +25,7 @@
 //   initProject
 //---------------------------------------------------------
 
-bool Editor::initProject()
-      {
+bool Editor::initProject() {
       //
       // lookup CmakeLists.txt
       //
@@ -37,7 +36,7 @@ bool Editor::initProject()
                   return false;
                   }
             }
-//      _projectRoot = cwd.absoluteFilePath("CmakeLists.txt");
+      //      _projectRoot = cwd.absoluteFilePath("CmakeLists.txt");
       _projectRoot = cwd.absolutePath();
       return true;
       }

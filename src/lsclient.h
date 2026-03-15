@@ -19,7 +19,6 @@
 #include "logger.h"
 #include "file.h"
 #include "types.h"
-
 struct LScapabilities {
       };
 
@@ -50,7 +49,7 @@ class LSclient : public QObject
       bool _initialized{false};
 
       void readerLoop();
-      void processMessage(const std::string& message);
+      bool processMessage(const std::string& message);
 
       bool write(const std::string& txt);
       bool writeMessage(const std::string& jsonPayload);
@@ -81,8 +80,7 @@ class LSclient : public QObject
       std::string name() const { return _name; }
       bool initializeRequest();
       bool initialized() const { return _initialized; }
-      bool astProvider() const { return true; }
-
+      bool astProvider() const { return _name == "clangd"; }
       void prepareRenameRequest(Kontext*);
       void renameRequest(Kontext*, const QString&, int, int);
 

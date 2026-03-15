@@ -24,6 +24,11 @@
 #include <QStatusBar>
 #include <QToolBar>
 #include <QToolButton>
+#include <QQuickStyle>
+
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <iostream>
 
 #include "editor.h"
 #include "file.h"
@@ -67,6 +72,11 @@ int main(int argc, char** argv) {
 
       signal(SIGPIPE, SIG_IGN);
 
+      qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--log-level=3"); // Nur kritische Fehler zeigen
+      QQuickStyle::setStyle(QStringLiteral("Material"));
+      QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
+      //      QQuickStyle::setFallbackStyle("Basic");
+
       QApplication app(argc, argv);
       app.setDesktopFileName("nped");
       appName = argv[0];
@@ -97,7 +107,7 @@ int main(int argc, char** argv) {
                   default: usage("bad argument"); return -1;
                   }
             }
-      int fileArgc = argc - optind;
+      int fileArgc    = argc - optind;
       char** fileArgv = argv + optind;
       Editor e(fileArgc, fileArgv);
       e.show();

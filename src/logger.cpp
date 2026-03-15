@@ -50,7 +50,7 @@ Logger::Logger() {
 
 void Logger::write(MsgType t, const MsgLogContext& c, const std::string& msg) {
       switch (t) {
-            case MsgType::Log:      // write only into log file
+            case MsgType::Log: // write only into log file
                   break;
             case MsgType::Debug:
             case MsgType::Warning:
@@ -70,4 +70,4 @@ void Logger::write(MsgType t, const MsgLogContext& c, const std::string& msg) {
 
 Logger logger;
 
-}; // namespace Logger
+      }; // namespace Logger

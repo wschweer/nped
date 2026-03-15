@@ -32,32 +32,39 @@ class MarkdownWebView : public QWebEngineView
       {
       Q_OBJECT
 
-      QString renderMarkdownToHtml(const QString& markdown);
-      QString getGithubCss() const;
-      QString getGithubDarkCss() const;
       QString getHighlightJsAssets(bool darkMode) const;
+      QString getAnchorJs() const;
+      QString getTocJs() const;
 
       QString _currentRawMarkdown;
       QString _currentRawHtml;
 
       std::vector<Action> textActions;
       Editor* editor;
-      KeyLogger* kl;
-      bool _darkMode{false};
+      KeyLogger* kl{nullptr};
       // Hilfsmethode für JS-Injection
       void executeScroll(int pixelsY);
 
     protected:
+      bool _darkMode{false};
       // Hilft uns, das interne Chromium-Widget zu finden
       void childEvent(QChildEvent* event) override;
       void installFilterOnProxy();
+      QString getGithubCss() const;
+
+    public slots:
+      QString getGithubDarkCss() const;
+      virtual void setDarkMode(bool);
 
     public:
       explicit MarkdownWebView(Editor*, QWidget* parent = nullptr);
 
       void setHtml(const QString& html);
       void setMarkdown(const QString& markdown);
-      void setDarkMode(bool);
+      void append(const QString&);
+      void clear() { setMarkdown(""); }
+      QString renderMarkdownToHtml(const QString& markdown);
+
       // Scrolling Interface
       void scrollLineUp();
       void scrollLineDown();

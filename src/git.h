@@ -20,8 +20,9 @@
 //   GitHistory
 //---------------------------------------------------------
 
-class GitHistory {
-   public:
+class GitHistory
+      {
+    public:
       git_oid oid;
       QString commitSummary;
       };
@@ -30,10 +31,10 @@ class GitHistory {
 //   GitList
 //---------------------------------------------------------
 
-class GitList : public VectorModel<GitHistory> {
-   public:
-      GitList(QObject* parent = nullptr) : VectorModel<GitHistory>(parent)
-            {
+class GitList : public VectorModel<GitHistory>
+      {
+    public:
+      GitList(QObject* parent = nullptr) : VectorModel<GitHistory>(parent) {
             addRole("display", [](GitHistory* g) { return QVariant(g->commitSummary); });
             }
       };
@@ -42,14 +43,15 @@ class GitList : public VectorModel<GitHistory> {
 //   Git
 //---------------------------------------------------------
 
-class Git {
-      bool initialized { false };
-      git_repository* repo { nullptr };
-      const char* repo_path { "." };
+class Git
+      {
+      bool initialized{false};
+      git_repository* repo{nullptr};
+      const char* repo_path{"."};
 
       bool check_error(int error_code, const char* action);
 
-   public:
+    public:
       Git();
       ~Git();
       void init();

@@ -28,6 +28,9 @@
 #include <QStringList>
 #include <QListWidget>
 #include <QProgressBar>
+#include <QMetaType>
+#include <QDataStream>
+
 #include <functional>
 #include <thread>
 #include <vector>
@@ -40,7 +43,6 @@
 #include "lsclient.h"
 #include "logger.h"
 #include "undo.h"
-#include "commands.h"
 #include "completion.h"
 #include "agent.h"
 #include "webview.h"
@@ -103,13 +105,130 @@ bool KeyLogger::eventFilter(QObject* obj, QEvent* event) {
       }
 
 //---------------------------------------------------------
+//   getSC
+//---------------------------------------------------------
+
+const ShortcutConfig& Editor::getSC(Cmd cmd) {
+      for (const auto& sc : _shortcuts)
+            if (sc.cmd == cmd)
+                  return sc;
+      Fatal("no command <{}>", int(cmd));
+      };
+
+//---------------------------------------------------------
 //   Editor
 //---------------------------------------------------------
 
 Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
+      qRegisterMetaType<ShortcutConfig>("ShortcutConfig");
+      qRegisterMetaType<FileTypeConfig>("FileTypeConfig");
+      qRegisterMetaType<LanguageServerConfig>("LanguageServerConfig");
+      qRegisterMetaType<AiModelConfig>("AiModelConfig");
+
       if (!initProject())
             Critical("init project failed");
+      loadDefaults();
       loadProjectStatus();
+      loadSettings();
+
+      // Associate a KeySequence with a function which performs an editor action.
+      // The function is surrounded by an startCmd() and an endCmd() call.
+
+      _pedActions = {
+         Action(getSC(Cmd::CMD_QUIT), [this] { quitCmd(); }),
+         Action(getSC(Cmd::CMD_SAVE_QUIT), [this] { saveQuitCmd(); }),
+
+         Action(getSC(Cmd::CMD_CHAR_RIGHT), [this] { kontext()->moveCursorRel(1, 0); }),
+         Action(getSC(Cmd::CMD_CHAR_LEFT), [this] { kontext()->moveCursorRel(-1, 0); }),
+         Action(getSC(Cmd::CMD_LINE_UP),
+                [this] {
+                      if (completionsPopup->isVisible()) {
+                            completionsPopup->up();
+                            return;
+                            }
+                      kontext()->moveCursorRel(0, -1);
+                      }),
+         Action(getSC(Cmd::CMD_LINE_DOWN),
+                [this] {
+                      if (completionsPopup->isVisible()) {
+                            completionsPopup->down();
+                            return;
+                            }
+                      kontext()->moveCursorRel(0, 1);
+                      }),
+         Action(getSC(Cmd::CMD_LINE_START), [this] { kontext()->moveCursorAbs(0, -1); }),
+         Action(getSC(Cmd::CMD_LINE_END), [this] { kontext()->moveCursorAbs(kontext()->currentLine().size(), -1); }),
+         Action(getSC(Cmd::CMD_LINE_TOP), [this] { kontext()->moveCursorTopLine(); }),
+         Action(getSC(Cmd::CMD_LINE_BOTTOM), [this] { kontext()->moveCursorBottomLine(); }),
+         Action(getSC(Cmd::CMD_PAGE_UP),
+                [this] {
+                      int n = (_editWidget->rows() * 3) / 4;
+                      kontext()->moveCursorRel(0, -n, MoveType::Page);
+                      }),
+         Action(getSC(Cmd::CMD_PAGE_DOWN),
+                [this] {
+                      int n = (_editWidget->rows() * 3) / 4;
+                      kontext()->moveCursorRel(0, n, MoveType::Page);
+                      }),
+         Action(getSC(Cmd::CMD_FILE_BEGIN), [this] { kontext()->moveCursorAbs(-1, 0); }),
+         Action(getSC(Cmd::CMD_FILE_END), [this] { kontext()->moveCursorAbs(-1, kontext()->rows() - 1); }),
+         Action(getSC(Cmd::CMD_WORD_LEFT), [this] { kontext()->movePrevWord(); }),
+         Action(getSC(Cmd::CMD_WORD_RIGHT), [this] { kontext()->moveNextWord(); }),
+         Action(getSC(Cmd::CMD_ENTER), [this] { enterCmd(); }),
+
+         Action(getSC(Cmd::CMD_SAVE), [this] { kontext()->file()->save(); }),
+         Action(getSC(Cmd::CMD_KONTEXT_COPY), [this] { copyKontext(); }),
+         Action(getSC(Cmd::CMD_KONTEXT_PREV), [this] { prevKontext(); }),
+         Action(getSC(Cmd::CMD_KONTEXT_NEXT), [this] { nextKontext(); }),
+         Action(getSC(Cmd::CMD_SHOW_BRACKETS), [this] { cBrackets(); }),
+         Action(getSC(Cmd::CMD_SHOW_LEVEL), [this] { cLevel(); }),
+
+         Action(getSC(Cmd::CMD_KONTEXT_UP), [this] { kontext()->moveCursorRel(0, -1, MoveType::Roll); }),
+         Action(getSC(Cmd::CMD_KONTEXT_DOWN), [this] { kontext()->moveCursorRel(0, 1, MoveType::Roll); }),
+         Action(getSC(Cmd::CMD_DELETE_LINE), [this] { deleteLine(); }),
+         Action(getSC(Cmd::CMD_DELETE_LINE_RIGHT), [this] { deleteRestOfLine(); }),
+         Action(getSC(Cmd::CMD_UNDO), [this] { kontext()->file()->undo()->undo(); }),
+         Action(getSC(Cmd::CMD_REDO), [this] { kontext()->file()->undo()->redo(); }),
+         Action(getSC(Cmd::CMD_RUBOUT), [this] { rubout(); }),
+         Action(getSC(Cmd::CMD_CHAR_DELETE), [this] { deleteChar(); }),
+         Action(getSC(Cmd::CMD_INSERT_LINE),
+                [this] {
+                      kontext()->moveCursorAbs(kontext()->currentLine().size(), -1);
+                      input("\n");
+                      }),
+
+         Action(getSC(Cmd::CMD_TAB), [this] { insertTab(); }),
+         Action(getSC(Cmd::CMD_PICK), [this] { pick(); }),
+         Action(getSC(Cmd::CMD_PUT), [this] { put(); }),
+         Action(getSC(Cmd::CMD_SELECT_ROW), [this] { rowSelect(); }),
+         Action(getSC(Cmd::CMD_SELECT_COL), [this] { colSelect(); }),
+         Action(getSC(Cmd::CMD_FORMAT), [this] { formatting(); }),
+         Action(getSC(Cmd::CMD_VIEW_FUNCTIONS),
+                [this] {
+                      kontext()->toggleViewMode();
+                      updateViewMode();
+                      }),
+         Action(getSC(Cmd::CMD_VIEW_BUGS), [this] { kontext()->setViewMode(ViewMode::Bugs); }),
+         Action(getSC(Cmd::CMD_SEARCH_NEXT), [this] { searchNext(); }),
+         Action(getSC(Cmd::CMD_SEARCH_PREV), [this] { searchPrev(); }),
+         Action(getSC(Cmd::CMD_DELETE_WORD), [this] { deleteNextWord(); }),
+         Action(getSC(Cmd::CMD_ENTER_WORD), [this] { getNextWord(); }),
+         Action(getSC(Cmd::CMD_GOTO_TYPE_DEFINITION), [this] { gotoTypeDefinition(); }),
+         Action(getSC(Cmd::CMD_GOTO_IMPLEMENTATION), [this] { gotoImplementation(); }),
+         Action(getSC(Cmd::CMD_GOTO_DEFINITION), [this] { gotoDefinition(); }),
+         Action(getSC(Cmd::CMD_GOTO_BACK), [this] { backKontext(); }),
+         Action(getSC(Cmd::CMD_SHOW_INFO), [this] { hover(); }),
+         Action(getSC(Cmd::CMD_EXPAND_MACROS), [this] { kontext()->file()->expandMacros(); }),
+         Action(getSC(Cmd::CMD_COMPLETIONS), [this] { requestCompletions(); }),
+         Action(getSC(Cmd::CMD_FUNCTION_HEADER), [this] { kontext()->createFunctionHeader(); }),
+         Action(getSC(Cmd::CMD_GIT_TOGGLE), [this] { _gitButton->setChecked(!_gitButton->isChecked()); }),
+         Action(getSC(Cmd::CMD_FOLD_ALL), [this] { foldAll(); }),
+         Action(getSC(Cmd::CMD_UNFOLD_ALL), [this] { unfoldAll(); }),
+         Action(getSC(Cmd::CMD_FOLD_TOGGLE), [this] { foldToggle(); }),
+         //             Action(getSC(Cmd::CMD_SEARCH_LIST, [this] { kontext()->setViewMode(ViewMode::SearchResults); }),
+         Action(getSC(Cmd::CMD_RENAME), [this] { rename(); }),
+            };
+
       KeyLogger* kl = new KeyLogger(&_pedActions, this);
       connect(kl, &KeyLogger::triggered, [this](Action* a) {
             startCmd();
@@ -118,104 +237,6 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             keyLabel()->setText("");
             });
       connect(kl, &KeyLogger::keyLabelChanged, [this](QString s) { _keyLabel->setText(s); });
-
-      // Associate a KeySequence with a function which performs an editor action.
-      // The function is surrounded by an startCmd() and an endCmd() call.
-
-      _pedActions = {
-         Action(CMD_QUIT, [this] { quitCmd(); }),
-         Action(CMD_SAVE_QUIT, [this] { saveQuitCmd(); }),
-
-         Action(CMD_CHAR_RIGHT, [this] { kontext()->moveCursorRel(1, 0); }),
-         Action(CMD_CHAR_LEFT, [this] { kontext()->moveCursorRel(-1, 0); }),
-         Action(CMD_LINE_UP,
-                [this] {
-                      if (completionsPopup->isVisible()) {
-                            completionsPopup->up();
-                            return;
-                            }
-                      kontext()->moveCursorRel(0, -1);
-                      }),
-         Action(CMD_LINE_DOWN,
-                [this] {
-                      if (completionsPopup->isVisible()) {
-                            completionsPopup->down();
-                            return;
-                            }
-                      kontext()->moveCursorRel(0, 1);
-                      }),
-         Action(CMD_LINE_START, [this] { kontext()->moveCursorAbs(0, -1); }),
-         Action(CMD_LINE_END, [this] { kontext()->moveCursorAbs(kontext()->currentLine().size(), -1); }),
-         Action(CMD_LINE_TOP, [this] { kontext()->moveCursorTopLine(); }),
-         Action(CMD_LINE_BOTTOM, [this] { kontext()->moveCursorBottomLine(); }),
-         Action(CMD_PAGE_UP,
-                [this] {
-                      int n = (_editWidget->rows() * 3) / 4;
-                      kontext()->moveCursorRel(0, -n, MoveType::Page);
-                      }),
-         Action(CMD_PAGE_DOWN,
-                [this] {
-                      int n = (_editWidget->rows() * 3) / 4;
-                      kontext()->moveCursorRel(0, n, MoveType::Page);
-                      }),
-         Action(CMD_FILE_BEGIN, [this] { kontext()->moveCursorAbs(-1, 0); }),
-         Action(CMD_FILE_END, [this] { kontext()->moveCursorAbs(-1, kontext()->rows() - 1); }),
-         Action(CMD_WORD_LEFT, [this] { kontext()->movePrevWord(); }),
-         Action(CMD_WORD_RIGHT, [this] { kontext()->moveNextWord(); }),
-         Action(CMD_ENTER, [this] { enterCmd(); }),
-
-         Action(CMD_SAVE, [this] { kontext()->file()->save(); }),
-         Action(CMD_KONTEXT_COPY, [this] { copyKontext(); }),
-         Action(CMD_KONTEXT_PREV, [this] { prevKontext(); }),
-         Action(CMD_KONTEXT_NEXT, [this] { nextKontext(); }),
-         Action(CMD_SHOW_BRACKETS, [this] { cBrackets(); }),
-         Action(CMD_SHOW_LEVEL, [this] { cLevel(); }),
-
-         Action(CMD_KONTEXT_UP, [this] { kontext()->moveCursorRel(0, -1, MoveType::Roll); }),
-         Action(CMD_KONTEXT_DOWN, [this] { kontext()->moveCursorRel(0, 1, MoveType::Roll); }),
-         Action(CMD_DELETE_LINE, [this] { deleteLine(); }),
-         Action(CMD_DELETE_LINE_RIGHT, [this] { deleteRestOfLine(); }),
-         Action(CMD_UNDO, [this] { kontext()->file()->undo()->undo(); }),
-         Action(CMD_REDO, [this] { kontext()->file()->undo()->redo(); }),
-         Action(CMD_RUBOUT, [this] { rubout(); }),
-         Action(CMD_CHAR_DELETE, [this] { deleteChar(); }),
-         Action(CMD_INSERT_LINE,
-                [this] {
-                      kontext()->moveCursorAbs(kontext()->currentLine().size(), -1);
-                      input("\n");
-                      }),
-
-         Action(CMD_TAB, [this] { insertTab(); }),
-         Action(CMD_PICK, [this] { pick(); }),
-         Action(CMD_PUT, [this] { put(); }),
-         Action(CMD_SELECT_ROW, [this] { rowSelect(); }),
-         Action(CMD_SELECT_COL, [this] { colSelect(); }),
-         Action(CMD_FORMAT, [this] { formatting(); }),
-         Action(CMD_VIEW_FUNCTIONS,
-                [this] {
-                      kontext()->toggleViewMode();
-                      updateViewMode();
-                      }),
-         Action(CMD_VIEW_BUGS, [this] { kontext()->setViewMode(ViewMode::Bugs); }),
-         Action(CMD_SEARCH_NEXT, [this] { searchNext(); }),
-         Action(CMD_SEARCH_PREV, [this] { searchPrev(); }),
-         Action(CMD_DELETE_WORD, [this] { deleteNextWord(); }),
-         Action(CMD_ENTER_WORD, [this] { getNextWord(); }),
-         Action(CMD_GOTO_TYPE_DEFINITION, [this] { gotoTypeDefinition(); }),
-         Action(CMD_GOTO_IMPLEMENTATION, [this] { gotoImplementation(); }),
-         Action(CMD_GOTO_DEFINITION, [this] { gotoDefinition(); }),
-         Action(CMD_GOTO_BACK, [this] { backKontext(); }),
-         Action(CMD_SHOW_INFO, [this] { hover(); }),
-         Action(CMD_EXPAND_MACROS, [this] { kontext()->file()->expandMacros(); }),
-         Action(CMD_COMPLETIONS, [this] { requestCompletions(); }),
-         Action(CMD_FUNCTION_HEADER, [this] { kontext()->createFunctionHeader(); }),
-         Action(CMD_GIT_TOGGLE, [this] { _gitButton->setChecked(!_gitButton->isChecked()); }),
-         Action(CMD_FOLD_ALL, [this] { foldAll(); }),
-         Action(CMD_UNFOLD_ALL, [this] { unfoldAll(); }),
-         Action(CMD_FOLD_TOGGLE, [this] { foldToggle(); }),
-         //             Action(CMD_SEARCH_LIST, [this] { kontext()->setViewMode(ViewMode::SearchResults); }),
-         Action(CMD_RENAME, [this] { rename(); }),
-            };
 
       QWidget* box = new QWidget;
       setCentralWidget(box);
@@ -239,16 +260,21 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       tabBar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
       hbox->addWidget(tabBar, 10, Qt::AlignLeft);
 
+      QString buttonStyleSheet = "QToolButton { min-width: 32px; min-height: 32px; qproperty-iconSize: 32px 32px; padding: 0px; "
+                                 "background: transparent; border: none; font: bold; color: rgba(128,128,0,255); }"
+                                 "QToolButton:hover { background: rgba(128, 128, 128, 50); border: 1px solid gray; border-radius: 3px; }";
+
       //*****************************************
       //    AiButton
       //*****************************************
 
       infoButton = new QToolButton();
       infoButton->setText("Ai");
+      infoButton->setStyleSheet(buttonStyleSheet);
       infoButton->setCheckable(true);
       infoButton->setChecked(false);
+      infoButton->setToolTip("toggle AI panel");
       hbox->addWidget(infoButton, 0, Qt::AlignRight);
-
       connect(infoButton, &QToolButton::toggled, [this] { agent->setVisible(infoButton->isChecked()); });
 
       _stack      = new QStackedWidget(this);
@@ -256,6 +282,9 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       vScroll     = new QScrollBar(Qt::Vertical);
       _editWidget = new EditWidget(nullptr, this);
       _mdWidget   = new MarkdownWebView(this, this);
+      _mdWidget->setZoomFactor(1.5);
+      connect(this, &Editor::darkModeChanged, _mdWidget, &MarkdownWebView::setDarkMode);
+      _mdWidget->setDarkMode(darkMode());
       _stack->addWidget(_editWidget);
       _stack->addWidget(_mdWidget);
 
@@ -275,26 +304,44 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       splitter->addWidget(w);
 
       agent = new Agent(this, box);
-      agent->setStyleSheet("background-color: #d0d0d0; color: #000000;");
+      //      agent->setStyleSheet("background-color: #d0d0d0; color: #000000;");
       agent->setMinimumWidth(500);
       splitter->addWidget(agent);
       splitter->setCollapsible(splitter->indexOf(agent), false);
-      agent->connectToServer();
 
       //*****************************************
       //    Git
       //*****************************************
 
       _gitButton = new QToolButton();
-      _gitButton->setText("G");
+      _gitButton->setIcon(QIcon(":images/Git-Icon-1788C.svg"));
+      _gitButton->setToolTip("toggle GIT panel");
+      _gitButton->setStyleSheet(buttonStyleSheet);
       _gitButton->setCheckable(true);
       _gitButton->setChecked(false);
-      hbox->addWidget(_gitButton, 0, Qt::AlignRight);
+      hbox->addWidget(_gitButton, 0);
 
       connect(_gitButton, &QToolButton::toggled, [this] {
             updateGitHistory();
             gitPanel->setVisible(_gitButton->isChecked());
             });
+
+      //*****************************************
+      //    Config
+      //*****************************************
+
+      auto configButton = new QToolButton();
+      configButton->setIcon(QIcon(":images/configure.svg"));
+      configButton->setStyleSheet(buttonStyleSheet);
+      configButton->setToolTip("Configure...");
+      connect(configButton, &QToolButton::clicked, [this] {
+            ConfigDialogWrapper dialog(this, this);
+            if (dialog.exec() == QDialog::Accepted)
+                  initFont();
+            else
+                  Debug("FAIL");
+            });
+      hbox->addWidget(configButton, 0, Qt::AlignRight);
 
       gitPanel = new QListView(box);
       gitPanel->setMinimumWidth(500);
@@ -385,9 +432,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       initFont();
       _git.init();
       updateGitHistory();
-      // load the clangd language server in advance so its ready when
-      // called by the ki agent
-      getLSclient("clangd");
+
+      connect(this, &Editor::fgColorChanged, [this] { update(); });
       }
 
 Editor::~Editor() {
@@ -427,9 +473,9 @@ void Editor::updateViewMode() {
                         _mdWidget->setHtml(kontext()->file()->plainText());
                   } break;
 
-//            case ViewMode::Functions:
-//                kontext()->setViewMode(ViewMode::Functions);
-//                  break;
+                  //            case ViewMode::Functions:
+                  //                kontext()->setViewMode(ViewMode::Functions);
+                  //                  break;
             }
       }
 
@@ -449,7 +495,7 @@ void Kontext::toggleViewMode() {
                   case ViewMode::File:
                         _viewMode = ViewMode::Functions;
                         break;
-                        }
+                                    }
 #endif
             setViewMode(ViewMode::Functions);
             }
@@ -703,36 +749,40 @@ void Editor::initEnterWidget() {
       enter->hide();
 
       std::vector<Action> enterActions = {
-         Action("Escape", [this] { leaveEnter(); }),
-         Action("F3",
+         Action(getSC(Cmd::CMD_ENTER), [] {}),
+
+         Action(getSC(Cmd::CMD_ENTER_ADD_FILE),
                 [this] {
-                      addFile(enterLine->text());
+                      QString fn = enterLine->text();
+                      if (!fn.startsWith("/")) {
+                            QFileInfo fi(kontext()->file()->fi());
+                            fn = fi.absolutePath() + "/" + fn;
+                            }
+                      addFile(fn);
                       setCurrentKontext(_kontextList.size() - 1);
                       update();
                       }),
-         Action("F7",
+         Action(getSC(Cmd::CMD_ENTER_SEARCH),
                 [this] {
                       startCmd();
                       search(enterLine->text());
                       endCmd();
                       }),
-         Action("Ctrl+F",
+         Action(getSC(Cmd::CMD_ENTER_CREATE_FUNCTION),
                 [this] {
                       startCmd();
                       kontext()->createFunction(enterLine->text());
                       endCmd();
                       }),
-         Action("Ctrl+G",
+         Action(getSC(Cmd::CMD_ENTER_GOTO_LINE),
                 [this] {
                       kontext()->gotoLine(enterLine->text());
                       update();
                       }),
-            };
 
+            };
       for (auto& a : enterActions) {
-            QStringList sl = QString(a.keys).split(';');
-            for (auto s : sl) {
-                  auto ks         = QKeySequence::fromString(s);
+            for (const auto& ks : a.seq) {
                   QAction* action = new QAction(this);
                   action->setShortcut(ks);
                   action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
@@ -795,6 +845,7 @@ void Editor::endCmd() {
 void Editor::quitCmd() {
       saveProjectStatus();
       saveStatus();
+      agent->saveStatus();
       close();
       }
 
@@ -828,7 +879,7 @@ void Editor::saveQuitCmd() {
 //---------------------------------------------------------
 
 void Editor::initFont() {
-      _font = QFont(fontFamily);
+      _font = QFont(_fontFamily);
       _font.setFixedPitch(true);
       _font.setPointSizeF(_fontSize);
 
@@ -881,7 +932,7 @@ void Editor::saveStatus() {
       j["state"]       = state.toHex().toStdString();
 
       j["fontSize"]   = fontSize();
-      j["fontFamily"] = fontFamily.toStdString();
+      j["fontFamily"] = _fontFamily.toStdString();
 
       QByteArray splitterState = splitter->saveState();
       j["splitter"]            = splitterState.toHex().toStdString();
@@ -921,7 +972,7 @@ void Editor::saveProjectStatus() {
       j["version"] = "1.0";
       j["aiModel"] = agent->currentModel().toStdString();
 
-      std::ofstream fs(projectRoot().toStdString() + "/.nped-project.json");
+      std::ofstream fs(projectRoot().toStdString() + "/.nped/project.json");
       fs << j.dump(4);
       agent->saveStatus();
       }
@@ -931,7 +982,7 @@ void Editor::saveProjectStatus() {
 //---------------------------------------------------------
 
 void Editor::loadProjectStatus() {
-      std::ifstream fs(projectRoot().toStdString() + "/.nped-project.json");
+      std::ifstream fs(projectRoot().toStdString() + "/.nped/project.json");
       if (fs.is_open()) {
             try {
                   json j;
@@ -941,10 +992,10 @@ void Editor::loadProjectStatus() {
                         _settingsLLModel = QString::fromStdString(j["aiModel"].get<std::string>());
                   }
             catch (const json::parse_error& e) {
-                  Critical("Error parsing .nped.json: {}", e.what());
+                  Critical("Error parsing ./.nped/project.json: {}", e.what());
                   }
             catch (const json::type_error& e) {
-                  Critical("Type error reading .nped.json: {}", e.what());
+                  Critical("Type error reading .nped/project.json: {}", e.what());
                   }
             }
       }
@@ -955,6 +1006,7 @@ void Editor::loadProjectStatus() {
 //---------------------------------------------------------
 
 bool Editor::loadStatus(int argc, char** argv) {
+      loadSettings(); // TODO: inline here
       // do not load history if there are filenames on the command line
       bool loadFiles = (argc == 0);
 
@@ -976,7 +1028,7 @@ bool Editor::loadStatus(int argc, char** argv) {
                   if (j.contains("fontSize"))
                         setFontSize(j["fontSize"].get<double>());
                   if (j.contains("fontFamily"))
-                        fontFamily = QString::fromStdString(j["fontFamily"].get<std::string>());
+                        _fontFamily = QString::fromStdString(j["fontFamily"].get<std::string>());
                   if (j.contains("search"))
                         searchPattern.setPattern(QString::fromStdString(j["search"].get<std::string>()));
                   if (j.contains("replace"))
@@ -1062,7 +1114,6 @@ bool Editor::loadStatus(int argc, char** argv) {
       urlLabel->setText(kontext()->file()->path());
       update();
       updateCursor();
-      agent->loadStatus();
       return true;
       }
 
@@ -1635,6 +1686,8 @@ json Editor::readJson(const QString& path) {
 
 //---------------------------------------------------------
 //   undoPatch
+//    p2 is position after undo
+//    p1 is position after redo
 //---------------------------------------------------------
 
 void Editor::undoPatch(const Pos& pos, int len, const QString& s, const Cursor& p1, const Cursor& p2) {

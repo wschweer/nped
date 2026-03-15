@@ -192,10 +192,9 @@ QString Editor::evalPP(const QString& pdata) {
                               jsonArgs += ", ";
                         jsonArgs += format("\\\"scriptable\\\":{}", item["scriptable"]);
                         }
-//                  jsonArgs = QString::fromStdString(jsonArgs).replace("\"", "\\\"").toStdString();
+                  //                  jsonArgs = QString::fromStdString(jsonArgs).replace("\"", "\\\"").toStdString();
                   result += format("      Property* {0}Property = PropertyMap::push_back(\"{0}\", ", name);
-                  result += format("new Property(this, \"{}\", [this] {{ {}Changed(); }}, {}",
-                          name, name, item["default"]);
+                  result += format("new Property(this, \"{}\", [this] {{ {}Changed(); }}, {}", name, name, item["default"]);
                   if (jsonArgs.empty())
                         result += "));\n";
                   else
@@ -282,9 +281,9 @@ QString Editor::evalPP(const QString& pdata) {
                   continue;
             if (item.contains("pr") && item["pr"] == "true") {
                   // QString proto() const { return get<QString>(protoProperty->value()); }
-//                  result += std::format("      {} {}() const {{ return get<{}>({}Property->value()); }}\n", item.at("type"), item["name"],
-                  result += std::format("      {} {}() const {{ return {}Property->value().value<{}>(); }}\n",
-              item.at("type"), item["name"], item["name"], item.at("type"));
+                  //                  result += std::format("      {} {}() const {{ return get<{}>({}Property->value()); }}\n", item.at("type"), item["name"],
+                  result += std::format("      {} {}() const {{ return {}Property->value().value<{}>(); }}\n", item.at("type"),
+                                        item["name"], item["name"], item.at("type"));
                   }
             else
                   result += std::format("      {} {}() const {{ return _{};}}\n", item.at("type"), item["name"], item["name"]);
@@ -352,7 +351,7 @@ File::File(Editor* e, const QFileInfo& fi) : _fi(fi), editor(e) {
                   QRegularExpression wildcard(pattern);
                   auto match = wildcard.match(filename);
                   if (match.hasMatch()) {
-                        // Debug("match <{}>", pattern);
+                        Debug("match <{}> <{}>", pattern, filename);
                         fileType = &ft;
                         break;
                         }
@@ -391,9 +390,8 @@ void File::setViewMode(ViewMode m, const Pos&) {
 //---------------------------------------------------------
 
 bool File::readOnly() const {
-      if (editor && editor->getAgent() && editor->getAgent()->isWorking()) {
+      if (editor && editor->getAgent() && editor->getAgent()->isWorking())
             return true;
-            }
       return _readOnly || (_viewMode != ViewMode::File);
       }
 
@@ -492,8 +490,10 @@ void File::lcOpen() {
             }
       else {
             connect(client, &LSclient::initializedChanged, [this] {
-                  client->didOpenNotification(this);
-                  updateAST();
+                  if (client->initialized()) {
+                        client->didOpenNotification(this);
+                        updateAST();
+                        }
                   });
             }
       }
@@ -503,7 +503,7 @@ void File::lcOpen() {
 //---------------------------------------------------------
 
 void File::updateAST() {
-      if (!client)
+      if (!client || !client->initialized())
             return;
       if (client->astProvider())
             client->astRequest(this);
@@ -881,8 +881,7 @@ void Lines::insertText(const Pos& pos, const QString& text) {
 //   posValid
 //---------------------------------------------------------
 
-bool File::posValid(const Pos& pos) const
-      {
+bool File::posValid(const Pos& pos) const {
       if (pos.col < 0 || pos.row < 0)
             return false;
       if (pos.col > columns(pos.row))
@@ -1155,14 +1154,13 @@ bool Lines::prevLineIsEmpty(int i) const {
 //   isString
 //---------------------------------------------------------
 
-bool Line::isString() const
-      {
+bool Line::isString() const {
       bool val = false;
       for (const auto& m : marks()) {
             // col1 points to first character in comment
             // Debug: special case: there is code before the comment
-//            if (m.type == Marker::String)
-//                  Debug("String {} {} <{}>", m.col1, m.col2, qstring());
+            //            if (m.type == Marker::String)
+            //                  Debug("String {} {} <{}>", m.col1, m.col2, qstring());
             if (m.type == Marker::String && m.col1 == 0 && m.col2 == size()) {
                   val = true;
                   break;
@@ -1200,8 +1198,7 @@ void File::postprocessFormat() {
             // make sure there is an empty line before every comment block
             // starting with "//------"
             //
-            if (l.startsWith("//-----") && !_fileText.prevLineIsEmpty(i) && i &&
-                !_fileText[i - 1].qstring().trimmed().startsWith("//")) {
+            if (l.startsWith("//-----") && !_fileText.prevLineIsEmpty(i) && i && !_fileText[i - 1].qstring().trimmed().startsWith("//")) {
                   undo()->push(new Patch(this, {0, i}, 0, "\n", cursor, cursor));
                   ++i;
                   }

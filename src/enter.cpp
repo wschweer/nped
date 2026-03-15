@@ -45,8 +45,7 @@
 //---------------------------------------------------------
 
 HistoryLineEdit::HistoryLineEdit(QWidget* parent)
-    : QLineEdit(parent), current_line(0), completer(0), completion_minchars(1), completion_max(0)
-      {
+    : QLineEdit(parent), current_line(0), completer(0), completion_minchars(1), completion_max(0) {
       setFocusPolicy(Qt::NoFocus);
       connect(this, SIGNAL(returnPressed()), SLOT(execute()));
       }
@@ -55,8 +54,7 @@ HistoryLineEdit::HistoryLineEdit(QWidget* parent)
 //   keyPressEvent
 //---------------------------------------------------------
 
-void HistoryLineEdit::keyPressEvent(QKeyEvent* ev)
-      {
+void HistoryLineEdit::keyPressEvent(QKeyEvent* ev) {
       if (ev->key() == Qt::Key_Up) {
             previous_line();
             return;
@@ -111,16 +109,14 @@ void HistoryLineEdit::keyPressEvent(QKeyEvent* ev)
                               setSelection(sel, sellength);
                         }
                   // Set the rectangle to the appropriate width
-                  rect.setWidth(completer->popup()->sizeHintForColumn(0) +
-                                completer->popup()->verticalScrollBar()->sizeHint().width());
+                  rect.setWidth(completer->popup()->sizeHintForColumn(0) + completer->popup()->verticalScrollBar()->sizeHint().width());
                   // Display the completer under the rectangle
                   completer->complete(rect);
                   }
             }
       }
 
-void HistoryLineEdit::wheelEvent(QWheelEvent*)
-      {
+void HistoryLineEdit::wheelEvent(QWheelEvent*) {
       Debug("==================================================");
 #if 0 // TODO
       if ( ev->delta() > 0 )
@@ -134,8 +130,7 @@ void HistoryLineEdit::wheelEvent(QWheelEvent*)
 //   previous_line
 //---------------------------------------------------------
 
-void HistoryLineEdit::previous_line()
-      {
+void HistoryLineEdit::previous_line() {
       Debug("lines {}", lines.size());
       if (lines.empty())
             return;
@@ -149,8 +144,7 @@ void HistoryLineEdit::previous_line()
       setText(lines[current_line]);
       }
 
-void HistoryLineEdit::next_line()
-      {
+void HistoryLineEdit::next_line() {
       Debug("lines {}", lines.size());
       if (lines.empty())
             return;
@@ -166,8 +160,7 @@ void HistoryLineEdit::next_line()
             setText(lines[current_line]);
       }
 
-void HistoryLineEdit::execute()
-      {
+void HistoryLineEdit::execute() {
       if (lines.empty() || lines.back() != text())
             lines << text();
       current_line = lines.size();
@@ -175,14 +168,12 @@ void HistoryLineEdit::execute()
       emit lineExecuted(lines.back());
       }
 
-void HistoryLineEdit::setHistory(const QStringList& history)
-      {
+void HistoryLineEdit::setHistory(const QStringList& history) {
       lines        = history;
       current_line = lines.size();
       }
 
-int HistoryLineEdit::word_start() const
-      {
+int HistoryLineEdit::word_start() const {
       // lastIndexOf returns the index of the last space or -1 if there are no spaces
       // so that + 1 returns the index of the character starting the word or 0
       //    int after_space = text().leftRef(cursorition()).lastIndexOf(' ') | 1;
@@ -193,21 +184,18 @@ int HistoryLineEdit::word_start() const
       return after_space;
       }
 
-QString HistoryLineEdit::current_word() const
-      {
+QString HistoryLineEdit::current_word() const {
       int completion_index = word_start();
       return text().mid(completion_index, cursorPosition() - completion_index);
       }
 
-void HistoryLineEdit::autocomplete(const QString& completion)
-      {
+void HistoryLineEdit::autocomplete(const QString& completion) {
       int completion_index = word_start();
       setText(text().replace(completion_index, cursorPosition() - completion_index, completion));
       setCursorPosition(completion_index + completion.size());
       }
 
-void HistoryLineEdit::setWordCompleter(QCompleter* comp)
-      {
+void HistoryLineEdit::setWordCompleter(QCompleter* comp) {
       if (completer) {
             disconnect(completer, 0, this, 0);
             completer->setWidget(0);
@@ -224,17 +212,14 @@ void HistoryLineEdit::setWordCompleter(QCompleter* comp)
             }
       }
 
-void HistoryLineEdit::setWordCompleterPrefix(const QString& prefix)
-      {
+void HistoryLineEdit::setWordCompleterPrefix(const QString& prefix) {
       completion_prefix = prefix;
       }
 
-void HistoryLineEdit::setWordCompleterMinChars(int min_chars)
-      {
+void HistoryLineEdit::setWordCompleterMinChars(int min_chars) {
       completion_minchars = min_chars;
       }
 
-void HistoryLineEdit::setWordCompleterMaxSuggestions(int max)
-      {
+void HistoryLineEdit::setWordCompleterMaxSuggestions(int max) {
       completion_max = max;
       }

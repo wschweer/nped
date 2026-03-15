@@ -1,0 +1,342 @@
+//=============================================================================
+//  nped Program Editor
+//
+//  Copyright (C) 2025-2026 Werner Schweer
+//
+//  This program is free software; you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License version 2
+//  as published by the Free Software Foundation and appearing in
+//  the file LICENCE.GPL
+//=============================================================================
+
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QJsonDocument>
+
+#include "chatdisplay.h"
+
+//---------------------------------------------------------
+//   getHighlightJsCss
+//---------------------------------------------------------
+
+QString ChatDisplay::getHighlightJsCss() const {
+      return R"(
+pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}/*!
+  Theme: GitHub
+  Description: Light theme as seen on github.com
+  Author: github.com
+  Maintainer: @Hirse
+  Updated: 2021-05-15
+
+  Outdated base version: https://github.com/primer/github-syntax-light
+  Current colors taken from GitHub's CSS
+*/.hljs{color:#24292e;background:#fff}.hljs-doctag,.hljs-keyword,.hljs-meta .hljs-keyword,.hljs-template-tag,.hljs-template-variable,.hljs-type,.hljs-variable.language_{color:#d73a49}.hljs-title,.hljs-title.class_,.hljs-title.class_.inherited__,.hljs-title.function_{color:#6f42c1}.hljs-attr,.hljs-attribute,.hljs-literal,.hljs-meta,.hljs-number,.hljs-operator,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-id,.hljs-variable{color:#005cc5}.hljs-meta .hljs-string,.hljs-regexp,.hljs-string{color:#032f62}.hljs-built_in,.hljs-symbol{color:#e36209}.hljs-code,.hljs-comment,.hljs-formula{color:#6a737d}.hljs-name,.hljs-quote,.hljs-selector-pseudo,.hljs-selector-tag{color:#22863a}.hljs-subst{color:#24292e}.hljs-section{color:#005cc5;font-weight:700}.hljs-bullet{color:#735c0f}.hljs-emphasis{color:#24292e;font-style:italic}.hljs-strong{color:#24292e;font-weight:700}.hljs-addition{color:#22863a;background-color:#f0fff4}.hljs-deletion{color:#b31d28;background-color:#ffeef0}
+      )";
+      }
+
+//---------------------------------------------------------
+//   getHighlightJsDarkCss
+//---------------------------------------------------------
+
+QString ChatDisplay::getHighlightJsDarkCss() const {
+      return R"(
+pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}/*!
+  Theme: GitHub Dark
+  Description: Dark theme as seen on github.com
+  Author: github.com
+  Maintainer: @Hirse
+  Updated: 2021-05-15
+
+  Outdated base version: https://github.com/primer/github-syntax-dark
+  Current colors taken from GitHub's CSS
+*/.hljs{color:#c9d1d9;background:#0d1117}.hljs-doctag,.hljs-keyword,.hljs-meta .hljs-keyword,.hljs-template-tag,.hljs-template-variable,.hljs-type,.hljs-variable.language_{color:#ff7b72}.hljs-title,.hljs-title.class_,.hljs-title.class_.inherited__,.hljs-title.function_{color:#d2a8ff}.hljs-attr,.hljs-attribute,.hljs-literal,.hljs-meta,.hljs-number,.hljs-operator,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-id,.hljs-variable{color:#79c0ff}.hljs-meta .hljs-string,.hljs-regexp,.hljs-string{color:#a5d6ff}.hljs-built_in,.hljs-symbol{color:#ffa657}.hljs-code,.hljs-comment,.hljs-formula{color:#8b949e}.hljs-name,.hljs-quote,.hljs-selector-pseudo,.hljs-selector-tag{color:#7ee787}.hljs-subst{color:#c9d1d9}.hljs-section{color:#1f6feb;font-weight:700}.hljs-bullet{color:#f2cc60}.hljs-emphasis{color:#c9d1d9;font-style:italic}.hljs-strong{color:#c9d1d9;font-weight:700}.hljs-addition{color:#aff5b4;background-color:#033a16}.hljs-deletion{color:#ffdcd7;background-color:#67060c}
+      )";
+      }
+
+//---------------------------------------------------------
+//   getChatCss
+//---------------------------------------------------------
+
+QString ChatDisplay::getChatCss() const {
+      return R"(
+        body { font-family: 'Inter', sans-serif; background: #ffffff; color: #1f2328; line-height: 1.0; }
+        .message {
+            padding: 12px 16px;
+            margin: 10px 0;
+            border-radius: 12px;
+            max-width: 90%;
+            }
+        .ai      { background: #f6f8fa; border-left: 4px solid #0969da; }
+        .user    { background: #e6f0ff; margin-left: auto; border-right: 4px solid #555; }
+        /* Tabellen Styling */
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        th, td { border: 1px solid #d0d7de; padding: 8px; text-align: left; }
+        th { background: #f6f8fa; }
+        pre { background: #f6f8fa; padding: 12px; border-radius: 6px; overflow-x: auto; border: 1px solid #d0d7de; }
+        code { font-family: 'Fira Code', monospace; font-size: 0.9em; }
+        .thought-box {
+          background-color: #f6f8fa;
+          border: 1px solid #d0d7de;
+          border-radius: 8px;
+          margin-bottom: 10px;
+          font-size: 0.9em;
+          color: #555;
+          }
+        .thought-box summary {
+          padding: 8px;
+          cursor: pointer;
+          font-weight: bold;
+          color: #0969da;
+          outline: none;
+          }
+       .thought-content {
+          padding: 8px 12px;
+          border-top: 1px solid #d0d7de;
+          font-style: italic;
+          }
+      )";
+      }
+
+//---------------------------------------------------------
+//   getChatDarkCss
+//---------------------------------------------------------
+
+QString ChatDisplay::getChatDarkCss() const {
+      return R"(
+        body { font-family: 'Inter', sans-serif; background: #121212; color: #e0e0e0; line-height: 1.0; }
+        .message {
+            padding: 12px 16px;
+            margin: 10px 0;
+            border-radius: 12px;
+            max-width: 90%;
+            }
+        .ai      { background: #1e1e1e; border-left: 4px solid #0078d4; }
+        .user    { background: #2c2c2c; margin-left: auto; border-right: 4px solid #555; }
+        /* Tabellen Styling */
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        th, td { border: 1px solid #444; padding: 8px; text-align: left; }
+        th { background: #333; }
+        pre { background: #000; padding: 12px; border-radius: 6px; overflow-x: auto; }
+        code { font-family: 'Fira Code', monospace; font-size: 0.9em; }
+        .thought-box {
+          background-color: #1a1a1a;
+          border: 1px solid #333;
+          border-radius: 8px;
+          margin-bottom: 10px;
+          font-size: 0.9em;
+          color: #aaa;
+          }
+        .thought-box summary {
+          padding: 8px;
+          cursor: pointer;
+          font-weight: bold;
+          color: #0078d4;
+          outline: none;
+          }
+       .thought-content {
+          padding: 8px 12px;
+          border-top: 1px solid #333;
+          font-style: italic;
+          }
+      )";
+      }
+
+//---------------------------------------------------------
+//   setup
+//---------------------------------------------------------
+
+void ChatDisplay::setup() {
+      QString hljsCss = _darkMode ? getHighlightJsDarkCss() : getHighlightJsCss();
+      QString chatCss = _darkMode ? getChatDarkCss() : getChatCss();
+
+      auto html = QString(
+                      R"(<html>
+<head>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <style id="hljs-theme">
+%1
+    </style>
+    <style id="chat-theme">
+%2
+    </style>
+</head>
+<body>
+      <div id="chat-container"></div>
+      <script>
+      let currentStreamingMessage = null;
+
+      function startNewStreamingMessage(role) {
+            const container = document.getElementById('chat-container');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'message ' + (role === 'User' || role === 'user' ? 'user' : 'ai');
+
+            // Eindeutige ID für dieses Streaming-Event
+            const msgId = 'msg-' + Date.now();
+            wrapper.id = msgId;
+
+            wrapper.innerHTML = `
+        <strong style="display: block; margin-bottom: 5px;">${role}:</strong>
+        <details class="thought-box" id="${msgId}-thought-container" style="display:none;">
+            <summary style="color: #0078d4; cursor: pointer; font-weight: bold;">
+                Gemini 3 Reasoning...
+            </summary>
+            <div class="thought-content" id="${msgId}-thought-body" style="padding: 8px; border-left: 2px solid #333; font-style: italic;">
+            </div>
+        </details>
+        <div class="message-text" id="${msgId}-text-body"></div>
+    `;
+
+            container.appendChild(wrapper);
+            currentStreamingMessage = msgId;
+            window.scrollTo(0, document.body.scrollHeight);
+            }
+
+      function updateStreamingThought(htmlContent) {
+            if (!currentStreamingMessage)
+                  return;
+            const container = document.getElementById(currentStreamingMessage + '-thought-container');
+            const body = document.getElementById(currentStreamingMessage + '-thought-body');
+
+            if (htmlContent && htmlContent.trim() !== "") {
+                  container.style.display = 'block';
+                  body.innerHTML = htmlContent;
+                  // Highlighting nur, wenn nötig
+                  if (htmlContent.includes('</code>')) {
+                        window.hljs.highlightAll();
+                        }
+                  }
+            }
+      function updateStreamingText(htmlContent) {
+            if (!currentStreamingMessage)
+                  return;
+            const body = document.getElementById(currentStreamingMessage + '-text-body');
+            body.innerHTML = htmlContent;
+
+            // Code-Highlighting nur triggern, wenn ein Code-Block abgeschlossen scheint (Performance)
+            if (htmlContent.includes('</code>')) {
+                  window.hljs.highlightAll();
+                  }
+            window.scrollTo(0, document.body.scrollHeight);
+            }
+
+      function appendStaticMessage(role, htmlContent, thoughtHtml) {
+            const container = document.getElementById('chat-container');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'message ' + (role === 'User' || role === 'user' ? 'user' : 'ai');
+
+            let thoughtHtmlPart = "";
+            if (thoughtHtml && thoughtHtml.trim() !== "") {
+                thoughtHtmlPart = `
+                   <details class="thought-box" open>
+                       <summary style="color: #0078d4; cursor: pointer; font-weight: bold;">Thought:</summary>
+                       <div class="thought-content" style="padding: 8px; border-left: 2px solid #333; font-style: italic;">${thoughtHtml}</div>
+                   </details>
+                `;
+            }
+
+            wrapper.innerHTML = `
+                   <strong style="display: block; margin-bottom: 5px;">${role}:</strong>
+                   ${thoughtHtmlPart}
+                   <div class="message-text">${htmlContent}</div>
+                `;
+            container.appendChild(wrapper);
+            window.hljs.highlightAll();
+            }
+
+      </script>
+      </body>
+</html>
+)")
+                      .arg(hljsCss, chatCss);
+      setHtml(html);
+      }
+
+//---------------------------------------------------------
+//   setDarkMode
+//---------------------------------------------------------
+
+void ChatDisplay::setDarkMode(bool enabled) {
+      Debug("ChatDisplay::setDarkMode called with: {}", enabled);
+      if (_darkMode == enabled)
+            return;
+      _darkMode = enabled;
+
+      QString js = "(function() { "
+                   "  var el1 = document.getElementById('hljs-theme'); "
+                   "  if (el1) el1.textContent = " +
+                   quoteForJs(_darkMode ? getHighlightJsDarkCss() : getHighlightJsCss()) +
+                   "; "
+                   "  var el2 = document.getElementById('chat-theme'); "
+                   "  if (el2) el2.textContent = " +
+                   quoteForJs(_darkMode ? getChatDarkCss() : getChatCss()) +
+                   "; "
+                   "})();";
+
+      page()->runJavaScript(js, [](const QVariant& res) { (void)res; });
+      }
+
+//---------------------------------------------------------
+//   appendMessageWithThought
+//---------------------------------------------------------
+
+void ChatDisplay::appendMessageWithThought(const QString& role, const QString& thought, const QString& text) {
+      QString thoughtHtml = thought.isEmpty() ? "" : renderMarkdownToHtml(thought);
+      QString html        = renderMarkdownToHtml(text);
+      appendStaticHtml(role, html, thoughtHtml);
+      }
+
+//---------------------------------------------------------
+//   appendMessage
+//---------------------------------------------------------
+
+void ChatDisplay::appendMessage(const QString& role, const QString& rawText) {
+      appendMessageWithThought(role, "", rawText);
+      scrollToBottom();
+      }
+
+//---------------------------------------------------------
+//   handleIncomingChunk
+//---------------------------------------------------------
+
+void ChatDisplay::handleIncomingChunk(const QString& thoughtChunk, const QString& textChunk) {
+      if (!thoughtChunk.isEmpty()) {
+            currentStreamingThought += thoughtChunk;
+            QString html             = renderMarkdownToHtml(currentStreamingThought);
+
+            QString js = QString("updateStreamingThought(%1);").arg(quoteForJs(html));
+            page()->runJavaScript(js);
+            }
+
+      if (!textChunk.isEmpty()) {
+            currentStreamingText += textChunk;
+            QString html          = renderMarkdownToHtml(currentStreamingText);
+
+            // JS Aufruf
+            QString js = QString("updateStreamingText(%1);").arg(quoteForJs(html));
+            page()->runJavaScript(js);
+            }
+      }
+
+//---------------------------------------------------------
+//   quoteForJs
+//---------------------------------------------------------
+
+QString ChatDisplay::quoteForJs(const QString& str) {
+      if (str.isEmpty())
+            return "''";
+      QByteArray json = QJsonDocument(QJsonArray{str}).toJson(QJsonDocument::Compact);
+      return QString::fromUtf8(json.mid(1, json.length() - 2));
+      }
+
+//---------------------------------------------------------
+//   appendStaticHtml
+//---------------------------------------------------------
+
+void ChatDisplay::appendStaticHtml(const QString& role, const QString& html, const QString& thoughtHtml) {
+      QString js = QString("if(typeof appendStaticMessage === 'function') { appendStaticMessage(%1, %2, %3); } else { "
+                           "  setTimeout(function() { if(typeof appendStaticMessage === 'function') { appendStaticMessage(%1, %2, %3); } "
+                           "else { console.error('appendStaticMessage not found!'); } }, 100);"
+                           "}")
+                       .arg(quoteForJs(role), quoteForJs(html), quoteForJs(thoughtHtml));
+      page()->runJavaScript(js, [](const QVariant& res) { (void)res; });
+      }

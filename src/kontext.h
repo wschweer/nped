@@ -26,9 +26,9 @@ class QPoint;
 //---------------------------------------------------------
 
 enum class ViewMode {
-      File,             // text source
-      Functions,        // filter functions and methods
-      Bugs,             // ls annotations
+      File,      // text source
+      Functions, // filter functions and methods
+      Bugs,      // ls annotations
       GitVersion,
       SearchResults,
       WebView
@@ -39,9 +39,9 @@ enum class ViewMode {
 //---------------------------------------------------------
 
 enum class MoveType {
-      Normal,           // move FilePos + ScreenPos, adjust ScreenPos
-      Roll,             // move ScreenPos, adjust FilePos
-      Page              // move FilePos, ScreenPos is the same
+      Normal, // move FilePos + ScreenPos, adjust ScreenPos
+      Roll,   // move ScreenPos, adjust FilePos
+      Page    // move FilePos, ScreenPos is the same
       };
 
 static const int ContextLines = 1;
@@ -95,7 +95,7 @@ class Kontext : public QObject
       Cursor& cursor() { return _cursor; }
       const Cursor& cursor() const { return _cursor; }
       int screenColumnOffset() const { return fileCol() - screenCol(); }
-
+      int screenRowOffset() const { return fileRow() - screenRow(); }
       bool showCursor() const { return true; }
       void movePrevWord();
       void moveNextWord();
