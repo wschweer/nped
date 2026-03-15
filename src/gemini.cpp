@@ -79,9 +79,11 @@ json GeminiClient::prompt(QNetworkRequest* request) {
 
                   // Falls diese Nachricht Tool-Calls enthielt, müssen diese
                   // im korrekten Format zurückgesendet werden
-                  if (msg.contains("toolCalls"))
-                        for (const auto& call : msg["toolCalls"])
-                              parts.push_back(call);
+                  for (const auto& part : msg["parts"]) {
+                        if (part.contains("functionCall")) {
+                              parts.push_back(part);
+                        }
+                  }
                   jmsg["parts"] = parts;
                   }
 
