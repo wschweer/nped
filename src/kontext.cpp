@@ -319,33 +319,43 @@ void Kontext::setViewMode(ViewMode m) {
 
 //---------------------------------------------------------
 //   createFunction
+//    this macro function creates a function body:
+//
+//    //---------------------------------------------------------
+//    //   mops
+//    //---------------------------------------------------------
+//
+//    void mops() {
+//          <cursor>
+//          }
+//
 //---------------------------------------------------------
 
 void Kontext::createFunction(const QString& s) {
       Debug("{}", s);
       //      int x      = _cursor.filePos.col;
-      int y      = _cursor.filePos.row;
-      QString ss = QString("//---------------------------------------------------------\n"
-                           "//   %1\n"
-                           "//---------------------------------------------------------\n"
-                           "\n"
-                           "void %1()\n"
-                           "      {\n"
-                           "\n"
-                           "      }\n")
-                       .arg(s);
+      int y             = _cursor.filePos.row;
+      QString prototype = QString("//---------------------------------------------------------\n"
+                                  "//   %1\n"
+                                  "//---------------------------------------------------------\n"
+                                  "\n"
+                                  "void %1() {\n"
+                                  "\n"
+                                  "      }\n")
+                              .arg(s);
 
       if (y < file()->rows() && !file()->line(y).empty())
-            ss += "\n";
-      int off = 6;
+            prototype += "\n";
+      int off = 5;
       if (y > 2) {
             if (!file()->line(y - 1).empty()) {
-                  ss.push_front("\n");
+                  prototype.push_front("\n");
                   ++off;
                   }
             }
-      Cursor c1(Pos(6, y + off), Pos(-1, -1));
-      file()->undo()->push(new Patch(file(), Pos(0, y), 0, ss, c1, c1));
+      // move the cursor into the body of the function
+      Cursor c1(Pos(6, y + off), Pos(6, -1));
+      file()->undo()->push(new Patch(file(), Pos(0, y), 0, prototype, c1, _cursor));
       }
 
 //---------------------------------------------------------
