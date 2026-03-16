@@ -431,13 +431,15 @@ bool LSclient::start(const std::string& path, const std::vector<std::string>& ar
 //---------------------------------------------------------
 
 bool LSclient::write(const std::string& txt) {
-      // TODO: catch signal "broken pipe"
-      size_t n = ::write(stdinPipe[1], txt.c_str(), txt.size());
-      if (n != txt.size()) {
-            Debug("write failed: {} != {}", n, txt.size());
+      ssize_t n = ::write(stdinPipe[1], txt.c_str(), txt.size());
+      if (n == -1) {
+            Debug("write failed, errno: {} ({})", errno, strerror(errno));
             return false;
             }
-      //      Debug("write <{}>", txt);
+      if (static_cast<size_t>(n) != txt.size()) {
+            Debug("write partial: {} != {}", n, txt.size());
+            return false;
+            }
       return true;
       }
 

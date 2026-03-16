@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
 
       signal(SIGPIPE, SIG_IGN);
 
-      qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--log-level=3"); // Nur kritische Fehler zeigen
+      qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--log-level=3"); // show only critical bugs
       QQuickStyle::setStyle(QStringLiteral("Material"));
       QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
       //      QQuickStyle::setFallbackStyle("Basic");
@@ -107,8 +107,8 @@ int main(int argc, char** argv) {
                   default: usage("bad argument"); return -1;
                   }
             }
-      int fileArgc    = argc - optind;
-      char** fileArgv = argv + optind;
+      int fileArgc = (optind < argc) ? (argc - optind) : 0;
+      char** fileArgv = (optind < argc) ? (argv + optind) : nullptr;
       Editor e(fileArgc, fileArgv);
       e.show();
       app.exec();

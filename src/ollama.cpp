@@ -123,7 +123,6 @@ void OllamaClient::processJsonItem(const json& item) {
 void OllamaClient::dataFinished(QNetworkReply* reply) {
       if (!reply)
             return;
-agent->chatHistory.push_back(currentContent);
       // --- ERROR HANDLING & BACKOFF LOGIC ---
       if (reply->error() != QNetworkReply::NoError) {
             int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -199,7 +198,6 @@ agent->chatHistory.push_back(currentContent);
             return;
             }
       QByteArray newData = reply->readAll();
-      Debug("Received: <{}>", newData.data());
       json response;
       response["role"]    = "assistant";
       response["content"] = currentContent;
@@ -207,6 +205,7 @@ agent->chatHistory.push_back(currentContent);
 
       if (!_currentToolCalls.empty()) {
             std::string thinking;
+            Debug("=====Tool Calls <{}>", _currentToolCalls.size(), _currentToolCalls.dump(3));
             for (const auto& call : _currentToolCalls) {
                   try {
                         // Argumente von String/JSON-Fragmenten in ein JSON-Objekt umwandeln
@@ -215,7 +214,6 @@ agent->chatHistory.push_back(currentContent);
                         std::string functionName = fc["name"];
                         json toolCall;
                         std::string result = agent->executeTool(functionName, args);
-                        Debug("=====Function Call <{}>", fc.dump(3));
                         // append result of tool call to chatHistory
                         json msg;
                         msg["role"]     = std::string("function");
