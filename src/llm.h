@@ -14,7 +14,6 @@
 #include <QObject>
 #include <QString>
 #include <QUrl>
-#include <string>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -32,6 +31,7 @@ class Agent;
 class LLMClient : public QObject
       {
       Q_OBJECT
+
     protected:
       Agent* agent;
 
@@ -43,10 +43,10 @@ class LLMClient : public QObject
             }
       virtual ~LLMClient() = default;
 
-      virtual QString name() const                  = 0;
-      virtual json prompt(QNetworkRequest* request) = 0;
+      virtual QString name() const                   = 0;
+      virtual json prompt(QNetworkRequest* request)  = 0;
       virtual void processJsonItem(const json& item) = 0;
-      virtual void dataFinished(QNetworkReply*)     = 0;
+      virtual void dataFinished(QNetworkReply*)      = 0;
 
     signals:
       void incomingChunk(const QString& thought, const QString& text);

@@ -780,7 +780,11 @@ void Editor::updateVScrollbar() {
 //   hScrollTo
 //---------------------------------------------------------
 
-void Editor::hScrollTo(int) {
+void Editor::hScrollTo(int xpos) {
+      startCmd();
+      kontext()->cursor().screenPos = Pos(kontext()->fileCol() - xpos, kontext()->screenRow());
+      update();
+      endCmd();
       }
 
 //---------------------------------------------------------
