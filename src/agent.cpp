@@ -80,20 +80,10 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e), currentR
 
       // --- 1. Toolbar & Model Selection ---
       toolBar = new QToolBar(this);
-      toolBar->setStyleSheet("QToolButton {"
-                             "  border: 1px solid #888;"
-                             "  border-radius: 3px;"
-                             "  background-color: #e4e4e4;"
-                             "  padding: 4px 8px;"
-                             "  margin: 0px 4px;"
-                             "}"
-                             "QToolButton:hover { background-color: #d0d0d0; }"
-                             "QToolButton:pressed { background-color: #a0a0a0; }");
 
       modelButton = new QToolButton(this);
       modelButton->setText("Model...");
       modelMenu = new QMenu(this);
-      modelMenu->setStyleSheet("QMenu { background-color: lightblue; } QMenu::item:selected { background-color: yellow; }");
       modelButton->setMenu(modelMenu);
       modelButton->setPopupMode(QToolButton::InstantPopup);
       toolBar->addWidget(modelButton);
@@ -101,6 +91,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e), currentR
 
       newSessionButton = new QToolButton(this);
       newSessionButton->setText("New Session");
+      newSessionButton->setProperty("class", "actionButton");
       toolBar->addWidget(newSessionButton);
       connect(newSessionButton, &QToolButton::clicked, this, &Agent::startNewSession);
       toolBar->addSeparator();
@@ -116,18 +107,9 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e), currentR
             modeToggleAction->setText(checked ? "Build" : "Plan");
 
             if (auto* button = qobject_cast<QToolButton*>(toolBar->widgetForAction(modeToggleAction))) {
-                  if (checked) {
-                        button->setStyleSheet("QToolButton { background-color: #f0d0d0; border: 1px solid #c88; color: #500; "
-                                              "border-radius: 3px; padding: 4px 8px; margin: 0px 4px; }"
-                                              "QToolButton:hover { background-color: #e0c0c0; }"
-                                              "QToolButton:pressed { background-color: #d0b0b0; }");
-                        }
-                  else {
-                        button->setStyleSheet("QToolButton { background-color: #d0f0d0; border: 1px solid #8c8; color: #050; "
-                                              "border-radius: 3px; padding: 4px 8px; margin: 0px 4px; }"
-                                              "QToolButton:hover { background-color: #c0e0c0; }"
-                                              "QToolButton:pressed { background-color: #b0d0b0; }");
-                        }
+                  button->setProperty("class", checked ? "errorButton" : "actionButton");
+                  button->style()->unpolish(button);
+                  button->style()->polish(button);
                   }
 
             if (chatDisplay) {
@@ -141,22 +123,10 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e), currentR
       spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
       toolBar->addWidget(spacer);
 
-      // Initial color (Plan mode)
+      // Initial state
       if (auto* button = qobject_cast<QToolButton*>(toolBar->widgetForAction(modeToggleAction))) {
-            if (_isExecuteMode) {
-                  button->setStyleSheet("QToolButton { background-color: #f0d0d0; border: 1px solid #c88; color: #500; "
-                                        "border-radius: 3px; padding: 4px 8px; margin: 0px 4px; }"
-                                        "QToolButton:hover { background-color: #e0c0c0; }"
-                                        "QToolButton:pressed { background-color: #d0b0b0; }");
-                  modeToggleAction->setText("Build");
-                  }
-            else {
-                  button->setStyleSheet("QToolButton { background-color: #d0f0d0; border: 1px solid #8c8; color: #050; border-radius: 3px; "
-                                        "padding: 4px 8px; margin: 0px 4px; }"
-                                        "QToolButton:hover { background-color: #c0e0c0; }"
-                                        "QToolButton:pressed { background-color: #b0d0b0; }");
-                  modeToggleAction->setText("Plan");
-                  }
+            button->setProperty("class", _isExecuteMode ? "errorButton" : "actionButton");
+            modeToggleAction->setText(_isExecuteMode ? "Build" : "Plan");
             }
       mainLayout->addWidget(toolBar);
 
@@ -214,18 +184,9 @@ void Agent::setExecuteMode(bool checked) {
       // Update the text and style directly
       modeToggleAction->setText(checked ? "Build" : "Plan");
       if (auto* button = qobject_cast<QToolButton*>(toolBar->widgetForAction(modeToggleAction))) {
-            if (checked) {
-                  button->setStyleSheet("QToolButton { background-color: #f0d0d0; border: 1px solid #c88; color: #500; "
-                                        "border-radius: 3px; padding: 4px 8px; margin: 0px 4px; }"
-                                        "QToolButton:hover { background-color: #e0c0c0; }"
-                                        "QToolButton:pressed { background-color: #d0b0b0; }");
-                  }
-            else {
-                  button->setStyleSheet("QToolButton { background-color: #d0f0d0; border: 1px solid #8c8; color: #050; "
-                                        "border-radius: 3px; padding: 4px 8px; margin: 0px 4px; }"
-                                        "QToolButton:hover { background-color: #c0e0c0; }"
-                                        "QToolButton:pressed { background-color: #b0d0b0; }");
-                  }
+            button->setProperty("class", checked ? "errorButton" : "actionButton");
+            button->style()->unpolish(button);
+            button->style()->polish(button);
             }
       }
 

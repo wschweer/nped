@@ -47,17 +47,24 @@ QCompleter {
 QMenu {
     background-color: #ffffff;
     color: #333333;
+    border: 1px solid #aaaaaa;
 }
 
 QMenu::item:selected {
     background-color: #0078d7;
+    color: white;
 }
 
-.successButton {
+.successButton, .actionButton {
     background-color: #4caf50;
     color: white;
     border: 1px solid #388e3c;
     border-radius: 3px;
+    padding: 4px 8px;
+}
+
+.successButton:hover, .actionButton:hover {
+    background-color: #66bb6a;
 }
 
 .errorButton {
@@ -65,6 +72,7 @@ QMenu::item:selected {
     color: white;
     border: 1px solid #d32f2f;
     border-radius: 3px;
+    padding: 4px 8px;
 }
 
 EditWidget {
