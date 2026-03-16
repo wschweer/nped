@@ -1268,6 +1268,30 @@ int File::rows() const {
       }
 
 //---------------------------------------------------------
+//   maxLineLength
+//---------------------------------------------------------
+
+int File::maxLineLength() const {
+      int maxLen = 0;
+      const Lines* lines = nullptr;
+      switch (_viewMode) {
+            default:
+            case ViewMode::File: lines = &_fileText; break;
+            case ViewMode::Functions: lines = &_kollaps; break;
+            case ViewMode::GitVersion: lines = &_gitVersion; break;
+            case ViewMode::Bugs: lines = &_bugs; break;
+            }
+      if (lines) {
+            for (const auto& line : *lines) {
+                  if (line.size() > maxLen) {
+                        maxLen = line.size();
+                        }
+                  }
+            }
+      return maxLen;
+      }
+
+//---------------------------------------------------------
 //   add
 //---------------------------------------------------------
 

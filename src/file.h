@@ -160,6 +160,7 @@ class File : public QObject
       int distance(const Pos&, const Pos&) const;
       int columns(int y) const { return (y < rows()) ? line(y).size() : 0; }
       int rows() const;
+      int maxLineLength() const;
       bool parse() const { return fileType->parse; }
       LSclient* languageClient() { return client; }
       void setLSclient(LSclient* c) { client = c; }

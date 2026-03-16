@@ -738,6 +738,7 @@ void Editor::updateCursor() {
       lineLabel->setText(QString(" %1 ").arg(p.row + 1));
       colLabel->setText(QString(" %1 ").arg(p.col + 1));
       updateVScrollbar();
+      updateHScrollbar();
       }
 
 //---------------------------------------------------------
@@ -774,6 +775,28 @@ void Editor::updateVScrollbar() {
       vScroll->setValue(pos);
       vScroll->setRange(0, total - 1);
       vScroll->blockSignals(false);
+      }
+
+//---------------------------------------------------------
+//   updateHScrollbar
+//---------------------------------------------------------
+
+void Editor::updateHScrollbar() {
+      int visible = editWidget()->visibleSize().width();
+      int total   = kontext()->file()->maxLineLength();
+      int pos     = kontext()->fileCol() - kontext()->screenCol();
+      hScroll->blockSignals(true);
+      if (total < 0)
+            total = 0;
+      if (total <= visible) {
+            hScroll->hide();
+      } else {
+            hScroll->show();
+            hScroll->setRange(0, total - visible + 1);
+            hScroll->setValue(pos);
+            hScroll->setPageStep(visible);
+      }
+      hScroll->blockSignals(false);
       }
 
 //---------------------------------------------------------

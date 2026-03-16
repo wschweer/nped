@@ -459,6 +459,7 @@ class Editor : public QMainWindow
       qreal fw() const { return _fw; }
       void update(QRect);
       void updateVScrollbar();
+      void updateHScrollbar();
       void updateGitHistory();
       EditWidget* editWidget() { return _editWidget; }
       void input(const QString& s);
