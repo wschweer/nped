@@ -66,3 +66,8 @@ QMenu::item:selected {
     border: 1px solid #d32f2f;
     border-radius: 3px;
 }
+
+EditWidget {
+    background-color: #f0f0f0;
+    color: #333333;
+}
