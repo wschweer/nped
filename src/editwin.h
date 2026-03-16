@@ -53,6 +53,9 @@ class EditWidget : public QWidget
     signals:
       void markerClicked(int row);
 
+    public slots:
+      void setDarkMode(bool v) { _darkMode = v; update(); }
+
     public:
       static constexpr qreal BORDER{4.0};
       EditWidget(QWidget* parent, Editor*);
@@ -61,6 +64,5 @@ class EditWidget : public QWidget
       int columns() const { return textSize().width(); }
       QSize visibleSize() const;
       QPointF charPosToPixel(const Pos&);
-      void setDarkMode(bool v) { _darkMode = v; update(); }
       bool darkMode() const { return _darkMode; }
       };
