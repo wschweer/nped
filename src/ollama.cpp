@@ -123,6 +123,7 @@ void OllamaClient::processJsonItem(const json& item) {
 void OllamaClient::dataFinished(QNetworkReply* reply) {
       if (!reply)
             return;
+agent->chatHistory.push_back(currentContent);
       // --- ERROR HANDLING & BACKOFF LOGIC ---
       if (reply->error() != QNetworkReply::NoError) {
             int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -232,8 +233,7 @@ void OllamaClient::dataFinished(QNetworkReply* reply) {
                               }
 
                         result = agent->truncateOutput(result, Agent::kChatResultMaxChars);
-                        std::string s =
-                            std::format("\n\n<i>[System: Führe Tool aus: {}({})]</i>\n\n```\n{}\n```\n\n", functionName, argsStr, result);
+                        std::string s = agent->formatToolCall(functionName, args, result);
                         emit incomingChunk(QString::fromStdString(thinking), QString::fromStdString(s));
                         }
                   catch (const json::parse_error& e) {

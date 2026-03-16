@@ -262,19 +262,9 @@ agent->chatHistory.push_back(currentContent);
                               });
                         agent->chatHistory.push_back(msg); // tool result
 
+                        // format a function call and the corresponding output
                         std::string functionName = fc["name"];
-                        std::string argsStr      = "";
-                        bool first               = true;
-                        for (auto& [key, value] : args.items()) {
-                              if (!first)
-                                    argsStr += ", ";
-                              argsStr += std::format("{}={}", key, value.dump());
-                              first    = false;
-                              }
-
-                        result = agent->truncateOutput(result, Agent::kChatResultMaxChars);
-                        std::string s =
-                            std::format("\n\n<i>[System: Execute Tool: {}({})]</i>\n\n```\n{}\n```\n\n", functionName, argsStr, result);
+                        std::string s = agent->formatToolCall(functionName, args, result);
                         agent->chatDisplay->handleIncomingChunk(QString::fromStdString(thinking), QString::fromStdString(s));
                         }
                   catch (const json::parse_error& e) {

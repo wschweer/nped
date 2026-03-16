@@ -197,12 +197,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e), currentR
             modeToggleAction->setFont(f);
             });
 
-      connect(
-          chatDisplay, &QWebEngineView::loadFinished, this,
-          [this] {
-                loadStatus();
-                },
-          Qt::QueuedConnection | Qt::SingleShotConnection);
+      connect(chatDisplay, &QWebEngineView::loadFinished, this, [this] { loadStatus(); }, Qt::QueuedConnection | Qt::SingleShotConnection);
       fetchModels();
       spinnerTimer = new QTimer(this);
       connect(spinnerTimer, &QTimer::timeout, this, &Agent::updateSpinner);
@@ -430,7 +425,12 @@ std::string Agent::truncateOutput(const std::string& text, int maxChars) {
             return text;
 
       int removed = text.length() - maxChars;
-      return text.substr(0, maxChars) + std::format("\n\n... [Output truncated. {} characters omitted for brevity]", removed);
+      // Force line break if the string is just one long line
+      std::string s = text.substr(0, maxChars);
+      if (s.find('\n') == std::string::npos && s.length() > 100) {
+            s.insert(100, "\n");
+            }
+      return s + std::format("\n\n... [Output truncated. {} characters omitted for brevity]", removed);
       }
 
 //---------------------------------------------------------
@@ -634,7 +634,7 @@ SessionInfo Agent::getSessionInfo() const {
                   Debug("bad filename <{}>", fileInfo.baseName());
                   continue;
                   }
-//            Debug("<{}> {} {} {} {}", fileInfo.baseName(), parts[0], parts[1], parts[2], parts[3], parts[4]);
+            //            Debug("<{}> {} {} {} {}", fileInfo.baseName(), parts[0], parts[1], parts[2], parts[3], parts[4]);
             QDate currentDate(parts[3].toInt(), parts[2].toInt(), parts[1].toInt());
             int currentNumber = parts[4].toInt();
 
@@ -737,11 +737,11 @@ void Agent::saveStatus() {
       if (currentSessionFileName.isEmpty())
             return;
 
-//      Debug("session <{}>", currentSessionFileName);
+      //      Debug("session <{}>", currentSessionFileName);
       QString path = QFileInfo(currentSessionFileName).absolutePath();
       QDir dir;
       dir.mkpath(path);
-//      Debug("mkpath <{}>", path);
+      //      Debug("mkpath <{}>", path);
 
       std::ofstream f(currentSessionFileName.toStdString());
       if (f.is_open()) {
@@ -847,6 +847,29 @@ bool Agent::eventFilter(QObject* obj, QEvent* event) {
       }
 
 //---------------------------------------------------------
+//   formatToolCall
+//    formats a tool call and its output (result)
+//---------------------------------------------------------
+
+std::string Agent::formatToolCall(const std::string& name, const json& args, const std::string& result) {
+      std::string argsStr = "";
+      bool first          = true;
+      for (auto& [key, value] : args.items()) {
+            if (!first)
+                  argsStr += ", ";
+            argsStr += std::format("{}={}", key, value.dump());
+            first    = false;
+            }
+
+      std::string output = std::format("\n\n<i>[System: Führe Tool aus: {}({})]</i>\n\n", name, argsStr);
+      if (!result.empty()) {
+            std::string truncatedResult  = truncateOutput(result, kChatResultMaxChars);
+            output                      += std::format("```\n{}\n```\n\n", truncatedResult);
+            }
+      return output;
+      }
+
+//---------------------------------------------------------
 //   logContent
 //    gemini
 //    {
@@ -869,19 +892,9 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                   std::string s = truncateOutput(content["content"].get<std::string>(), kChatResultMaxChars);
                   if (content.contains("role") && content["role"] == "function") {
                         if (content.contains("function")) {
-                              json fc             = content["function"];
-                              std::string argsStr = "";
-                              bool first          = true;
-                              for (auto& [key, value] : fc["arguments"].items()) {
-                                    if (!first)
-                                          argsStr += ", ";
-                                    argsStr += std::format("{}={}", key, value.dump());
-                                    first    = false;
-                                    }
-                              msg += std::format("\n\n<i>[System: Führe Tool aus: {}({})]</i>\n\n", static_cast<std::string>(fc["name"]),
-                                                 argsStr);
+                              json fc  = content["function"];
+                              msg     += formatToolCall(fc["name"], fc["arguments"], s);
                               }
-                        msg += std::format("```\n{}\n```\n\n", s);
                         }
                   else
                         msg += s;
@@ -899,19 +912,11 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
             if (part.contains("functionResponse")) {
                   json fr        = part["functionResponse"];
                   std::string s  = truncateOutput(static_cast<std::string>(fr["response"]["content"]), kChatResultMaxChars);
-                  msg           += std::format("```\n{}\n```\n\n", s);
+                  msg           += std::format("\n\n```\n{}\n```\n\n", s);
                   }
             if (part.contains("functionCall")) {
-                  json fc             = part["functionCall"];
-                  std::string argsStr = "";
-                  bool first          = true;
-                  for (auto& [key, value] : fc["args"].items()) {
-                        if (!first)
-                              argsStr += ", ";
-                        argsStr += std::format("{}={}", key, value.dump());
-                        first    = false;
-                        }
-                  msg += std::format("\n\n<i>[System: Führe Tool aus: {}({})]</i>\n\n", static_cast<std::string>(fc["name"]), argsStr);
+                  json fc  = part["functionCall"];
+                  msg     += formatToolCall(fc["name"], fc["args"]);
                   }
             }
       }

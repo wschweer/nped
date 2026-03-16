@@ -251,6 +251,7 @@ class Agent : public QWidget
       void loadStatus();
       bool isWorking() const;
       void logContent(const json& part, std::string& text, std::string& thought);
+      std::string formatToolCall(const std::string& name, const json& args, const std::string& result = "");
       std::string executeTool(const std::string& functionName, const json& arguments);
       void enableInput(bool);
 
