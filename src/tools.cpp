@@ -165,7 +165,8 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
       bool isReadOnlyTool =
           (functionName == "read_file" || functionName == "read_file_lines" || functionName == "search_project" ||
            functionName == "find_symbol" || functionName == "list_directory" || functionName == "fetch_web_documentation" ||
-           functionName == "get_git_status" || functionName == "get_git_diff" || functionName == "get_git_log");
+           functionName == "get_git_status" || functionName == "get_git_diff" || functionName == "get_git_log" ||
+           functionName == "run_build_command");
 
       // 2. Entwurfs-Modus Check
       if (!isExecuteMode() && !isReadOnlyTool) {
@@ -660,30 +661,37 @@ QString Agent::runBuildCommand(const QString& command) {
       QString projRoot = QDir::cleanPath(_editor->projectRoot());
       QString buildDir = projRoot + "/build";
 
-      for (auto f : _editor->getFiles()) {
-            f->undo()->beginMacro();
-            f->save();
-            f->undo()->endMacro();
+      if (isExecuteMode()) {
+            for (auto f : _editor->getFiles()) {
+                  f->undo()->beginMacro();
+                  f->save();
+                  f->undo()->endMacro();
+                  }
             }
 
       // 1. Prüfen und Erzeugen des "build" Verzeichnisses
       QDir dir(buildDir);
       if (!dir.exists()) {
-            if (!dir.mkpath(".")) { // Erzeugt das Verzeichnis inkl. übergeordneter Ordner falls nötig
-                  Critical("failed creating <{}>", buildDir);
-                  return "Error: could not create build directory: " + buildDir;
+            if (isExecuteMode()) {
+                  if (!dir.mkpath(".")) { // Erzeugt das Verzeichnis inkl. übergeordneter Ordner falls nötig
+                        Critical("failed creating <{}>", buildDir);
+                        return "Error: could not create build directory: " + buildDir;
+                        }
+                  }
+            else {
+                  return "Plan Mode Active: Build directory does not exist and cannot be created in read-only mode.";
                   }
             }
 
       // Evaluation of Sandboxing Technologies:
-      // 1. Docker: Provides excellent isolation and native user switching (-u UID:GID). However, 
+      // 1. Docker: Provides excellent isolation and native user switching (-u UID:GID). However,
       //    it requires a pre-configured image (e.g., with Qt6, CMake) which might not match the host.
-      // 2. Bubblewrap (bwrap): A lightweight, rootless sandbox tool (used by Flatpak). It mounts 
-      //    the host system read-only (so all host compilers/libraries are available) while strictly 
+      // 2. Bubblewrap (bwrap): A lightweight, rootless sandbox tool (used by Flatpak). It mounts
+      //    the host system read-only (so all host compilers/libraries are available) while strictly
       //    restricting write access to the project root.
-      // 
-      // Implementation: We use Bubblewrap (bwrap) for sandboxing as it perfectly balances host-tool 
-      // compatibility with strict write restrictions to the project directory. To run as the 'ai' 
+      //
+      // Implementation: We use Bubblewrap (bwrap) for sandboxing as it perfectly balances host-tool
+      // compatibility with strict write restrictions to the project directory. To run as the 'ai'
       // user, we prepend 'sudo -u ai' if the user exists.
 
       QString program = "bwrap";
@@ -696,13 +704,14 @@ QString Agent::runBuildCommand(const QString& command) {
             }
 
       args << "--ro-bind" << "/" << "/"
-           << "--bind" << projRoot << projRoot
+           << (isExecuteMode() ? "--bind" : "--ro-bind") << projRoot << projRoot
            << "--dev" << "/dev"
            << "--proc" << "/proc"
            << "--tmpfs" << "/tmp"
            << "--unshare-all"
            << "--share-net"
-           << "--chdir" << buildDir
+//           << "--chdir" << buildDir
+           << "--chdir" << projRoot
            << "/bin/sh" << "-c" << command;
 
       QProcess process;
