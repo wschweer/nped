@@ -115,6 +115,7 @@ class File : public QObject
 
     public slots:
       void toggleFold(int row);
+      void onFileChangedOnDisk(const QString& path);
 
     public:
       File(Editor* e, const QFileInfo& f);

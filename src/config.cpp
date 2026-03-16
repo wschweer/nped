@@ -22,7 +22,6 @@
 #include "editor.h"
 #include "kontext.h"
 #include "logger.h"
-#include "enter.h"
 // Hilfs-Operatoren für QDataStream
 QDataStream& operator<<(QDataStream& out, const ShortcutConfig& v) {
       // Cmd ist ein enum class, daher als int casten

@@ -27,7 +27,7 @@
 #include <QQuickWidget>
 #include <vector>
 #include "file.h"
-#include "completion.h"
+#include "completer.h"
 #include "git.h"
 #include "agent.h"
 
@@ -51,9 +51,13 @@ class QSplitter;
 class QToolButton;
 class QListWidget;
 class CompletionsPopup;
+class Completion;
 class QProgressBar;
 class Agent;
 class MarkdownWebView;
+class FileWatcher;
+
+using Completions = std::vector<Completion>;
 
 //---------------------------------------------------------
 //   Cmd
@@ -312,6 +316,8 @@ class Editor : public QMainWindow
       std::vector<File*> files;
       Vector<Kontext*> _kontextList;
       History history;
+      CompletionsPopup* completionsPopup;
+      Completions completions;
 
       LanguageServerList languageServers;
 
@@ -329,7 +335,7 @@ class Editor : public QMainWindow
       QWidget* eframe;
       QScrollBar* hScroll;
       QScrollBar* vScroll;
-      HistoryLineEdit* enterLine;
+      Completer* enterLine;
       QString pickText;
       bool pickTextRows;
       QTimer* cursorTimer;
@@ -350,8 +356,6 @@ class Editor : public QMainWindow
 
       std::vector<Action> _pedActions;
       HoverKontext hoverKontext;
-      CompletionsPopup* completionsPopup;
-      Completions completions;
 
       QString _projectRoot;
       Git _git;
@@ -360,8 +364,10 @@ class Editor : public QMainWindow
       QColor _bgColor{240, 240, 240};
 
       QString _settingsLLModel;
+      FileWatcher* fileWatcher;
 
     public:
+      FileWatcher* getFileWatcher() const { return fileWatcher; }
       enum UpdateFlag { UpdateNothing = 0, UpdateLine = 1, UpdateScreen = 2, UpdateAll = 4 };
       Q_DECLARE_FLAGS(UpdateFlags, UpdateFlag)
 
@@ -419,6 +425,7 @@ class Editor : public QMainWindow
       File* createNewFile(const QFileInfo& fi);
       void connectKontext(Kontext*);
 
+    private slots:
     public slots:
       void hScrollTo(int);
       void vScrollTo(int);
@@ -487,7 +494,6 @@ class Editor : public QMainWindow
       void clearInfoText();
       QLabel* keyLabel() { return _keyLabel; }
       const std::vector<Action>& pedActions() { return _pedActions; }
-      void showCompletions(const Completions&);
 
       void showProgress(bool);
       void showProgress(double);
@@ -556,6 +562,7 @@ class Editor : public QMainWindow
                   emit bgColorChanged();
                   }
             }
+      void showCompletions(const Completions&);
       };
 
 //---------------------------------------------------------

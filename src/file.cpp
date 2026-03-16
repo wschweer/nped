@@ -18,6 +18,8 @@
 #include <fcntl.h>
 #include <cstring>
 #include <cerrno>
+#include <unistd.h>
+#include <QMessageBox>
 
 #include <vector>
 #include <algorithm> // Für std::find_if
@@ -30,6 +32,7 @@
 #include "kontext.h"
 #include "lsclient.h"
 #include "undo.h"
+#include "filewatcher.h"
 
 extern Codec readCodec;
 extern Codec writeCodec;
@@ -333,6 +336,15 @@ QStringList Lines::toStringList() {
       }
 
 //---------------------------------------------------------
+//   onFileChangedOnDisk
+//---------------------------------------------------------
+
+void File::onFileChangedOnDisk(const QString& path) {
+      Debug("===========");
+      // TODO: implement
+      }
+
+//---------------------------------------------------------
 //   File
 //---------------------------------------------------------
 
@@ -351,7 +363,6 @@ File::File(Editor* e, const QFileInfo& fi) : _fi(fi), editor(e) {
                   QRegularExpression wildcard(pattern);
                   auto match = wildcard.match(filename);
                   if (match.hasMatch()) {
-                        Debug("match <{}> <{}>", pattern, filename);
                         fileType = &ft;
                         break;
                         }
@@ -474,6 +485,8 @@ bool File::load() {
       created = false;
       lcOpen(); // notify language server
       mode = f.permissions();
+      if (editor && editor->getFileWatcher())
+          editor->getFileWatcher()->addWatch(_fi.absoluteFilePath());
       return true;
       }
 
@@ -1230,7 +1243,7 @@ const Line& File::line(int row) const {
             case ViewMode::GitVersion: lines = &_gitVersion; break;
             case ViewMode::Bugs: lines = &_bugs; break;
             }
-      static const Line emptyLine;
+            static const Line emptyLine;
       if (!lines || lines->empty() || row >= lines->size())
             return emptyLine;
       return lines->at(row);

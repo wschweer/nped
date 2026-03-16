@@ -37,15 +37,15 @@
 
 #include "editor.h"
 #include "editwin.h"
-#include "enter.h"
 #include "file.h"
 #include "kontext.h"
 #include "lsclient.h"
 #include "logger.h"
 #include "undo.h"
-#include "completion.h"
 #include "agent.h"
 #include "webview.h"
+#include "completion.h"
+#include "filewatcher.h"
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -124,6 +124,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       qRegisterMetaType<FileTypeConfig>("FileTypeConfig");
       qRegisterMetaType<LanguageServerConfig>("LanguageServerConfig");
       qRegisterMetaType<Model>("Model");
+
+      fileWatcher = new FileWatcher(this);
 
       if (!initProject())
             Critical("init project failed");
@@ -445,6 +447,74 @@ Editor::~Editor() {
             }
       }
 
+//---------------------------------------------------------
+//   initEnterWidget
+//---------------------------------------------------------
+
+void Editor::initEnterWidget() {
+      enter                   = new QWidget();
+      QBoxLayout* enterLayout = new QBoxLayout(QBoxLayout::LeftToRight, enter);
+      enterLayout->setContentsMargins(0, 0, 0, 0);
+      enterLayout->setSpacing(0);
+
+      QLabel* enterLabel = new QLabel("Enter:", enter);
+      enterLayout->addWidget(enterLabel, 0, Qt::AlignLeft | Qt::AlignVCenter);
+
+      enterLine = new Completer(enter);
+      enterLine->completer()->popup()->setMaximumWidth(250);
+      enterLine->completer()->popup()->setStyleSheet("background-color: #ffff80;");
+      enterLayout->addWidget(enterLine, 50, Qt::AlignVCenter);
+      enter->hide();
+
+      std::vector<Action> enterActions = {
+         Action(getSC(Cmd::CMD_ENTER), [] {}),
+
+         Action(getSC(Cmd::CMD_ENTER_ADD_FILE),
+                [this] {
+                      QString fn = enterLine->text();
+                      if (!fn.startsWith("/")) {
+                            QFileInfo fi(kontext()->file()->fi());
+                            fn = fi.absolutePath() + "/" + fn;
+                            }
+                      addFile(fn);
+                      setCurrentKontext(_kontextList.size() - 1);
+                      update();
+                      }),
+         Action(getSC(Cmd::CMD_ENTER_SEARCH),
+                [this] {
+                      startCmd();
+                      search(enterLine->text());
+                      endCmd();
+                      }),
+         Action(getSC(Cmd::CMD_ENTER_CREATE_FUNCTION),
+                [this] {
+                      startCmd();
+                      kontext()->createFunction(enterLine->text());
+                      endCmd();
+                      }),
+         Action(getSC(Cmd::CMD_ENTER_GOTO_LINE),
+                [this] {
+                      kontext()->gotoLine(enterLine->text());
+                      update();
+                      }),
+
+            };
+      for (auto& a : enterActions) {
+            for (const auto& ks : a.seq) {
+                  QAction* action = new QAction(this);
+                  action->setShortcut(ks);
+                  action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+                  connect(action, &QAction::triggered, [this, a] {
+                        a.func();
+ //                       enterLine->execute();
+                        enterLine->addHistory(enterLine->text());
+                        leaveEnter();
+                        });
+                  enterLine->addAction(action);
+                  }
+            }
+      }
+
 //-----------------------------------------------------------------------------
 //   updateViewMode
 //    The main editor window is stacked:
@@ -723,77 +793,6 @@ void Editor::vScrollTo(int ypos) {
             kontext()->moveCursorAbs(kontext()->fileCol(), maxCursorY - 1);
       update();
       endCmd();
-      }
-
-//---------------------------------------------------------
-//   initEnterWidget
-//---------------------------------------------------------
-
-void Editor::initEnterWidget() {
-      enter                   = new QWidget();
-      QBoxLayout* enterLayout = new QBoxLayout(QBoxLayout::LeftToRight, enter);
-      enterLayout->setContentsMargins(0, 0, 0, 0);
-      enterLayout->setSpacing(0);
-
-      QLabel* enterLabel = new QLabel("Enter:", enter);
-      enterLayout->addWidget(enterLabel, 0, Qt::AlignLeft | Qt::AlignVCenter);
-
-      enterLine = new HistoryLineEdit(enter);
-
-      QDir dir(".");
-      dir.setFilter(QDir::Files);
-      QCompleter* completer = new QCompleter(dir.entryList(), this);
-      enterLine->setWordCompleter(completer);
-
-      enterLayout->addWidget(enterLine, 50, Qt::AlignVCenter);
-      enter->hide();
-
-      std::vector<Action> enterActions = {
-         Action(getSC(Cmd::CMD_ENTER), [] {}),
-
-         Action(getSC(Cmd::CMD_ENTER_ADD_FILE),
-                [this] {
-                      QString fn = enterLine->text();
-                      if (!fn.startsWith("/")) {
-                            QFileInfo fi(kontext()->file()->fi());
-                            fn = fi.absolutePath() + "/" + fn;
-                            }
-                      addFile(fn);
-                      setCurrentKontext(_kontextList.size() - 1);
-                      update();
-                      }),
-         Action(getSC(Cmd::CMD_ENTER_SEARCH),
-                [this] {
-                      startCmd();
-                      search(enterLine->text());
-                      endCmd();
-                      }),
-         Action(getSC(Cmd::CMD_ENTER_CREATE_FUNCTION),
-                [this] {
-                      startCmd();
-                      kontext()->createFunction(enterLine->text());
-                      endCmd();
-                      }),
-         Action(getSC(Cmd::CMD_ENTER_GOTO_LINE),
-                [this] {
-                      kontext()->gotoLine(enterLine->text());
-                      update();
-                      }),
-
-            };
-      for (auto& a : enterActions) {
-            for (const auto& ks : a.seq) {
-                  QAction* action = new QAction(this);
-                  action->setShortcut(ks);
-                  action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
-                  connect(action, &QAction::triggered, [this, a] {
-                        a.func();
-                        enterLine->execute();
-                        leaveEnter();
-                        });
-                  enterLine->addAction(action);
-                  }
-            }
       }
 
 //---------------------------------------------------------
@@ -1201,6 +1200,9 @@ void Editor::enterCmd() {
             completionsPopup->hide();
             return;
             }
+      QDir dir(kontext()->file()->fi().absolutePath());
+      dir.setFilter(QDir::Files);
+      enterLine->setSuggestions(dir.entryList());
       enterActive = true;
       enterLine->setText("");
       enter->show();

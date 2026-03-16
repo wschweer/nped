@@ -98,9 +98,10 @@ json GeminiClient::prompt(QNetworkRequest* request) {
       requestJson["system_instruction"] = jmanifest;
       requestJson["contents"]           = history;
       requestJson["generationConfig"]   = {
-               {"thinking_config", {{"include_thoughts", true}, {"thinking_level", "HIGH"}}},
+               {"thinking_config", {{"include_thoughts", true}, {"thinking_level", "MEDIUM"}}}, // LOW, MINIMAL, MEDIUM, HIGH
          //               {"temperature",  0.2},
-               {    "temperature",                                                      0.7}, // Reasoning-Modelle profitieren oft von etwas höherer Temperatur
+//               { "candidateCount", 1 },
+               {    "temperature",                                                      1.0}, // Reasoning-Modelle profitieren oft von etwas höherer Temperatur
                {           "topP",                                                     0.95}
             };
 
@@ -114,9 +115,17 @@ json GeminiClient::prompt(QNetworkRequest* request) {
 //---------------------------------------------------------
 
 void GeminiClient::processJsonItem(const json& item) {
+      //    "candidates": [
+      //          {
+      //          }
+      //          ],
+      //    "usageMetadata": {
+      //          "promptTokenCount": 150,
+      //          "candidatesTokenCount": 45,
+      //          "totalTokenCount": 195
+      //          }
       if (!item.contains("candidates"))
             return;
-
       for (const auto& candidate : item["candidates"]) {
             if (!candidate.contains("content")) {
                   Critical("candidata has no content");
@@ -137,10 +146,11 @@ void GeminiClient::processJsonItem(const json& item) {
                         }
                   if (part.contains("functionCall"))
                         _currentToolCalls.push_back(part);
-                  //                  else
                   currentContent["parts"].push_back(part);
                   }
             currentContent["role"] = content["role"];
+            // "finishReason": "STOP"
+            // "index": 0
             }
       }
 
@@ -149,8 +159,11 @@ void GeminiClient::processJsonItem(const json& item) {
 //---------------------------------------------------------
 
 void GeminiClient::dataFinished(QNetworkReply* reply) {
-      if (!reply)
+      if (!reply) {
+            Critical("no network reply");
             return;
+            }
+agent->chatHistory.push_back(currentContent);
       // --- ERROR HANDLING & BACKOFF LOGIC ---
       if (reply->error() != QNetworkReply::NoError) {
             int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -225,7 +238,7 @@ void GeminiClient::dataFinished(QNetworkReply* reply) {
             agent->chatDisplay->append(QString("<br><font color='red'><b>[Connection abort]:</b> %1</font><br>").arg(errorMessage));
             return;
             }
-      agent->chatHistory.push_back(currentContent);
+//      agent->chatHistory.push_back(currentContent);
 
       if (!_currentToolCalls.empty()) {
             std::string thinking;

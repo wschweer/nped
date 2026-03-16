@@ -19,14 +19,13 @@
 #include <atomic>
 #include <QUrl>
 #include "lsclient.h"
-
 #include "logger.h"
 #include "lsclient.h"
 #include "editor.h"
 #include "undo.h"
 #include "kontext.h"
-#include "completion.h"
 #include "ast.h"
+#include "completion.h"
 //
 enum DiagnosticSeverity { Error = 1, Warning, Information, Hint };
 //

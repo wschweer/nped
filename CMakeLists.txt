@@ -62,19 +62,20 @@ qt_add_executable(nped
       src/main.cpp
       src/editor.cpp
       src/file.cpp
+      src/filewatcher.cpp
       src/editwin.cpp
       src/kontext.cpp
-      src/enter.cpp
+#      src/enter.cpp
       src/undo.cpp
       src/ide.cpp
       src/lsclient.cpp
       src/ast.cpp
+      src/completer.cpp
       src/completion.cpp
       src/search.cpp
       src/git.cpp
       src/pretty.cpp
       src/agent.cpp
-#      src/agentui.cpp
       src/tools.cpp
       src/webview.cpp
       src/config.cpp

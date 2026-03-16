@@ -1,2 +1,0 @@
-Fix the broken code in ConfigDialog.qml to configure the list of ai models
-int agent.h: Models Agent::models(). Initialize the qml list with Agent::models().
