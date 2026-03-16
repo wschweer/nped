@@ -3,11 +3,11 @@
     color: #e0e0e0;
 }
 
-#mainTabBar {
+#mainTabBar, QTabBar {
     background-color: #2b2b2b;
 }
 
-#mainTabBar::tab {
+#mainTabBar::tab, QTabBar::tab {
     background-color: #4b4e50;
     color: #e0e0e0;
     padding: 8px 12px;
@@ -15,12 +15,12 @@
     border-bottom: none;
 }
 
-#mainTabBar::tab:selected {
+#mainTabBar::tab:selected, QTabBar::tab:selected {
     background-color: #2b2b2b;
     border-bottom: 2px solid #55aaff;
 }
 
-#mainTabBar::tab:hover {
+#mainTabBar::tab:hover, QTabBar::tab:hover {
     background-color: #5d6062;
 }
 
