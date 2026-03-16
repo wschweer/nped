@@ -538,6 +538,13 @@ class Editor : public QMainWindow
       void setDarkMode(bool v) {
             if (v != _darkMode) {
                   _darkMode = v;
+                  if (_darkMode) {
+                        setBgColor(QColor(40, 40, 40));
+                        setFgColor(QColor(220, 220, 220));
+                  } else {
+                        setBgColor(QColor(240, 240, 240));
+                        setFgColor(QColor(0, 0, 0));
+                  }
                   emit darkModeChanged(_darkMode);
                   }
             }
