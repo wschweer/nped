@@ -32,7 +32,17 @@ void Logger::write(std::ostream& f, MsgType t, const MsgLogContext& c, const std
             case MsgType::Critical: type = "Critical"; break;
             case MsgType::Fatal: type = "Fatal"; break;
             }
-      f << std::format("{}({}:{}, {}): {}\n", type, c.file, c.line, c.function, msg);
+      if (&f == &std::cerr) {
+            if (t == MsgType::Critical)
+                  f << std::format("\033[31m{}({}:{}, {}): {}\033[0m\n", type, c.file, c.line, c.function, msg);
+            else if (t == MsgType::Warning)
+                  f << std::format("\033[33m{}({}:{}, {}): {}\033[0m\n", type, c.file, c.line, c.function, msg);
+            else
+                  f << std::format("{}({}:{}, {}): {}\n", type, c.file, c.line, c.function, msg);
+            }
+      else {
+            f << std::format("{}({}:{}, {}): {}\n", type, c.file, c.line, c.function, msg);
+            }
       }
 
 Logger::Logger() {

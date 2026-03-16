@@ -366,12 +366,6 @@ class Editor : public QMainWindow
       QString _settingsLLModel;
       FileWatcher* fileWatcher;
 
-    public:
-      FileWatcher* getFileWatcher() const { return fileWatcher; }
-      enum UpdateFlag { UpdateNothing = 0, UpdateLine = 1, UpdateScreen = 2, UpdateAll = 4 };
-      Q_DECLARE_FLAGS(UpdateFlags, UpdateFlag)
-
-    private:
       QFont _font;
       //      QString fontFamily       { "Bitstream Vera Sans Mono"};
       //      QString fontFamily{"Hack"};
@@ -425,7 +419,6 @@ class Editor : public QMainWindow
       File* createNewFile(const QFileInfo& fi);
       void connectKontext(Kontext*);
 
-    private slots:
     public slots:
       void hScrollTo(int);
       void vScrollTo(int);
@@ -494,7 +487,6 @@ class Editor : public QMainWindow
       void clearInfoText();
       QLabel* keyLabel() { return _keyLabel; }
       const std::vector<Action>& pedActions() { return _pedActions; }
-
       void showProgress(bool);
       void showProgress(double);
       bool endSelectionMode();
@@ -563,6 +555,9 @@ class Editor : public QMainWindow
                   }
             }
       void showCompletions(const Completions&);
+      FileWatcher* getFileWatcher() const { return fileWatcher; }
+      enum UpdateFlag { UpdateNothing = 0, UpdateLine = 1, UpdateScreen = 2, UpdateAll = 4 };
+      Q_DECLARE_FLAGS(UpdateFlags, UpdateFlag)
       };
 
 //---------------------------------------------------------

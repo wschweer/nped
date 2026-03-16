@@ -1,4 +1,4 @@
-//=============================================================================
+//============================================================================
 //  nped Program Editor
 //
 //  Copyright (C) 2025-2026 Werner Schweer
@@ -126,6 +126,12 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       qRegisterMetaType<Model>("Model");
 
       fileWatcher = new FileWatcher(this);
+      connect(fileWatcher, &FileWatcher::fileChanged, [] (const QString& path) {
+            Critical("file <{}> changed on disk", path);
+            });
+      connect(fileWatcher, &FileWatcher::fileDeleted, [] (const QString& path) {
+            Critical("file <{}> deleted from disk", path);
+            });
 
       if (!initProject())
             Critical("init project failed");
