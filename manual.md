@@ -23,7 +23,7 @@ Hier ist eine Übersicht der zentralen Funktionen und Architekturmerkmale des Pr
 
 #### Integrierter KI-Agent (AgentUI)
 
-Das wohl herausstechendste Merkmal ist die enge Integration eines KI-Agenten (agent.cpp, agentui.cpp), der aktiv in die Entwicklung eingreifen kann:
+Das wohl herausstechendste Merkmal ist die enge Integration eines KI-Agenten, der aktiv in die Entwicklung eingreifen kann:
 
   * Modell-Unterstützung: Kompatibel mit lokalen Modellen (via Ollama) sowie Cloud-Modellen (Gemini, Anthropic).
   * Werkzeuge (Tool-Calling): Der Agent hat direkten Lese- und Schreibzugriff auf das Projekt. Er kann Dateien lesen, ändern und erstellen (handleReadFile, handleModifyFile), Verzeichnisse auflisten, oder das Projekt nach Texten und Symbolen durchsuchen (handleSearchProject, handleFindSymbol).

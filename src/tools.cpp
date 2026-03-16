@@ -19,6 +19,9 @@
 #include <list>
 #include <QEventLoop>
 #include <QTimer>
+#include <pwd.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "editor.h"
 #include "agent.h"
@@ -654,14 +657,6 @@ QString Agent::createGitCommit(const QString& message) {
 //---------------------------------------------------------
 
 QString Agent::runBuildCommand(const QString& command) {
-      QStringList blacklist = {"cat ", "grep ", "ls ", "find ", "awk ", "sed ", "head ", "tail "};
-      for (const QString& blocked : blacklist) {
-            if (command.startsWith(blocked.trimmed()) || command.contains(" " + blocked)) {
-                  return "Error: Shell commands for file reading/searching are blocked to prevent buffer inconsistency. Please use "
-                         "the provided AI tools (search_project, read_file_lines, find_symbol) instead.";
-                  }
-            }
-
       QString projRoot = QDir::cleanPath(_editor->projectRoot());
       QString buildDir = projRoot + "/build";
 
@@ -674,23 +669,46 @@ QString Agent::runBuildCommand(const QString& command) {
       // 1. Prüfen und Erzeugen des "build" Verzeichnisses
       QDir dir(buildDir);
       if (!dir.exists()) {
-            Debug("create build folder");
             if (!dir.mkpath(".")) { // Erzeugt das Verzeichnis inkl. übergeordneter Ordner falls nötig
                   Critical("failed creating <{}>", buildDir);
                   return "Error: could not create build directory: " + buildDir;
                   }
             }
 
-      // 2. Den Prozess vorbereiten
+      // Evaluation of Sandboxing Technologies:
+      // 1. Docker: Provides excellent isolation and native user switching (-u UID:GID). However, 
+      //    it requires a pre-configured image (e.g., with Qt6, CMake) which might not match the host.
+      // 2. Bubblewrap (bwrap): A lightweight, rootless sandbox tool (used by Flatpak). It mounts 
+      //    the host system read-only (so all host compilers/libraries are available) while strictly 
+      //    restricting write access to the project root.
+      // 
+      // Implementation: We use Bubblewrap (bwrap) for sandboxing as it perfectly balances host-tool 
+      // compatibility with strict write restrictions to the project directory. To run as the 'ai' 
+      // user, we prepend 'sudo -u ai' if the user exists.
+
+      QString program = "bwrap";
+      QStringList args;
+
+      struct passwd* pw = getpwnam("ai");
+      if (pw) {
+            program = "sudo";
+            args << "-u" << "ai" << "-n" << "bwrap";
+            }
+
+      args << "--ro-bind" << "/" << "/"
+           << "--bind" << projRoot << projRoot
+           << "--dev" << "/dev"
+           << "--proc" << "/proc"
+           << "--tmpfs" << "/tmp"
+           << "--unshare-all"
+           << "--share-net"
+           << "--chdir" << buildDir
+           << "/bin/sh" << "-c" << command;
+
       QProcess process;
-      process.setWorkingDirectory(buildDir); // Zwingt den Prozess ins build-Verzeichnis
+      process.start(program, args);
 
-      // 3. Systemübergreifender Aufruf über die Kommandozeile
-      // Damit Befehle mit Leerzeichen ("cmake --build .") korrekt verarbeitet werden,
-      // reichen wir sie an die System-Shell weiter.
-      process.start("/bin/sh", QStringList() << "-c" << command);
-
-      // 4. Warten, bis der Build fertig ist (ohne Timeout, da Kompilieren dauern kann)
+      // Warten, bis der Build fertig ist (ohne Timeout, da Kompilieren dauern kann)
       process.waitForFinished(-1);
 
       // 5. Ergebnisse auslesen

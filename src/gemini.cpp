@@ -227,9 +227,9 @@ void GeminiClient::dataFinished(QNetworkReply* reply) {
             }
       agent->chatHistory.push_back(currentContent);
 
-      Debug("===ToolCalls {}", _currentToolCalls.size());
       if (!_currentToolCalls.empty()) {
             std::string thinking;
+            Debug("===ToolCalls {}", _currentToolCalls.size());
             for (const auto& call : _currentToolCalls) {
                   try {
                         // Argumente von String/JSON-Fragmenten in ein JSON-Objekt umwandeln

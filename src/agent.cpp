@@ -51,10 +51,8 @@ static std::string manifest = "You are an experienced C++ developer. "
                               "Your task is to analyze and write code in the project and to fix build errors.\n\n"
                               "Use modern c++. Prefer object oriented design and use modern design patterns.\n"
                               "ERROR ANALYSIS RULES:\n"
-                              "1. If a build fails, analyze the output of 'run_build'.\n"
+                              "1. If a build fails, analyze the output of 'run_build_command'.\n"
                               "2. Look for lines like 'file.cpp:42:10: error: ...'.\n"
-                              "3. Use 'read_file' to read the context around the faulty line.\n"
-                              "4. Use 'modify_file' to correct the error in a targeted manner.\n\n"
                               "TOOL FORMAT:\n"
                               "Answer exclusively in JSON format when you call a tool:\n"
                               "{\n"
@@ -68,8 +66,6 @@ static std::string manifest = "You are an experienced C++ developer. "
                               "PROJECT STRUCTURE:\n"
                               "Standard Qt6 layout. The build directory is './build'. Use CMake with ninja.\n"
                               "Do not invent your own tasks and never act on your own authority! "
-                              "Preferably use the replace_in_file tool for changes to files. Make sure that the "
-                              "'search' parameter is absolutely identical to the text in the file, including all whitespace! "
                               "Use the run_build_command tool to compile the project and check if errors occur. ";
 
 //---------------------------------------------------------
@@ -745,7 +741,7 @@ void Agent::saveStatus() {
       QString path = QFileInfo(currentSessionFileName).absolutePath();
       QDir dir;
       dir.mkpath(path);
-      Debug("mkpath <{}>", path);
+//      Debug("mkpath <{}>", path);
 
       std::ofstream f(currentSessionFileName.toStdString());
       if (f.is_open()) {
@@ -946,7 +942,7 @@ void Agent::updateChatDisplay() {
                   std::string thought;
                   logContent(content, msg, thought);
                   if (msg.empty() && thought.empty()) {
-                        Debug("chatHistory entry: empty");
+                        // Debug("chatHistory entry: empty");
                         continue;
                         }
 
