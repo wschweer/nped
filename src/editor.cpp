@@ -15,6 +15,7 @@
 #include <QClipboard>
 #include <QCompleter>
 #include <QDir>
+#include <QFile>
 #include <QLabel>
 #include <QScrollBar>
 #include <QShortcut>
@@ -297,6 +298,24 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       _mdWidget->setDarkMode(darkMode());
       _stack->addWidget(_editWidget);
       _stack->addWidget(_mdWidget);
+
+      connect(this, &Editor::darkModeChanged, [](bool dark) {
+            QString styleFile = dark ? ":/src/dark.qss" : ":/src/light.qss";
+            QFile file(styleFile);
+            if (file.open(QFile::ReadOnly)) {
+                  QString style = QLatin1String(file.readAll());
+                  qApp->setStyleSheet(style);
+                  }
+            });
+      // Initial style
+      {
+            QString styleFile = darkMode() ? ":/src/dark.qss" : ":/src/light.qss";
+            QFile file(styleFile);
+            if (file.open(QFile::ReadOnly)) {
+                  QString style = QLatin1String(file.readAll());
+                  qApp->setStyleSheet(style);
+                  }
+      }
 
       _editWidget->setFocus();
       connect(_editWidget, &EditWidget::markerClicked, [this](int row) {

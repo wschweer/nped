@@ -109,7 +109,8 @@ qt_add_qml_module(nped
 
 qt_add_resources(nped files
       FILES
-      src/style.qss
+      src/dark.qss
+      src/light.qss
       )
 
 target_link_libraries(nped PRIVATE

@@ -1,0 +1,20 @@
+#mainTabBar {
+    background-color: #f0f0f0;
+}
+
+#mainTabBar::tab {
+    background-color: #d0d0d0;
+    color: #333333;
+    padding: 8px 12px;
+    border: 1px solid #aaaaaa;
+    border-bottom: none;
+}
+
+#mainTabBar::tab:selected {
+    background-color: #f0f0f0;
+    border-bottom: 2px solid #0055aa;
+}
+
+#mainTabBar::tab:hover {
+    background-color: #e0e0e0;
+}

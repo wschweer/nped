@@ -256,11 +256,11 @@ class Agent : public QWidget
       void enableInput(bool);
 
       // Output-Limits für LLM-Context-Window (Punkt 11)
-      static constexpr int kBuildLogMaxChars   = 4000;
-      static constexpr int kWebFetchMaxChars   = 8000;
-      static constexpr int kGitDiffMaxChars    = 6000;
-      static constexpr int kSearchMaxChars     = 4000;
-      static constexpr int kChatResultMaxChars = 500;
-      static constexpr int kChatMaxMessages    = 50;
+      static constexpr int kBuildLogMaxChars   = 20000;
+      static constexpr int kWebFetchMaxChars   = 80000;
+      static constexpr int kGitDiffMaxChars    = 10000;
+      static constexpr int kSearchMaxChars     = 10000;
+      static constexpr int kChatResultMaxChars = 20000;
+      static constexpr int kChatMaxMessages    = 500;
       std::string truncateOutput(const std::string& text, int maxChars);
       };
