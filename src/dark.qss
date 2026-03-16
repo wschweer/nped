@@ -37,6 +37,11 @@ QToolButton:hover {
     border-radius: 3px;
 }
 
+/* Ensure the icon is colored correctly in dark mode */
+QToolButton::menu-indicator {
+    image: none;
+}
+
 QListView#gitPanel {
     background-color: #3b3b3b;
 }
