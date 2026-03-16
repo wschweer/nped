@@ -35,3 +35,34 @@ QToolButton:hover {
     background: #5d6062;
     border-radius: 3px;
 }
+
+QListView#gitPanel {
+    background-color: #3b3b3b;
+}
+
+QCompleter {
+    background-color: #3b3b3b;
+}
+
+QMenu {
+    background-color: #3b3b3b;
+    color: #e0e0e0;
+}
+
+QMenu::item:selected {
+    background-color: #55aaff;
+}
+
+.successButton {
+    background-color: #2e7d32;
+    color: white;
+    border: 1px solid #1b5e20;
+    border-radius: 3px;
+}
+
+.errorButton {
+    background-color: #c62828;
+    color: white;
+    border: 1px solid #b71c1c;
+    border-radius: 3px;
+}

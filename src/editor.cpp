@@ -333,7 +333,6 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       splitter->addWidget(w);
 
       agent = new Agent(this, box);
-      //      agent->setStyleSheet("background-color: #d0d0d0; color: #000000;");
       agent->setMinimumWidth(500);
       splitter->addWidget(agent);
       splitter->setCollapsible(splitter->indexOf(agent), false);
@@ -371,8 +370,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       hbox->addWidget(configButton, 0, Qt::AlignRight);
 
       gitPanel = new QListView(box);
+      gitPanel->setObjectName("gitPanel");
       gitPanel->setMinimumWidth(500);
-      gitPanel->setStyleSheet("background-color: #ebac43;");
       gitPanel->setVisible(false);
       gitPanel->setModel(&gitList);
       connect(gitPanel, &QListView::clicked, [this](const QModelIndex& index) {
@@ -487,7 +486,6 @@ void Editor::initEnterWidget() {
 
       enterLine = new Completer(enter);
       enterLine->completer()->popup()->setMaximumWidth(250);
-      enterLine->completer()->popup()->setStyleSheet("background-color: #ffff80;");
       enterLayout->addWidget(enterLine, 50, Qt::AlignVCenter);
       enter->hide();
 
@@ -1154,7 +1152,7 @@ bool Editor::loadStatus(int argc, char** argv) {
                   Critical("Error parsing .nped.json: {}", e.what());
                   }
             catch (const json::type_error& e) {
-                  Critical("Type error reading .nped.json: {}", e.what());
+                  Critical("Type error reading .nped/project.json: {}", e.what());
                   }
             }
 
