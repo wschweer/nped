@@ -23,3 +23,15 @@
 #mainTabBar::tab:hover {
     background-color: #5d6062;
 }
+
+QToolButton {
+    background: transparent;
+    border: none;
+    color: #e0e0e0;
+    padding: 4px;
+}
+
+QToolButton:hover {
+    background: #5d6062;
+    border-radius: 3px;
+}

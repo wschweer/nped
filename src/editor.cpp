@@ -1,4 +1,4 @@
-//============================================================================
+//=============================================================================
 //  nped Program Editor
 //
 //  Copyright (C) 2025-2026 Werner Schweer
@@ -269,17 +269,12 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       tabBar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
       hbox->addWidget(tabBar, 10, Qt::AlignLeft);
 
-      QString buttonStyleSheet = "QToolButton { min-width: 32px; min-height: 32px; qproperty-iconSize: 32px 32px; padding: 0px; "
-                                 "background: transparent; border: none; font: bold; color: rgba(128,128,0,255); }"
-                                 "QToolButton:hover { background: rgba(128, 128, 128, 50); border: 1px solid gray; border-radius: 3px; }";
-
       //*****************************************
       //    AiButton
       //*****************************************
 
       infoButton = new QToolButton();
       infoButton->setText("Ai");
-      infoButton->setStyleSheet(buttonStyleSheet);
       infoButton->setCheckable(true);
       infoButton->setChecked(false);
       infoButton->setToolTip("toggle AI panel");
@@ -350,7 +345,6 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       _gitButton = new QToolButton();
       _gitButton->setIcon(QIcon(":images/Git-Icon-1788C.svg"));
       _gitButton->setToolTip("toggle GIT panel");
-      _gitButton->setStyleSheet(buttonStyleSheet);
       _gitButton->setCheckable(true);
       _gitButton->setChecked(false);
       hbox->addWidget(_gitButton, 0);
@@ -366,7 +360,6 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
 
       auto configButton = new QToolButton();
       configButton->setIcon(QIcon(":images/configure.svg"));
-      configButton->setStyleSheet(buttonStyleSheet);
       configButton->setToolTip("Configure...");
       connect(configButton, &QToolButton::clicked, [this] {
             ConfigDialogWrapper dialog(this, this);
