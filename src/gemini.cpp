@@ -99,10 +99,10 @@ json GeminiClient::prompt(QNetworkRequest* request) {
       requestJson["contents"]           = history;
       requestJson["generationConfig"]   = {
                {"thinking_config", {{"include_thoughts", true}, {"thinking_level", "MEDIUM"}}}, // LOW, MINIMAL, MEDIUM, HIGH
-         //               {"temperature",  0.2},
-//               { "candidateCount", 1 },
-               {    "temperature",                                                      1.0}, // Reasoning-Modelle profitieren oft von etwas höherer Temperatur
-               {           "topP",                                                     0.95}
+                                                                                          //               {"temperature",  0.2},
+                                                                                          //               { "candidateCount", 1 },
+               {    "temperature",                                                        1.0}, // Reasoning-Modelle profitieren oft von etwas höherer Temperatur
+               {           "topP",                                                       0.95}
             };
 
       currentContent.clear();
@@ -163,7 +163,6 @@ void GeminiClient::dataFinished(QNetworkReply* reply) {
             Critical("no network reply");
             return;
             }
-agent->chatHistory.push_back(currentContent);
       // --- ERROR HANDLING & BACKOFF LOGIC ---
       if (reply->error() != QNetworkReply::NoError) {
             int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -238,11 +237,13 @@ agent->chatHistory.push_back(currentContent);
             agent->chatDisplay->append(QString("<br><font color='red'><b>[Connection abort]:</b> %1</font><br>").arg(errorMessage));
             return;
             }
-//      agent->chatHistory.push_back(currentContent);
+
+      agent->chatHistory.push_back(currentContent);
 
       if (!_currentToolCalls.empty()) {
-            std::string thinking;
-            Debug("===ToolCalls {}", _currentToolCalls.size());
+            json msg;
+            msg["role"] = "function";
+            msg["parts"] = json::array();
             for (const auto& call : _currentToolCalls) {
                   try {
                         // Argumente von String/JSON-Fragmenten in ein JSON-Objekt umwandeln
@@ -255,17 +256,9 @@ agent->chatHistory.push_back(currentContent);
                         std::string result = agent->executeTool(fc["name"], args);
 
                         // Ergebnis in die Historie einfügen (Rolle "function" für Gemini/OpenAI)
-                        json msg;
-                        msg["role"] = "function";
                         msg["parts"].push_back({
                                  {"functionResponse", {{"name", fc["name"]}, {"response", {{"content", result}}}}}
                               });
-                        agent->chatHistory.push_back(msg); // tool result
-
-                        // format a function call and the corresponding output
-                        std::string functionName = fc["name"];
-                        std::string s = agent->formatToolCall(functionName, args, result);
-                        agent->chatDisplay->handleIncomingChunk(QString::fromStdString(thinking), QString::fromStdString(s));
                         }
                   catch (const json::parse_error& e) {
                         Debug("Parse Error: {}", e.what());
@@ -277,15 +270,62 @@ agent->chatHistory.push_back(currentContent);
                         Critical("Unexpected error");
                         }
                   }
+            // show on display
+            std::string thinking;
+            std::string text;
+            agent->logContent(msg, text, thinking);
+            agent->chatDisplay->handleIncomingChunk(QString::fromStdString(thinking), QString::fromStdString(text));
+
+            // put on history
+            agent->chatHistory.push_back(msg); // tool result
             _currentToolCalls.clear();
             reply->deleteLater();
             reply = nullptr;
             agent->sendMessage2();
             }
-
       else {
             reply->deleteLater();
             reply = nullptr;
             agent->enableInput(true);
             }
+      trimHistory(agent->chatHistory, false);
+      }
+
+//---------------------------------------------------------------------------------------
+//   trimHistory
+//    history     -     Das JSON-Array der bisherigen Chat-Verläufe
+//    hasSummary  -     Signalisiert, ob der letzte Eintrag eine Zusammenfassung war
+//    max_turns   -     Maximale Anzahl an User-Model-Paaren, die erhalten bleiben sollen
+//    return bool True, wenn die Historie zu groß wird und eine Zusammenfassung nötig ist
+//---------------------------------------------------------------------------------------
+
+bool GeminiClient::trimHistory(json& history, bool hasSummary) {
+      const size_t maxEntries         = 20;
+      const size_t criticalCharCount = 15000; // Schwellenwert für Zusammenfassungs-Trigger
+
+      // 1. Wenn der letzte Turn eine Zusammenfassung war:
+      // Wir löschen ALLES vor dieser Zusammenfassung, da sie nun der neue Kontext-Anker ist.
+      if (hasSummary && history.size() >= 1) {
+            json laseEntry = history.back();
+            history.clear();
+            history.push_back(laseEntry);
+            return false;
+            }
+
+      // 2. Klassisches Rolling Window (von vorne kürzen)
+      // Wir löschen immer paarweise (Index 0 und 1), um User/Model Paare zu erhalten.
+      while (history.size() > maxEntries) {
+            // Sicherheitshalber prüfen, ob wir genug zum Löschen haben
+            if (history.size() >= 2) {
+                  history.erase(history.begin());
+                  history.erase(history.begin());
+                  }
+            else
+                  break;
+            }
+
+      // 3. Heuristik: Müssen wir eine Zusammenfassung anfordern?
+      // Wir prüfen die String-Länge der gesamten Historie (als grober Token-Ersatz)
+      std::string dumped = history.dump();
+      return dumped.length() > criticalCharCount;
       }

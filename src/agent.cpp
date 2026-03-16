@@ -822,7 +822,7 @@ std::string Agent::formatToolCall(const std::string& name, const json& args, con
             first    = false;
             }
 
-      std::string output = std::format("\n\n<i>[System: Führe Tool aus: {}({})]</i>\n\n", name, argsStr);
+      std::string output = std::format("\n\n<i>[System: Run Tool: {}({})]</i>\n\n", name, argsStr);
       if (!result.empty()) {
             std::string truncatedResult  = truncateOutput(result, kChatResultMaxChars);
             output                      += std::format("```\n{}\n```\n\n", truncatedResult);
@@ -872,6 +872,7 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                   }
             if (part.contains("functionResponse")) {
                   json fr        = part["functionResponse"];
+                  std::string output = std::format("\n\n<i>[System: Tool Response: {}()]</i>\n\n", std::string(fr["name"]));
                   std::string s  = truncateOutput(static_cast<std::string>(fr["response"]["content"]), kChatResultMaxChars);
                   msg           += std::format("\n\n```\n{}\n```\n\n", s);
                   }

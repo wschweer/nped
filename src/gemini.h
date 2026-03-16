@@ -28,6 +28,7 @@ class GeminiClient : public LLMClient
       int maxRetries{12};
 
       void processData();
+      bool trimHistory(json& history, bool hasSummary);
 
     public:
       GeminiClient(Agent*, Model* m, const std::vector<json>& mcps);
