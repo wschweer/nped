@@ -347,6 +347,7 @@ class Editor : public QMainWindow
       QSplitter* splitter;
       QToolButton* infoButton;
       QToolButton* _gitButton;
+      QToolButton* configButton;
       QProgressBar* progressBar;
 
       QRegularExpression searchPattern;
@@ -367,9 +368,6 @@ class Editor : public QMainWindow
       FileWatcher* fileWatcher;
 
       QFont _font;
-      //      QString fontFamily       { "Bitstream Vera Sans Mono"};
-      //      QString fontFamily{"Hack"};
-      //      QString fontFamily{"DejaVu Sans Mono"};
       QString _fontFamily{"Source Code Pro"};
       qreal _fontSize{14.0};
       QFont::Weight fontWeight{QFont::Normal};
@@ -386,6 +384,7 @@ class Editor : public QMainWindow
       bool loadStatus(int argc, char** argv);
       void loadProjectStatus();
       void initEnterWidget();
+      void updateIcons(bool dark);
 
       void addKontext(Kontext* k, int idx = -1);
       void removeKontext(int idx);
@@ -425,6 +424,12 @@ class Editor : public QMainWindow
       void updateCursor();
       void apply();
       void update();
+      void quitCmd();
+      void saveQuitCmd();
+      void formatting();
+      void startCmd();
+      void endCmd();
+      void updateViewMode();
 
     signals:
       void fontFamilyChanged();
@@ -443,10 +448,8 @@ class Editor : public QMainWindow
 
       const ShortcutConfig& getSC(Cmd cmd);
       void saveAll();
-      void formatting();
       Kontext* kontext() {
             if (_currentKontext >= _kontextList.size()) {
-                  // Fatal("bad context {} size {}", _currentKontext, _kontext.size());
                   return nullptr;
                   }
             return _kontextList[_currentKontext];
@@ -463,8 +466,6 @@ class Editor : public QMainWindow
       void updateGitHistory();
       EditWidget* editWidget() { return _editWidget; }
       void input(const QString& s);
-      void startCmd();
-      void endCmd();
       int tab() const;
       void searchNext();
       void searchPrev();
@@ -506,14 +507,11 @@ class Editor : public QMainWindow
       Kontext* addFile(const QString& path);
 
       void enterCmd();
-      void quitCmd();
       void nextKontext();
       void prevKontext();
       void copyKontext();
-      void saveQuitCmd();
       QToolButton* gitButton() { return _gitButton; }
       QStackedWidget* stack() { return _stack; }
-      void updateViewMode();
 
       QStringList monospacedFonts() const;
       QString fontFamily() const { return _fontFamily; }
