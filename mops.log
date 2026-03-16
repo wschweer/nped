@@ -1,0 +1,1482 @@
+Debug(/home/ws/nped/src/webview.cpp:26, MarkdownWebView): darkMode false
+Debug(/home/ws/nped/src/webview.cpp:112, setDarkMode): darkMode false -> false
+Debug(/home/ws/nped/src/webview.cpp:26, MarkdownWebView): darkMode false
+Debug(/home/ws/nped/src/chatdisplay.cpp:259, setDarkMode): ChatDisplay::setDarkMode called with: false
+Debug(/home/ws/nped/src/lsclient.cpp:56, createClient): <clangd> -- <clangd>
+Debug(/home/ws/nped/src/lsclient.cpp:489, initializeRequest): rootUri <file:///home/ws/nped>
+Debug(/home/ws/nped/src/editor.cpp:601, getLSclient): new language server started: <clangd>
+clangd: <I[18:21:26.022] clangd version 23.0.0git (https://github.com/llvm/llvm-project.git 789bf51f0ce64c541ab0ca81d43c912cf0731628)
+I[18:21:26.022] Features: linux+grpc
+I[18:21:26.022] PID: 417743>
+clangd: <I[18:21:26.022] Working directory: /home/ws/nped
+I[18:21:26.022] argv[0]: clangd
+I[18:21:26.022] argv[1]: --query-driver
+I[18:21:26.022] argv[2]: --log=error
+I[18:21:26.022] argv[3]: --completion-style=detailed
+I[18:21:26.022] argv[4]: --compile-commands-dir=build
+I[18:21:26.022] argv[5]: --background-index
+I[18:21:26.022] Starting LSP over stdin/stdout>
+clangd: <I[18:21:26.022] <-- initialize(1)>
+clangd: <I[18:21:26.023] --> reply:initialize(1) 0 ms>
+clangd: <I[18:21:26.060] <-- initialized>
+clangd: <I[18:21:26.062] <-- textDocument/didOpen>
+clangd: <I[18:21:26.062] <-- textDocument/ast(2)>
+clangd: <I[18:21:26.062] Loading config file at /home/ws/.config/clangd/config.yaml>
+clangd: <I[18:21:26.062] --> textDocument/publishDiagnostics>
+clangd: <I[18:21:26.062] Loaded compilation database from /home/ws/nped/build/compile_commands.json>
+clangd: <I[18:21:26.063] ASTWorker building file /home/ws/nped/src/editor.cpp version 1 with command 
+[/home/ws/nped/build]
+/usr/local/bin/clang++ --driver-mode=g++ "-DNPED_BASE=\"/home/ws/nped\"" "-DNPED_DIR=\"/home/ws/nped/build\"" "-DNPED_VERSION=\"0.0.1\"" "-DPROCESSOR=\"x86_64\"" -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_OPENGL_LIB -DQT_POSITIONING_LIB -DQT_PRINTSUPPORT_LIB -DQT_QMLINTEGRATION_LIB -DQT_QML_LIB -DQT_QUICKCONTROLS2_LIB -DQT_QUICKWIDGETS_LIB -DQT_QUICK_LIB -DQT_WEBCHANNEL_LIB -DQT_WEBENGINECORE_LIB -DQT_WEBENGINEWIDGETS_LIB -DQT_WIDGETS_LIB -I/home/ws/nped/build -I/home/ws/nped -I/home/ws/nped/build/nped_autogen/include -I/home/ws/nped/src -isystem /home/ws/Qt/6.11.0/gcc_64/include/QtQml -isystem /home/ws/Qt/6.11.0/gcc_64/include -isystem /home/ws/Qt/6.11.0/gcc_64/include/QtCore -isystem /home/ws/Qt/6.11.0/gcc_64/mkspecs/linux-g++ -isystem /home/ws/Qt/6.11.0/gcc_64/include/QtQmlIntegration -isystem /home/ws/Qt/6.11.0/gcc_64/include/QtNetwork -isystem /home/ws/Qt/6.11.0/gcc_64/include/QtGui -isystem /home/ws/Qt/6.11.0/gcc_64/include/QtWidgets -isystem /home/ws/Qt/6.11.0/gcc_64/include/QtWebEngineCore -isystem /home/ws/Qt/6.11.0/gcc_64/include/QtQuick -isystem /home/ws/Qt/6.11.0/gcc_64/include/QtOpenGL -isystem /home/ws/Qt/6.11.0/gcc_64/include/QtWebChannel -isystem /home/ws/Qt/6.11.0/gcc_64/include/QtPositioning -isystem /home/ws/Qt/6.11.0/gcc_64/include/QtWebEngineWidgets -isystem /home/ws/Qt/6.11.0/gcc_64/include/QtPrintSupport -isystem /home/ws/Qt/6.11.0/gcc_64/include/QtQuickControls2 -isystem /home/ws/Qt/6.11.0/gcc_64/include/QtQuickWidgets -g -g -Wall -Wextra -std=gnu++23 -fPIC -o CMakeFiles/nped.dir/src/editor.cpp.o -c -resource-dir=/usr/local/lib/clang/23 -- /home/ws/nped/src/editor.cpp>
+clangd: <I[18:21:26.063] --> window/workDoneProgress/create(0)>
+clangd: <I[18:21:26.063] Enqueueing 37 commands for indexing>
+clangd: <I[18:21:26.151] <-- reply(0)>
+clangd: <I[18:21:26.151] --> $/progress>
+clangd: <I[18:21:26.151] --> $/progress>
+clangd: <I[18:21:26.243] --> $/progress>
+clangd: <I[18:21:26.243] --> $/progress>
+Debug(/home/ws/nped/src/agent.cpp:624, getSessionInfo): session folder </home/ws/nped/.nped>
+Debug(/home/ws/nped/src/agent.cpp:630, getSessionInfo): <1> files
+Debug(/home/ws/nped/src/agent.cpp:649, getSessionInfo): session file: </home/ws/nped/.nped/Session-16-03-2026-1.json>
+clangd: <I[18:21:27.593] Built preamble of size 42905724 for file /home/ws/nped/src/editor.cpp version 1 in 1.53 seconds>
+clangd: <I[18:21:27.593] Indexing c++23 standard library in the context of /home/ws/nped/src/editor.cpp>
+clangd: <I[18:21:27.943] --> textDocument/publishDiagnostics>
+clangd: <I[18:21:28.133] --> reply:textDocument/ast(2) 2070 ms>
+clangd: <I[18:21:28.523] Indexed c++23 standard library: 17675 symbols, 12467 filtered>
+Debug(/home/ws/nped/src/agent.cpp:334, sendMessage): =============<show me line 5 of file editor.cpp>
+Debug(/home/ws/nped/src/ollama.cpp:57, prompt): ===
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:21:53.992657408Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "tool_calls": [
+         {
+            "function": {
+               "arguments": {
+                  "end_line": 5,
+                  "path": "src/editor.cpp",
+                  "start_line": 5
+               },
+               "index": 0,
+               "name": "read_file_lines"
+            },
+            "id": "call_o3wlpxu5"
+         }
+      ]
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:21:54.07265035Z",
+   "done": true,
+   "done_reason": "stop",
+   "eval_count": 44,
+   "eval_duration": 3395069255,
+   "load_duration": 47552300,
+   "message": {
+      "content": "",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest",
+   "prompt_eval_count": 1744,
+   "prompt_eval_duration": 3740115791,
+   "total_duration": 7211103930
+}>
+Debug(/home/ws/nped/src/ollama.cpp:208, dataFinished): =====Tool Calls <1>
+Debug(/home/ws/nped/src/tools.cpp:155, executeTool): <read_file_lines>
+Debug(/home/ws/nped/src/ollama.cpp:57, prompt): ===
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:01.253594075Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "tool_calls": [
+         {
+            "function": {
+               "arguments": {
+                  "end_line": 5,
+                  "path": "src/editor.cpp",
+                  "start_line": 5
+               },
+               "index": 0,
+               "name": "read_file_lines"
+            },
+            "id": "call_yjkbe7ss"
+         }
+      ]
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:01.336372564Z",
+   "done": true,
+   "done_reason": "stop",
+   "eval_count": 44,
+   "eval_duration": 3400386729,
+   "load_duration": 72052496,
+   "message": {
+      "content": "",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest",
+   "prompt_eval_count": 1757,
+   "prompt_eval_duration": 3762295925,
+   "total_duration": 7257415649
+}>
+Debug(/home/ws/nped/src/ollama.cpp:208, dataFinished): =====Tool Calls <1>
+Debug(/home/ws/nped/src/tools.cpp:155, executeTool): <read_file_lines>
+Debug(/home/ws/nped/src/ollama.cpp:57, prompt): ===
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:06.895337097Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "tool_calls": [
+         {
+            "function": {
+               "arguments": {
+                  "path": "src/editor.cpp"
+               },
+               "index": 0,
+               "name": "read_file"
+            },
+            "id": "call_28y0jctt"
+         }
+      ]
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:06.978017721Z",
+   "done": true,
+   "done_reason": "stop",
+   "eval_count": 23,
+   "eval_duration": 1765714095,
+   "load_duration": 78921188,
+   "message": {
+      "content": "",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest",
+   "prompt_eval_count": 1770,
+   "prompt_eval_duration": 3775130753,
+   "total_duration": 5634613379
+}>
+Debug(/home/ws/nped/src/ollama.cpp:208, dataFinished): =====Tool Calls <1>
+Debug(/home/ws/nped/src/tools.cpp:155, executeTool): <read_file>
+Debug(/home/ws/nped/src/ollama.cpp:57, prompt): ===
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:47.02316372Z",
+   "done": false,
+   "message": {
+      "content": "It",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:47.116676258Z",
+   "done": false,
+   "message": {
+      "content": " looks",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:47.208455286Z",
+   "done": false,
+   "message": {
+      "content": " like",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:47.302155746Z",
+   "done": false,
+   "message": {
+      "content": " the",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:47.394295141Z",
+   "done": false,
+   "message": {
+      "content": " content",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:47.485535016Z",
+   "done": false,
+   "message": {
+      "content": " you",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:47.578433178Z",
+   "done": false,
+   "message": {
+      "content": "'re",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:47.672160308Z",
+   "done": false,
+   "message": {
+      "content": " seeing",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:47.763083117Z",
+   "done": false,
+   "message": {
+      "content": " is",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:47.85797143Z",
+   "done": false,
+   "message": {
+      "content": " not",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:47.951722415Z",
+   "done": false,
+   "message": {
+      "content": " from",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:48.044761693Z",
+   "done": false,
+   "message": {
+      "content": " line",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:48.230216404Z",
+   "done": false,
+   "message": {
+      "content": " 5",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:48.322843677Z",
+   "done": false,
+   "message": {
+      "content": " of",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:48.414941304Z",
+   "done": false,
+   "message": {
+      "content": " `",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:48.506872689Z",
+   "done": false,
+   "message": {
+      "content": "editor",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:48.595418139Z",
+   "done": false,
+   "message": {
+      "content": ".cpp",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:48.686785533Z",
+   "done": false,
+   "message": {
+      "content": "`,",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:48.778355508Z",
+   "done": false,
+   "message": {
+      "content": " but",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:48.873000043Z",
+   "done": false,
+   "message": {
+      "content": " rather",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:48.970168262Z",
+   "done": false,
+   "message": {
+      "content": " a",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:49.06299523Z",
+   "done": false,
+   "message": {
+      "content": " large",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:49.157622883Z",
+   "done": false,
+   "message": {
+      "content": " section",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:49.250894928Z",
+   "done": false,
+   "message": {
+      "content": " of",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:49.342293531Z",
+   "done": false,
+   "message": {
+      "content": " code",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:49.437341444Z",
+   "done": false,
+   "message": {
+      "content": " —",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:49.532546303Z",
+   "done": false,
+   "message": {
+      "content": " likely",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:49.626745079Z",
+   "done": false,
+   "message": {
+      "content": " the",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:49.721703184Z",
+   "done": false,
+   "message": {
+      "content": " entire",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:49.816923221Z",
+   "done": false,
+   "message": {
+      "content": " file",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:49.910916571Z",
+   "done": false,
+   "message": {
+      "content": " or",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:50.003705628Z",
+   "done": false,
+   "message": {
+      "content": " a",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:50.096611956Z",
+   "done": false,
+   "message": {
+      "content": " significant",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:50.191585749Z",
+   "done": false,
+   "message": {
+      "content": " portion",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:50.28172227Z",
+   "done": false,
+   "message": {
+      "content": " of",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:50.377392723Z",
+   "done": false,
+   "message": {
+      "content": " it",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:50.473228387Z",
+   "done": false,
+   "message": {
+      "content": ".",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:50.569881628Z",
+   "done": false,
+   "message": {
+      "content": " However",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:50.664410866Z",
+   "done": false,
+   "message": {
+      "content": ",",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:50.755037428Z",
+   "done": false,
+   "message": {
+      "content": " I",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:50.844875788Z",
+   "done": false,
+   "message": {
+      "content": " can",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:50.937398575Z",
+   "done": false,
+   "message": {
+      "content": " see",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:51.030318117Z",
+   "done": false,
+   "message": {
+      "content": " that",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:51.120560086Z",
+   "done": false,
+   "message": {
+      "content": " the",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:51.214200683Z",
+   "done": false,
+   "message": {
+      "content": " file",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:51.305380395Z",
+   "done": false,
+   "message": {
+      "content": " you",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:51.393989113Z",
+   "done": false,
+   "message": {
+      "content": "'re",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:51.484267461Z",
+   "done": false,
+   "message": {
+      "content": " referring",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:51.575895946Z",
+   "done": false,
+   "message": {
+      "content": " to",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:51.670935583Z",
+   "done": false,
+   "message": {
+      "content": " appears",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:51.763096409Z",
+   "done": false,
+   "message": {
+      "content": " to",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:51.856867542Z",
+   "done": false,
+   "message": {
+      "content": " be",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:51.950592038Z",
+   "done": false,
+   "message": {
+      "content": " a",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:52.042291086Z",
+   "done": false,
+   "message": {
+      "content": " C",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:52.134772164Z",
+   "done": false,
+   "message": {
+      "content": "++",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:52.228055129Z",
+   "done": false,
+   "message": {
+      "content": " source",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:52.318521209Z",
+   "done": false,
+   "message": {
+      "content": " file",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:52.415014419Z",
+   "done": false,
+   "message": {
+      "content": " (",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:52.507866134Z",
+   "done": false,
+   "message": {
+      "content": "based",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:52.59954307Z",
+   "done": false,
+   "message": {
+      "content": " on",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:52.693219796Z",
+   "done": false,
+   "message": {
+      "content": " the",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:52.786913834Z",
+   "done": false,
+   "message": {
+      "content": " Qt",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:52.88795884Z",
+   "done": false,
+   "message": {
+      "content": " includes",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:52.978674009Z",
+   "done": false,
+   "message": {
+      "content": " and",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:53.076140208Z",
+   "done": false,
+   "message": {
+      "content": " syntax",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:53.169370033Z",
+   "done": false,
+   "message": {
+      "content": "),",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:53.262357032Z",
+   "done": false,
+   "message": {
+      "content": " and",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:53.35453995Z",
+   "done": false,
+   "message": {
+      "content": " **",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:53.447774754Z",
+   "done": false,
+   "message": {
+      "content": "line",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:53.631388455Z",
+   "done": false,
+   "message": {
+      "content": " 5",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:53.722075962Z",
+   "done": false,
+   "message": {
+      "content": "**",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:53.812946442Z",
+   "done": false,
+   "message": {
+      "content": " in",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:53.905711594Z",
+   "done": false,
+   "message": {
+      "content": " the",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:54.003576683Z",
+   "done": false,
+   "message": {
+      "content": " content",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:54.096667768Z",
+   "done": false,
+   "message": {
+      "content": " shown",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:54.190261367Z",
+   "done": false,
+   "message": {
+      "content": " is",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:54.282110036Z",
+   "done": false,
+   "message": {
+      "content": ":",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:54.376233311Z",
+   "done": false,
+   "message": {
+      "content": "\n\n```",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:54.472676838Z",
+   "done": false,
+   "message": {
+      "content": "cpp",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:54.656906487Z",
+   "done": false,
+   "message": {
+      "content": "\n//",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:54.83840414Z",
+   "done": false,
+   "message": {
+      "content": "  Copyright",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:54.929581207Z",
+   "done": false,
+   "message": {
+      "content": " (",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:55.021952358Z",
+   "done": false,
+   "message": {
+      "content": "C",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:55.116088888Z",
+   "done": false,
+   "message": {
+      "content": ")",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:55.301447118Z",
+   "done": false,
+   "message": {
+      "content": " 2",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:55.393852354Z",
+   "done": false,
+   "message": {
+      "content": "0",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:55.485330967Z",
+   "done": false,
+   "message": {
+      "content": "2",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:55.578909568Z",
+   "done": false,
+   "message": {
+      "content": "5",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:55.672687624Z",
+   "done": false,
+   "message": {
+      "content": "-",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:55.766609761Z",
+   "done": false,
+   "message": {
+      "content": "2",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:55.858401974Z",
+   "done": false,
+   "message": {
+      "content": "0",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:55.949501475Z",
+   "done": false,
+   "message": {
+      "content": "2",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:56.04106598Z",
+   "done": false,
+   "message": {
+      "content": "6",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:56.136723088Z",
+   "done": false,
+   "message": {
+      "content": " Werner",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:56.229080514Z",
+   "done": false,
+   "message": {
+      "content": " Schwe",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:56.31952333Z",
+   "done": false,
+   "message": {
+      "content": "er",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:56.501844582Z",
+   "done": false,
+   "message": {
+      "content": "\n``",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:56.592900891Z",
+   "done": false,
+   "message": {
+      "content": "`",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:56.684791269Z",
+   "done": false,
+   "message": {
+      "content": "\n\nSo",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:56.776903103Z",
+   "done": false,
+   "message": {
+      "content": " the",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:56.868387767Z",
+   "done": false,
+   "message": {
+      "content": " answer",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:56.958474765Z",
+   "done": false,
+   "message": {
+      "content": " to",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:57.050229017Z",
+   "done": false,
+   "message": {
+      "content": " your",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:57.143854566Z",
+   "done": false,
+   "message": {
+      "content": " request",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:57.235918259Z",
+   "done": false,
+   "message": {
+      "content": " is",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:57.329694943Z",
+   "done": false,
+   "message": {
+      "content": ":",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:57.421234611Z",
+   "done": false,
+   "message": {
+      "content": "\n\n```",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:57.513922999Z",
+   "done": false,
+   "message": {
+      "content": "cpp",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:57.695091323Z",
+   "done": false,
+   "message": {
+      "content": "\n//",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:57.882265497Z",
+   "done": false,
+   "message": {
+      "content": "  Copyright",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:57.975856712Z",
+   "done": false,
+   "message": {
+      "content": " (",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:58.06885404Z",
+   "done": false,
+   "message": {
+      "content": "C",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:58.158526108Z",
+   "done": false,
+   "message": {
+      "content": ")",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:58.339839304Z",
+   "done": false,
+   "message": {
+      "content": " 2",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:58.433821714Z",
+   "done": false,
+   "message": {
+      "content": "0",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:58.524501897Z",
+   "done": false,
+   "message": {
+      "content": "2",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:58.614263012Z",
+   "done": false,
+   "message": {
+      "content": "5",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:58.709974272Z",
+   "done": false,
+   "message": {
+      "content": "-",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:58.801971731Z",
+   "done": false,
+   "message": {
+      "content": "2",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:58.897316642Z",
+   "done": false,
+   "message": {
+      "content": "0",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:58.994632098Z",
+   "done": false,
+   "message": {
+      "content": "2",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:59.086477992Z",
+   "done": false,
+   "message": {
+      "content": "6",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:59.179696576Z",
+   "done": false,
+   "message": {
+      "content": " Werner",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:59.271838286Z",
+   "done": false,
+   "message": {
+      "content": " Schwe",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:59.361452866Z",
+   "done": false,
+   "message": {
+      "content": "er",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:59.541167257Z",
+   "done": false,
+   "message": {
+      "content": "\n``",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:59.634339023Z",
+   "done": false,
+   "message": {
+      "content": "`",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:59.724264858Z",
+   "done": false,
+   "message": {
+      "content": "\n\nLet",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:59.820734934Z",
+   "done": false,
+   "message": {
+      "content": " me",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:22:59.914160437Z",
+   "done": false,
+   "message": {
+      "content": " know",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:23:00.006890934Z",
+   "done": false,
+   "message": {
+      "content": " if",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:23:00.104376289Z",
+   "done": false,
+   "message": {
+      "content": " you",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:23:00.197512158Z",
+   "done": false,
+   "message": {
+      "content": "'d",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:23:00.290236754Z",
+   "done": false,
+   "message": {
+      "content": " like",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:23:00.382821998Z",
+   "done": false,
+   "message": {
+      "content": " help",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:23:00.47520435Z",
+   "done": false,
+   "message": {
+      "content": " analyzing",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:23:00.567960194Z",
+   "done": false,
+   "message": {
+      "content": ",",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:23:00.66042943Z",
+   "done": false,
+   "message": {
+      "content": " modifying",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:23:00.753654907Z",
+   "done": false,
+   "message": {
+      "content": ",",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:23:00.845868252Z",
+   "done": false,
+   "message": {
+      "content": " or",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:23:00.939184911Z",
+   "done": false,
+   "message": {
+      "content": " understanding",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:23:01.033699842Z",
+   "done": false,
+   "message": {
+      "content": " this",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:23:01.130806515Z",
+   "done": false,
+   "message": {
+      "content": " code",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:23:01.228074462Z",
+   "done": false,
+   "message": {
+      "content": "!",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest"
+}>
+Debug(/home/ws/nped/src/ollama.cpp:101, processJsonItem): Received Item: <{
+   "created_at": "2026-03-16T17:23:01.320525112Z",
+   "done": true,
+   "done_reason": "stop",
+   "eval_count": 155,
+   "eval_duration": 14264659121,
+   "load_duration": 60724351,
+   "message": {
+      "content": "",
+      "role": "assistant"
+   },
+   "model": "qwen3-coder-next:latest",
+   "prompt_eval_count": 16296,
+   "prompt_eval_duration": 39925719508,
+   "total_duration": 54334422954
+}>

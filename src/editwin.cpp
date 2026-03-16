@@ -250,6 +250,7 @@ struct DrawingContext {
       int xo, yo;
       QPainter* painter;
       QColor bgColor;
+      QColor fgColor;
       QColor selectColor;
       QColor labelBGColor;
       int lb;
@@ -269,7 +270,7 @@ void EditWidget::paintLine(DrawingContext& dc, int fileRow, int y) {
             dc.painter->setPen(l.labelColor());
             dc.painter->setFont(editor->font());
             dc.painter->drawText(EditWidget::BORDER, y, l.label());
-            dc.painter->setPen(QColor("black"));
+            dc.painter->setPen(dc.fgColor);
             }
 
       //=============================================
@@ -338,17 +339,25 @@ void EditWidget::paintEvent(QPaintEvent* e) {
       //      dc.yo             = k->screenRowOffset();
       dc.painter        = &painter;
       dc.bgColor        = editor->bgColor();
+      dc.fgColor        = editor->fgColor();
       dc.lb             = EditWidget::BORDER + lm; // left border in pixel
       dc.visibleColumns = visibleSize().width();
 
       int cr, cg, cb;
       dc.bgColor.getRgb(&cr, &cg, &cb);
-      cr                              -= cr / 8;
-      cb                              -= cb / 8;
-      cg                              -= cg / 8;
+      if (_darkMode) {
+            cr += (255 - cr) / 4;
+            cg += (255 - cg) / 4;
+            cb += (255 - cb) / 4;
+            }
+      else {
+            cr -= cr / 8;
+            cb -= cb / 8;
+            cg -= cg / 8;
+            }
       dc.selectColor                   = QColor(cr, cg, cb);
-      const QColor hoverMarkerBGColor  = dc.bgColor.darker(-120);
-      const QColor markerBGColor       = dc.bgColor.darker(120);
+      const QColor hoverMarkerBGColor  = dc.bgColor.darker(_darkMode ? 120 : -120);
+      const QColor markerBGColor       = dc.bgColor.darker(_darkMode ? -120 : 120);
       dc.labelBGColor                  = QColor(100, 150, 255).darker(70);
 
       //

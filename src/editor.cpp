@@ -291,7 +291,9 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       _editWidget = new EditWidget(nullptr, this);
       _mdWidget   = new MarkdownWebView(this, this);
       _mdWidget->setZoomFactor(1.5);
+      connect(this, &Editor::darkModeChanged, _editWidget, &EditWidget::setDarkMode);
       connect(this, &Editor::darkModeChanged, _mdWidget, &MarkdownWebView::setDarkMode);
+      _editWidget->setDarkMode(darkMode());
       _mdWidget->setDarkMode(darkMode());
       _stack->addWidget(_editWidget);
       _stack->addWidget(_mdWidget);
