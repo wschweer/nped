@@ -60,6 +60,7 @@ qt_add_executable(nped
       ${mocs}
       src/logger.cpp
       src/main.cpp
+      src/line.cpp
       src/editor.cpp
       src/file.cpp
       src/filewatcher.cpp

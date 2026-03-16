@@ -16,8 +16,8 @@
 #include <QPoint>
 #include <QColor>
 
-#include "ast.h"
-#include "git.h"
+#include "marker.h"
+#include "types.h"
 
 class File;
 
@@ -30,49 +30,6 @@ static constexpr char macroProperty4[] = "//JSON";
 
 static constexpr char startReplaceSignature[] = "//##<";
 static constexpr char endReplaceSignature[]   = "//##>";
-
-//---------------------------------------------------------
-//   MarkerDefinition
-//    describes how a marking should look like
-//---------------------------------------------------------
-
-struct MarkerDefinition {
-      QColor fg; // text color
-      QColor bg; // text background
-      bool bold;
-      bool italic;
-      };
-
-//---------------------------------------------------------
-//   Marker
-//    list of available markings
-//---------------------------------------------------------
-
-enum class Marker { Normal, Flow, Type, Comment, String, Search, SearchHit };
-
-//---------------------------------------------------------
-//   MarkerDefinitions
-//    Marker definition for ervery available marker
-//---------------------------------------------------------
-
-class MarkerDefinitions : public std::array<const MarkerDefinition, 7>
-      {
-    public:
-      const MarkerDefinition* md(const Marker m) const { return &(*this)[size_type(m)]; }
-      };
-
-static constexpr MarkerDefinitions markerDefinitions{
-   // QColor() is an invalid color; bg will then be ignored
-   // clang-format off
-      MarkerDefinition(QColor(0, 0, 0),   QColor(), false, false),  // normal
-      MarkerDefinition(QColor(0, 0, 150), QColor(), true, false),   // flow
-      MarkerDefinition(QColor(0, 0, 150), QColor(), false, false),  // type
-      MarkerDefinition(QColor(0, 0, 0),   QColor(), false, true),   // comment
-      MarkerDefinition(QColor(0, 150, 0), QColor(), false, false),   // string
-      MarkerDefinition(QColor(255, 255, 255),   QColor(120, 120, 120), false, false),   // search
-      MarkerDefinition(QColor(255, 255, 255),   QColor(120, 120, 220), false, false)   // search hit
-   // clang-format on
-      };
 
 //---------------------------------------------------------
 //   Mark

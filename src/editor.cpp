@@ -299,15 +299,20 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       _stack->addWidget(_editWidget);
       _stack->addWidget(_mdWidget);
 
-      connect(this, &Editor::darkModeChanged, [](bool dark) {
+      connect(this, &Editor::darkModeChanged, [this](bool dark) {
+            markerDefinitions.setDarkMode(dark);
+            update();
             QString styleFile = dark ? ":/src/dark.qss" : ":/src/light.qss";
             QFile file(styleFile);
             if (file.open(QFile::ReadOnly)) {
                   QString style = QLatin1String(file.readAll());
                   qApp->setStyleSheet(style);
                   }
+            else
+                  Critical("cannot open style qss");
             });
       // Initial style
+      markerDefinitions.setDarkMode(darkMode());
       {
             QString styleFile = darkMode() ? ":/src/dark.qss" : ":/src/light.qss";
             QFile file(styleFile);

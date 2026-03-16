@@ -17,6 +17,7 @@
 #include "editor.h"
 #include "file.h"
 #include "kontext.h"
+#include "marker.h"
 // #include "lsclient.h"
 
 //---------------------------------------------------------
