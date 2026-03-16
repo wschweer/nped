@@ -28,7 +28,8 @@ QToolButton {
     background: transparent;
     border: none;
     color: #333333;
-    padding: 4px;
+    padding: 6px;
+    icon-size: 24px;
 }
 
 QToolButton:hover {
