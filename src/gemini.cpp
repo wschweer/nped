@@ -288,7 +288,18 @@ void GeminiClient::dataFinished(QNetworkReply* reply) {
             reply = nullptr;
             agent->enableInput(true);
             }
-      trimHistory(agent->chatHistory, false);
+      if (trimHistory(agent->chatHistory, summaryRequested)) {
+            // request summary
+            agent->sendMessage("Please provide a concise technical summary of our conversation so far. "
+                  "Focus specifically on the results obtained from the tool calls and the final "
+                  "conclusions reached. Discard the raw, voluminous data output from the tools, "
+                  "but retain the key facts, parameters used, and the current state of the task. "
+                  "This summary will serve as the new starting point for our context, "
+                  "so ensure no critical logical step is lost.");
+            summaryRequested = true;
+            }
+      else
+            summaryRequested = false;
       }
 
 //---------------------------------------------------------------------------------------

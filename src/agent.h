@@ -202,13 +202,13 @@ class Agent : public QWidget
 
     private slots:
       void fetchModels();
-      void sendMessage();
       void handleChatReadyRead();
       void handleChatFinished();
       void updateSpinner();
       void startNewSession();
 
     public slots:
+      void sendMessage(QString);
       void sendMessage2();
 
     signals:

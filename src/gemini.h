@@ -26,6 +26,7 @@ class GeminiClient : public LLMClient
       int currentRetryCount{0};
       bool isRetrying{false};
       int maxRetries{12};
+      bool summaryRequested{false};
 
       void processData();
       bool trimHistory(json& history, bool hasSummary);

@@ -291,10 +291,10 @@ void Agent::fetchModels() {
 //   sendMessage
 //---------------------------------------------------------
 
-void Agent::sendMessage() {
-      Debug("=============<{}>", userInput->toPlainText());
+void Agent::sendMessage(QString qtext) {
+      Debug("=============<{}>", qtext);
 
-      std::string text = userInput->toPlainText().trimmed().toStdString();
+      std::string text = qtext.trimmed().toStdString();
       if (text.empty() || model.name == "")
             return;
 
@@ -800,7 +800,7 @@ bool Agent::eventFilter(QObject* obj, QEvent* event) {
             if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
                   if (keyEvent->modifiers() & Qt::ShiftModifier)
                         return false;
-                  sendMessage();
+                  sendMessage(userInput->toPlainText());
                   return true;
                   }
             }
