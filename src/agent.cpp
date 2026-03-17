@@ -72,7 +72,7 @@ static std::string manifest = "You are an experienced C++ developer. "
 //   Agent (Constructor)
 //---------------------------------------------------------
 
-Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e), currentReply(nullptr) {
+Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       networkManager = new QNetworkAccessManager(this);
       mcpTools       = getMCPTools();
 
@@ -301,67 +301,15 @@ void Agent::sendMessage(QString qtext) {
       userInput->clear();
       chatDisplay->startNewStreamingMessage("User");
       chatDisplay->handleIncomingChunk("", QString::fromStdString(text));
+
       json msg;
       msg["role"] = "user";
-      if (model.api == "gemini") {
+      if (model.api == "gemini")
             msg["parts"] = json::array({{{"text", text}}});
-            chatHistory.push_back(msg);
-            }
-      else { // ollama
+      else // ollama
             msg["content"] = text;
-            chatHistory.push_back(msg);
-            }
+      chatHistory.addRequest(msg);
       sendMessage2();
-      }
-
-//---------------------------------------------------------
-//   trimHistory
-//---------------------------------------------------------
-
-void Agent::trimHistory() {
-      if (chatHistory.size() <= kChatMaxMessages)
-            return;
-
-      // We need a new container
-      json newHistory;
-
-      // 1. Always keep system prompt!
-      if (!chatHistory.empty())
-            newHistory.push_back(chatHistory[0]);
-
-      // 2. Calculate where to start copying from (the last N)
-      unsigned startIdx = chatHistory.size() - (kChatMaxMessages - 1);
-
-      // Make sure we don't cut in the middle of a tool flow
-      // If the message at startIdx is a "tool_result", we need it
-      // the "tool_use" before!
-      while (startIdx < chatHistory.size()) {
-            const auto& msg = chatHistory[startIdx];
-
-            // Check if we just have an orphaned tool result
-            bool isToolResult = (msg.value("role", "") == "tool") ||
-                                (msg.value("role", "") == "user" && msg.contains("content") && msg["content"].is_array());
-
-            if (isToolResult) {
-                  // We can't cut here, we have to start one earlier
-                  startIdx--;
-                  }
-            else {
-                  break; // Everything okay, this is a "clean" message (usually user text)
-                  }
-
-            if (startIdx <= 1)
-                  break; // Do not overwrite the system prompt
-            }
-
-      // 3. Copy the rest
-      for (size_t i = startIdx; i < chatHistory.size(); ++i)
-            newHistory.push_back(chatHistory[i]);
-
-      chatHistory = newHistory;
-
-      // Log for control
-      Debug("History trimmed to {} messages.", chatHistory.size());
       }
 
 //---------------------------------------------------------
@@ -388,9 +336,8 @@ std::string Agent::truncateOutput(const std::string& text, int maxChars) {
       int removed = text.length() - maxChars;
       // Force line break if the string is just one long line
       std::string s = text.substr(0, maxChars);
-      if (s.find('\n') == std::string::npos && s.length() > 100) {
+      if (s.find('\n') == std::string::npos && s.length() > 100)
             s.insert(100, "\n");
-            }
       return s + std::format("\n\n... [Output truncated. {} characters omitted for brevity]", removed);
       }
 
@@ -404,15 +351,21 @@ void Agent::sendMessage2() {
 
       streamBuffer.clear();
       QNetworkRequest request;
-      trimHistory();
       json jsonPayLoad   = llm->prompt(&request);
       QByteArray payload = QString::fromStdString(jsonPayLoad.dump()).toUtf8();
 
-      //      Debug("send <{}>", jsonPayLoad.dump(3));
+      Debug("send <{}>", jsonPayLoad.dump(3));
       request.setTransferTimeout(60000 * 5);
 
       chatDisplay->startNewStreamingMessage(model.name);
 
+      if (currentReply) {
+            currentReply->disconnect();
+            currentReply->abort();
+            currentReply->deleteLater();
+            currentReply = nullptr;
+            Critical("request already running?");
+            }
       currentReply = networkManager->post(request, payload);
       connect(currentReply, &QNetworkReply::readyRead, this, &Agent::handleChatReadyRead);
       connect(currentReply, &QNetworkReply::finished, this, &Agent::handleChatFinished);
@@ -441,10 +394,92 @@ void Agent::handleChatFinished() {
             Critical("no currentReply");
             return;
             }
+      // --- ERROR HANDLING & BACKOFF LOGIC ---
+      if (currentReply->error() != QNetworkReply::NoError) {
+            int statusCode = currentReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+            // Case 1: Rate Limit (429) or Server Overload (503/500/502/504)
+            if (statusCode == 429 || (statusCode >= 500 && statusCode < 600)) {
+                  if (currentRetryCount < maxRetries) {
+                        int waitMs = 0;
+                        // A: Rate Limit (429) -> respect headers
+                        if (statusCode == 429) {
+                              // CORRECTION: Read "Retry-After" as raw header, as there is no enum for it
+                              QByteArray retryAfterRaw = currentReply->rawHeader("Retry-After");
+
+                              if (!retryAfterRaw.isEmpty()) {
+                                    // Anthropic/OpenAI usually send seconds as integer here
+                                    waitMs = retryAfterRaw.toInt() * 1000;
+                                    }
+
+                              // Fallback: Standard Exponential if no headers are there
+                              if (waitMs <= 0)
+                                    waitMs = 1000 * std::pow(2, currentRetryCount);
+
+                              // Safety margin (jitter)
+                              waitMs += (rand() % 500);
+
+                              chatDisplay->append(
+                                  QString("<br><font color='orange'><b>[Rate Limit]:</b> Pause for %1 seconds...</font><br>")
+                                      .arg(waitMs / 1000.0));
+                              }
+                        // B: Server Error (5xx) -> Exponential Backoff
+                        else {
+                              waitMs = 2000 * std::pow(2, currentRetryCount);
+                              chatDisplay->append(
+                                  QString("<br><font color='orange'><b>[Server Error %1]:</b> Retry %2/%3 in %4s...</font><br>")
+                                      .arg(statusCode)
+                                      .arg(currentRetryCount + 1)
+                                      .arg(maxRetries)
+                                      .arg(waitMs / 1000.0));
+                              }
+
+                        currentReply->deleteLater();
+                        currentReply = nullptr;
+
+                        currentRetryCount++;
+                        isRetrying = true; // Set flag
+
+                        // Start timer for next attempt
+                        QTimer::singleShot(waitMs, this, &Agent::sendMessage2);
+                        return;
+                        }
+                  else {
+                        Debug("too many reply's");
+                        chatDisplay->append(
+                            QString("<br><font color='red'><b>[Abort]:</b> Too many attempts (%1).</font><br>").arg(maxRetries));
+                        }
+                  }
+
+            QString errorMessage = currentReply->errorString();
+            // Generate specific messages
+            switch (currentReply->error()) {
+                  case QNetworkReply::TimeoutError:
+                        errorMessage += "\nTimeout: The LL server did not respond within 60 seconds. Maybe the "
+                                        "model is still loading or the server is hanging.";
+                        break;
+                  case QNetworkReply::ContentNotFoundError: errorMessage += "\nModell not found (bad baseUrl configured?)"; break;
+                  default: break;
+                  }
+            Debug("Network/API error {}: {}", int(currentReply->error()), errorMessage);
+
+            // Show the error to the user in the UI
+            chatDisplay->append(QString("<br><font color='red'><b>[Connection abort]:</b> %1</font><br>").arg(errorMessage));
+            currentReply->deleteLater();
+            currentReply = nullptr;
+            return;
+            }
       QByteArray newData = currentReply->readAll();
       streamBuffer.append(newData);
       processData();
-      llm->dataFinished(currentReply);
+
+      if (!streamBuffer.isEmpty())
+            Critical("there is still data in the streamBuffer: <{}>", streamBuffer.data());
+
+      currentReply->deleteLater();
+      currentReply = nullptr;
+
+      llm->dataFinished();
       saveStatus();
       }
 
@@ -478,6 +513,7 @@ void Agent::processData() {
                         // accept() ist schneller als parse(), da es kein Objekt im Speicher baut
                         if (json::accept(potentialJson)) {
                               auto j = json::parse(potentialJson);
+                              Debug("received <{}>", j.dump(3));
                               llm->processJsonItem(j);
 
                               // Puffer aktualisieren
@@ -707,7 +743,7 @@ void Agent::saveStatus() {
       std::ofstream f(currentSessionFileName.toStdString());
       if (f.is_open()) {
             f << "  ";
-            f << chatHistory.dump(3);
+            f << chatHistory.history().dump(3);
             f.close();
             }
       else {
@@ -727,7 +763,8 @@ void Agent::loadStatus() {
       if (!info.fileName.isEmpty()) {
             try {
                   std::ifstream i(info.fileName.toStdString());
-                  i >> chatHistory;
+                  chatHistory.clear();
+                  i >> chatHistory.history();
                   //                  chatDisplay->append(QString("<i>[System: Session loaded: <b>%1</b>]</i><br>").arg(QFileInfo(currentSessionFileName).fileName()));
                   currentSessionFileName = info.fileName;
                   updateChatDisplay();
@@ -871,10 +908,10 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                         msg += part["text"];
                   }
             if (part.contains("functionResponse")) {
-                  json fr        = part["functionResponse"];
-                  std::string output = std::format("\n\n<i>[System: Tool Response: {}()]</i>\n\n", std::string(fr["name"]));
-                  std::string s  = truncateOutput(static_cast<std::string>(fr["response"]["content"]), kChatResultMaxChars);
-                  msg           += std::format("\n\n```\n{}\n```\n\n", s);
+                  json fr             = part["functionResponse"];
+                  std::string output  = std::format("\n\n<i>[System: Tool Response: {}()]</i>\n\n", std::string(fr["name"]));
+                  std::string s       = truncateOutput(static_cast<std::string>(fr["response"]["content"]), kChatResultMaxChars);
+                  msg                += std::format("\n\n```\n{}\n```\n\n", s);
                   }
             if (part.contains("functionCall")) {
                   json fc  = part["functionCall"];
@@ -895,7 +932,7 @@ void Agent::updateChatDisplay() {
             std::string mergedMsg;
             std::string mergedThought;
 
-            for (const auto& content : chatHistory) {
+            for (const auto& content : chatHistory.history()) {
                   std::string role;
                   if (!content.contains("role")) {
                         Critical("no role in chatHistory: <{}>", content.dump(3));
@@ -948,4 +985,60 @@ void Agent::enableInput(bool flag) {
       setInputEnabled(flag);
       if (flag)
             userInput->setFocus();
+      }
+
+//---------------------------------------------------------------------------------------
+//   trim
+//    hasSummary  -     Signalisiert, ob der letzte Eintrag eine Zusammenfassung war
+//    return bool True, wenn die Historie zu groß wird und eine Zusammenfassung nötig ist
+//---------------------------------------------------------------------------------------
+
+bool HistoryManager::trim() {
+      // 1. Wenn der letzte Turn eine Zusammenfassung war:
+      // Wir löschen ALLES vor dieser Zusammenfassung, da sie nun der neue Kontext-Anker ist.
+      if (summaryRequested) {
+            if (data.size() >= 1) {
+                  json lastEntry = data.back();
+                  data.clear();
+                  data.push_back(lastEntry);
+                  }
+            summaryRequested = false;
+            return false;
+            }
+
+      // 2. Klassisches Rolling Window (von vorne kürzen)
+      // Wir löschen immer paarweise (Index 0 und 1), um User/Model Paare zu erhalten.
+      while (data.size() > maxEntries) {
+            // Sicherheitshalber prüfen, ob wir genug zum Löschen haben
+            if (data.size() >= 2) {
+                  data.erase(data.begin());
+                  data.erase(data.begin());
+                  }
+            else
+                  break;
+            }
+      if (hitLimit()) {
+            // request summary
+            std::string text = "Please provide a concise technical summary of our conversation so far. "
+                               "Focus specifically on the results obtained from the tool calls and the final "
+                               "conclusions reached. Discard the raw, voluminous data output from the tools, "
+                               "but retain the key facts, parameters used, and the current state of the task. "
+                               "This summary will serve as the new starting point for our context, "
+                               "so ensure no critical logical step is lost.";
+            json msg;
+            msg["role"]  = "user";
+            msg["parts"] = json::array({{{"text", text}}});
+            addRequest(msg);
+            summaryRequested = true;
+            }
+      return summaryRequested;
+      }
+
+//---------------------------------------------------------
+//   addResult
+//---------------------------------------------------------
+
+bool HistoryManager::addResult(const json& content) {
+      data.push_back(content);
+      return trim();
       }

@@ -96,6 +96,32 @@ using Models = QList<Model>;
 Q_DECLARE_METATYPE(Model)
 
 //---------------------------------------------------------
+//   HistoryManager
+//---------------------------------------------------------
+
+class HistoryManager {
+      json data;        // this is an array of Content objects
+      const size_t maxEntries        = 30;
+      const size_t criticalCharCount = 50000; // Schwellenwert für Zusammenfassungs-Trigger
+      bool summaryRequested{false};
+
+   public:
+
+      void clear() { data.clear(); }
+      int messages() const { return data.size(); }
+      bool empty() const { return data.empty(); }
+      bool hitLimit() const {
+            std::string dumped = data.dump();
+            return dumped.length() > criticalCharCount;
+            }
+      bool trim();
+      bool addResult(const json& content);
+      void addRequest(json content) { data.push_back(content); }
+      const json& history() const { return data; }
+      json& history() { return data; }
+      };
+
+//---------------------------------------------------------
 //   SessionInfo
 //---------------------------------------------------------
 
@@ -137,7 +163,7 @@ class Agent : public QWidget
 
       // Netzwerk & Status
       QNetworkAccessManager* networkManager;
-      QNetworkReply* currentReply;
+      QNetworkReply* currentReply { nullptr };
       Model model;
       LLMClient* llm{nullptr};
 
@@ -157,7 +183,6 @@ class Agent : public QWidget
       bool commitGitChanges(const QString& commitMessage);
       void reinitSystemPrompt(); // Punkt 4: implementiert
       void updateChatDisplay();
-      void trimHistory();
       QString truncateOutput(const QString& text, int maxChars);
       SessionInfo getSessionInfo() const;
       QString sessionName(bool getNext) const;
@@ -219,7 +244,7 @@ class Agent : public QWidget
       explicit Agent(Editor* e, QWidget* parent = nullptr);
 
       ChatDisplay* chatDisplay;
-      json chatHistory; // this is an array of Content objects
+      HistoryManager chatHistory;
 
       std::string getManifest() const;
 

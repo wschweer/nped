@@ -37,6 +37,16 @@ QToolButton:hover {
     border-radius: 3px;
 }
 
+#configButton {
+    background: transparent;
+    border: none;
+}
+
+#configButton:hover {
+    background: #5d6062;
+    border-radius: 3px;
+}
+
 /* Ensure the icon is colored correctly in dark mode */
 QToolButton::menu-indicator {
     image: none;

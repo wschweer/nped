@@ -26,15 +26,15 @@ class GeminiClient : public LLMClient
       int currentRetryCount{0};
       bool isRetrying{false};
       int maxRetries{12};
-      bool summaryRequested{false};
 
       void processData();
       bool trimHistory(json& history, bool hasSummary);
+      void processTools();
 
     public:
       GeminiClient(Agent*, Model* m, const std::vector<json>& mcps);
       virtual QString name() const override { return "gemini"; }
       virtual json prompt(QNetworkRequest* request) override;
       virtual void processJsonItem(const json& item) override;
-      virtual void dataFinished(QNetworkReply*) override;
+      virtual void dataFinished() override;
       };

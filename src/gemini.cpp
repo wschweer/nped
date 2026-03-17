@@ -65,38 +65,11 @@ json GeminiClient::prompt(QNetworkRequest* request) {
       if (!tools.empty())
             requestJson["tools"] = tools;
 
-      json history = json::array();
-      //      Debug("chat-history: <{}>", agent->chatHistory.dump(3));
-      for (auto msg : agent->chatHistory) {
-            json jmsg;
-            if (msg["role"] == "function") {
-                  // Tool-Ergebnis Format
-                  jmsg["role"]  = "function";
-                  jmsg["parts"] = msg["parts"];
-                  }
-            else if (msg["role"] == "assistant" || msg["role"] == "model") {
-                  jmsg["role"] = "model";
-                  json parts   = msg["parts"];
-
-                  // Falls diese Nachricht Tool-Calls enthielt, müssen diese
-                  // im korrekten Format zurückgesendet werden
-                  for (const auto& part : msg["parts"])
-                        if (part.contains("functionCall"))
-                              parts.push_back(part);
-                  jmsg["parts"] = parts;
-                  }
-
-            else {
-                  jmsg["role"]  = (msg["role"] == "assistant") ? "model" : msg["role"];
-                  jmsg["parts"] = msg["parts"];
-                  }
-            history.push_back(jmsg);
-            }
       json jmanifest;
       jmanifest["parts"]                = json::array({{{"text", agent->getManifest()}}});
       jmanifest["role"]                 = "system";
       requestJson["system_instruction"] = jmanifest;
-      requestJson["contents"]           = history;
+      requestJson["contents"]           = agent->chatHistory.history();
       requestJson["generationConfig"]   = {
                {"thinking_config", {{"include_thoughts", true}, {"thinking_level", "MEDIUM"}}}, // LOW, MINIMAL, MEDIUM, HIGH
                                                                                           //               {"temperature",  0.2},
@@ -139,10 +112,12 @@ void GeminiClient::processJsonItem(const json& item) {
             for (const auto& part : content["parts"]) {
                   if (part.contains("text")) {
                         std::string s = part["text"];
-                        if (part.contains("thought") && part["thought"] == true)
-                              agent->chatDisplay->handleIncomingChunk(QString::fromStdString(s), "");
-                        else
-                              agent->chatDisplay->handleIncomingChunk("", QString::fromStdString(s));
+                        if (!s.empty()) {
+                              if (part.contains("thought") && part["thought"] == true)
+                                    agent->chatDisplay->handleIncomingChunk(QString::fromStdString(s), "");
+                              else
+                                    agent->chatDisplay->handleIncomingChunk("", QString::fromStdString(s));
+                              }
                         }
                   if (part.contains("functionCall"))
                         _currentToolCalls.push_back(part);
@@ -155,188 +130,77 @@ void GeminiClient::processJsonItem(const json& item) {
       }
 
 //---------------------------------------------------------
+//   processTools
+//    process the functionCall requests from gemini
+//---------------------------------------------------------
+
+void GeminiClient::processTools() {
+      json msg; // tool answer message
+      try {
+            msg["role"]  = "function";
+            msg["parts"] = json::array();
+            for (const auto& call : _currentToolCalls) {
+                  if (!call.contains("functionCall")) {
+                        Critical("ToolCall does not contain <functionCall>");
+                        continue;
+                        }
+                  json fc            = call["functionCall"];
+                  json args          = fc["args"];
+                  std::string result = agent->executeTool(fc["name"], args);
+
+                  msg["parts"].push_back({
+                           {"functionResponse", {{"name", fc["name"]}, {"response", {{"content", result}}}}}
+                        });
+                  }
+            }
+      catch (const json::parse_error& e) {
+            Critical("Parse Error: {}", e.what());
+            }
+      catch (const json::type_error& e) {
+            Critical("TypeError: {}", e.what());
+            }
+      catch (...) {
+            Critical("Unexpected error");
+            }
+      // show on display
+      std::string thinking;
+      std::string text;
+      agent->logContent(msg, text, thinking);
+      agent->chatDisplay->handleIncomingChunk(QString::fromStdString(thinking), QString::fromStdString(text));
+
+      // put on history
+      agent->chatHistory.addRequest(msg); // tool result
+      _currentToolCalls.clear();
+      agent->sendMessage2();
+      }
+
+//---------------------------------------------------------
 //   dataFinished
 //---------------------------------------------------------
 
-void GeminiClient::dataFinished(QNetworkReply* reply) {
-      if (!reply) {
-            Critical("no network reply");
-            return;
-            }
-      // --- ERROR HANDLING & BACKOFF LOGIC ---
-      if (reply->error() != QNetworkReply::NoError) {
-            int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+void GeminiClient::dataFinished() {
+      // Capture the content and clear the local buffer immediately
+      json responseContent = currentContent;
+      currentContent.clear();
 
-            // Case 1: Rate Limit (429) or Server Overload (503/500/502/504)
-            if (statusCode == 429 || (statusCode >= 500 && statusCode < 600)) {
-                  if (currentRetryCount < maxRetries) {
-                        int waitMs = 0;
-                        // A: Rate Limit (429) -> respect headers
-                        if (statusCode == 429) {
-                              // CORRECTION: Read "Retry-After" as raw header, as there is no enum for it
-                              QByteArray retryAfterRaw = reply->rawHeader("Retry-After");
-
-                              if (!retryAfterRaw.isEmpty()) {
-                                    // Anthropic/OpenAI usually send seconds as integer here
-                                    waitMs = retryAfterRaw.toInt() * 1000;
-                                    }
-
-                              // Fallback: Standard Exponential if no headers are there
-                              if (waitMs <= 0)
-                                    waitMs = 1000 * std::pow(2, currentRetryCount);
-
-                              // Safety margin (jitter)
-                              waitMs += (rand() % 500);
-
-                              agent->chatDisplay->append(
-                                  QString("<br><font color='orange'><b>[Rate Limit]:</b> Pause for %1 seconds...</font><br>")
-                                      .arg(waitMs / 1000.0));
-                              }
-                        // B: Server Error (5xx) -> Exponential Backoff
-                        else {
-                              waitMs = 2000 * std::pow(2, currentRetryCount);
-                              agent->chatDisplay->append(
-                                  QString("<br><font color='orange'><b>[Server Error %1]:</b> Retry %2/%3 in %4s...</font><br>")
-                                      .arg(statusCode)
-                                      .arg(currentRetryCount + 1)
-                                      .arg(maxRetries)
-                                      .arg(waitMs / 1000.0));
-                              }
-
-                        reply->deleteLater();
-                        reply = nullptr;
-
-                        currentRetryCount++;
-                        isRetrying = true; // Set flag
-
-                        // Start timer for next attempt
-                        QTimer::singleShot(waitMs, agent, &Agent::sendMessage2);
-                        return;
-                        }
-                  else {
-                        Debug("too many reply's");
-                        agent->chatDisplay->append(
-                            QString("<br><font color='red'><b>[Abort]:</b> Too many attempts (%1).</font><br>").arg(maxRetries));
-                        }
+      if (_currentToolCalls.empty()) {
+            // No tools: this is a final turn or a summary request
+            if (agent->chatHistory.addResult(responseContent)) {
+                  // trim() returned true: A summary was requested and added to history.
+                  // We must send this summary request to the LLM.
+                  agent->sendMessage2();
                   }
-
-            QString errorMessage;
-            // Generate specific messages
-            errorMessage = reply->errorString();
-            switch (reply->error()) {
-                  case QNetworkReply::TimeoutError:
-                        errorMessage += "\nTimeout: The LL server did not respond within 60 seconds. Maybe the "
-                                        "model is still loading or the server is hanging.";
-                        break;
-                  case QNetworkReply::ContentNotFoundError: errorMessage += "\nModell not found (bad baseUrl configured?)"; break;
-                  default: break;
+            else {
+                  // Standard end of conversation turn
+                  agent->enableInput(true);
                   }
-            Debug("Network/API error {}: {}", int(reply->error()), errorMessage);
-
-            // Show the error to the user in the UI
-            agent->chatDisplay->append(QString("<br><font color='red'><b>[Connection abort]:</b> %1</font><br>").arg(errorMessage));
-            return;
-            }
-
-      agent->chatHistory.push_back(currentContent);
-
-      if (!_currentToolCalls.empty()) {
-            json msg;
-            msg["role"] = "function";
-            msg["parts"] = json::array();
-            for (const auto& call : _currentToolCalls) {
-                  try {
-                        // Argumente von String/JSON-Fragmenten in ein JSON-Objekt umwandeln
-                        if (!call.contains("functionCall")) {
-                              Critical("ToolCall does not contain <functionCall>");
-                              continue;
-                              }
-                        json fc            = call["functionCall"];
-                        json args          = fc["args"];
-                        std::string result = agent->executeTool(fc["name"], args);
-
-                        // Ergebnis in die Historie einfügen (Rolle "function" für Gemini/OpenAI)
-                        msg["parts"].push_back({
-                                 {"functionResponse", {{"name", fc["name"]}, {"response", {{"content", result}}}}}
-                              });
-                        }
-                  catch (const json::parse_error& e) {
-                        Debug("Parse Error: {}", e.what());
-                        }
-                  catch (const json::type_error& e) {
-                        Debug("TypeError: {}", e.what());
-                        }
-                  catch (...) {
-                        Critical("Unexpected error");
-                        }
-                  }
-            // show on display
-            std::string thinking;
-            std::string text;
-            agent->logContent(msg, text, thinking);
-            agent->chatDisplay->handleIncomingChunk(QString::fromStdString(thinking), QString::fromStdString(text));
-
-            // put on history
-            agent->chatHistory.push_back(msg); // tool result
-            _currentToolCalls.clear();
-            reply->deleteLater();
-            reply = nullptr;
-            agent->sendMessage2();
             }
       else {
-            reply->deleteLater();
-            reply = nullptr;
-            agent->enableInput(true);
+            // Tool calls detected: Add the assistant's call to history first
+            agent->chatHistory.addRequest(responseContent);
+
+            // processTools() will execute the tools and internally call sendMessage2()
+            // to send the results back to the LLM.
+            processTools();
             }
-      if (trimHistory(agent->chatHistory, summaryRequested)) {
-            // request summary
-            agent->sendMessage("Please provide a concise technical summary of our conversation so far. "
-                  "Focus specifically on the results obtained from the tool calls and the final "
-                  "conclusions reached. Discard the raw, voluminous data output from the tools, "
-                  "but retain the key facts, parameters used, and the current state of the task. "
-                  "This summary will serve as the new starting point for our context, "
-                  "so ensure no critical logical step is lost.");
-            summaryRequested = true;
-            }
-      else
-            summaryRequested = false;
-      }
-
-//---------------------------------------------------------------------------------------
-//   trimHistory
-//    history     -     Das JSON-Array der bisherigen Chat-Verläufe
-//    hasSummary  -     Signalisiert, ob der letzte Eintrag eine Zusammenfassung war
-//    max_turns   -     Maximale Anzahl an User-Model-Paaren, die erhalten bleiben sollen
-//    return bool True, wenn die Historie zu groß wird und eine Zusammenfassung nötig ist
-//---------------------------------------------------------------------------------------
-
-bool GeminiClient::trimHistory(json& history, bool hasSummary) {
-      const size_t maxEntries         = 20;
-      const size_t criticalCharCount = 15000; // Schwellenwert für Zusammenfassungs-Trigger
-
-      // 1. Wenn der letzte Turn eine Zusammenfassung war:
-      // Wir löschen ALLES vor dieser Zusammenfassung, da sie nun der neue Kontext-Anker ist.
-      if (hasSummary && history.size() >= 1) {
-            json laseEntry = history.back();
-            history.clear();
-            history.push_back(laseEntry);
-            return false;
-            }
-
-      // 2. Klassisches Rolling Window (von vorne kürzen)
-      // Wir löschen immer paarweise (Index 0 und 1), um User/Model Paare zu erhalten.
-      while (history.size() > maxEntries) {
-            // Sicherheitshalber prüfen, ob wir genug zum Löschen haben
-            if (history.size() >= 2) {
-                  history.erase(history.begin());
-                  history.erase(history.begin());
-                  }
-            else
-                  break;
-            }
-
-      // 3. Heuristik: Müssen wir eine Zusammenfassung anfordern?
-      // Wir prüfen die String-Länge der gesamten Historie (als grober Token-Ersatz)
-      std::string dumped = history.dump();
-      return dumped.length() > criticalCharCount;
       }

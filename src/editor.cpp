@@ -358,8 +358,14 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       //*****************************************
 
       auto configButton = new QToolButton();
-      configButton->setIcon(QIcon(":images/configure.svg"));
+      configButton->setObjectName("configButton");
+      QString iconPath = darkMode() ? ":/images/configure_white.svg" : ":/images/configure.svg";
+      configButton->setIcon(QIcon(iconPath));
       configButton->setToolTip("Configure...");
+      connect(this, &Editor::darkModeChanged, [configButton](bool dark) {
+            QString iconPath = dark ? ":/images/configure_white.svg" : ":/images/configure.svg";
+            configButton->setIcon(QIcon(iconPath));
+            });
       connect(configButton, &QToolButton::clicked, [this] {
             ConfigDialogWrapper dialog(this, this);
             if (dialog.exec() == QDialog::Accepted)

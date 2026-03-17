@@ -77,7 +77,7 @@ json OllamaClient::prompt(QNetworkRequest* request) {
       jmanifest["role"]    = "system";
       history.push_back(jmanifest);
 
-      for (const auto& msg : agent->chatHistory) {
+      for (const auto& msg : agent->chatHistory.history()) {
             json jmsg;
             if (msg.contains("role"))
                   jmsg["role"] = msg["role"];
@@ -120,88 +120,12 @@ void OllamaClient::processJsonItem(const json& item) {
 //   dataFinished
 //---------------------------------------------------------
 
-void OllamaClient::dataFinished(QNetworkReply* reply) {
-      if (!reply)
-            return;
-      // --- ERROR HANDLING & BACKOFF LOGIC ---
-      if (reply->error() != QNetworkReply::NoError) {
-            int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-
-            // Case 1: Rate Limit (429) or Server Overload (503/500/502/504)
-            if (statusCode == 429 || (statusCode >= 500 && statusCode < 600)) {
-                  if (currentRetryCount < maxRetries) {
-                        int waitMs = 0;
-                        // A: Rate Limit (429) -> respect headers
-                        if (statusCode == 429) {
-                              // CORRECTION: Read "Retry-After" as raw header, as there is no enum for it
-                              QByteArray retryAfterRaw = reply->rawHeader("Retry-After");
-
-                              if (!retryAfterRaw.isEmpty()) {
-                                    // Anthropic/OpenAI usually send seconds as integer here
-                                    waitMs = retryAfterRaw.toInt() * 1000;
-                                    }
-
-                              // Fallback: Standard Exponential if no headers are there
-                              if (waitMs <= 0)
-                                    waitMs = 1000 * std::pow(2, currentRetryCount);
-
-                              // Safety margin (jitter)
-                              waitMs += (rand() % 500);
-
-                              agent->chatDisplay->append(
-                                  QString("<br><font color='orange'><b>[Rate Limit]:</b> Pause for %1 seconds...</font><br>")
-                                      .arg(waitMs / 1000.0));
-                              }
-                        // B: Server Error (5xx) -> Exponential Backoff
-                        else {
-                              waitMs = 2000 * std::pow(2, currentRetryCount);
-                              agent->chatDisplay->append(
-                                  QString("<br><font color='orange'><b>[Server Error %1]:</b> Retry %2/%3 in %4s...</font><br>")
-                                      .arg(statusCode)
-                                      .arg(currentRetryCount + 1)
-                                      .arg(maxRetries)
-                                      .arg(waitMs / 1000.0));
-                              }
-
-                        reply->deleteLater();
-                        reply = nullptr;
-
-                        currentRetryCount++;
-                        isRetrying = true; // Set flag
-
-                        // Start timer for next attempt
-                        //TODO                        QTimer::singleShot(waitMs, this, &Agent::sendChatRequest);
-                        return;
-                        }
-                  else {
-                        Debug("too many reply's");
-                        agent->chatDisplay->append(
-                            QString("<br><font color='red'><b>[Abort]:</b> Too many attempts (%1).</font><br>").arg(maxRetries));
-                        }
-                  }
-
-            QString errorMessage;
-            // Generate specific messages
-            errorMessage = reply->errorString();
-            switch (reply->error()) {
-                  case QNetworkReply::TimeoutError:
-                        errorMessage += "\nTimeout: The LL server did not respond within 60 seconds. Maybe the "
-                                        "model is still loading or the server is hanging.";
-                        break;
-                  case QNetworkReply::ContentNotFoundError: errorMessage += "\nModell not found (bad baseUrl configured?)"; break;
-                  default: break;
-                  }
-            Debug("Network/API error {}: {}", int(reply->error()), errorMessage);
-
-            // Show the error to the user in the UI
-            agent->chatDisplay->append(QString("<br><font color='red'><b>[Connection abort]:</b> %1</font><br>").arg(errorMessage));
-            return;
-            }
-      QByteArray newData = reply->readAll();
+void OllamaClient::dataFinished() {
+#if 0
       json response;
       response["role"]    = "assistant";
       response["content"] = currentContent;
-      agent->chatHistory.push_back(response);
+      agent->chatHistory.data.push_back(response);
 
       if (!_currentToolCalls.empty()) {
             std::string thinking;
@@ -219,7 +143,7 @@ void OllamaClient::dataFinished(QNetworkReply* reply) {
                         msg["role"]     = std::string("function");
                         msg["content"]  = result;
                         msg["function"] = fc;
-                        agent->chatHistory.push_back(msg); // tool result
+                        agent->chatHistory.data.push_back(msg); // tool result
 
                         std::string argsStr = "";
                         bool first          = true;
@@ -254,4 +178,5 @@ void OllamaClient::dataFinished(QNetworkReply* reply) {
             reply = nullptr;
             agent->enableInput(true);
             }
+#endif
       }

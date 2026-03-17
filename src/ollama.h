@@ -32,5 +32,5 @@ class OllamaClient : public LLMClient
       virtual QString name() const override { return "ollama"; }
       virtual json prompt(QNetworkRequest* request) override;
       virtual void processJsonItem(const json& item) override;
-      virtual void dataFinished(QNetworkReply*) override;
+      virtual void dataFinished() override;
       };
