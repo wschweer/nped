@@ -889,7 +889,8 @@ std::string Agent::formatToolCall(const std::string& name, const json& args, con
 
 void Agent::logContent(const json& content, std::string& msg, std::string& thought) {
       if (!content.contains("parts")) {
-            if (content.contains("content")) { // ollama
+            // ollama
+            if (content.contains("content")) {
                   std::string s = truncateOutput(content["content"].get<std::string>(), kChatResultMaxChars);
                   if (content.contains("role") && content["role"] == "function") {
                         if (content.contains("function")) {
@@ -902,23 +903,25 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                   }
             return;
             }
-      // gemini:
-      for (const auto& part : content["parts"]) {
-            if (part.contains("text")) {
-                  if (part.contains("thought") && part["thought"] == true)
-                        thought += part["text"];
-                  else
-                        msg += part["text"];
-                  }
-            if (part.contains("functionResponse")) {
-                  json fr             = part["functionResponse"];
-                  std::string output  = std::format("\n\n<i>[System: Tool Response: {}()]</i>\n\n", std::string(fr["name"]));
-                  std::string s       = truncateOutput(static_cast<std::string>(fr["response"]["content"]), kChatResultMaxChars);
-                  msg                += std::format("\n\n```\n{}\n```\n\n", s);
-                  }
-            if (part.contains("functionCall")) {
-                  json fc  = part["functionCall"];
-                  msg     += formatToolCall(fc["name"], fc["args"]);
+      else {
+            // gemini:
+            for (const auto& part : content["parts"]) {
+                  if (part.contains("text")) {
+                        if (part.contains("thought") && part["thought"] == true)
+                              thought += part["text"];
+                        else
+                              msg += part["text"];
+                        }
+                  if (part.contains("functionResponse")) {
+                        json fr             = part["functionResponse"];
+                        std::string output  = std::format("\n\n<i>[System: Tool Response: {}()]</i>\n\n", std::string(fr["name"]));
+                        std::string s       = truncateOutput(static_cast<std::string>(fr["response"]["content"]), kChatResultMaxChars);
+                        msg                += std::format("\n\n```\n{}\n```\n\n", s);
+                        }
+                  if (part.contains("functionCall")) {
+                        json fc  = part["functionCall"];
+                        msg     += formatToolCall(fc["name"], fc["args"]);
+                        }
                   }
             }
       }
@@ -1010,7 +1013,7 @@ bool HistoryManager::trim() {
             }
 
       // 2. Klassisches Rolling Window (von vorne kürzen)
-      while (data.size() > maxEntries) {
+      while (data.size() > maxEntries)
             if (data.size() >= 2) {
                   totalTokens -= data.front().tokens;
                   data.erase(data.begin());
@@ -1019,7 +1022,6 @@ bool HistoryManager::trim() {
                   }
             else
                   break;
-            }
       if (hitLimit()) {
             // request summary
             std::string text = "Please provide a concise technical summary of our conversation so far. "
@@ -1045,6 +1047,5 @@ bool HistoryManager::addResult(const json& content, size_t tokens) {
       bool needSummary = trim();
       data.push_back({content, tokens});
       totalTokens += tokens;
-      Debug("====");
       return needSummary;
       }
