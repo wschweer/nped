@@ -35,6 +35,7 @@
 #include <QScrollBar>
 #include <QStandardPaths>
 #include <iostream>
+#include <fstream>
 
 #include "agent.h"
 #include "logger.h"
@@ -236,8 +237,8 @@ std::string Agent::getManifest() const {
       QFile file(fullPath);
       if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
             QTextStream in(&file);
-            manifest += in.readAll().toStdString();
-            return manifest + in.readAll().toStdString();
+            std::string content = in.readAll().toStdString();
+            return manifest + content;
             }
       return manifest;
       }
@@ -308,7 +309,8 @@ void Agent::sendMessage(QString qtext) {
             msg["parts"] = json::array({{{"text", text}}});
       else // ollama
             msg["content"] = text;
-      chatHistory.addRequest(msg);
+      // Approximate token count: 4 chars per token
+      chatHistory.addRequest(msg, text.length() / 4);
       sendMessage2();
       }
 
@@ -763,8 +765,9 @@ void Agent::loadStatus() {
       if (!info.fileName.isEmpty()) {
             try {
                   std::ifstream i(info.fileName.toStdString());
-                  chatHistory.clear();
-                  i >> chatHistory.history();
+                  json h;
+                  i >> h;
+                  chatHistory.setHistory(h);
                   //                  chatDisplay->append(QString("<i>[System: Session loaded: <b>%1</b>]</i><br>").arg(QFileInfo(currentSessionFileName).fileName()));
                   currentSessionFileName = info.fileName;
                   updateChatDisplay();
@@ -932,7 +935,8 @@ void Agent::updateChatDisplay() {
             std::string mergedMsg;
             std::string mergedThought;
 
-            for (const auto& content : chatHistory.history()) {
+            for (const auto& item : chatHistory.data) {
+                  const auto& content = item.content;
                   std::string role;
                   if (!content.contains("role")) {
                         Critical("no role in chatHistory: <{}>", content.dump(3));
@@ -989,8 +993,6 @@ void Agent::enableInput(bool flag) {
 
 //---------------------------------------------------------------------------------------
 //   trim
-//    hasSummary  -     Signalisiert, ob der letzte Eintrag eine Zusammenfassung war
-//    return bool True, wenn die Historie zu groß wird und eine Zusammenfassung nötig ist
 //---------------------------------------------------------------------------------------
 
 bool HistoryManager::trim() {
@@ -998,20 +1000,21 @@ bool HistoryManager::trim() {
       // Wir löschen ALLES vor dieser Zusammenfassung, da sie nun der neue Kontext-Anker ist.
       if (summaryRequested) {
             if (data.size() >= 1) {
-                  json lastEntry = data.back();
+                  HistoryItem lastEntry = data.back();
                   data.clear();
                   data.push_back(lastEntry);
+                  totalTokens = lastEntry.tokens;
                   }
             summaryRequested = false;
             return false;
             }
 
       // 2. Klassisches Rolling Window (von vorne kürzen)
-      // Wir löschen immer paarweise (Index 0 und 1), um User/Model Paare zu erhalten.
       while (data.size() > maxEntries) {
-            // Sicherheitshalber prüfen, ob wir genug zum Löschen haben
             if (data.size() >= 2) {
+                  totalTokens -= data.front().tokens;
                   data.erase(data.begin());
+                  totalTokens -= data.front().tokens;
                   data.erase(data.begin());
                   }
             else
@@ -1028,7 +1031,7 @@ bool HistoryManager::trim() {
             json msg;
             msg["role"]  = "user";
             msg["parts"] = json::array({{{"text", text}}});
-            addRequest(msg);
+            addRequest(msg, text.length() / 4);
             summaryRequested = true;
             }
       return summaryRequested;
@@ -1038,7 +1041,10 @@ bool HistoryManager::trim() {
 //   addResult
 //---------------------------------------------------------
 
-bool HistoryManager::addResult(const json& content) {
-      data.push_back(content);
-      return trim();
+bool HistoryManager::addResult(const json& content, size_t tokens) {
+      bool needSummary = trim();
+      data.push_back({content, tokens});
+      totalTokens += tokens;
+      Debug("====");
+      return needSummary;
       }

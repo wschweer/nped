@@ -100,25 +100,50 @@ Q_DECLARE_METATYPE(Model)
 //---------------------------------------------------------
 
 class HistoryManager {
-      json data;        // this is an array of Content objects
-      const size_t maxEntries        = 30;
-      const size_t criticalCharCount = 50000; // Schwellenwert für Zusammenfassungs-Trigger
+   public:
+      struct HistoryItem {
+          json content;
+          size_t tokens{0};
+      };
+      std::vector<HistoryItem> data;
+      const size_t maxEntries         = 30;
+      const size_t criticalTokenCount = 30000; // Trigger summary if total context > 30k tokens
+      size_t totalTokens{0};
       bool summaryRequested{false};
 
    public:
 
-      void clear() { data.clear(); }
+      void clear() { data.clear(); totalTokens = 0; }
       int messages() const { return data.size(); }
       bool empty() const { return data.empty(); }
       bool hitLimit() const {
-            std::string dumped = data.dump();
-            return dumped.length() > criticalCharCount;
+            return totalTokens > criticalTokenCount;
             }
       bool trim();
-      bool addResult(const json& content);
-      void addRequest(json content) { data.push_back(content); }
-      const json& history() const { return data; }
-      json& history() { return data; }
+      bool addResult(const json& content, size_t tokens);
+      void addRequest(json content, size_t tokens = 0) {
+          data.push_back({content, tokens});
+          totalTokens += tokens;
+      }
+      json history() const {
+          json h = json::array();
+          for (const auto& item : data) h.push_back(item.content);
+          return h;
+      }
+      void setHistory(const json& h) {
+          clear();
+          for (const auto& item : h) {
+              // Approximation: 4 chars per token
+              size_t tokens = 0;
+              if (item.contains("parts")) {
+                  for (const auto& part : item["parts"]) {
+                      if (part.contains("text")) tokens += part["text"].get<std::string>().length() / 4;
+                  }
+              }
+              data.push_back({item, tokens});
+              totalTokens += tokens;
+          }
+      }
       };
 
 //---------------------------------------------------------

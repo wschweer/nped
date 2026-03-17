@@ -21,6 +21,7 @@ class GeminiClient : public LLMClient
       {
       Q_OBJECT
       json currentContent;
+      json _lastUsageMetadata;
       json _currentToolCalls;
       json tools;
       int currentRetryCount{0};
@@ -28,7 +29,6 @@ class GeminiClient : public LLMClient
       int maxRetries{12};
 
       void processData();
-      bool trimHistory(json& history, bool hasSummary);
       void processTools();
 
     public:
