@@ -176,12 +176,12 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
                   }
             });
 
-      userInput                = new QPlainTextEdit(this);
+      userInput = new QPlainTextEdit(this);
       userInput->setCursorWidth(8);
 
       statusLabel->setMinimumWidth(30);
       statusLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
-//      statusLabel->setAlignment(Qt::AlignCenter);
+      //      statusLabel->setAlignment(Qt::AlignCenter);
 
       userInput->setPlaceholderText("enter message to LLM...");
       QFontMetrics fm(userInput->font());
@@ -726,9 +726,8 @@ void Agent::startNewSession() {
 
       currentSessionFileName = sessionName(true); // create new session file name
       updateSessionList();
-      chatDisplay->addMessage("system",
-         format("<i>[System: New session started: <b>{}</b>]</i><br>",
-           QFileInfo(currentSessionFileName).fileName().toStdString()));
+      chatDisplay->addMessage("system", format("<i>[System: New session started: <b>{}</b>]</i><br>",
+                                               QFileInfo(currentSessionFileName).fileName().toStdString()));
       userInput->setFocus();
       }
 
@@ -743,8 +742,8 @@ void Agent::deleteCurrentSession() {
       QFile file(currentSessionFileName);
       if (file.exists()) {
             file.remove();
-//            chatDisplay->append(
-//                QString("<i>[System: Session deleted: <b>%1</b>]</i><br>").arg(QFileInfo(currentSessionFileName).fileName()));
+            //            chatDisplay->append(
+            //                QString("<i>[System: Session deleted: <b>%1</b>]</i><br>").arg(QFileInfo(currentSessionFileName).fileName()));
             }
 
       currentSessionFileName = QString();
@@ -881,7 +880,6 @@ void Agent::loadStatus(const QString& sessionPath) {
       if (!_editor)
             return;
 
-      Debug("===");
       QString fileToLoad = sessionPath;
       if (fileToLoad.isEmpty()) {
             auto info  = getSessionInfo();
@@ -896,10 +894,12 @@ void Agent::loadStatus(const QString& sessionPath) {
 
                   if (root.is_object() && root.contains("history")) {
                         if (root.contains("model")) {
-                              QString m = QString::fromStdString(root["model"].get<std::string>());
+                              std::string model = root["model"];
+                              QString m         = QString::fromStdString(model);
                               setCurrentModel(m, false);
                               }
-                        historyManager->setHistory(root["history"]);
+                        const json& history = root["history"];
+                        historyManager->setHistory(history);
                         }
                   else if (root.is_array()) {
                         historyManager->setHistory(root);
@@ -909,14 +909,13 @@ void Agent::loadStatus(const QString& sessionPath) {
                   updateSessionList();
                   updateChatDisplay();
                   chatDisplay->scrollToBottom();
-                  Debug("session loaded <{}>", currentSessionFileName);
                   return;
                   }
             catch (const json::parse_error& e) {
                   Debug("Parse Error: {}", e.what());
                   }
             catch (const json::type_error& e) {
-                  Debug("TypeError: {}", e.what());
+                  Debug("<{}>: TypeError: {}", fileToLoad, e.what());
                   }
             catch (...) {
                   Critical("Unexpected error");
@@ -1027,49 +1026,65 @@ std::string Agent::formatToolCall(const std::string& name, const json& args, con
 //---------------------------------------------------------
 
 void Agent::logContent(const json& content, std::string& msg, std::string& thought) {
-      if (!content.contains("parts")) {
-            // ollama
-            if (content.contains("content")) {
-                  std::string s = truncateOutput(content["content"].get<std::string>(), kChatResultMaxChars);
-                  if (content.contains("role") && (content["role"] == "function" || content["role"] == "tool")) {
-                        if (content.contains("function")) {
-                              json fc  = content["function"];
-                              msg     += formatToolCall(fc["name"], fc["arguments"], s);
-                              }
-                        }
-                  else
-                        msg += s;
-                  }
-            if (content.contains("tool_calls")) {
-                  for (const auto& tool : content["tool_calls"]) {
-                        if (tool.contains("function")) {
-                              json fc  = tool["function"];
-                              msg     += formatToolCall(fc["name"], fc["arguments"], "");
-                              }
-                        }
-                  }
-            return;
-            }
-      else {
-            // gemini:
-            for (const auto& part : content["parts"]) {
-                  if (part.contains("text")) {
-                        if (part.contains("thought") && part["thought"] == true)
-                              thought += part["text"];
+      try {
+            if (!content.contains("parts")) {
+                  // ollama
+                  if (content.contains("content")) {
+                        json c = content["content"];
+                        std::string s;
+                        if (c.is_array())
+                              for (auto& e : c)
+                                    s += e.get<std::string>();
                         else
-                              msg += part["text"];
+                              s = truncateOutput(c.get<std::string>(), kChatResultMaxChars);
+                        if (content.contains("role") && (content["role"] == "function" || content["role"] == "tool")) {
+                              if (content.contains("function")) {
+                                    json fc  = content["function"];
+                                    msg     += formatToolCall(fc["name"], fc["arguments"], s);
+                                    }
+                              }
+                        else
+                              msg += s;
                         }
-                  if (part.contains("functionResponse")) {
-                        json fr             = part["functionResponse"];
-                        std::string output  = std::format("\n\n<i>[System: Tool Response: {}()]</i>\n\n", std::string(fr["name"]));
-                        std::string s       = truncateOutput(static_cast<std::string>(fr["response"]["content"]), kChatResultMaxChars);
-                        msg                += std::format("\n\n```\n{}\n```\n\n", s);
-                        }
-                  if (part.contains("functionCall")) {
-                        json fc  = part["functionCall"];
-                        msg     += formatToolCall(fc["name"], fc["args"]);
+                  if (content.contains("tool_calls")) {
+                        for (const auto& tool : content["tool_calls"]) {
+                              if (tool.contains("function")) {
+                                    json fc  = tool["function"];
+                                    msg     += formatToolCall(fc["name"], fc["arguments"], "");
+                                    }
+                              }
                         }
                   }
+            else {
+                  // gemini:
+                  for (const auto& part : content["parts"]) {
+                        if (part.contains("text")) {
+                              if (part.contains("thought") && part["thought"] == true)
+                                    thought += part["text"];
+                              else
+                                    msg += part["text"];
+                              }
+                        if (part.contains("functionResponse")) {
+                              json fr            = part["functionResponse"];
+                              std::string output = std::format("\n\n<i>[System: Tool Response: {}()]</i>\n\n", std::string(fr["name"]));
+                              std::string s      = truncateOutput(static_cast<std::string>(fr["response"]["content"]), kChatResultMaxChars);
+                              msg += std::format("\n\n```\n{}\n```\n\n", s);
+                              }
+                        if (part.contains("functionCall")) {
+                              json fc  = part["functionCall"];
+                              msg     += formatToolCall(fc["name"], fc["args"]);
+                              }
+                        }
+                  }
+            }
+      catch (const json::parse_error& e) {
+            Debug("Parse Error: {}", e.what());
+            }
+      catch (const json::type_error& e) {
+            Debug("TypeError: {}", e.what());
+            }
+      catch (...) {
+            Critical("Unexpected error");
             }
       }
 
@@ -1105,23 +1120,23 @@ void Agent::updateChatDisplay() {
                   continue;
                   }
 
-/*            if (role == "function" || role == "tool") {
+            /*            if (role == "function" || role == "tool") {
                   if (lastRole.empty())
                         lastRole = role;
                   mergedMsg     += msg;
                   mergedThought += thought;
-                  }
+                                                }
             else {
 */
-                  if (!lastRole.empty() && !(mergedMsg.empty() && mergedThought.empty())) {
-                        QString s  = chatDisplay->renderMarkdownToHtml(mergedMsg);
-                        QString th = chatDisplay->renderMarkdownToHtml(mergedThought);
-                        chatDisplay->appendStaticHtml(QString::fromStdString(lastRole), s, th);
-                        }
-                  lastRole      = role;
-                  mergedMsg     = msg;
-                  mergedThought = thought;
-//                  }
+            if (!lastRole.empty() && !(mergedMsg.empty() && mergedThought.empty())) {
+                  QString s  = chatDisplay->renderMarkdownToHtml(mergedMsg);
+                  QString th = chatDisplay->renderMarkdownToHtml(mergedThought);
+                  chatDisplay->appendStaticHtml(QString::fromStdString(lastRole), s, th);
+                  }
+            lastRole      = role;
+            mergedMsg     = msg;
+            mergedThought = thought;
+            //                  }
             }
 
       if (!lastRole.empty() && !(mergedMsg.empty() && mergedThought.empty())) {

@@ -248,7 +248,6 @@ void ChatDisplay::setup() {
 </html>
 )")
                       .arg(hljsCss, chatCss);
-      Debug("==================setup html");
       setHtml(html);
       }
 

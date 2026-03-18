@@ -19,7 +19,24 @@
 #include "logger.h"
 #include "file.h"
 #include "types.h"
+
+//---------------------------------------------------------
+//   LScapabilities
+//---------------------------------------------------------
+
 struct LScapabilities {
+      bool documentFormattingProvider{false};
+      bool renameProvider{false};
+      bool hoverProvider{false};
+      bool definitionProvider{false};
+      bool completionProvider{false};
+      void read(const json& serverCapabilities) {
+            documentFormattingProvider = serverCapabilities.value("documentFormattingProvider", false);
+            renameProvider             = serverCapabilities.value("renameProvider", false);
+            hoverProvider              = serverCapabilities.value("hoverProvider", false);
+            definitionProvider         = serverCapabilities.value("definitionProvider", false);
+            completionProvider         = serverCapabilities.contains("completionProvider");
+            }
       };
 
 //---------------------------------------------------------
@@ -73,7 +90,7 @@ class LSclient : public QObject
 
     public:
       explicit LSclient(Editor* e, const std::string& name);
-      ~LSclient() override { stop(); }
+      ~LSclient() override;
       bool start(const std::string& path, const std::vector<std::string>& args);
 
       void stop();

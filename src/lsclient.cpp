@@ -20,7 +20,6 @@
 #include <QUrl>
 #include "lsclient.h"
 #include "logger.h"
-#include "lsclient.h"
 #include "editor.h"
 #include "undo.h"
 #include "kontext.h"
@@ -83,13 +82,26 @@ void PatchItem::setRange(const Range& r, File* f) {
 
 void LSclient::gotoRequest(const char* req, File* file, const Pos& cursor) {
       callbacks[id] = [this](const json& msg) {
+            Debug("<{}>", msg.dump(3));
+            if (!msg.contains("result") || msg["result"].is_null())
+                  return;
             const json& result = msg["result"];
-            for (const auto& r : result) {
+
+            // LSP erlaubt Location | Location[] | null
+            auto handleLocation = [this](const json& r) {
                   Range range(r["range"]);
-                  string path = r["uri"];
-                  path        = path.substr(6);
-                  editor->gotoKontext(QString::fromStdString(path), Pos(range.start.col, range.start.row));
-                  break;
+                  std::string uri = r["uri"];
+                  if (uri.starts_with("file://"))
+                        uri = uri.substr(7);
+                  editor->gotoKontext(QString::fromStdString(uri), Pos(range.start.col, range.start.row));
+                  };
+
+            if (result.is_array()) {
+                  if (!result.empty())
+                        handleLocation(result[0]);
+                  }
+            else if (result.is_object()) {
+                  handleLocation(result);
                   }
             };
       json textDocument;
@@ -112,14 +124,17 @@ void LSclient::gotoRequest(const char* req, File* file, const Pos& cursor) {
 //---------------------------------------------------------
 
 void LSclient::gotoDefinition(File* file, const Pos& cursor) {
+      Debug("=====");
       gotoRequest("textDocument/definition", file, cursor);
       }
 
 void LSclient::gotoTypeDefinition(File* file, const Pos& cursor) {
+      Debug("=====");
       gotoRequest("textDocument/typeDefinition", file, cursor);
       }
 
 void LSclient::gotoImplementation(File* file, const Pos& cursor) {
+      Debug("=====");
       gotoRequest("textDocument/implementation", file, cursor);
       }
 
@@ -231,8 +246,10 @@ void LSclient::renameRequest(Kontext* k, const QString& newName, int row, int co
                   // Debug("file: <{}>", filePath);
 
                   Kontext* kontext = editor->lookupKontext(QString::fromStdString(filePath));
-                  if (!kontext)
+                  if (!kontext) {
                         Fatal("no kontext");
+                        return; // for compiler analysis
+                        }
                   kontext->file()->undo()->beginMacro();
                   const auto& c = kontext->cursor();
                   auto patch    = new Patch(kontext->file(), c, c);
@@ -271,7 +288,7 @@ void LSclient::renameRequest(Kontext* k, const QString& newName, int row, int co
 //---------------------------------------------------------
 
 void LSclient::readerLoop() {
-      char buffer[1024 * 128];
+      std::vector<char> buffer(1024 * 128);
       ssize_t bytesRead;
       std::string message;
       size_t contentLength;
@@ -326,14 +343,14 @@ void LSclient::readerLoop() {
                   //*********************************************************************
 
                   for (;;) {
-                        bytesRead = read(stdoutPipe[0], buffer, sizeof(buffer) - 1);
+                        bytesRead = read(stdoutPipe[0], buffer.data(), buffer.size() - 1);
                         if (bytesRead <= 0) {
                               if (bytesRead < 0 && errno != EAGAIN)
                                     Debug("error({}): {}", errno, strerror(errno));
                               break;
                               }
-                        buffer[bytesRead]  = '\0';
-                        message           += buffer;
+                        buffer.data()[bytesRead]  = '\0';
+                        message           += buffer.data();
                         //            Debug("{} {}", bytesRead, message.length());
                         for (;;) {
                               if (readHeader) {
@@ -431,14 +448,16 @@ bool LSclient::start(const std::string& path, const std::vector<std::string>& ar
 //---------------------------------------------------------
 
 bool LSclient::write(const std::string& txt) {
-      ssize_t n = ::write(stdinPipe[1], txt.c_str(), txt.size());
-      if (n == -1) {
-            Debug("write failed, errno: {} ({})", errno, strerror(errno));
-            return false;
-            }
-      if (static_cast<size_t>(n) != txt.size()) {
-            Debug("write partial: {} != {}", n, txt.size());
-            return false;
+      size_t total = 0;
+      while (total < txt.size()) {
+            ssize_t n = ::write(stdinPipe[1], txt.c_str() + total, txt.size() - total);
+            if (n == -1) {
+                  if (errno == EINTR)
+                        continue;
+                  Critical("write failed, errno: {} ({})", errno, strerror(errno));
+                  return false;
+                  }
+            total += static_cast<size_t>(n);
             }
       return true;
       }
@@ -448,12 +467,11 @@ bool LSclient::write(const std::string& txt) {
 //---------------------------------------------------------
 
 bool LSclient::writeMessage(const std::string& jsonPayload) {
-      std::ostringstream oss;
-      oss << "Content-Length: " << jsonPayload.length() << "\r\n"
-          << "Content-Type: application/vscode-jsonrpc; charset=utf-8\r\n"
-          << "\r\n" // Trennung zwischen Header und Body
-          << jsonPayload;
-      return write(oss.str());
+      return write(std::format("Content-Length: {}\r\n"
+                               "Content-Type: application/vscode-jsonrpc; charset=utf-8\r\n"
+                               "\r\n"
+                               "{}",
+                               jsonPayload.length(), jsonPayload));
       }
 
 //---------------------------------------------------------
@@ -461,9 +479,9 @@ bool LSclient::writeMessage(const std::string& jsonPayload) {
 //---------------------------------------------------------
 
 bool LSclient::initializeRequest() {
-      callbacks[id] = [this](const json&) {
-            //  Debug("response:\n<{}", msg.dump(4));
-            //  TODO: fill in LScapabilities for server
+      callbacks[id] = [this](const json& msg) {
+            if (msg.contains("result") && msg["result"].contains("capabilities"))
+                  ; // scap.read(msg["result"]["capabilities"]);
             notification("initialized");
             _initialized = true;
             emit initializedChanged();
@@ -491,7 +509,7 @@ bool LSclient::initializeRequest() {
       }
 
 //---------------------------------------------------------
-//   writeJson
+//   notification
 //---------------------------------------------------------
 
 bool LSclient::notification(const char* method, const json& params) {
@@ -504,7 +522,7 @@ bool LSclient::notification(const char* method, const json& params) {
       }
 
 //---------------------------------------------------------
-//   writeJson
+//   request
 //---------------------------------------------------------
 
 bool LSclient::request(const char* method, const json& params) {
@@ -561,6 +579,19 @@ LSclient::LSclient(Editor* e, const std::string& n) {
       connect(this, &LSclient::responseReceived, this, &LSclient::handleResponse, Qt::QueuedConnection);
       }
 
+LSclient::~LSclient() {
+      stop();
+      auto closefd = [](int& fd) {
+            if (fd != -1) {
+                  ::close(fd);
+                  fd = -1;
+                  }
+            };
+      closefd(stdoutPipe[0]);
+      closefd(stderrPipe[0]);
+      closefd(stopFd);
+      }
+
 //---------------------------------------------------------
 //   stop
 //---------------------------------------------------------
@@ -571,7 +602,7 @@ void LSclient::stop() {
             uint64_t u{1};
             ::write(stopFd, &u, sizeof(uint64_t));
             }
-      if (reader->joinable())
+      if (reader && reader->joinable())
             reader->join();
       }
 

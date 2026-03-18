@@ -66,7 +66,7 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
             });
       connect(kl, &KeyLogger::keyLabelChanged, [this](QString s) { editor->keyLabel()->setText(s); });
       installEventFilter(kl);
-      connect(this, &QWebEngineView::loadFinished, this, [this] { Debug("====isLoaded"); isLoaded = true; });
+      connect(this, &QWebEngineView::loadFinished, this, [this] { isLoaded = true; });
       }
 
 //---------------------------------------------------------
@@ -101,7 +101,6 @@ void MarkdownWebView::installFilterOnProxy() {
 
 void MarkdownWebView::setHtml(const QString& _html) {
       _currentRawHtml = _html;
-      Debug("===<{}>", _html);
       isLoaded        = false;
       QWebEngineView::setHtml(_html);
       }
