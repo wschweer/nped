@@ -359,6 +359,7 @@ class Editor : public QMainWindow
       HoverKontext hoverKontext;
 
       QString _projectRoot;
+      bool _projectMode { false };
       Git _git;
       bool _darkMode;
       QColor _fgColor{0, 0, 0};
@@ -501,7 +502,7 @@ class Editor : public QMainWindow
       void foldToggle();
       Kontext* lookupKontext(const QString& path);
       QString projectRoot() const { return _projectRoot; }
-      bool projectMode() const { return !_projectRoot.isEmpty(); }
+      bool projectMode() const { return _projectMode; }
       json readJson(const QString& path);
       QString evalPP(const QString& pdata);
       std::vector<File*>& getFiles() { return files; }

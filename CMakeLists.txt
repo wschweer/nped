@@ -81,8 +81,8 @@ qt_add_executable(nped
       src/llm.cpp
       src/ollama.cpp
       src/gemini.cpp
-#      src/anthropic.cpp
-#      src/openai.cpp
+      src/anthropic.cpp
+      src/openai.cpp
       src/chatdisplay.cpp
       src/historymanager.cpp
       )

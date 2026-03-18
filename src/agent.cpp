@@ -104,7 +104,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       toolBar->addSeparator();
 
       sessionComboBox = new QComboBox(this);
-      sessionComboBox->setMinimumWidth(280);
+      sessionComboBox->setMinimumWidth(230);
       toolBar->addWidget(sessionComboBox);
       connect(sessionComboBox, &QComboBox::activated, this, &Agent::onSessionSelected);
 
@@ -128,7 +128,11 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       modeButton->setCheckable(true);
       if (!_editor->projectMode()) {
             _isExecuteMode = false;
-      }
+            modeButton->setEnabled(false);
+            Debug("disable execute mode");
+            }
+      else
+            Debug("enable execute mode");
       modeButton->setChecked(_isExecuteMode);
       modeButton->setEnabled(_editor->projectMode());
       modeButton->setText(_isExecuteMode ? "Build" : "Plan");
@@ -136,6 +140,8 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       toolBar->addWidget(modeButton);
 
       connect(modeButton, &QToolButton::toggled, [this](bool checked) {
+            if (!_editor->projectMode())
+                  return;
             _isExecuteMode = checked;
             modeButton->setText(checked ? "Build" : "Plan");
             modeButton->setProperty("class", checked ? "errorButton" : "actionButton");
@@ -288,6 +294,7 @@ void Agent::fetchModels() {
             try {
                   auto j = json::parse(reply->readAll().toStdString());
                   for (const auto& model : j["models"]) {
+                        Debug("<{}>", model.dump(3));
                         Model m;
                         m.name            = QString::fromStdString(model["name"].get<std::string>());
                         m.modelIdentifier = m.name;
@@ -712,7 +719,7 @@ void Agent::startNewSession() {
       historyManager->clear();
       updateChatDisplay();
 
-      currentSessionFileName = sessionName(true);     // create new session file name
+      currentSessionFileName = sessionName(true); // create new session file name
       updateSessionList();
       chatDisplay->append(QString("<i>[System: New session started: <b>%1</b>]</i><br>").arg(QFileInfo(currentSessionFileName).fileName()));
       userInput->setFocus();
@@ -760,7 +767,7 @@ void Agent::updateSessionList() {
             QFileInfoList files = dir.entryInfoList(filters, QDir::Files, QDir::Time); // Sorted by time (newest first)
 
             for (const QFileInfo& fileInfo : files)
-                  sessionComboBox->addItem(fileInfo.fileName(), fileInfo.absoluteFilePath());
+                  sessionComboBox->addItem(fileInfo.baseName(), fileInfo.absoluteFilePath());
             }
 
       int index = sessionComboBox->findData(currentSessionFileName);
@@ -769,7 +776,7 @@ void Agent::updateSessionList() {
             }
       else if (!currentSessionFileName.isEmpty()) {
             QFileInfo fi(currentSessionFileName);
-            sessionComboBox->insertItem(0, fi.fileName(), currentSessionFileName);
+            sessionComboBox->insertItem(0, fi.baseName(), currentSessionFileName);
             sessionComboBox->setCurrentIndex(0);
             }
 
@@ -847,7 +854,7 @@ void Agent::saveStatus() {
       if (f.is_open()) {
             json root;
             root["model"] = currentModel().toStdString();
-            json h = json::array();
+            json h        = json::array();
             for (const auto& item : historyManager->data())
                   h.push_back(item.content);
             root["history"] = h;
@@ -879,7 +886,7 @@ void Agent::loadStatus(const QString& sessionPath) {
                   std::ifstream i(fileToLoad.toStdString());
                   json root;
                   i >> root;
-                  
+
                   if (root.is_object() && root.contains("history")) {
                         if (root.contains("model")) {
                               QString m = QString::fromStdString(root["model"].get<std::string>());
@@ -890,12 +897,12 @@ void Agent::loadStatus(const QString& sessionPath) {
                   else if (root.is_array()) {
                         historyManager->setHistory(root);
                         }
-                        
+
                   currentSessionFileName = fileToLoad;
                   updateSessionList();
                   updateChatDisplay();
                   chatDisplay->scrollToBottom();
-      Debug("session loaded <{}>", currentSessionFileName);
+                  Debug("session loaded <{}>", currentSessionFileName);
                   return;
                   }
             catch (const json::parse_error& e) {

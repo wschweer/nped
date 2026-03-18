@@ -19,10 +19,17 @@
 
 class AnthropicClient : public LLMClient
       {
+      Q_OBJECT
+      json currentContent;
+      json _currentToolCalls;
+      json tools;
+
+      void processTools();
 
     public:
-      AnthropicClient(Model* m, const std::vector<json>& mcps);
-      virtual json prompt(QNetworkRequest* request, const json& chatHistory) override;
-      virtual void dataReceived(Agent*, QNetworkReply*) override {}
-      virtual void dataFinished(Agent*, QNetworkReply*) override {};
+      AnthropicClient(Agent* a, Model* m, const std::vector<json>& mcps);
+      virtual QString name() const override { return "anthropic"; }
+      virtual json prompt(QNetworkRequest* request) override;
+      virtual void processJsonItem(const json& item) override;
+      virtual void dataFinished() override;
       };

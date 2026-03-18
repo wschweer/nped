@@ -33,10 +33,14 @@ bool Editor::initProject() {
       while (!cwd.exists("CMakeLists.txt")) {
             if (!cwd.cdUp()) {
                   Debug("no CMakeLists.txt found");
+                  _projectMode = false;
+                  _projectRoot = QDir::homePath();
+                  Debug("not in project mode: <{}>", _projectRoot);
                   return false;
                   }
             }
-      //      _projectRoot = cwd.absoluteFilePath("CmakeLists.txt");
       _projectRoot = cwd.absolutePath();
+      Debug("project mode: <{}>", _projectRoot);
+      _projectMode = true;
       return true;
       }

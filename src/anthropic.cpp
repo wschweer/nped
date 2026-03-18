@@ -10,45 +10,74 @@
 //=============================================================================
 
 #include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QUrlQuery>
+#include <QByteArray>
+#include <QTimer>
+
 #include "anthropic.h"
 #include "agent.h"
+#include "chatdisplay.h"
+#include "historymanager.h"
 
 //---------------------------------------------------------
 //   AnthropicClient
 //---------------------------------------------------------
 
-AnthropicClient::AnthropicClient(Model* m, const std::vector<json>& mcps) : LLMClient(m) {
-      for (auto& tool : mcps) {
-            tools.push_back({
-                     {       "name",        tool["name"]},
-                     {"description", tool["description"]},
-                     {"inputSchema", tool["inputSchema"]}
-                  });
+AnthropicClient::AnthropicClient(Agent* a, Model* m, const std::vector<json>& mcps) : LLMClient(a, m) {
+      try {
+            tools = json::array();
+            for (auto& tool : mcps) {
+                  tools.push_back({
+                           {       "name",        tool["name"]},
+                           {"description", tool["description"]},
+                           {"input_schema", tool["inputSchema"]} // Anthropic expects input_schema
+                        });
+                  }
+            }
+      catch (const json::parse_error& e) {
+            Debug("Parse Error: {}", e.what());
+            }
+      catch (const json::type_error& e) {
+            Debug("TypeError: {}", e.what());
+            }
+      catch (...) {
+            Critical("Unexpected error");
             }
       }
 
 //---------------------------------------------------------
-//   sendPrompt
+//   prompt
+//    prepare prompt for Anthropic
 //---------------------------------------------------------
 
-json AnthropicClient::prompt(QNetworkRequest* request, const json& chatHistory) {
+json AnthropicClient::prompt(QNetworkRequest* request) {
       request->setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
       request->setRawHeader("x-api-key", model->apiKey.toUtf8());
       request->setRawHeader("anthropic-version", "2023-06-01");
+      request->setRawHeader("anthropic-beta", "messages-2023-12-15"); // if needed for tool streaming or beta features
+
+      QUrl url(model->baseUrl.isEmpty() ? "https://api.anthropic.com/v1/messages" : model->baseUrl);
+      request->setUrl(url);
 
       json anthropicRequest;
       anthropicRequest["model"]      = model->modelIdentifier.toStdString();
       anthropicRequest["max_tokens"] = 4096;
       anthropicRequest["stream"]     = true;
-      anthropicRequest["tools"]      = tools;
+      if (!tools.empty())
+            anthropicRequest["tools"] = tools;
 
       json anthropicMessages = json::array();
-      std::string system_prompt;
+      
+      anthropicRequest["system"] = agent->getManifest();
 
-      for (const auto& msg : chatHistory) {
-            std::string role = msg.value("role", "");
+      for (const auto& msg : agent->historyManager->data()) {
+            json item = msg.content;
+            std::string role = item.value("role", "");
+            
             if (role == "system") {
-                  system_prompt = msg.value("content", "");
+                  // system messages are not allowed in messages array for Anthropic, they are in system prompt
+                  continue;
                   }
             else if (role == "tool") {
                   json toolMsg;
@@ -56,26 +85,22 @@ json AnthropicClient::prompt(QNetworkRequest* request, const json& chatHistory) 
                   json contentArray         = json::array();
                   json toolResult           = json::object();
                   toolResult["type"]        = "tool_result";
-                  toolResult["tool_use_id"] = msg.value("tool_call_id", "");
-                  toolResult["content"]     = msg.value("content", "");
+                  toolResult["tool_use_id"] = item.value("tool_call_id", "");
+                  toolResult["content"]     = item.value("content", "");
                   contentArray.push_back(toolResult);
                   toolMsg["content"] = contentArray;
                   anthropicMessages.push_back(toolMsg);
                   }
             else if (role == "assistant") {
-                  // Anthropic expects tool_calls as a content array with type="tool_use",
-                  // not as a separate "tool_calls" key (OpenAI/Ollama format).
-                  // Conversion is necessary so that subsequent requests after tool calls do not
-                  // fail with HTTP 400.
-                  if (msg.contains("tool_calls") && msg["tool_calls"].is_array()) {
+                  if (item.contains("tool_calls") && item["tool_calls"].is_array()) {
                         json contentArray = json::array();
-                        if (msg.contains("content") && msg["content"].is_string() && !msg["content"].get<std::string>().empty()) {
+                        if (item.contains("content") && item["content"].is_string() && !item["content"].get<std::string>().empty()) {
                               json textBlock;
                               textBlock["type"] = "text";
-                              textBlock["text"] = msg["content"];
+                              textBlock["text"] = item["content"];
                               contentArray.push_back(textBlock);
                               }
-                        for (const auto& tc : msg["tool_calls"]) {
+                        for (const auto& tc : item["tool_calls"]) {
                               json toolUse;
                               toolUse["type"]  = "tool_use";
                               toolUse["id"]    = tc.value("id", "");
@@ -91,17 +116,154 @@ json AnthropicClient::prompt(QNetworkRequest* request, const json& chatHistory) 
                         anthropicMessages.push_back(converted);
                         }
                   else {
-                        // Normal assistant response without tool calls: adopt directly
-                        anthropicMessages.push_back(msg);
+                        anthropicMessages.push_back(item);
                         }
                   }
             else {
-                  anthropicMessages.push_back(msg);
+                  anthropicMessages.push_back(item);
                   }
             }
 
-      if (!system_prompt.empty())
-            anthropicRequest["system"] = system_prompt;
       anthropicRequest["messages"] = anthropicMessages;
+      currentContent.clear();
+      _currentToolCalls.clear();
       return anthropicRequest;
-      };
+      }
+
+//---------------------------------------------------------
+//   processJsonItem
+//    Hilfsfunktion für die Verarbeitung eines einzelnen JSON-Items
+//---------------------------------------------------------
+
+void AnthropicClient::processJsonItem(const json& item) {
+      if (!item.contains("type"))
+            return;
+
+      std::string type = item["type"];
+
+      if (type == "content_block_delta") {
+            const auto& delta = item["delta"];
+            if (delta.contains("type") && delta["type"] == "text_delta") {
+                  std::string text = delta["text"];
+                  agent->chatDisplay->handleIncomingChunk("", QString::fromStdString(text));
+                  currentContent += text;
+                  }
+            else if (delta.contains("type") && delta["type"] == "input_json_delta") {
+                  // Append to current tool call arguments string
+                  if (!_currentToolCalls.empty()) {
+                        auto& currentCall = _currentToolCalls.back();
+                        if (!currentCall.contains("arguments_str")) {
+                              currentCall["arguments_str"] = "";
+                              }
+                        currentCall["arguments_str"] = currentCall["arguments_str"].get<std::string>() + delta["partial_json"].get<std::string>();
+                        }
+                  }
+            }
+      else if (type == "content_block_start") {
+            const auto& block = item["content_block"];
+            if (block.contains("type") && block["type"] == "tool_use") {
+                  json toolCall;
+                  toolCall["id"] = block["id"];
+                  toolCall["function"] = {
+                        {"name", block["name"]},
+                        {"arguments", json::object()}
+                  };
+                  toolCall["arguments_str"] = "";
+                  _currentToolCalls.push_back(toolCall);
+                  }
+            }
+      }
+
+//---------------------------------------------------------
+//   processTools
+//---------------------------------------------------------
+
+void AnthropicClient::processTools() {
+      try {
+            for (auto& call : _currentToolCalls) {
+                  std::string functionName = call["function"]["name"];
+                  
+                  // Parse arguments
+                  json args = json::object();
+                  std::string argsStr = call.value("arguments_str", "{}");
+                  if (!argsStr.empty()) {
+                        args = json::parse(argsStr);
+                        }
+                  call["function"]["arguments"] = args;
+                  call.erase("arguments_str");
+
+                  std::string result = agent->executeTool(functionName, args);
+
+                  json msg;
+                  msg["role"] = "tool";
+                  msg["content"] = result;
+                  msg["name"] = functionName;
+                  if (call.contains("id"))
+                        msg["tool_call_id"] = call["id"];
+                  msg["function"] = call["function"];
+
+                  // show on display
+                  std::string thinking;
+                  std::string text;
+                  agent->logContent(msg, text, thinking);
+                  agent->chatDisplay->handleIncomingChunk(QString::fromStdString(thinking), QString::fromStdString(text));
+
+                  agent->historyManager->addRequest(msg, 0);
+                  }
+            }
+      catch (const json::parse_error& e) {
+            Critical("Parse Error: {}", e.what());
+            }
+      catch (const json::type_error& e) {
+            Critical("TypeError: {}", e.what());
+            }
+      catch (...) {
+            Critical("Unexpected error");
+            }
+
+      _currentToolCalls.clear();
+      agent->sendMessage2();
+      }
+
+//---------------------------------------------------------
+//   dataFinished
+//---------------------------------------------------------
+
+void AnthropicClient::dataFinished() {
+      json responseContent;
+      responseContent["role"] = "assistant";
+      responseContent["content"] = currentContent;
+      
+      // We need to store tool_calls in standard format so that prompt() can convert them later
+      if (!_currentToolCalls.empty()) {
+            json standardToolCalls = json::array();
+            for (auto& call : _currentToolCalls) {
+                  if (call.contains("arguments_str")) {
+                        std::string argsStr = call["arguments_str"];
+                        if (!argsStr.empty()) {
+                              call["function"]["arguments"] = json::parse(argsStr);
+                              }
+                        call.erase("arguments_str");
+                        }
+                  standardToolCalls.push_back(call);
+                  }
+            responseContent["tool_calls"] = standardToolCalls;
+            }
+
+      currentContent.clear();
+
+      size_t totalTokens = 0; // Anthropic usage could be extracted from "message_stop" item
+
+      if (_currentToolCalls.empty()) {
+            if (agent->historyManager->addResult(responseContent, totalTokens)) {
+                  agent->sendMessage2();
+                  }
+            else {
+                  agent->enableInput(true);
+                  }
+            }
+      else {
+            agent->historyManager->addRequest(responseContent, totalTokens);
+            processTools();
+            }
+      }

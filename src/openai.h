@@ -19,10 +19,17 @@
 
 class OpenAiClient : public LLMClient
       {
+      Q_OBJECT
+      std::string currentContent;
+      json _currentToolCalls;
+      json tools;
+
+      void processTools();
 
     public:
-      OpenAiClient(Model* m, const std::vector<json>& mcps);
-      virtual json prompt(QNetworkRequest* request, const json& chatHistory) override;
-      virtual void dataReceived(Agent*, QNetworkReply*) override {}
-      virtual void dataFinished(Agent*, QNetworkReply*) override {};
+      OpenAiClient(Agent* a, Model* m, const std::vector<json>& mcps);
+      virtual QString name() const override { return "openai"; }
+      virtual json prompt(QNetworkRequest* request) override;
+      virtual void processJsonItem(const json& item) override;
+      virtual void dataFinished() override;
       };
