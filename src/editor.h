@@ -25,6 +25,7 @@
 #include <QListView>
 #include <QTextEdit>
 #include <QQuickWidget>
+#include <QFileSystemWatcher>
 #include <vector>
 #include "file.h"
 #include "completer.h"
@@ -55,7 +56,6 @@ class Completion;
 class QProgressBar;
 class Agent;
 class MarkdownWebView;
-class FileWatcher;
 
 using Completions = std::vector<Completion>;
 
@@ -365,7 +365,7 @@ class Editor : public QMainWindow
       QColor _bgColor{240, 240, 240};
 
       QString _settingsLLModel;
-      FileWatcher* fileWatcher;
+      QFileSystemWatcher* fileWatcher;
 
       QFont _font;
       QString _fontFamily{"Source Code Pro"};
@@ -417,6 +417,7 @@ class Editor : public QMainWindow
       void requestCompletions();
       File* createNewFile(const QFileInfo& fi);
       void connectKontext(Kontext*);
+      void updateStyle();
 
     public slots:
       void hScrollTo(int);
@@ -500,6 +501,7 @@ class Editor : public QMainWindow
       void foldToggle();
       Kontext* lookupKontext(const QString& path);
       QString projectRoot() const { return _projectRoot; }
+      bool projectMode() const { return !_projectRoot.isEmpty(); }
       json readJson(const QString& path);
       QString evalPP(const QString& pdata);
       std::vector<File*>& getFiles() { return files; }
@@ -530,7 +532,6 @@ class Editor : public QMainWindow
       void setShortcuts(const QList<ShortcutConfig>& s);
       void setFileTypes(const QList<FileTypeConfig>& f);
       void setLanguageServersConfig(const QList<LanguageServerConfig>& l);
-      void setAiModels(const QList<Model>& m);
       void resetToDefaults();
       bool darkMode() const { return _darkMode; }
       void setDarkMode(bool v) {
@@ -561,7 +562,7 @@ class Editor : public QMainWindow
                   }
             }
       void showCompletions(const Completions&);
-      FileWatcher* getFileWatcher() const { return fileWatcher; }
+      QFileSystemWatcher* getFileWatcher() const { return fileWatcher; }
       enum UpdateFlag { UpdateNothing = 0, UpdateLine = 1, UpdateScreen = 2, UpdateAll = 4 };
       Q_DECLARE_FLAGS(UpdateFlags, UpdateFlag)
       };

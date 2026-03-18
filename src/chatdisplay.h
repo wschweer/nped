@@ -33,7 +33,16 @@ class ChatDisplay : public MarkdownWebView
       void appendMessageWithThought(const QString& role, const QString& thought, const QString& text);
       void appendMessage(const QString& role, const QString& text);
       void scrollToBottom() { MarkdownWebView::scrollToBottom(); }
-      void clear() { setup(); }
+      void clear() {
+            setup();
+            bool busy = true;
+            connect(this, &QWebEngineView::loadFinished, this, [&busy] {
+                  busy = false;
+                  }, Qt::QueuedConnection | Qt::SingleShotConnection);
+            while (busy) {
+                  qApp->processEvents();
+                  }
+            }
       QWidget* widget() { return (QWidget*)this; }
       void setFont(QFont f) { MarkdownWebView::setFont(f); }
       QString quoteForJs(const QString& str);

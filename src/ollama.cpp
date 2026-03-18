@@ -18,6 +18,7 @@
 #include "ollama.h"
 #include "agent.h"
 #include "chatdisplay.h"
+#include "historymanager.h"
 
 //---------------------------------------------------------
 //   OllamaClient
@@ -77,7 +78,7 @@ json OllamaClient::prompt(QNetworkRequest* request) {
       jmanifest["role"]    = "system";
       history.push_back(jmanifest);
 
-      for (const auto& msg : agent->chatHistory.history()) {
+      for (const auto& [msg, tokens] : agent->historyManager->data()) {
             json jmsg;
             if (msg.contains("role"))
                   jmsg["role"] = msg["role"];
@@ -85,10 +86,17 @@ json OllamaClient::prompt(QNetworkRequest* request) {
                   Debug("no role: <{}>", msg.dump(3));
             if (msg.contains("content"))
                   jmsg["content"] = msg["content"];
+            if (msg.contains("tool_calls"))
+                  jmsg["tool_calls"] = msg["tool_calls"];
+            if (msg.contains("name"))
+                  jmsg["name"] = msg["name"];
+            if (msg.contains("tool_call_id"))
+                  jmsg["tool_call_id"] = msg["tool_call_id"];
             history.push_back(jmsg);
             }
       requestJson["messages"] = history;
       currentContent.clear();
+      _currentToolCalls.clear();
       return requestJson;
       };
 
@@ -98,22 +106,76 @@ json OllamaClient::prompt(QNetworkRequest* request) {
 //---------------------------------------------------------
 
 void OllamaClient::processJsonItem(const json& item) {
-      Debug("Received Item: <{}>", item.dump(3));
       if (!item.contains("message")) {
-            Critical("item has no message");
             return;
             }
       const auto& message = item["message"];
       if (message.contains("content")) {
             std::string s = message["content"];
             if (!s.empty()) {
-                  emit incomingChunk("", QString::fromStdString(s));
+                  agent->chatDisplay->handleIncomingChunk("", QString::fromStdString(s));
                   currentContent += s;
                   }
             }
-      if (message.contains("tool_calls"))
+      if (message.contains("tool_calls")) {
             for (const auto& toolCall : message["tool_calls"])
                   _currentToolCalls.push_back(toolCall);
+            }
+      }
+
+//---------------------------------------------------------
+//   processTools
+//    process the functionCall requests from ollama
+//---------------------------------------------------------
+
+void OllamaClient::processTools() {
+      try {
+            for (const auto& call : _currentToolCalls) {
+                  if (!call.contains("function")) {
+                        Critical("ToolCall does not contain <function>");
+                        continue;
+                        }
+                  json fc            = call["function"];
+                  json args          = fc["arguments"];
+                  if (args.is_string())
+                        args = json::parse(args.get<std::string>());
+                  fc["arguments"]    = args;
+                  std::string functionName = fc["name"];
+
+                  std::string result = agent->executeTool(functionName, args);
+
+                  json msg;
+                  msg["role"] = "tool";
+                  msg["content"] = result;
+                  msg["name"] = functionName;
+                  if (call.contains("id"))
+                        msg["tool_call_id"] = call["id"];
+                  msg["function"] = fc; // For logContent
+
+                  // show on display
+                  std::string thinking;
+                  std::string text;
+                  agent->logContent(msg, text, thinking);
+                  agent->chatDisplay->handleIncomingChunk(QString::fromStdString(thinking), QString::fromStdString(text));
+
+                  // Don't leak 'function' field to Ollama prompt if it doesn't need it
+                  // Wait, prompt() only copies what it needs (role, content, tool_calls, name).
+                  // So we can leave it in msg.
+                  agent->historyManager->addRequest(msg, 0);
+                  }
+            }
+      catch (const json::parse_error& e) {
+            Critical("Parse Error: {}", e.what());
+            }
+      catch (const json::type_error& e) {
+            Critical("TypeError: {}", e.what());
+            }
+      catch (...) {
+            Critical("Unexpected error");
+            }
+
+      _currentToolCalls.clear();
+      agent->sendMessage2();
       }
 
 //---------------------------------------------------------
@@ -121,62 +183,26 @@ void OllamaClient::processJsonItem(const json& item) {
 //---------------------------------------------------------
 
 void OllamaClient::dataFinished() {
-#if 0
-      json response;
-      response["role"]    = "assistant";
-      response["content"] = currentContent;
-      agent->chatHistory.data.push_back(response);
+      json responseContent;
+      responseContent["role"] = "assistant";
+      responseContent["content"] = currentContent;
+      if (!_currentToolCalls.empty())
+            responseContent["tool_calls"] = _currentToolCalls;
 
-      if (!_currentToolCalls.empty()) {
-            std::string thinking;
-            Debug("=====Tool Calls <{}>", _currentToolCalls.size(), _currentToolCalls.dump(3));
-            for (const auto& call : _currentToolCalls) {
-                  try {
-                        // Argumente von String/JSON-Fragmenten in ein JSON-Objekt umwandeln
-                        json fc                  = call["function"];
-                        json args                = fc["arguments"];
-                        std::string functionName = fc["name"];
-                        json toolCall;
-                        std::string result = agent->executeTool(functionName, args);
-                        // append result of tool call to chatHistory
-                        json msg;
-                        msg["role"]     = std::string("function");
-                        msg["content"]  = result;
-                        msg["function"] = fc;
-                        agent->chatHistory.data.push_back(msg); // tool result
+      currentContent.clear();
 
-                        std::string argsStr = "";
-                        bool first          = true;
-                        for (auto& [key, value] : args.items()) {
-                              if (!first)
-                                    argsStr += ", ";
-                              argsStr += std::format("{}={}", key, value.dump());
-                              first    = false;
-                              }
+      size_t totalTokens = 0;
 
-                        result = agent->truncateOutput(result, Agent::kChatResultMaxChars);
-                        std::string s = agent->formatToolCall(functionName, args, result);
-                        emit incomingChunk(QString::fromStdString(thinking), QString::fromStdString(s));
-                        }
-                  catch (const json::parse_error& e) {
-                        Debug("Parse Error: {}", e.what());
-                        }
-                  catch (const json::type_error& e) {
-                        Debug("TypeError: {}", e.what());
-                        }
-                  catch (...) {
-                        Critical("Unexpected error");
-                        }
-                  _currentToolCalls.clear();
-                  reply->deleteLater();
-                  reply = nullptr;
-                  agent->sendMessage2(); // TODO: keep busy
+      if (_currentToolCalls.empty()) {
+            if (agent->historyManager->addResult(responseContent, totalTokens)) {
+                  agent->sendMessage2();
+                  }
+            else {
+                  agent->enableInput(true);
                   }
             }
       else {
-            reply->deleteLater();
-            reply = nullptr;
-            agent->enableInput(true);
+            agent->historyManager->addRequest(responseContent, totalTokens);
+            processTools();
             }
-#endif
       }

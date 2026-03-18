@@ -18,6 +18,7 @@
 #include "gemini.h"
 #include "agent.h"
 #include "chatdisplay.h"
+#include "historymanager.h"
 
 //---------------------------------------------------------
 //   GeminiClient
@@ -69,7 +70,10 @@ json GeminiClient::prompt(QNetworkRequest* request) {
       jmanifest["parts"]                = json::array({{{"text", agent->getManifest()}}});
       jmanifest["role"]                 = "system";
       requestJson["system_instruction"] = jmanifest;
-      requestJson["contents"]           = agent->chatHistory.history();
+      json h = json::array();
+      for (const auto& item : agent->historyManager->data())
+            h.push_back(item.content);
+      requestJson["contents"]           = h;
       requestJson["generationConfig"]   = {
                {"thinking_config", {{"include_thoughts", true}, {"thinking_level", "MEDIUM"}}}, // LOW, MINIMAL, MEDIUM, HIGH
                                                                                           //               {"temperature",  0.2},
@@ -91,7 +95,7 @@ json GeminiClient::prompt(QNetworkRequest* request) {
 void GeminiClient::processJsonItem(const json& item) {
       if (item.contains("usageMetadata"))
             _lastUsageMetadata = item["usageMetadata"];
-      
+
       if (!item.contains("candidates"))
             return;
       for (const auto& candidate : item["candidates"]) {
@@ -165,7 +169,7 @@ void GeminiClient::processTools() {
 
       // put on history
       // Assume tool call token count is negligible or fixed; for now use 0
-      agent->chatHistory.addRequest(msg, 0); 
+      agent->historyManager->addRequest(msg, 0);
       _currentToolCalls.clear();
       agent->sendMessage2();
       }
@@ -185,7 +189,7 @@ void GeminiClient::dataFinished() {
 
       if (_currentToolCalls.empty()) {
             // No tools: this is a final turn or a summary request
-            if (agent->chatHistory.addResult(responseContent, totalTokens)) {
+            if (agent->historyManager->addResult(responseContent, totalTokens)) {
                   // trim() returned true: A summary was requested and added to history.
                   // We must send this summary request to the LLM.
                   agent->sendMessage2();
@@ -197,7 +201,7 @@ void GeminiClient::dataFinished() {
             }
       else {
             // Tool calls detected: Add the assistant's call to history first
-            agent->chatHistory.addRequest(responseContent, totalTokens);
+            agent->historyManager->addRequest(responseContent, totalTokens);
 
             // processTools() will execute the tools and internally call sendMessage2()
             // to send the results back to the LLM.

@@ -63,10 +63,8 @@ qt_add_executable(nped
       src/line.cpp
       src/editor.cpp
       src/file.cpp
-      src/filewatcher.cpp
       src/editwin.cpp
       src/kontext.cpp
-#      src/enter.cpp
       src/undo.cpp
       src/ide.cpp
       src/lsclient.cpp
@@ -86,6 +84,7 @@ qt_add_executable(nped
 #      src/anthropic.cpp
 #      src/openai.cpp
       src/chatdisplay.cpp
+      src/historymanager.cpp
       )
 
 qt_add_resources(nped "qmls"
@@ -94,6 +93,9 @@ qt_add_resources(nped "qmls"
 qt_add_resources(nped "mages"
       FILES images/Git-Icon-1788C.svg
       FILES images/configure.svg
+      FILES images/configure_white.svg
+      FILES images/trash.svg
+      FILES images/trash_white.svg
       )
 
 qt_add_qml_module(nped
@@ -111,6 +113,12 @@ qt_add_qml_module(nped
 qt_add_resources(nped files
       FILES
       src/dark.qss
+      src/light.qss
+      )
+# Alias for main.cpp
+qt_add_resources(nped style
+      PREFIX "/"
+      FILES
       src/light.qss
       )
 

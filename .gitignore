@@ -7,7 +7,7 @@ Session-*
 build
 nped.log
 test.cpp
-core-*
+core.*
 .cache
 .qt
 TODO

@@ -1,82 +1,27 @@
-* {
-    background-color: #f0f0f0;
-    color: #333333;
-}
-
-#mainTabBar, QTabBar {
-    background-color: #f0f0f0;
-}
-
-#mainTabBar::tab, QTabBar::tab {
-    background-color: #e0e0e0;
-    color: #333333;
-    padding: 8px 12px;
-    border: 1px solid #aaaaaa;
-    border-bottom: none;
-}
-
-#mainTabBar::tab:selected, QTabBar::tab:selected {
-    background-color: #f0f0f0;
-    border-bottom: 2px solid #0055aa;
-}
-
-#mainTabBar::tab:hover, QTabBar::tab:hover {
-    background-color: #f8f8f8;
-}
-
-QToolButton {
+#deleteSessionButton {
     background: transparent;
     border: none;
-    color: #333333;
-    padding: 6px;
-    icon-size: 24px;
+    qproperty-icon: url(:/images/trash.svg);
 }
 
-QToolButton:hover {
-    background: #d0d0d0;
-    border-radius: 3px;
+QPlainTextEdit {
+    background-color: #fff;
+    color: #000;
+    border: 1px solid #ccc;
+    selection-background-color: #eee;
+}
+QToolButton {
+    border-radius: 0px;
+    padding: 0px;
+    background-color: #000000ff;
+    color: #444;
+    height: 32px;
+    qproperty-iconSize: 32px
+}
+QToolButton[class="errorButton"] {
+    background-color: #ff8888;
 }
 
-QListView#gitPanel {
-    background-color: #e0e0e0;
-}
-
-QCompleter {
-    background-color: #ffffff;
-}
-
-QMenu {
-    background-color: #ffffff;
-    color: #333333;
-    border: 1px solid #aaaaaa;
-}
-
-QMenu::item:selected {
-    background-color: #0078d7;
-    color: white;
-}
-
-.successButton, .actionButton {
-    background-color: #4caf50;
-    color: white;
-    border: 1px solid #388e3c;
-    border-radius: 3px;
-    padding: 4px 8px;
-}
-
-.successButton:hover, .actionButton:hover {
-    background-color: #66bb6a;
-}
-
-.errorButton {
-    background-color: #f44336;
-    color: white;
-    border: 1px solid #d32f2f;
-    border-radius: 3px;
-    padding: 4px 8px;
-}
-
-EditWidget {
-    background-color: #f0f0f0;
-    color: #333333;
+QToolButton[class="actionButton"] {
+    background-color: #88ff88;
 }

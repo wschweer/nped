@@ -27,6 +27,8 @@ class OllamaClient : public LLMClient
       bool isRetrying{false};
       int maxRetries{12};
 
+      void processTools();
+
     public:
       OllamaClient(Agent*, Model* m, const std::vector<json>& mcps);
       virtual QString name() const override { return "ollama"; }

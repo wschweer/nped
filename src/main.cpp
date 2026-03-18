@@ -60,7 +60,8 @@ static void usage(const char* reason) {
              "         -l   use iso latin1 codec\n"
              "         -u   use utf8 codec (default)\n"
              "         -i   change file 'in place'\n"
-             "         -t   do not remember settings\n");
+             "         -t   do not remember settings\n"
+             "         -d   use dark mode\n");
       }
 
 //---------------------------------------------------------
@@ -75,20 +76,12 @@ int main(int argc, char** argv) {
       qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--log-level=3"); // show only critical bugs
       QQuickStyle::setStyle(QStringLiteral("Material"));
       QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
-      //      QQuickStyle::setFallbackStyle("Basic");
 
       QApplication app(argc, argv);
       app.setDesktopFileName("nped");
       appName = argv[0];
 
-      QFile file(":/style.qss");
-      if (file.open(QFile::ReadOnly)) {
-            QTextStream stream(&file);
-            qApp->setStyleSheet(stream.readAll());
-            file.close();
-            }
-
-      while ((c = getopt(argc, argv, "vluit")) != EOF) {
+      while ((c = getopt(argc, argv, "vluitd")) != EOF) {
             switch (c) {
                   case 'v': printVersion(argv[0]); return 1;
                   case 'l':

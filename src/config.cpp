@@ -187,19 +187,6 @@ void Editor::setLanguageServersConfig(const QList<LanguageServerConfig>& l) {
       emit languageServersConfigChanged();
       }
 
-#if 0
-//---------------------------------------------------------
-//   setAiModels
-//---------------------------------------------------------
-
-void Editor::setAiModels(const QList<Model>& m) {
-      if (_aiModels == m)
-            return;
-      _aiModels = m;
-      emit aiModelsChanged();
-      }
-#endif
-
 //---------------------------------------------------------
 //   resetToDefaults
 //---------------------------------------------------------

@@ -25,6 +25,7 @@ class QTextEdit;
 class MarkdownWebView;
 class QPlainTextEdit;
 class QToolBar;
+class QComboBox;
 class QToolButton;
 class QMenu;
 class QNetworkAccessManager;
@@ -34,6 +35,7 @@ class QTimer;
 class QAction;
 class LLMClient;
 class ChatDisplay;
+class HistoryManager;
 
 //---------------------------------------------------------
 //   MCPToolBuilder
@@ -96,60 +98,6 @@ using Models = QList<Model>;
 Q_DECLARE_METATYPE(Model)
 
 //---------------------------------------------------------
-//   HistoryManager
-//---------------------------------------------------------
-
-class HistoryManager
-      {
-    public:
-      struct HistoryItem {
-            json content;
-            size_t tokens{0};
-            };
-      std::vector<HistoryItem> data;
-      const size_t maxEntries         = 30;
-      const size_t criticalTokenCount = 30000; // Trigger summary if total context > 30k tokens
-      size_t totalTokens{0};
-      bool summaryRequested{false};
-
-    public:
-
-      void clear() {
-            data.clear();
-            totalTokens = 0;
-            }
-      int messages() const { return data.size(); }
-      bool empty() const { return data.empty(); }
-      bool hitLimit() const { return totalTokens > criticalTokenCount; }
-      bool trim();
-      bool addResult(const json& content, size_t tokens);
-      void addRequest(json content, size_t tokens = 0) {
-            data.push_back({content, tokens});
-            totalTokens += tokens;
-            }
-      json history() const {
-            json h = json::array();
-            for (const auto& item : data)
-                  h.push_back(item.content);
-            return h;
-            }
-      void setHistory(const json& h) {
-            clear();
-            for (const auto& item : h) {
-                  // Approximation: 4 chars per token
-                  size_t tokens = 0;
-                  if (item.contains("parts")) {
-                        for (const auto& part : item["parts"])
-                              if (part.contains("text"))
-                                    tokens += part["text"].get<std::string>().length() / 4;
-                        }
-                  data.push_back({item, tokens});
-                  totalTokens += tokens;
-                  }
-            }
-      };
-
-//---------------------------------------------------------
 //   SessionInfo
 //---------------------------------------------------------
 
@@ -180,11 +128,13 @@ class Agent : public QWidget
       std::vector<json> mcpTools;
       Editor* _editor;
       QToolBar* toolBar;
-      QToolButton* modelButton;
       QToolButton* newSessionButton;
-      QMenu* modelMenu;
+      QToolButton* deleteSessionButton;
+      QComboBox* sessionComboBox;
+      QComboBox* modelMenu;
       QLabel* statusLabel;
-      QAction* modeToggleAction;
+//      QAction* modeToggleAction;
+      QToolButton* modeButton;
       QToolButton* configButton;
       QTimer* spinnerTimer;
       int spinnerFrame{0};
@@ -208,6 +158,7 @@ class Agent : public QWidget
       void processData();
       std::vector<json> getMCPTools() const;
       QString currentSessionFileName;
+      QString pendingModelName;
       bool commitGitChanges(const QString& commitMessage);
       void reinitSystemPrompt(); // Punkt 4: implementiert
       void updateChatDisplay();
@@ -252,6 +203,7 @@ class Agent : public QWidget
 
     protected:
       bool eventFilter(QObject* obj, QEvent* event) override;
+      void updateSessionList();
 
     private slots:
       void fetchModels();
@@ -259,6 +211,8 @@ class Agent : public QWidget
       void handleChatFinished();
       void updateSpinner();
       void startNewSession();
+      void deleteCurrentSession();
+      void onSessionSelected(int index);
 
     public slots:
       void sendMessage(QString);
@@ -270,9 +224,10 @@ class Agent : public QWidget
 
     public:
       explicit Agent(Editor* e, QWidget* parent = nullptr);
+      ~Agent();
 
       ChatDisplay* chatDisplay;
-      HistoryManager chatHistory;
+      HistoryManager* historyManager;
 
       std::string getManifest() const;
 
@@ -294,14 +249,14 @@ class Agent : public QWidget
             emit modelsChanged();
             }
       QString currentModel() const { return model.name; }
-      void setCurrentModel(const QString& s);
+      void setCurrentModel(const QString& s, bool clearChat = true);
       bool isExecuteMode() const { return _isExecuteMode; }
       void setExecuteMode(bool);
 
       void saveSettings();
       void loadSettings();
       void saveStatus();
-      void loadStatus();
+      void loadStatus(const QString& sessionPath = QString());
       bool isWorking() const;
       void logContent(const json& part, std::string& text, std::string& thought);
       std::string formatToolCall(const std::string& name, const json& args, const std::string& result = "");

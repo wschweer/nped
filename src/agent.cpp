@@ -19,6 +19,7 @@
 #include <QToolBar>
 #include <QToolButton>
 #include <QMenu>
+#include <QComboBox>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QLabel>
@@ -34,6 +35,8 @@
 #include <QJsonArray>
 #include <QScrollBar>
 #include <QStandardPaths>
+#include <QStyle>
+#include <QDebug>
 #include <iostream>
 #include <fstream>
 
@@ -44,6 +47,7 @@
 #include "webview.h"
 #include "llm.h"
 #include "chatdisplay.h"
+#include "historymanager.h"
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -75,6 +79,7 @@ static std::string manifest = "You are an experienced C++ developer. "
 
 Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       networkManager = new QNetworkAccessManager(this);
+      historyManager = new HistoryManager();
       mcpTools       = getMCPTools();
 
       QVBoxLayout* mainLayout = new QVBoxLayout(this);
@@ -82,53 +87,67 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       // --- 1. Toolbar & Model Selection ---
       toolBar = new QToolBar(this);
 
-      modelButton = new QToolButton(this);
-      modelButton->setText("Model...");
-      modelMenu = new QMenu(this);
-      modelButton->setMenu(modelMenu);
-      modelButton->setPopupMode(QToolButton::InstantPopup);
-      toolBar->addWidget(modelButton);
+      modelMenu = new QComboBox(this);
+      modelMenu->setMinimumWidth(250);
+      toolBar->addWidget(modelMenu);
+      connect(this, &Agent::modelsChanged, [this] {
+            bool blocked = modelMenu->blockSignals(true);
+            modelMenu->clear();
+            for (const auto& m : _models)
+                  modelMenu->addItem(m.name);
+            if (!model.name.isEmpty())
+                  modelMenu->setCurrentText(model.name);
+            modelMenu->blockSignals(blocked);
+            });
+      connect(modelMenu, &QComboBox::activated, [this](int index) { setCurrentModel(_models[index].name); });
+
       toolBar->addSeparator();
+
+      sessionComboBox = new QComboBox(this);
+      sessionComboBox->setMinimumWidth(280);
+      toolBar->addWidget(sessionComboBox);
+      connect(sessionComboBox, &QComboBox::activated, this, &Agent::onSessionSelected);
 
       newSessionButton = new QToolButton(this);
-      newSessionButton->setText("New Session");
-      newSessionButton->setProperty("class", "actionButton");
+      newSessionButton->setText("+");
+      newSessionButton->setToolTip("New Session");
       toolBar->addWidget(newSessionButton);
       connect(newSessionButton, &QToolButton::clicked, this, &Agent::startNewSession);
-      toolBar->addSeparator();
 
-      modeToggleAction = new QAction("Plan", this);
-      modeToggleAction->setCheckable(true);
-      modeToggleAction->setChecked(_isExecuteMode);
+      deleteSessionButton = new QToolButton(this);
+      deleteSessionButton->setObjectName("deleteSessionButton");
+      deleteSessionButton->setToolTip("Delete Session");
+      toolBar->addWidget(deleteSessionButton);
+      connect(deleteSessionButton, &QToolButton::clicked, this, &Agent::deleteCurrentSession);
 
-      connect(this, &Agent::modelChanged, [this] { modelButton->setText(currentModel()); });
+      QWidget* spacer = new QWidget();
+      spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+      toolBar->addWidget(spacer);
 
-      connect(modeToggleAction, &QAction::toggled, this, [this](bool checked) {
+      modeButton = new QToolButton(this);
+      modeButton->setCheckable(true);
+      if (!_editor->projectMode()) {
+            _isExecuteMode = false;
+      }
+      modeButton->setChecked(_isExecuteMode);
+      modeButton->setEnabled(_editor->projectMode());
+      modeButton->setText(_isExecuteMode ? "Build" : "Plan");
+      modeButton->setProperty("class", _isExecuteMode ? "errorButton" : "actionButton");
+      toolBar->addWidget(modeButton);
+
+      connect(modeButton, &QToolButton::toggled, [this](bool checked) {
             _isExecuteMode = checked;
-            modeToggleAction->setText(checked ? "Build" : "Plan");
-
-            if (auto* button = qobject_cast<QToolButton*>(toolBar->widgetForAction(modeToggleAction))) {
-                  button->setProperty("class", checked ? "errorButton" : "actionButton");
-                  button->style()->unpolish(button);
-                  button->style()->polish(button);
-                  }
+            modeButton->setText(checked ? "Build" : "Plan");
+            modeButton->setProperty("class", checked ? "errorButton" : "actionButton");
+            modeButton->style()->unpolish(modeButton);
+            modeButton->style()->polish(modeButton);
 
             if (chatDisplay) {
                   chatDisplay->append(
                       QString("<br><i>[System: Mode changed to <b>%1</b>]</i>").arg(checked ? "Build (read/write)" : "Plan (read only)"));
                   }
             });
-      toolBar->addAction(modeToggleAction);
 
-      QWidget* spacer = new QWidget();
-      spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-      toolBar->addWidget(spacer);
-
-      // Initial state
-      if (auto* button = qobject_cast<QToolButton*>(toolBar->widgetForAction(modeToggleAction))) {
-            button->setProperty("class", _isExecuteMode ? "errorButton" : "actionButton");
-            modeToggleAction->setText(_isExecuteMode ? "Build" : "Plan");
-            }
       mainLayout->addWidget(toolBar);
 
       // --- 2. Chat Display ---
@@ -145,7 +164,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       userInput                = new QPlainTextEdit(this);
       userInput->setCursorWidth(8);
 
-      statusLabel->setFixedWidth(30);
+      statusLabel->setMinimumWidth(30);
       statusLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
       statusLabel->setAlignment(Qt::AlignCenter);
 
@@ -163,9 +182,11 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             chatDisplay->setFont(f);
             userInput->setFont(f);
             statusLabel->setFont(f);
-            modelButton->setFont(f);
+            modelMenu->setFont(f);
             newSessionButton->setFont(f);
-            modeToggleAction->setFont(f);
+            deleteSessionButton->setFont(f);
+            sessionComboBox->setFont(f);
+            modeButton->setFont(f);
             });
 
       connect(chatDisplay, &QWebEngineView::loadFinished, this, [this] { loadStatus(); }, Qt::QueuedConnection | Qt::SingleShotConnection);
@@ -175,20 +196,20 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       }
 
 //---------------------------------------------------------
+//   Agent
+//---------------------------------------------------------
+
+Agent::~Agent() {
+      delete historyManager;
+      }
+
+//---------------------------------------------------------
 //   setExecuteMode
 //---------------------------------------------------------
 
 void Agent::setExecuteMode(bool checked) {
       _isExecuteMode = checked;
-      modeToggleAction->setChecked(checked);
-
-      // Update the text and style directly
-      modeToggleAction->setText(checked ? "Build" : "Plan");
-      if (auto* button = qobject_cast<QToolButton*>(toolBar->widgetForAction(modeToggleAction))) {
-            button->setProperty("class", checked ? "errorButton" : "actionButton");
-            button->style()->unpolish(button);
-            button->style()->polish(button);
-            }
+      modeButton->setChecked(checked);
       }
 
 //---------------------------------------------------------
@@ -206,26 +227,32 @@ QString getConfigPath() {
 //   setCurrentModel
 //---------------------------------------------------------
 
-void Agent::setCurrentModel(const QString& s) {
+void Agent::setCurrentModel(const QString& s, bool clearChat) {
       if (model.name == s)
             return;
       for (const auto& m : _models) {
             if (m.name == s) {
+                  pendingModelName.clear();
                   model = m;
                   llm   = llmFactory(this, &model, mcpTools);
                   connect(llm, &LLMClient::incomingChunk, chatDisplay, &ChatDisplay::handleIncomingChunk);
                   currentRetryCount  = 0;
                   retryPause         = 2000;
                   rateLimitResetTime = QDateTime();
-                  chatHistory.clear();
 
-                  chatDisplay->clear();
-                  chatDisplay->append("<i>[System: New session started. Ready.]</i><br>");
+                  if (clearChat) {
+                        historyManager->clear();
+                        chatDisplay->clear();
+                        chatDisplay->append("<i>[System: New session started. Ready.]</i><br>");
+                        }
+                  if (modelMenu)
+                        modelMenu->setCurrentText(s);
                   emit modelChanged();
                   return;
                   }
             }
-      Critical("model <{}> not found", s);
+      pendingModelName = s;
+      Critical("model <{}> not found, setting as pending", s.toStdString());
       }
 
 //---------------------------------------------------------
@@ -268,13 +295,19 @@ void Agent::fetchModels() {
                         m.isLocal         = true;
                         m.api             = "ollama";
 
-                        QAction* action = modelMenu->addAction(m.name);
-                        connect(action, &QAction::triggered, [this, m] { setCurrentModel(m.name); });
                         _models.push_back(m);
                         }
                   // at this point we have a complete list of available LL models
                   // and we can select the last used model as saved in settings
-                  setCurrentModel(_editor->settingsLLModel());
+                  if (!pendingModelName.isEmpty()) {
+                        QString pending = pendingModelName;
+                        pendingModelName.clear();
+                        setCurrentModel(pending, false);
+                        }
+                  else if (model.name.isEmpty()) {
+                        setCurrentModel(_editor->settingsLLModel(), false);
+                        }
+                  emit modelsChanged();
                   }
             catch (const json::parse_error& e) {
                   Debug("Parse Error: {}", e.what());
@@ -310,7 +343,7 @@ void Agent::sendMessage(QString qtext) {
       else // ollama
             msg["content"] = text;
       // Approximate token count: 4 chars per token
-      chatHistory.addRequest(msg, text.length() / 4);
+      historyManager->addRequest(msg, text.length() / 4);
       sendMessage2();
       }
 
@@ -581,7 +614,6 @@ void Agent::loadSettings() {
       QByteArray s     = file.readAll();
       QJsonArray array = QJsonDocument::fromJson(s).array();
       _models.clear();
-      modelMenu->clear();
 
       for (int i = 0; i < array.size(); ++i) {
             QJsonObject obj = array[i].toObject();
@@ -594,12 +626,8 @@ void Agent::loadSettings() {
             m.isLocal         = false;
 
             _models.push_back(m);
-            QAction* action = modelMenu->addAction(m.name);
-            connect(action, &QAction::triggered, [this, m] {
-                  setCurrentModel(m.name);
-                  modelButton->setText(m.name);
-                  });
             }
+      emit modelsChanged();
       }
 
 //---------------------------------------------------------
@@ -620,13 +648,12 @@ SessionInfo Agent::getSessionInfo() const {
       // create path if it does not exist
       QDir().mkpath(sessionFolder);
 
-      Debug("session folder <{}>", sessionFolder);
+      //      Debug("session folder <{}>", sessionFolder);
 
       QStringList filters;
       filters << "Session-*.json";
       QFileInfoList files = dir.entryInfoList(filters, QDir::Files, QDir::NoSort);
       QFileInfo latestFileInfo;
-      Debug("<{}> files", files.size());
       for (const QFileInfo& fileInfo : files) {
             QStringList parts = fileInfo.baseName().split('-');
             if (parts.size() < 5) {
@@ -645,7 +672,6 @@ SessionInfo Agent::getSessionInfo() const {
                   info.fileName   = fileInfo.absoluteFilePath();
                   }
             }
-      Debug("session file: <{}>", info.fileName);
       return info;
       }
 
@@ -667,7 +693,6 @@ QString Agent::sessionName(bool getNext) const {
       QString root = _editor->projectRoot();
       if (root.isEmpty()) // no session, no session info
             return QString();
-      root += "/.nped";
 
       QString sessionFolder = QDir::cleanPath(root + "/.nped");
       return QString("%5/Session-%1-%2-%3-%4.json")
@@ -675,7 +700,7 @@ QString Agent::sessionName(bool getNext) const {
           .arg(today.month(), 2, 10, QChar('0'))
           .arg(today.year())
           .arg(nextNumber)
-          .arg(root);
+          .arg(sessionFolder);
       }
 
 //---------------------------------------------------------
@@ -684,12 +709,85 @@ QString Agent::sessionName(bool getNext) const {
 
 void Agent::startNewSession() {
       saveStatus();
-      chatHistory.clear();
+      historyManager->clear();
       updateChatDisplay();
 
-      currentSessionFileName = sessionName(true);
+      currentSessionFileName = sessionName(true);     // create new session file name
+      updateSessionList();
       chatDisplay->append(QString("<i>[System: New session started: <b>%1</b>]</i><br>").arg(QFileInfo(currentSessionFileName).fileName()));
       userInput->setFocus();
+      }
+
+//---------------------------------------------------------
+//   deleteCurrentSession
+//---------------------------------------------------------
+
+void Agent::deleteCurrentSession() {
+      if (currentSessionFileName.isEmpty())
+            return;
+
+      QFile file(currentSessionFileName);
+      if (file.exists()) {
+            file.remove();
+            chatDisplay->append(
+                QString("<i>[System: Session deleted: <b>%1</b>]</i><br>").arg(QFileInfo(currentSessionFileName).fileName()));
+            }
+
+      currentSessionFileName = QString();
+      historyManager->clear();
+      updateChatDisplay();
+      updateSessionList();
+      userInput->setFocus();
+      }
+
+//---------------------------------------------------------
+//   updateSessionList
+//---------------------------------------------------------
+
+void Agent::updateSessionList() {
+      if (!sessionComboBox)
+            return;
+
+      bool wasBlocked = sessionComboBox->blockSignals(true);
+      sessionComboBox->clear();
+
+      QString root = _editor->projectRoot();
+      if (!root.isEmpty()) {
+            QString sessionFolder = QDir::cleanPath(root + "/.nped");
+            QDir dir(sessionFolder);
+            QStringList filters;
+            filters << "Session-*.json";
+            QFileInfoList files = dir.entryInfoList(filters, QDir::Files, QDir::Time); // Sorted by time (newest first)
+
+            for (const QFileInfo& fileInfo : files)
+                  sessionComboBox->addItem(fileInfo.fileName(), fileInfo.absoluteFilePath());
+            }
+
+      int index = sessionComboBox->findData(currentSessionFileName);
+      if (index >= 0) {
+            sessionComboBox->setCurrentIndex(index);
+            }
+      else if (!currentSessionFileName.isEmpty()) {
+            QFileInfo fi(currentSessionFileName);
+            sessionComboBox->insertItem(0, fi.fileName(), currentSessionFileName);
+            sessionComboBox->setCurrentIndex(0);
+            }
+
+      sessionComboBox->blockSignals(wasBlocked);
+      }
+
+//---------------------------------------------------------
+//   onSessionSelected
+//---------------------------------------------------------
+
+void Agent::onSessionSelected(int index) {
+      if (index < 0)
+            return;
+      QString fileName = sessionComboBox->itemData(index).toString();
+      if (fileName != currentSessionFileName) {
+            saveStatus();
+            loadStatus(fileName);
+            }
       }
 
 //---------------------------------------------------------
@@ -733,45 +831,71 @@ bool Agent::commitGitChanges(const QString& commitMessage) {
 //---------------------------------------------------------
 
 void Agent::saveStatus() {
-      if (currentSessionFileName.isEmpty())
+      if (currentSessionFileName.isEmpty() || historyManager->empty())
             return;
 
-      //      Debug("session <{}>", currentSessionFileName);
       QString path = QFileInfo(currentSessionFileName).absolutePath();
       QDir dir;
-      dir.mkpath(path);
-      //      Debug("mkpath <{}>", path);
-
+      if (!dir.exists(path)) {
+            bool created = dir.mkpath(path);
+            if (!created) {
+                  Critical("Could not create directory {}", path);
+                  return;
+                  }
+            }
       std::ofstream f(currentSessionFileName.toStdString());
       if (f.is_open()) {
-            f << "  ";
-            f << chatHistory.history().dump(3);
+            json root;
+            root["model"] = currentModel().toStdString();
+            json h = json::array();
+            for (const auto& item : historyManager->data())
+                  h.push_back(item.content);
+            root["history"] = h;
+            f << root.dump(3);
             f.close();
             }
-      else {
-            Critical("Could not save session file: {}", currentSessionFileName);
-            }
+      else
+            Critical("Could not open session file for writing: {}", currentSessionFileName.toStdString());
       }
 
 //---------------------------------------------------------
 //   loadStatus
+//    load last session
 //---------------------------------------------------------
 
-void Agent::loadStatus() {
+void Agent::loadStatus(const QString& sessionPath) {
       if (!_editor)
             return;
 
-      auto info = getSessionInfo();
-      if (!info.fileName.isEmpty()) {
+      Debug("===");
+      QString fileToLoad = sessionPath;
+      if (fileToLoad.isEmpty()) {
+            auto info  = getSessionInfo();
+            fileToLoad = info.fileName;
+            }
+
+      if (!fileToLoad.isEmpty()) {
             try {
-                  std::ifstream i(info.fileName.toStdString());
-                  json h;
-                  i >> h;
-                  chatHistory.setHistory(h);
-                  //                  chatDisplay->append(QString("<i>[System: Session loaded: <b>%1</b>]</i><br>").arg(QFileInfo(currentSessionFileName).fileName()));
-                  currentSessionFileName = info.fileName;
+                  std::ifstream i(fileToLoad.toStdString());
+                  json root;
+                  i >> root;
+                  
+                  if (root.is_object() && root.contains("history")) {
+                        if (root.contains("model")) {
+                              QString m = QString::fromStdString(root["model"].get<std::string>());
+                              setCurrentModel(m, false);
+                              }
+                        historyManager->setHistory(root["history"]);
+                        }
+                  else if (root.is_array()) {
+                        historyManager->setHistory(root);
+                        }
+                        
+                  currentSessionFileName = fileToLoad;
+                  updateSessionList();
                   updateChatDisplay();
                   chatDisplay->scrollToBottom();
+      Debug("session loaded <{}>", currentSessionFileName);
                   return;
                   }
             catch (const json::parse_error& e) {
@@ -785,12 +909,13 @@ void Agent::loadStatus() {
                   }
             }
       else
-            Debug("no session file found <{}>", info.fileName);
+            Debug("no session file found <{}>", fileToLoad);
       // No last session found -> Start new session
       currentSessionFileName = sessionName(true);
+      updateSessionList();
       chatDisplay->append("<i>[System: No previous session found. New session started.]</i><br>");
       chatDisplay->scrollToBottom();
-      chatHistory.clear();
+      historyManager->clear();
       }
 
 //---------------------------------------------------------
@@ -892,7 +1017,7 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
             // ollama
             if (content.contains("content")) {
                   std::string s = truncateOutput(content["content"].get<std::string>(), kChatResultMaxChars);
-                  if (content.contains("role") && content["role"] == "function") {
+                  if (content.contains("role") && (content["role"] == "function" || content["role"] == "tool")) {
                         if (content.contains("function")) {
                               json fc  = content["function"];
                               msg     += formatToolCall(fc["name"], fc["arguments"], s);
@@ -932,56 +1057,57 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
 
 void Agent::updateChatDisplay() {
       chatDisplay->clear();
+
       // Wait for the web view to finish loading before appending messages
-      QTimer::singleShot(250, this, [this]() {
-            std::string lastRole;
-            std::string mergedMsg;
-            std::string mergedThought;
+      //      QTimer::singleShot(250, this, [this]() {
+      std::string lastRole;
+      std::string mergedMsg;
+      std::string mergedThought;
 
-            for (const auto& item : chatHistory.data) {
-                  const auto& content = item.content;
-                  std::string role;
-                  if (!content.contains("role")) {
-                        Critical("no role in chatHistory: <{}>", content.dump(3));
-                        // assume this is a "system" message in the hope something will be displayed
-                        role = "system";
-                        }
-                  else
-                        role = content["role"];
+      for (const auto& item : historyManager->data()) {
+            const auto& content = item.content;
+            std::string role;
+            if (!content.contains("role")) {
+                  Critical("no role in chatHistory: <{}>", content.dump(3));
+                  // assume this is a "system" message in the hope something will be displayed
+                  role = "system";
+                  }
+            else
+                  role = content["role"];
 
-                  std::string msg;
-                  std::string thought;
-                  logContent(content, msg, thought);
-                  if (msg.empty() && thought.empty()) {
-                        // Debug("chatHistory entry: empty");
-                        continue;
-                        }
-
-                  if (role == "function" || role == "tool") {
-                        if (lastRole.empty())
-                              lastRole = role;
-                        mergedMsg     += msg;
-                        mergedThought += thought;
-                        }
-                  else {
-                        if (!lastRole.empty() && !(mergedMsg.empty() && mergedThought.empty())) {
-                              QString s  = chatDisplay->renderMarkdownToHtml(QString::fromStdString(mergedMsg));
-                              QString th = chatDisplay->renderMarkdownToHtml(QString::fromStdString(mergedThought));
-                              chatDisplay->appendStaticHtml(QString::fromStdString(lastRole), s, th);
-                              }
-                        lastRole      = role;
-                        mergedMsg     = msg;
-                        mergedThought = thought;
-                        }
+            std::string msg;
+            std::string thought;
+            logContent(content, msg, thought);
+            if (msg.empty() && thought.empty()) {
+                  // Debug("chatHistory entry: empty");
+                  continue;
                   }
 
-            if (!lastRole.empty() && !(mergedMsg.empty() && mergedThought.empty())) {
-                  QString s  = chatDisplay->renderMarkdownToHtml(QString::fromStdString(mergedMsg));
-                  QString th = chatDisplay->renderMarkdownToHtml(QString::fromStdString(mergedThought));
-                  chatDisplay->appendStaticHtml(QString::fromStdString(lastRole), s, th);
-                  chatDisplay->scrollToBottom();
+            if (role == "function" || role == "tool") {
+                  if (lastRole.empty())
+                        lastRole = role;
+                  mergedMsg     += msg;
+                  mergedThought += thought;
                   }
-            });
+            else {
+                  if (!lastRole.empty() && !(mergedMsg.empty() && mergedThought.empty())) {
+                        QString s  = chatDisplay->renderMarkdownToHtml(QString::fromStdString(mergedMsg));
+                        QString th = chatDisplay->renderMarkdownToHtml(QString::fromStdString(mergedThought));
+                        chatDisplay->appendStaticHtml(QString::fromStdString(lastRole), s, th);
+                        }
+                  lastRole      = role;
+                  mergedMsg     = msg;
+                  mergedThought = thought;
+                  }
+            }
+
+      if (!lastRole.empty() && !(mergedMsg.empty() && mergedThought.empty())) {
+            QString s  = chatDisplay->renderMarkdownToHtml(QString::fromStdString(mergedMsg));
+            QString th = chatDisplay->renderMarkdownToHtml(QString::fromStdString(mergedThought));
+            chatDisplay->appendStaticHtml(QString::fromStdString(lastRole), s, th);
+            chatDisplay->scrollToBottom();
+            }
+      //            });
       }
 
 //---------------------------------------------------------
@@ -992,60 +1118,4 @@ void Agent::enableInput(bool flag) {
       setInputEnabled(flag);
       if (flag)
             userInput->setFocus();
-      }
-
-//---------------------------------------------------------------------------------------
-//   trim
-//---------------------------------------------------------------------------------------
-
-bool HistoryManager::trim() {
-      // 1. Wenn der letzte Turn eine Zusammenfassung war:
-      // Wir löschen ALLES vor dieser Zusammenfassung, da sie nun der neue Kontext-Anker ist.
-      if (summaryRequested) {
-            if (data.size() >= 1) {
-                  HistoryItem lastEntry = data.back();
-                  data.clear();
-                  data.push_back(lastEntry);
-                  totalTokens = lastEntry.tokens;
-                  }
-            summaryRequested = false;
-            return false;
-            }
-
-      // 2. Klassisches Rolling Window (von vorne kürzen)
-      while (data.size() > maxEntries)
-            if (data.size() >= 2) {
-                  totalTokens -= data.front().tokens;
-                  data.erase(data.begin());
-                  totalTokens -= data.front().tokens;
-                  data.erase(data.begin());
-                  }
-            else
-                  break;
-      if (hitLimit()) {
-            // request summary
-            std::string text = "Please provide a concise technical summary of our conversation so far. "
-                               "Focus specifically on the results obtained from the tool calls and the final "
-                               "conclusions reached. Discard the raw, voluminous data output from the tools, "
-                               "but retain the key facts, parameters used, and the current state of the task. "
-                               "This summary will serve as the new starting point for our context, "
-                               "so ensure no critical logical step is lost.";
-            json msg;
-            msg["role"]  = "user";
-            msg["parts"] = json::array({{{"text", text}}});
-            addRequest(msg, text.length() / 4);
-            summaryRequested = true;
-            }
-      return summaryRequested;
-      }
-
-//---------------------------------------------------------
-//   addResult
-//---------------------------------------------------------
-
-bool HistoryManager::addResult(const json& content, size_t tokens) {
-      bool needSummary = trim();
-      data.push_back({content, tokens});
-      totalTokens += tokens;
-      return needSummary;
       }

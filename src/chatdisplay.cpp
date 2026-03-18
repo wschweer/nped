@@ -256,7 +256,6 @@ void ChatDisplay::setup() {
 //---------------------------------------------------------
 
 void ChatDisplay::setDarkMode(bool enabled) {
-      Debug("ChatDisplay::setDarkMode called with: {}", enabled);
       if (_darkMode == enabled)
             return;
       _darkMode = enabled;

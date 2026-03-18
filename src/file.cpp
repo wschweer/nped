@@ -32,7 +32,6 @@
 #include "kontext.h"
 #include "lsclient.h"
 #include "undo.h"
-#include "filewatcher.h"
 
 extern Codec readCodec;
 extern Codec writeCodec;
@@ -377,6 +376,8 @@ File::File(Editor* e, const QFileInfo& fi) : _fi(fi), editor(e) {
 File::~File() {
       if (client)
             client->didCloseNotification(this);
+      if (!created && editor && editor->getFileWatcher())
+            editor->getFileWatcher()->removePath(_fi.absoluteFilePath());
       f.close();
       }
 
@@ -486,7 +487,7 @@ bool File::load() {
       lcOpen(); // notify language server
       mode = f.permissions();
       if (editor && editor->getFileWatcher())
-          editor->getFileWatcher()->addWatch(_fi.absoluteFilePath());
+          editor->getFileWatcher()->addPath(_fi.absoluteFilePath());
       return true;
       }
 

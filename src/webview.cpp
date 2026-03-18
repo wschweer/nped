@@ -23,7 +23,6 @@
 
 MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_parent), editor(e) {
       _darkMode = e->darkMode();
-      Debug("darkMode {}", _darkMode);
       textActions = {
          Action(e->getSC(Cmd::CMD_QUIT), [this] { editor->quitCmd(); }),
          Action(e->getSC(Cmd::CMD_SAVE_QUIT), [this] { editor->saveQuitCmd(); }),

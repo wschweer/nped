@@ -46,7 +46,6 @@
 #include "agent.h"
 #include "webview.h"
 #include "completion.h"
-#include "filewatcher.h"
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -117,6 +116,19 @@ const ShortcutConfig& Editor::getSC(Cmd cmd) {
       };
 
 //---------------------------------------------------------
+//   updateStyle
+//---------------------------------------------------------
+
+void Editor::updateStyle() {
+      QString styleFile = darkMode() ? ":/src/dark.qss" : ":/src/light.qss";
+      QFile file(styleFile);
+      if (file.open(QFile::ReadOnly)) {
+            QString style = QLatin1String(file.readAll());
+            qApp->setStyleSheet(style);
+            }
+      }
+
+//---------------------------------------------------------
 //   Editor
 //---------------------------------------------------------
 
@@ -126,13 +138,20 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       qRegisterMetaType<LanguageServerConfig>("LanguageServerConfig");
       qRegisterMetaType<Model>("Model");
 
-      fileWatcher = new FileWatcher(this);
-      connect(fileWatcher, &FileWatcher::fileChanged, [] (const QString& path) {
-            Critical("file <{}> changed on disk", path);
+      fileWatcher = new QFileSystemWatcher(this);
+#if 0 // experimental
+      connect(fileWatcher, &QFileSystemWatcher::fileChanged, [](const QString& path) {
+            // QFileSystemWatcher emits fileChanged for both modification and deletion
+            File* f = findFile(path);
+            if (f) {
+                  QFileInfo fi(path);
+                  if (fi.exists())
+                        Critical("file <{}> changed on disk", path);
+                  else
+                        Critical("file <{}> deleted from disk", path);
+                  }
             });
-      connect(fileWatcher, &FileWatcher::fileDeleted, [] (const QString& path) {
-            Critical("file <{}> deleted from disk", path);
-            });
+#endif
 
       if (!initProject())
             Critical("init project failed");
@@ -287,36 +306,18 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       _editWidget = new EditWidget(nullptr, this);
       _mdWidget   = new MarkdownWebView(this, this);
       _mdWidget->setZoomFactor(1.5);
-      connect(this, &Editor::darkModeChanged, _editWidget, &EditWidget::setDarkMode);
-      connect(this, &Editor::darkModeChanged, _mdWidget, &MarkdownWebView::setDarkMode);
-      _editWidget->setDarkMode(darkMode());
-      _mdWidget->setDarkMode(darkMode());
+
       _stack->addWidget(_editWidget);
       _stack->addWidget(_mdWidget);
 
       connect(this, &Editor::darkModeChanged, [this](bool dark) {
             markerDefinitions.setDarkMode(dark);
+            updateStyle();
             update();
-            QString styleFile = dark ? ":/src/dark.qss" : ":/src/light.qss";
-            QFile file(styleFile);
-            if (file.open(QFile::ReadOnly)) {
-                  QString style = QLatin1String(file.readAll());
-                  qApp->setStyleSheet(style);
-                  }
-            else
-                  Critical("cannot open style qss");
             });
       // Initial style
       markerDefinitions.setDarkMode(darkMode());
-      {
-            QString styleFile = darkMode() ? ":/src/dark.qss" : ":/src/light.qss";
-            QFile file(styleFile);
-            if (file.open(QFile::ReadOnly)) {
-                  QString style = QLatin1String(file.readAll());
-                  qApp->setStyleSheet(style);
-                  }
-      }
-
+      updateStyle();
       _editWidget->setFocus();
       connect(_editWidget, &EditWidget::markerClicked, [this](int row) {
             kontext()->file()->toggleFold(row);
@@ -357,13 +358,13 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       //    Config
       //*****************************************
 
-      auto configButton = new QToolButton();
+      configButton = new QToolButton();
       configButton->setObjectName("configButton");
       QString iconPath = darkMode() ? ":/images/configure_white.svg" : ":/images/configure.svg";
       configButton->setIcon(QIcon(iconPath));
       configButton->setToolTip("Configure...");
-      connect(this, &Editor::darkModeChanged, [configButton](bool dark) {
-            QString iconPath = dark ? ":/images/configure_white.svg" : ":/images/configure.svg";
+      connect(this, &Editor::darkModeChanged, [this]() {
+            QString iconPath = darkMode() ? ":/images/configure_white.svg" : ":/images/configure.svg";
             configButton->setIcon(QIcon(iconPath));
             });
       connect(configButton, &QToolButton::clicked, [this] {
@@ -535,7 +536,7 @@ void Editor::initEnterWidget() {
                   action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
                   connect(action, &QAction::triggered, [this, a] {
                         a.func();
- //                       enterLine->execute();
+                        //                       enterLine->execute();
                         enterLine->addHistory(enterLine->text());
                         leaveEnter();
                         });
@@ -594,7 +595,7 @@ void Kontext::toggleViewMode() {
                   case ViewMode::File:
                         _viewMode = ViewMode::Functions;
                         break;
-                                    }
+                                                }
 #endif
             setViewMode(ViewMode::Functions);
             }
@@ -813,12 +814,13 @@ void Editor::updateHScrollbar() {
             total = 0;
       if (total <= visible) {
             hScroll->hide();
-      } else {
+            }
+      else {
             hScroll->show();
             hScroll->setRange(0, total - visible + 1);
             hScroll->setValue(pos);
             hScroll->setPageStep(visible);
-      }
+            }
       hScroll->blockSignals(false);
       }
 
@@ -992,12 +994,12 @@ void Editor::saveStatus() {
       QByteArray splitterState = splitter->saveState();
       j["splitter"]            = splitterState.toHex().toStdString();
 
-      j["aiVisible"]    = agent->isVisible();
-      j["aiModel"]      = agent->currentModel().toStdString();
+      j["aiVisible"]     = agent->isVisible();
+      j["aiModel"]       = agent->currentModel().toStdString();
       j["aiExecuteMode"] = agent->isExecuteMode();
-      j["search"]       = searchPattern.pattern().toStdString();
-      j["replace"]      = replace.toStdString();
-      j["gitPanel"]     = _gitButton->isChecked();
+      j["search"]        = searchPattern.pattern().toStdString();
+      j["replace"]       = replace.toStdString();
+      j["gitPanel"]      = _gitButton->isChecked();
 
       json kontexte = json::array();
       for (const auto k : _kontextList) {
