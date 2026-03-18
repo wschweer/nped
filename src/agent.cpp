@@ -166,13 +166,22 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
 
       // --- 3. Input Field ---
       QHBoxLayout* inputLayout = new QHBoxLayout();
-      statusLabel              = new QLabel(">", this);
+      statusLabel              = new QToolButton(this);
+      statusLabel->setText(">");
+      connect(statusLabel, &QToolButton::clicked, [this] {
+            QString s = userInput->toPlainText();
+            if (!s.isEmpty()) {
+                  sendMessage(s);
+                  userInput->clear();
+                  }
+            });
+
       userInput                = new QPlainTextEdit(this);
       userInput->setCursorWidth(8);
 
       statusLabel->setMinimumWidth(30);
       statusLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
-      statusLabel->setAlignment(Qt::AlignCenter);
+//      statusLabel->setAlignment(Qt::AlignCenter);
 
       userInput->setPlaceholderText("enter message to LLM...");
       QFontMetrics fm(userInput->font());
@@ -294,7 +303,6 @@ void Agent::fetchModels() {
             try {
                   auto j = json::parse(reply->readAll().toStdString());
                   for (const auto& model : j["models"]) {
-                        Debug("<{}>", model.dump(3));
                         Model m;
                         m.name            = QString::fromStdString(model["name"].get<std::string>());
                         m.modelIdentifier = m.name;
@@ -333,15 +341,12 @@ void Agent::fetchModels() {
 //---------------------------------------------------------
 
 void Agent::sendMessage(QString qtext) {
-      Debug("=============<{}>", qtext);
-
       std::string text = qtext.trimmed().toStdString();
       if (text.empty() || model.name == "")
             return;
 
-      userInput->clear();
       chatDisplay->startNewStreamingMessage("User");
-      chatDisplay->handleIncomingChunk("", QString::fromStdString(text));
+      chatDisplay->handleIncomingChunk("", text);
 
       json msg;
       msg["role"] = "user";
@@ -399,7 +404,7 @@ void Agent::sendMessage2() {
       Debug("send <{}>", jsonPayLoad.dump(3));
       request.setTransferTimeout(60000 * 5);
 
-      chatDisplay->startNewStreamingMessage(model.name);
+      chatDisplay->startNewStreamingMessage(model.name.toStdString());
 
       if (currentReply) {
             currentReply->disconnect();
@@ -717,11 +722,13 @@ QString Agent::sessionName(bool getNext) const {
 void Agent::startNewSession() {
       saveStatus();
       historyManager->clear();
-      updateChatDisplay();
+      chatDisplay->clear();
 
       currentSessionFileName = sessionName(true); // create new session file name
       updateSessionList();
-      chatDisplay->append(QString("<i>[System: New session started: <b>%1</b>]</i><br>").arg(QFileInfo(currentSessionFileName).fileName()));
+      chatDisplay->addMessage("system",
+         format("<i>[System: New session started: <b>{}</b>]</i><br>",
+           QFileInfo(currentSessionFileName).fileName().toStdString()));
       userInput->setFocus();
       }
 
@@ -736,13 +743,13 @@ void Agent::deleteCurrentSession() {
       QFile file(currentSessionFileName);
       if (file.exists()) {
             file.remove();
-            chatDisplay->append(
-                QString("<i>[System: Session deleted: <b>%1</b>]</i><br>").arg(QFileInfo(currentSessionFileName).fileName()));
+//            chatDisplay->append(
+//                QString("<i>[System: Session deleted: <b>%1</b>]</i><br>").arg(QFileInfo(currentSessionFileName).fileName()));
             }
 
       currentSessionFileName = QString();
       historyManager->clear();
-      updateChatDisplay();
+      chatDisplay->clear();
       updateSessionList();
       userInput->setFocus();
       }
@@ -920,8 +927,7 @@ void Agent::loadStatus(const QString& sessionPath) {
       // No last session found -> Start new session
       currentSessionFileName = sessionName(true);
       updateSessionList();
-      chatDisplay->append("<i>[System: No previous session found. New session started.]</i><br>");
-      chatDisplay->scrollToBottom();
+      chatDisplay->addMessage("system", "<i>[System: No previous session found. New session started.]</i><br>");
       historyManager->clear();
       }
 
@@ -973,6 +979,7 @@ bool Agent::eventFilter(QObject* obj, QEvent* event) {
                   if (keyEvent->modifiers() & Qt::ShiftModifier)
                         return false;
                   sendMessage(userInput->toPlainText());
+                  userInput->clear();
                   return true;
                   }
             }
@@ -1032,6 +1039,14 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                         }
                   else
                         msg += s;
+                  }
+            if (content.contains("tool_calls")) {
+                  for (const auto& tool : content["tool_calls"]) {
+                        if (tool.contains("function")) {
+                              json fc  = tool["function"];
+                              msg     += formatToolCall(fc["name"], fc["arguments"], "");
+                              }
+                        }
                   }
             return;
             }
@@ -1098,8 +1113,8 @@ void Agent::updateChatDisplay() {
                   }
             else {
                   if (!lastRole.empty() && !(mergedMsg.empty() && mergedThought.empty())) {
-                        QString s  = chatDisplay->renderMarkdownToHtml(QString::fromStdString(mergedMsg));
-                        QString th = chatDisplay->renderMarkdownToHtml(QString::fromStdString(mergedThought));
+                        QString s  = chatDisplay->renderMarkdownToHtml(mergedMsg);
+                        QString th = chatDisplay->renderMarkdownToHtml(mergedThought);
                         chatDisplay->appendStaticHtml(QString::fromStdString(lastRole), s, th);
                         }
                   lastRole      = role;
@@ -1109,12 +1124,11 @@ void Agent::updateChatDisplay() {
             }
 
       if (!lastRole.empty() && !(mergedMsg.empty() && mergedThought.empty())) {
-            QString s  = chatDisplay->renderMarkdownToHtml(QString::fromStdString(mergedMsg));
-            QString th = chatDisplay->renderMarkdownToHtml(QString::fromStdString(mergedThought));
+            QString s  = chatDisplay->renderMarkdownToHtml(mergedMsg);
+            QString th = chatDisplay->renderMarkdownToHtml(mergedThought);
             chatDisplay->appendStaticHtml(QString::fromStdString(lastRole), s, th);
             chatDisplay->scrollToBottom();
             }
-      //            });
       }
 
 //---------------------------------------------------------

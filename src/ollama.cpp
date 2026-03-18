@@ -113,7 +113,7 @@ void OllamaClient::processJsonItem(const json& item) {
       if (message.contains("content")) {
             std::string s = message["content"];
             if (!s.empty()) {
-                  agent->chatDisplay->handleIncomingChunk("", QString::fromStdString(s));
+                  agent->chatDisplay->handleIncomingChunk("", s);
                   currentContent += s;
                   }
             }
@@ -156,7 +156,7 @@ void OllamaClient::processTools() {
                   std::string thinking;
                   std::string text;
                   agent->logContent(msg, text, thinking);
-                  agent->chatDisplay->handleIncomingChunk(QString::fromStdString(thinking), QString::fromStdString(text));
+                  agent->chatDisplay->handleIncomingChunk(thinking, text);
 
                   // Don't leak 'function' field to Ollama prompt if it doesn't need it
                   // Wait, prompt() only copies what it needs (role, content, tool_calls, name).

@@ -22,7 +22,7 @@
 //---------------------------------------------------------
 
 MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_parent), editor(e) {
-      _darkMode = e->darkMode();
+      _darkMode   = e->darkMode();
       textActions = {
          Action(e->getSC(Cmd::CMD_QUIT), [this] { editor->quitCmd(); }),
          Action(e->getSC(Cmd::CMD_SAVE_QUIT), [this] { editor->saveQuitCmd(); }),
@@ -66,6 +66,7 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
             });
       connect(kl, &KeyLogger::keyLabelChanged, [this](QString s) { editor->keyLabel()->setText(s); });
       installEventFilter(kl);
+      connect(this, &QWebEngineView::loadFinished, this, [this] { Debug("====isLoaded"); isLoaded = true; });
       }
 
 //---------------------------------------------------------
@@ -100,6 +101,8 @@ void MarkdownWebView::installFilterOnProxy() {
 
 void MarkdownWebView::setHtml(const QString& _html) {
       _currentRawHtml = _html;
+      Debug("===<{}>", _html);
+      isLoaded        = false;
       QWebEngineView::setHtml(_html);
       }
 
@@ -141,7 +144,7 @@ void MarkdownWebView::setMarkdown(const QString& _markdown) {
             }
 
       // 2. Konvertierung (nutzt jetzt processedMarkdown)
-      QString _convertedHtml = renderMarkdownToHtml(_processedMarkdown);
+      QString _convertedHtml = renderMarkdownToHtml(_processedMarkdown.toStdString());
 
       // ... CSS und Assets holen ...
       QString _css             = _darkMode ? getGithubDarkCss() : getGithubCss();
@@ -206,9 +209,8 @@ void md4c_callback(const MD_CHAR* _data, MD_SIZE _size, void* _userData) {
 //   renderMarkdownToHtml
 //---------------------------------------------------------
 
-QString MarkdownWebView::renderMarkdownToHtml(const QString& _markdown) {
+QString MarkdownWebView::renderMarkdownToHtml(const std::string& _stdMarkdown) {
       QString _output;
-      std::string _stdMarkdown = _markdown.toStdString();
 
       // GFM-Flags: Tabellen, Tasklisten, Durchgestrichen, Autolinks
       // unsigned int _flags = MD_DIALECT_GITHUB | MD_FLAG_NOINDENTEDCODEBLOCKS;

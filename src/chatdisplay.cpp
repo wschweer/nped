@@ -248,6 +248,7 @@ void ChatDisplay::setup() {
 </html>
 )")
                       .arg(hljsCss, chatCss);
+      Debug("==================setup html");
       setHtml(html);
       }
 
@@ -275,30 +276,11 @@ void ChatDisplay::setDarkMode(bool enabled) {
       }
 
 //---------------------------------------------------------
-//   appendMessageWithThought
-//---------------------------------------------------------
-
-void ChatDisplay::appendMessageWithThought(const QString& role, const QString& thought, const QString& text) {
-      QString thoughtHtml = thought.isEmpty() ? "" : renderMarkdownToHtml(thought);
-      QString html        = renderMarkdownToHtml(text);
-      appendStaticHtml(role, html, thoughtHtml);
-      }
-
-//---------------------------------------------------------
-//   appendMessage
-//---------------------------------------------------------
-
-void ChatDisplay::appendMessage(const QString& role, const QString& rawText) {
-      appendMessageWithThought(role, "", rawText);
-      scrollToBottom();
-      }
-
-//---------------------------------------------------------
 //   handleIncomingChunk
 //---------------------------------------------------------
 
-void ChatDisplay::handleIncomingChunk(const QString& thoughtChunk, const QString& textChunk) {
-      if (!thoughtChunk.isEmpty()) {
+void ChatDisplay::handleIncomingChunk(const std::string& thoughtChunk, const std::string& textChunk) {
+      if (!thoughtChunk.empty()) {
             currentStreamingThought += thoughtChunk;
             QString html             = renderMarkdownToHtml(currentStreamingThought);
 
@@ -306,7 +288,7 @@ void ChatDisplay::handleIncomingChunk(const QString& thoughtChunk, const QString
             page()->runJavaScript(js);
             }
 
-      if (!textChunk.isEmpty()) {
+      if (!textChunk.empty()) {
             currentStreamingText += textChunk;
             QString html          = renderMarkdownToHtml(currentStreamingText);
 

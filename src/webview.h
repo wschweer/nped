@@ -47,6 +47,7 @@ class MarkdownWebView : public QWebEngineView
 
     protected:
       bool _darkMode{false};
+      bool isLoaded { true };
       // Hilft uns, das interne Chromium-Widget zu finden
       void childEvent(QChildEvent* event) override;
       void installFilterOnProxy();
@@ -63,7 +64,7 @@ class MarkdownWebView : public QWebEngineView
       void setMarkdown(const QString& markdown);
       void append(const QString&);
       void clear() { setMarkdown(""); }
-      QString renderMarkdownToHtml(const QString& markdown);
+      QString renderMarkdownToHtml(const std::string& markdown);
 
       // Scrolling Interface
       void scrollLineUp();

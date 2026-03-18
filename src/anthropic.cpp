@@ -166,7 +166,7 @@ void AnthropicClient::processJsonItem(const json& item) {
             const auto& delta = item["delta"];
             if (delta.contains("type") && delta["type"] == "text_delta") {
                   std::string text = delta["text"];
-                  agent->chatDisplay->handleIncomingChunk("", QString::fromStdString(text));
+                  agent->chatDisplay->handleIncomingChunk("", text);
                   currentContent += text;
                   }
             else if (delta.contains("type") && delta["type"] == "input_json_delta") {
@@ -221,7 +221,7 @@ void AnthropicClient::processTools() {
                   std::string thinking;
                   std::string text;
                   agent->logContent(msg, text, thinking);
-                  agent->chatDisplay->handleIncomingChunk(QString::fromStdString(thinking), QString::fromStdString(text));
+                  agent->chatDisplay->handleIncomingChunk(thinking, text);
 
                   agent->historyManager->addRequest(msg, 0);
                   }

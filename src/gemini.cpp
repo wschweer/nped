@@ -113,9 +113,9 @@ void GeminiClient::processJsonItem(const json& item) {
                         std::string s = part["text"];
                         if (!s.empty()) {
                               if (part.contains("thought") && part["thought"] == true)
-                                    agent->chatDisplay->handleIncomingChunk(QString::fromStdString(s), "");
+                                    agent->chatDisplay->handleIncomingChunk(s, "");
                               else
-                                    agent->chatDisplay->handleIncomingChunk("", QString::fromStdString(s));
+                                    agent->chatDisplay->handleIncomingChunk("", s);
                               }
                         }
                   if (part.contains("functionCall"))
@@ -165,7 +165,7 @@ void GeminiClient::processTools() {
       std::string thinking;
       std::string text;
       agent->logContent(msg, text, thinking);
-      agent->chatDisplay->handleIncomingChunk(QString::fromStdString(thinking), QString::fromStdString(text));
+      agent->chatDisplay->handleIncomingChunk(thinking, text);
 
       // put on history
       // Assume tool call token count is negligible or fixed; for now use 0

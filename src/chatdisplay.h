@@ -19,45 +19,45 @@
 class ChatDisplay : public MarkdownWebView
       {
       Q_OBJECT
-      QString currentStreamingThought;
-      QString currentStreamingText;
+      std::string currentStreamingThought;
+      std::string currentStreamingText;
 
       QString getHighlightJsCss() const;
       QString getHighlightJsDarkCss() const;
       QString getChatCss() const;
       QString getChatDarkCss() const;
 
+    public slots:
+      void handleIncomingChunk(const std::string& thoughtChunk, const std::string& textChunk);
+
     public:
-      ChatDisplay(Editor* e, QWidget* parent = nullptr) : MarkdownWebView(e, parent) {}
-      void setup();
-      void appendMessageWithThought(const QString& role, const QString& thought, const QString& text);
-      void appendMessage(const QString& role, const QString& text);
+      ChatDisplay(Editor* e, QWidget* parent = nullptr) : MarkdownWebView(e, parent) {
+            }
       void scrollToBottom() { MarkdownWebView::scrollToBottom(); }
+      void setup();
       void clear() {
             setup();
-            bool busy = true;
-            connect(this, &QWebEngineView::loadFinished, this, [&busy] {
-                  busy = false;
-                  }, Qt::QueuedConnection | Qt::SingleShotConnection);
-            while (busy) {
+            while (!isLoaded) {
                   qApp->processEvents();
                   }
             }
       QWidget* widget() { return (QWidget*)this; }
       void setFont(QFont f) { MarkdownWebView::setFont(f); }
       QString quoteForJs(const QString& str);
-      void startNewStreamingMessage(const QString& role) {
+
+      void startNewStreamingMessage(const std::string& role) {
             currentStreamingThought.clear();
             currentStreamingText.clear();
-            auto s = QString("startNewStreamingMessage('%1');").arg(role);
-            page()->runJavaScript(s);
+            auto s = std::format("startNewStreamingMessage('{}');", role);
+            page()->runJavaScript(QString::fromStdString(s));
             }
       void appendStaticHtml(const QString& role, const QString& html, const QString& thoughtHtml = "");
 
       void setDarkMode(bool enabled) override;
-      //      void setHtml(const QString&) { Critical("not impl."); }
-      void setMarkdown(const QString&) { Critical("not impl."); };
-      void append(const QString& t) { appendMessage("system", t); }
-    public slots:
-      void handleIncomingChunk(const QString& thoughtChunk, const QString& textChunk);
+      void setMarkdown(const QString&) { Fatal("not impl."); };
+      void addMessage(const std::string& role, const std::string& text) {
+            startNewStreamingMessage(role);
+            handleIncomingChunk("", text);
+            scrollToBottom();
+            }
       };

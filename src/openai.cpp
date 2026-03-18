@@ -117,7 +117,7 @@ void OpenAiClient::processJsonItem(const json& item) {
       if (delta.contains("content") && !delta["content"].is_null()) {
             std::string s = delta["content"];
             if (!s.empty()) {
-                  agent->chatDisplay->handleIncomingChunk("", QString::fromStdString(s));
+                  agent->chatDisplay->handleIncomingChunk("", s);
                   currentContent += s;
                   }
             }
@@ -194,7 +194,7 @@ void OpenAiClient::processTools() {
                   std::string thinking;
                   std::string text;
                   agent->logContent(msg, text, thinking);
-                  agent->chatDisplay->handleIncomingChunk(QString::fromStdString(thinking), QString::fromStdString(text));
+                  agent->chatDisplay->handleIncomingChunk(thinking, text);
 
                   agent->historyManager->addRequest(msg, 0);
                   }

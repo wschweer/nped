@@ -49,7 +49,7 @@ class LLMClient : public QObject
       virtual void dataFinished()      = 0;
 
     signals:
-      void incomingChunk(const QString& thought, const QString& text);
+      void incomingChunk(const std::string& thought, const std::string& text);
       };
 
 extern LLMClient* llmFactory(Agent*, Model* m, const std::vector<json>& mcpTools);
