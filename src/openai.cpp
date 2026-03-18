@@ -81,7 +81,7 @@ json OpenAiClient::prompt(QNetworkRequest* request) {
                   jmsg["role"] = msg["role"];
             else
                   Debug("no role: <{}>", msg.dump(3));
-                  
+
             if (msg.contains("content"))
                   jmsg["content"] = msg["content"];
             if (msg.contains("tool_calls"))
@@ -126,9 +126,8 @@ void OpenAiClient::processJsonItem(const json& item) {
             for (const auto& tc : delta["tool_calls"]) {
                   int index = tc["index"].get<int>();
                   // Ensure array is large enough
-                  while (_currentToolCalls.size() <= static_cast<size_t>(index)) {
+                  while (_currentToolCalls.size() <= static_cast<size_t>(index))
                         _currentToolCalls.push_back(json::object());
-                        }
 
                   auto& currentCall = _currentToolCalls[index];
 
@@ -147,8 +146,8 @@ void OpenAiClient::processJsonItem(const json& item) {
                         if (func.contains("arguments")) {
                               if (!currentCall["function"].contains("arguments_str"))
                                     currentCall["function"]["arguments_str"] = "";
-                              currentCall["function"]["arguments_str"] = 
-                                    currentCall["function"]["arguments_str"].get<std::string>() + func["arguments"].get<std::string>();
+                              currentCall["function"]["arguments_str"] =
+                                  currentCall["function"]["arguments_str"].get<std::string>() + func["arguments"].get<std::string>();
                               }
                         }
                   }
@@ -167,8 +166,8 @@ void OpenAiClient::processTools() {
                         Critical("ToolCall does not contain <function>");
                         continue;
                         }
-                  json fc            = call["function"];
-                  json args          = json::object();
+                  json fc   = call["function"];
+                  json args = json::object();
                   if (fc.contains("arguments") && fc["arguments"].is_string()) {
                         std::string argsStr = fc["arguments"].get<std::string>();
                         if (!argsStr.empty())
@@ -177,16 +176,16 @@ void OpenAiClient::processTools() {
                   else if (fc.contains("arguments") && fc["arguments"].is_object()) {
                         args = fc["arguments"];
                         }
-                        
-                  fc["arguments"]    = args;
+
+                  fc["arguments"]          = args;
                   std::string functionName = fc["name"];
 
                   std::string result = agent->executeTool(functionName, args);
 
                   json msg;
-                  msg["role"] = "tool";
+                  msg["role"]    = "tool";
                   msg["content"] = result;
-                  msg["name"] = functionName;
+                  msg["name"]    = functionName;
                   if (call.contains("id"))
                         msg["tool_call_id"] = call["id"];
                   msg["function"] = fc; // For logContent
@@ -223,7 +222,7 @@ void OpenAiClient::dataFinished() {
       responseContent["role"] = "assistant";
       if (!currentContent.empty())
             responseContent["content"] = currentContent;
-      
+
       if (!_currentToolCalls.empty()) {
             for (auto& call : _currentToolCalls) {
                   if (call.contains("function") && call["function"].contains("arguments_str")) {
@@ -239,12 +238,10 @@ void OpenAiClient::dataFinished() {
       size_t totalTokens = 0;
 
       if (_currentToolCalls.empty()) {
-            if (agent->historyManager->addResult(responseContent, totalTokens)) {
+            if (agent->historyManager->addResult(responseContent, totalTokens))
                   agent->sendMessage2();
-                  }
-            else {
+            else
                   agent->enableInput(true);
-                  }
             }
       else {
             agent->historyManager->addRequest(responseContent, totalTokens);

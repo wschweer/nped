@@ -29,9 +29,9 @@ AnthropicClient::AnthropicClient(Agent* a, Model* m, const std::vector<json>& mc
             tools = json::array();
             for (auto& tool : mcps) {
                   tools.push_back({
-                           {       "name",        tool["name"]},
-                           {"description", tool["description"]},
-                           {"input_schema", tool["inputSchema"]} // Anthropic expects input_schema
+                           {        "name",        tool["name"]},
+                           { "description", tool["description"]},
+                           {"input_schema", tool["inputSchema"]}  // Anthropic expects input_schema
                         });
                   }
             }
@@ -55,7 +55,7 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
       request->setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
       request->setRawHeader("x-api-key", model->apiKey.toUtf8());
       request->setRawHeader("anthropic-version", "2023-06-01");
-      request->setRawHeader("anthropic-beta", "messages-2023-12-15"); // if needed for tool streaming or beta features
+      // request->setRawHeader("anthropic-beta", "messages-2023-12-15"); // if needed for tool streaming or beta features
 
       QUrl url(model->baseUrl.isEmpty() ? "https://api.anthropic.com/v1/messages" : model->baseUrl);
       request->setUrl(url);
@@ -68,13 +68,13 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
             anthropicRequest["tools"] = tools;
 
       json anthropicMessages = json::array();
-      
+
       anthropicRequest["system"] = agent->getManifest();
 
       for (const auto& msg : agent->historyManager->data()) {
-            json item = msg.content;
+            json item        = msg.content;
             std::string role = item.value("role", "");
-            
+
             if (role == "system") {
                   // system messages are not allowed in messages array for Anthropic, they are in system prompt
                   continue;
@@ -115,12 +115,33 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                         converted["content"] = contentArray;
                         anthropicMessages.push_back(converted);
                         }
+                  else if (item.contains("content")) {
+                        // Fix for error: Ensure content is a string
+                        json converted = item;
+                        if (converted["content"].is_array()) {
+                              std::string s = "";
+                              for (const auto& part : converted["content"])
+                                    if (part.is_string())
+                                          s += part.get<std::string>();
+                              converted["content"] = s;
+                              }
+                        anthropicMessages.push_back(converted);
+                        }
                   else {
                         anthropicMessages.push_back(item);
                         }
                   }
             else {
-                  anthropicMessages.push_back(item);
+                  // Ensure user role content is string if array of strings was accidentally created
+                  json cleaned = item;
+                  if (cleaned.contains("content") && cleaned["content"].is_array()) {
+                        std::string s = "";
+                        for (const auto& part : cleaned["content"])
+                              if (part.is_string())
+                                    s += part.get<std::string>();
+                        cleaned["content"] = s;
+                        }
+                  anthropicMessages.push_back(cleaned);
                   }
             }
 
@@ -152,10 +173,10 @@ void AnthropicClient::processJsonItem(const json& item) {
                   // Append to current tool call arguments string
                   if (!_currentToolCalls.empty()) {
                         auto& currentCall = _currentToolCalls.back();
-                        if (!currentCall.contains("arguments_str")) {
+                        if (!currentCall.contains("arguments_str"))
                               currentCall["arguments_str"] = "";
-                              }
-                        currentCall["arguments_str"] = currentCall["arguments_str"].get<std::string>() + delta["partial_json"].get<std::string>();
+                        currentCall["arguments_str"] =
+                            currentCall["arguments_str"].get<std::string>() + delta["partial_json"].get<std::string>();
                         }
                   }
             }
@@ -163,11 +184,11 @@ void AnthropicClient::processJsonItem(const json& item) {
             const auto& block = item["content_block"];
             if (block.contains("type") && block["type"] == "tool_use") {
                   json toolCall;
-                  toolCall["id"] = block["id"];
+                  toolCall["id"]       = block["id"];
                   toolCall["function"] = {
-                        {"name", block["name"]},
-                        {"arguments", json::object()}
-                  };
+                           {     "name",  block["name"]},
+                           {"arguments", json::object()}
+                        };
                   toolCall["arguments_str"] = "";
                   _currentToolCalls.push_back(toolCall);
                   }
@@ -182,22 +203,16 @@ void AnthropicClient::processTools() {
       try {
             for (auto& call : _currentToolCalls) {
                   std::string functionName = call["function"]["name"];
-                  
-                  // Parse arguments
-                  json args = json::object();
-                  std::string argsStr = call.value("arguments_str", "{}");
-                  if (!argsStr.empty()) {
-                        args = json::parse(argsStr);
-                        }
-                  call["function"]["arguments"] = args;
-                  call.erase("arguments_str");
+
+                  // Arguments are already parsed into call["function"]["arguments"] by dataFinished()
+                  json args = call["function"]["arguments"];
 
                   std::string result = agent->executeTool(functionName, args);
 
                   json msg;
-                  msg["role"] = "tool";
+                  msg["role"]    = "tool";
                   msg["content"] = result;
-                  msg["name"] = functionName;
+                  msg["name"]    = functionName;
                   if (call.contains("id"))
                         msg["tool_call_id"] = call["id"];
                   msg["function"] = call["function"];
@@ -231,18 +246,17 @@ void AnthropicClient::processTools() {
 
 void AnthropicClient::dataFinished() {
       json responseContent;
-      responseContent["role"] = "assistant";
+      responseContent["role"]    = "assistant";
       responseContent["content"] = currentContent;
-      
+
       // We need to store tool_calls in standard format so that prompt() can convert them later
       if (!_currentToolCalls.empty()) {
             json standardToolCalls = json::array();
             for (auto& call : _currentToolCalls) {
                   if (call.contains("arguments_str")) {
                         std::string argsStr = call["arguments_str"];
-                        if (!argsStr.empty()) {
+                        if (!argsStr.empty())
                               call["function"]["arguments"] = json::parse(argsStr);
-                              }
                         call.erase("arguments_str");
                         }
                   standardToolCalls.push_back(call);
@@ -255,12 +269,10 @@ void AnthropicClient::dataFinished() {
       size_t totalTokens = 0; // Anthropic usage could be extracted from "message_stop" item
 
       if (_currentToolCalls.empty()) {
-            if (agent->historyManager->addResult(responseContent, totalTokens)) {
+            if (agent->historyManager->addResult(responseContent, totalTokens))
                   agent->sendMessage2();
-                  }
-            else {
+            else
                   agent->enableInput(true);
-                  }
             }
       else {
             agent->historyManager->addRequest(responseContent, totalTokens);

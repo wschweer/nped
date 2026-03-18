@@ -133,7 +133,6 @@ class Agent : public QWidget
       QComboBox* sessionComboBox;
       QComboBox* modelMenu;
       QLabel* statusLabel;
-//      QAction* modeToggleAction;
       QToolButton* modeButton;
       QToolButton* configButton;
       QTimer* spinnerTimer;
