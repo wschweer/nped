@@ -168,7 +168,7 @@ void ChatDisplay::setup() {
       function startNewStreamingMessage(role) {
             const container = document.getElementById('chat-container');
             const wrapper = document.createElement('div');
-            wrapper.className = 'message ' + (role === 'User' || role === 'user' ? 'user' : 'ai');
+            wrapper.className = 'message ' + (role === 'User' || role === 'user' || role === 'tool'? 'user' : 'ai');
 
             // Eindeutige ID für dieses Streaming-Event
             const msgId = 'msg-' + Date.now();
@@ -222,7 +222,7 @@ void ChatDisplay::setup() {
       function appendStaticMessage(role, htmlContent, thoughtHtml) {
             const container = document.getElementById('chat-container');
             const wrapper = document.createElement('div');
-            wrapper.className = 'message ' + (role === 'User' || role === 'user' ? 'user' : 'ai');
+            wrapper.className = 'message ' + (role === 'User' || role === 'user' || role === 'tool' ? 'user' : 'ai');
 
             let thoughtHtmlPart = "";
             if (thoughtHtml && thoughtHtml.trim() !== "") {

@@ -1105,13 +1105,14 @@ void Agent::updateChatDisplay() {
                   continue;
                   }
 
-            if (role == "function" || role == "tool") {
+/*            if (role == "function" || role == "tool") {
                   if (lastRole.empty())
                         lastRole = role;
                   mergedMsg     += msg;
                   mergedThought += thought;
                   }
             else {
+*/
                   if (!lastRole.empty() && !(mergedMsg.empty() && mergedThought.empty())) {
                         QString s  = chatDisplay->renderMarkdownToHtml(mergedMsg);
                         QString th = chatDisplay->renderMarkdownToHtml(mergedThought);
@@ -1120,7 +1121,7 @@ void Agent::updateChatDisplay() {
                   lastRole      = role;
                   mergedMsg     = msg;
                   mergedThought = thought;
-                  }
+//                  }
             }
 
       if (!lastRole.empty() && !(mergedMsg.empty() && mergedThought.empty())) {
