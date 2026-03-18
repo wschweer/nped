@@ -490,8 +490,13 @@ void Editor::initEnterWidget() {
 
       QLabel* enterLabel = new QLabel("Enter:", enter);
       enterLayout->addWidget(enterLabel, 0, Qt::AlignLeft | Qt::AlignVCenter);
-
       enterLine = new Completer(enter);
+
+      connect(this, &Editor::fontChanged, [enterLabel, this] (QFont f) {
+            enterLabel->setFont(f);
+            enterLine->setFont(f);
+            });
+
       enterLine->completer()->popup()->setMaximumWidth(250);
       enterLayout->addWidget(enterLine, 50, Qt::AlignVCenter);
       enter->hide();
