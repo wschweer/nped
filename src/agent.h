@@ -90,9 +90,13 @@ struct Model {
       QString baseUrl;
       QString apiKey;
       QString api;  // "ollama", "gemini", "anthropic", "openai"
-      bool isLocal; // true für Ollama
-      bool filterToolMessages = true;
-      bool filterThoughts = false;
+      bool isLocal;            ///< true für Ollama
+      bool filterToolMessages  = true;
+      bool filterThoughts      = false;
+      bool supportsThinking    = false; ///< true: model supports Extended Thinking (e.g. claude-3-7-sonnet)
+      double temperature       = -1.0;  ///< <0: use API default
+      double topP              = -1.0;  ///< <0: use API default
+      int maxTokens            = -1;    ///< <0: use per-client default
       bool operator==(const Model& other) const = default;
       };
 

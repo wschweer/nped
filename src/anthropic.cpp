@@ -55,10 +55,9 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
       request->setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
       request->setRawHeader("x-api-key", model->apiKey.toUtf8());
       request->setRawHeader("anthropic-version", "2023-06-01");
-      // Enable Extended Thinking for models that support it (claude-3-7-sonnet and later).
-      // The beta header is required; thinking budget must be < max_tokens.
-      const bool extendedThinking = model->modelIdentifier.contains("claude-3-7") ||
-                                    model->modelIdentifier.contains("claude-3.7");
+      // Enable Extended Thinking when the model flag is set.
+      // The beta header is required; thinking budget must be strictly < max_tokens.
+      const bool extendedThinking = model->supportsThinking;
       if (extendedThinking)
             request->setRawHeader("anthropic-beta", "interleaved-thinking-2025-05-14");
 
@@ -66,18 +65,27 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
       request->setUrl(url);
 
       json anthropicRequest;
-      anthropicRequest["model"]      = model->modelIdentifier.toStdString();
-      // Claude 3.5 / 3.7 supports up to 8192 output tokens; older models support 4096.
-      anthropicRequest["max_tokens"] = 8192;
+      anthropicRequest["model"]  = model->modelIdentifier.toStdString();
+      // max_tokens: use model setting if configured, otherwise 8192 (supports claude-3.5+, claude-3.7+).
+      // Older claude-3 models cap at 4096 – set model->maxTokens accordingly in the config.
+      const int maxTokens = (model->maxTokens > 0) ? model->maxTokens : 8192;
+      anthropicRequest["max_tokens"] = maxTokens;
       anthropicRequest["stream"]     = true;
       if (!tools.empty())
             anthropicRequest["tools"] = tools;
 
+      // Optional sampling parameters – only set when explicitly configured.
+      if (model->temperature >= 0.0)
+            anthropicRequest["temperature"] = model->temperature;
+      if (model->topP >= 0.0)
+            anthropicRequest["top_p"] = model->topP;
+
       if (extendedThinking) {
-            // Budget must be strictly less than max_tokens (8192).
+            // Budget must be strictly less than max_tokens.
+            const int thinkingBudget = std::max(1024, maxTokens - 1000);
             anthropicRequest["thinking"] = {
                      {"type",          "enabled"},
-                     {"budget_tokens",      5000}
+                     {"budget_tokens", thinkingBudget}
                   };
             }
 
@@ -109,21 +117,48 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                   anthropicMessages.push_back(toolMsg);
                   }
             else if (role == "assistant") {
-                  if (item.contains("tool_calls") && item["tool_calls"].is_array()) {
-                        json contentArray = json::array();
-                        // Preserve thinking block in round-trip if present (Extended Thinking).
-                        if (item.contains("thinking") && !item["thinking"].get<std::string>().empty()) {
+                  json contentArray = json::array();
+
+                  // ── Thinking block (Extended Thinking round-trip) ────────────────
+                  // The API requires the full thinking object including its "signature"
+                  // field to be sent back verbatim.  We store it as a JSON object so
+                  // nothing is lost between turns.
+                  if (item.contains("thinking")) {
+                        const auto& th = item["thinking"];
+                        if (th.is_object()) {
+                              // Stored as full block {type, thinking, signature} – pass through.
+                              contentArray.push_back(th);
+                              }
+                        else if (th.is_string() && !th.get<std::string>().empty()) {
+                              // Legacy: stored as plain string (no signature available).
                               json thinkingBlock;
                               thinkingBlock["type"]     = "thinking";
-                              thinkingBlock["thinking"] = item["thinking"];
+                              thinkingBlock["thinking"] = th.get<std::string>();
                               contentArray.push_back(thinkingBlock);
                               }
-                        if (item.contains("content") && item["content"].is_string() && !item["content"].get<std::string>().empty()) {
+                        }
+
+                  // ── Text block ───────────────────────────────────────────────────
+                  if (item.contains("content")) {
+                        std::string text;
+                        if (item["content"].is_string()) {
+                              text = item["content"].get<std::string>();
+                              }
+                        else if (item["content"].is_array()) {
+                              for (const auto& part : item["content"])
+                                    if (part.is_string())
+                                          text += part.get<std::string>();
+                              }
+                        if (!text.empty()) {
                               json textBlock;
                               textBlock["type"] = "text";
-                              textBlock["text"] = item["content"];
+                              textBlock["text"] = text;
                               contentArray.push_back(textBlock);
                               }
+                        }
+
+                  // ── Tool-use blocks ──────────────────────────────────────────────
+                  if (item.contains("tool_calls") && item["tool_calls"].is_array()) {
                         for (const auto& tc : item["tool_calls"]) {
                               json toolUse;
                               toolUse["type"]  = "tool_use";
@@ -134,48 +169,16 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                                                      : json::object();
                               contentArray.push_back(toolUse);
                               }
+                        }
+
+                  if (!contentArray.empty()) {
                         json converted;
                         converted["role"]    = "assistant";
                         converted["content"] = contentArray;
                         anthropicMessages.push_back(converted);
                         }
                   else {
-                        // Plain text or thinking-only assistant turn.
-                        // Build a content array so we can include the thinking block if present.
-                        json contentArray = json::array();
-                        if (item.contains("thinking") && !item["thinking"].get<std::string>().empty()) {
-                              json thinkingBlock;
-                              thinkingBlock["type"]     = "thinking";
-                              thinkingBlock["thinking"] = item["thinking"];
-                              contentArray.push_back(thinkingBlock);
-                              }
-                        if (item.contains("content")) {
-                              std::string text;
-                              if (item["content"].is_string()) {
-                                    text = item["content"].get<std::string>();
-                                    }
-                              else if (item["content"].is_array()) {
-                                    // Flatten array of strings into a single string.
-                                    for (const auto& part : item["content"])
-                                          if (part.is_string())
-                                                text += part.get<std::string>();
-                                    }
-                              if (!text.empty()) {
-                                    json textBlock;
-                                    textBlock["type"] = "text";
-                                    textBlock["text"] = text;
-                                    contentArray.push_back(textBlock);
-                                    }
-                              }
-                        if (!contentArray.empty()) {
-                              json converted;
-                              converted["role"]    = "assistant";
-                              converted["content"] = contentArray;
-                              anthropicMessages.push_back(converted);
-                              }
-                        else {
-                              anthropicMessages.push_back(item);
-                              }
+                        anthropicMessages.push_back(item);
                         }
                   }
             else {
@@ -202,7 +205,7 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
 
       anthropicRequest["messages"] = anthropicMessages;
       currentContent.clear();
-      currentThinking.clear();
+      currentThinkingBlock = json::object();
       _currentToolCalls.clear();
       return anthropicRequest;
       }
@@ -241,7 +244,7 @@ void AnthropicClient::processJsonItem(const json& item) {
       if (type == "content_block_start") {
             if (!item.contains("content_block"))
                   return;
-            const auto& block     = item["content_block"];
+            const auto& block       = item["content_block"];
             const std::string btype = block.value("type", "");
 
             if (btype == "tool_use") {
@@ -255,7 +258,13 @@ void AnthropicClient::processJsonItem(const json& item) {
                   toolCall["arguments_str"] = "";
                   _currentToolCalls.push_back(toolCall);
                   }
-            // "text" and "thinking" block_start events don't require special setup.
+            else if (btype == "thinking") {
+                  // Start a fresh thinking block; signature arrives via signature_delta.
+                  currentThinkingBlock          = json::object();
+                  currentThinkingBlock["type"]  = "thinking";
+                  currentThinkingBlock["thinking"]  = "";
+                  currentThinkingBlock["signature"] = "";
+                  }
             return;
             }
 
@@ -265,7 +274,7 @@ void AnthropicClient::processJsonItem(const json& item) {
       if (type == "content_block_delta") {
             if (!item.contains("delta"))
                   return;
-            const auto& delta     = item["delta"];
+            const auto& delta       = item["delta"];
             const std::string dtype = delta.value("type", "");
 
             if (dtype == "text_delta") {
@@ -274,15 +283,22 @@ void AnthropicClient::processJsonItem(const json& item) {
                   currentContent += text;
                   }
             else if (dtype == "thinking_delta") {
-                  // Extended Thinking: stream thought text to the display.
+                  // Extended Thinking: stream thought text; accumulate into block object.
                   std::string thought = delta.value("thinking", "");
                   agent->chatDisplay->handleIncomingChunk(thought, "");
-                  currentThinking += thought;
+                  currentThinkingBlock["thinking"] =
+                      currentThinkingBlock["thinking"].get<std::string>() + thought;
+                  }
+            else if (dtype == "signature_delta") {
+                  // The API streams the cryptographic signature of the thinking block.
+                  // It must be sent back verbatim in subsequent turns.
+                  currentThinkingBlock["signature"] =
+                      currentThinkingBlock["signature"].get<std::string>() + delta.value("signature", "");
                   }
             else if (dtype == "input_json_delta") {
                   // Accumulate streamed JSON fragments for the current tool call.
                   if (!_currentToolCalls.empty() && delta.contains("partial_json")) {
-                        auto& currentCall         = _currentToolCalls.back();
+                        auto& currentCall            = _currentToolCalls.back();
                         currentCall["arguments_str"] =
                             currentCall["arguments_str"].get<std::string>() + delta["partial_json"].get<std::string>();
                         }
@@ -346,9 +362,10 @@ void AnthropicClient::dataFinished() {
       json responseContent;
       responseContent["role"]    = "assistant";
       responseContent["content"] = currentContent;
-      // Persist thinking content so it can be displayed when reloading a session.
-      if (!currentThinking.empty())
-            responseContent["thinking"] = currentThinking;
+      // Persist the full thinking block (including signature) for correct round-trip.
+      // The block is stored as a JSON object so prompt() can pass it back verbatim.
+      if (!currentThinkingBlock.empty() && !currentThinkingBlock.value("thinking", "").empty())
+            responseContent["thinking"] = currentThinkingBlock;
 
       // Parse arguments_str → JSON object and build the standard tool_calls array
       // that prompt() can later convert back to the Anthropic wire format.
@@ -372,7 +389,7 @@ void AnthropicClient::dataFinished() {
             }
 
       currentContent.clear();
-      currentThinking.clear();
+      currentThinkingBlock = json::object();
       _currentToolCalls.clear();
 
       // Use real token counts reported by the Anthropic API.

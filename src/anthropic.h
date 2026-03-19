@@ -21,7 +21,7 @@ class AnthropicClient : public LLMClient
       {
       Q_OBJECT
       std::string currentContent;
-      std::string currentThinking;      ///< Accumulates "thinking" blocks (Extended Thinking)
+      json currentThinkingBlock;        ///< Full thinking block object {type, thinking, signature} for round-trip
       json _currentToolCalls;
       json tools;
       size_t _inputTokens{0};           ///< From message_start usage

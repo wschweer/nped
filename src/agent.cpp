@@ -642,11 +642,15 @@ void Agent::saveSettings() {
             if (m.isLocal)
                   continue;
             QJsonObject obj;
-            obj["name"]    = m.name;
-            obj["url"]     = m.baseUrl;
-            obj["key"]     = m.apiKey;
-            obj["modelId"] = m.modelIdentifier;
-            obj["api"]     = m.api;
+            obj["name"]             = m.name;
+            obj["url"]              = m.baseUrl;
+            obj["key"]              = m.apiKey;
+            obj["modelId"]          = m.modelIdentifier;
+            obj["api"]              = m.api;
+            obj["supportsThinking"] = m.supportsThinking;
+            obj["temperature"]      = m.temperature;
+            obj["topP"]             = m.topP;
+            obj["maxTokens"]        = m.maxTokens;
             array.append(obj);
             }
 
@@ -681,6 +685,15 @@ void Agent::loadSettings() {
             m.modelIdentifier = obj["modelId"].toString();
             m.api             = obj["api"].toString();
             m.isLocal         = false;
+            // Optional fields – graceful fallback to struct defaults if absent
+            if (obj.contains("supportsThinking"))
+                  m.supportsThinking = obj["supportsThinking"].toBool();
+            if (obj.contains("temperature"))
+                  m.temperature = obj["temperature"].toDouble(-1.0);
+            if (obj.contains("topP"))
+                  m.topP = obj["topP"].toDouble(-1.0);
+            if (obj.contains("maxTokens"))
+                  m.maxTokens = obj["maxTokens"].toInt(-1);
 
             _models.push_back(m);
             }
@@ -1146,8 +1159,14 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
       try {
             if (!content.contains("parts")) {
                   // Anthropic Extended Thinking: top-level "thinking" field on assistant messages.
-                  if (content.contains("thinking") && content["thinking"].is_string()) {
-                        thought += content["thinking"].get<std::string>();
+                  // The field is stored as a JSON object {type, thinking, signature} or as a
+                  // plain string (legacy sessions).
+                  if (content.contains("thinking")) {
+                        const auto& th = content["thinking"];
+                        if (th.is_string())
+                              thought += th.get<std::string>();
+                        else if (th.is_object() && th.contains("thinking"))
+                              thought += th["thinking"].get<std::string>();
                         }
                   // ollama / openai / anthropic
                   if (content.contains("content")) {
