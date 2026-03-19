@@ -31,20 +31,17 @@ class ChatDisplay : public MarkdownWebView
       void handleIncomingChunk(const std::string& thoughtChunk, const std::string& textChunk);
 
     public:
-      ChatDisplay(Editor* e, QWidget* parent = nullptr) : MarkdownWebView(e, parent) {
-            }
+      ChatDisplay(Editor* e, QWidget* parent = nullptr) : MarkdownWebView(e, parent) {}
       void scrollToBottom() { MarkdownWebView::scrollToBottom(); }
       void setup();
       void clear() {
             setup();
-            while (!isLoaded) {
+            while (!isLoaded)
                   qApp->processEvents();
-                  }
             }
       QWidget* widget() { return (QWidget*)this; }
       void setFont(QFont f) { MarkdownWebView::setFont(f); }
       QString quoteForJs(const QString& str);
-
       void startNewStreamingMessage(const std::string& role) {
             currentStreamingThought.clear();
             currentStreamingText.clear();

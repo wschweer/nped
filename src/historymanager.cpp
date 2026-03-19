@@ -22,12 +22,12 @@ bool HistoryManager::trim() {
             if (_data.size() >= 2) {
                   HistoryItem lastEntry = _data.back();
                   HistoryItem prevEntry = _data[_data.size() - 2];
-                  activeEntries = 2;
-                  totalTokens = prevEntry.tokens + lastEntry.tokens;
+                  activeEntries         = 2;
+                  totalTokens           = prevEntry.tokens + lastEntry.tokens;
                   }
             else if (_data.size() >= 1) {
                   activeEntries = 1;
-                  totalTokens = _data.back().tokens;
+                  totalTokens   = _data.back().tokens;
                   }
             summaryRequested = false;
             return false;
@@ -37,11 +37,11 @@ bool HistoryManager::trim() {
       while (activeEntries > maxEntries) {
             if (activeEntries == 0)
                   break;
-            size_t idx = _data.size() - activeEntries;
+            size_t idx   = _data.size() - activeEntries;
             totalTokens -= _data[idx].tokens;
             activeEntries--;
             while (activeEntries > 0) {
-                  idx = _data.size() - activeEntries;
+                  idx           = _data.size() - activeEntries;
                   std::string r = _data[idx].content.value("role", "");
                   if (r == "user")
                         break;
@@ -72,9 +72,9 @@ bool HistoryManager::trim() {
 
 bool HistoryManager::addResult(const json& content, size_t tokens) {
       _data.push_back({content, tokens});
-      totalTokens      += tokens;
+      totalTokens += tokens;
       activeEntries++;
-      bool needSummary  = trim();
+      bool needSummary = trim();
       return needSummary;
       }
 

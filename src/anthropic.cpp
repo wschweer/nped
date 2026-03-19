@@ -65,10 +65,10 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
       request->setUrl(url);
 
       json anthropicRequest;
-      anthropicRequest["model"]  = model->modelIdentifier.toStdString();
+      anthropicRequest["model"] = model->modelIdentifier.toStdString();
       // max_tokens: use model setting if configured, otherwise 8192 (supports claude-3.5+, claude-3.7+).
       // Older claude-3 models cap at 4096 – set model->maxTokens accordingly in the config.
-      const int maxTokens = (model->maxTokens > 0) ? model->maxTokens : 8192;
+      const int maxTokens            = (model->maxTokens > 0) ? model->maxTokens : 8192;
       anthropicRequest["max_tokens"] = maxTokens;
       anthropicRequest["stream"]     = true;
       if (!tools.empty())
@@ -82,9 +82,9 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
 
       if (extendedThinking) {
             // Budget must be strictly less than max_tokens.
-            const int thinkingBudget = std::max(1024, maxTokens - 1000);
+            const int thinkingBudget     = std::max(1024, maxTokens - 1000);
             anthropicRequest["thinking"] = {
-                     {"type",          "enabled"},
+                     {         "type",      "enabled"},
                      {"budget_tokens", thinkingBudget}
                   };
             }
@@ -189,8 +189,7 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                   if (cleaned.contains("content") && cleaned["content"].is_array()) {
                         const auto& arr = cleaned["content"];
                         // Check if all elements are plain strings – then flatten.
-                        bool allStrings = std::all_of(arr.begin(), arr.end(),
-                                                      [](const json& p) { return p.is_string(); });
+                        bool allStrings = std::all_of(arr.begin(), arr.end(), [](const json& p) { return p.is_string(); });
                         if (allStrings) {
                               std::string s;
                               for (const auto& part : arr)
@@ -249,10 +248,10 @@ void AnthropicClient::processJsonItem(const json& item) {
 
             if (btype == "tool_use") {
                   json toolCall;
-                  toolCall["id"]   = block.value("id", "");
-                  toolCall["type"] = "tool_use";
+                  toolCall["id"]       = block.value("id", "");
+                  toolCall["type"]     = "tool_use";
                   toolCall["function"] = {
-                           {     "name",  block.value("name", "")},
+                           {"name", block.value("name", "")},
                            {"arguments", json::object()}
                         };
                   toolCall["arguments_str"] = "";
@@ -260,8 +259,8 @@ void AnthropicClient::processJsonItem(const json& item) {
                   }
             else if (btype == "thinking") {
                   // Start a fresh thinking block; signature arrives via signature_delta.
-                  currentThinkingBlock          = json::object();
-                  currentThinkingBlock["type"]  = "thinking";
+                  currentThinkingBlock              = json::object();
+                  currentThinkingBlock["type"]      = "thinking";
                   currentThinkingBlock["thinking"]  = "";
                   currentThinkingBlock["signature"] = "";
                   }
@@ -286,19 +285,17 @@ void AnthropicClient::processJsonItem(const json& item) {
                   // Extended Thinking: stream thought text; accumulate into block object.
                   std::string thought = delta.value("thinking", "");
                   agent->chatDisplay->handleIncomingChunk(thought, "");
-                  currentThinkingBlock["thinking"] =
-                      currentThinkingBlock["thinking"].get<std::string>() + thought;
+                  currentThinkingBlock["thinking"] = currentThinkingBlock["thinking"].get<std::string>() + thought;
                   }
             else if (dtype == "signature_delta") {
                   // The API streams the cryptographic signature of the thinking block.
                   // It must be sent back verbatim in subsequent turns.
-                  currentThinkingBlock["signature"] =
-                      currentThinkingBlock["signature"].get<std::string>() + delta.value("signature", "");
+                  currentThinkingBlock["signature"] = currentThinkingBlock["signature"].get<std::string>() + delta.value("signature", "");
                   }
             else if (dtype == "input_json_delta") {
                   // Accumulate streamed JSON fragments for the current tool call.
                   if (!_currentToolCalls.empty() && delta.contains("partial_json")) {
-                        auto& currentCall            = _currentToolCalls.back();
+                        auto& currentCall = _currentToolCalls.back();
                         currentCall["arguments_str"] =
                             currentCall["arguments_str"].get<std::string>() + delta["partial_json"].get<std::string>();
                         }

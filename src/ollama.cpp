@@ -106,9 +106,8 @@ json OllamaClient::prompt(QNetworkRequest* request) {
 //---------------------------------------------------------
 
 void OllamaClient::processJsonItem(const json& item) {
-      if (!item.contains("message")) {
+      if (!item.contains("message"))
             return;
-            }
       const auto& message = item["message"];
       if (message.contains("content")) {
             std::string s = message["content"];
@@ -117,10 +116,9 @@ void OllamaClient::processJsonItem(const json& item) {
                   currentContent += s;
                   }
             }
-      if (message.contains("tool_calls")) {
+      if (message.contains("tool_calls"))
             for (const auto& toolCall : message["tool_calls"])
                   _currentToolCalls.push_back(toolCall);
-            }
       }
 
 //---------------------------------------------------------
@@ -135,19 +133,19 @@ void OllamaClient::processTools() {
                         Critical("ToolCall does not contain <function>");
                         continue;
                         }
-                  json fc            = call["function"];
-                  json args          = fc["arguments"];
+                  json fc   = call["function"];
+                  json args = fc["arguments"];
                   if (args.is_string())
                         args = json::parse(args.get<std::string>());
-                  fc["arguments"]    = args;
+                  fc["arguments"]          = args;
                   std::string functionName = fc["name"];
 
                   std::string result = agent->executeTool(functionName, args);
 
                   json msg;
-                  msg["role"] = "tool";
+                  msg["role"]    = "tool";
                   msg["content"] = result;
-                  msg["name"] = functionName;
+                  msg["name"]    = functionName;
                   if (call.contains("id"))
                         msg["tool_call_id"] = call["id"];
                   msg["function"] = fc; // For logContent
@@ -184,7 +182,7 @@ void OllamaClient::processTools() {
 
 void OllamaClient::dataFinished() {
       json responseContent;
-      responseContent["role"] = "assistant";
+      responseContent["role"]    = "assistant";
       responseContent["content"] = currentContent;
       if (!_currentToolCalls.empty())
             responseContent["tool_calls"] = _currentToolCalls;
@@ -194,12 +192,10 @@ void OllamaClient::dataFinished() {
       size_t totalTokens = 0;
 
       if (_currentToolCalls.empty()) {
-            if (agent->historyManager->addResult(responseContent, totalTokens)) {
+            if (agent->historyManager->addResult(responseContent, totalTokens))
                   agent->sendMessage2();
-                  }
-            else {
+            else
                   agent->enableInput(true);
-                  }
             }
       else {
             agent->historyManager->addRequest(responseContent, totalTokens);

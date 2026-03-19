@@ -54,7 +54,10 @@ class EditWidget : public QWidget
       void markerClicked(int row);
 
     public slots:
-      void setDarkMode(bool v) { _darkMode = v; update(); }
+      void setDarkMode(bool v) {
+            _darkMode = v;
+            update();
+            }
 
     public:
       static constexpr qreal BORDER{4.0};

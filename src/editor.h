@@ -359,7 +359,7 @@ class Editor : public QMainWindow
       HoverKontext hoverKontext;
 
       QString _projectRoot;
-      bool _projectMode { false };
+      bool _projectMode{false};
       Git _git;
       bool _darkMode;
       QColor _fgColor{0, 0, 0};
@@ -451,9 +451,8 @@ class Editor : public QMainWindow
       const ShortcutConfig& getSC(Cmd cmd);
       void saveAll();
       Kontext* kontext() {
-            if (_currentKontext >= _kontextList.size()) {
+            if (_currentKontext >= _kontextList.size())
                   return nullptr;
-                  }
             return _kontextList[_currentKontext];
             }
       const Kontext* kontext() const { return _kontextList[_currentKontext]; }
@@ -515,7 +514,6 @@ class Editor : public QMainWindow
       void copyKontext();
       QToolButton* gitButton() { return _gitButton; }
       QStackedWidget* stack() { return _stack; }
-
       QStringList monospacedFonts() const;
       QString fontFamily() const { return _fontFamily; }
       void setFontFamily(const QString& v) {
@@ -541,10 +539,11 @@ class Editor : public QMainWindow
                   if (_darkMode) {
                         setBgColor(QColor(40, 40, 40));
                         setFgColor(QColor(220, 220, 220));
-                  } else {
+                        }
+                  else {
                         setBgColor(QColor(240, 240, 240));
                         setFgColor(QColor(0, 0, 0));
-                  }
+                        }
                   emit darkModeChanged(_darkMode);
                   }
             }

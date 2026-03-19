@@ -47,7 +47,7 @@ class MarkdownWebView : public QWebEngineView
 
     protected:
       bool _darkMode{false};
-      bool isLoaded { true };
+      bool isLoaded{true};
       // Hilft uns, das interne Chromium-Widget zu finden
       void childEvent(QChildEvent* event) override;
       void installFilterOnProxy();

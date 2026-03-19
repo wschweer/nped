@@ -38,7 +38,7 @@ class HistoryManager
 
       void clear() {
             _data.clear();
-            totalTokens = 0;
+            totalTokens   = 0;
             activeEntries = 0;
             }
       int messages() const { return _data.size(); }
@@ -51,25 +51,21 @@ class HistoryManager
             totalTokens += tokens;
             activeEntries++;
             }
-      const std::vector<HistoryItem>& data() const {
-            return _data;
-            }
+      const std::vector<HistoryItem>& data() const { return _data; }
       json getActiveEntries() const {
-            json arr = json::array();
+            json arr        = json::array();
             size_t startIdx = _data.size() > activeEntries ? _data.size() - activeEntries : 0;
-            for (size_t i = startIdx; i < _data.size(); ++i) {
+            for (size_t i = startIdx; i < _data.size(); ++i)
                   arr.push_back(_data[i].content);
-            }
             return arr;
-      }
+            }
       void setHistory(const json& h);
-      void setActiveEntries(size_t a) { 
-            activeEntries = std::min(a, _data.size());
-            totalTokens = 0;
+      void setActiveEntries(size_t a) {
+            activeEntries   = std::min(a, _data.size());
+            totalTokens     = 0;
             size_t startIdx = _data.size() - activeEntries;
-            for (size_t i = startIdx; i < _data.size(); ++i) {
+            for (size_t i = startIdx; i < _data.size(); ++i)
                   totalTokens += _data[i].tokens;
             }
-      }
       size_t getActiveEntriesCount() const { return activeEntries; }
       };

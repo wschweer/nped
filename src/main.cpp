@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
                   default: usage("bad argument"); return -1;
                   }
             }
-      int fileArgc = (optind < argc) ? (argc - optind) : 0;
+      int fileArgc    = (optind < argc) ? (argc - optind) : 0;
       char** fileArgv = (optind < argc) ? (argv + optind) : nullptr;
       Editor e(fileArgc, fileArgv);
       e.show();

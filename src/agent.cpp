@@ -638,17 +638,17 @@ void Agent::saveSettings() {
             if (m.isLocal)
                   continue;
             QJsonObject obj;
-            obj["name"]             = m.name;
-            obj["url"]              = m.baseUrl;
-            obj["key"]              = m.apiKey;
-            obj["modelId"]          = m.modelIdentifier;
-            obj["api"]              = m.api;
+            obj["name"]               = m.name;
+            obj["url"]                = m.baseUrl;
+            obj["key"]                = m.apiKey;
+            obj["modelId"]            = m.modelIdentifier;
+            obj["api"]                = m.api;
             obj["filterToolMessages"] = m.filterToolMessages;
-            obj["filterThoughts"]   = m.filterThoughts;
-            obj["supportsThinking"] = m.supportsThinking;
-            obj["temperature"]      = m.temperature;
-            obj["topP"]             = m.topP;
-            obj["maxTokens"]        = m.maxTokens;
+            obj["filterThoughts"]     = m.filterThoughts;
+            obj["supportsThinking"]   = m.supportsThinking;
+            obj["temperature"]        = m.temperature;
+            obj["topP"]               = m.topP;
+            obj["maxTokens"]          = m.maxTokens;
             array.append(obj);
             }
 
@@ -866,6 +866,7 @@ void Agent::onSessionSelected(int index) {
       }
 
 #if 0
+
 //---------------------------------------------------------
 //   commitGitChanges
 //---------------------------------------------------------
@@ -886,7 +887,7 @@ bool Agent::commitGitChanges(const QString& commitMessage) {
       if (output.trimmed().isEmpty()) {
             Debug("Git: No changes found. Skip commit.");
             return false;
-            }
+                              }
 
       chatDisplay->append("<i>[System: Changes detected, executing Git auto-commit...]</i>");
 
@@ -900,7 +901,7 @@ bool Agent::commitGitChanges(const QString& commitMessage) {
 
       chatDisplay->append("<i>[System: Git auto-commit successfully completed.]</i>");
       return true;
-      }
+                        }
 #endif
 
 //---------------------------------------------------------
@@ -1279,7 +1280,7 @@ void Agent::updateChatDisplay() {
                         lastRole = role;
                   mergedMsg     += msg;
                   mergedThought += thought;
-                                                      }
+                                                                        }
             else {
 */
             if (!lastRole.empty() && !(mergedMsg.empty() && mergedThought.empty())) {

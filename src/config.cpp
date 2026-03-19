@@ -250,7 +250,7 @@ void Editor::loadSettings() {
             for (const auto& v : list)
                   if (v.canConvert<T>())
                         target.append(v.value<T>());
-                  };
+                        };
 
       loadList("shortcuts", _shortcuts);
       loadList("fileTypes", _fileTypes);

@@ -47,7 +47,7 @@ LLMClient* llmFactory(Agent* agent, Model* model, const std::vector<json>& mcps)
                   client = new OpenAiClient(agent, model, mcps);
             else {
                   Critical("unknown llm interface <{}>", model->api);
-                  client = new OllamaClient(agent, model, mcps);
+                  client        = new OllamaClient(agent, model, mcps);
                   client->model = model;
                   return client;
                   }

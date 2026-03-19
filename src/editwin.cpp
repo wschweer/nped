@@ -355,10 +355,10 @@ void EditWidget::paintEvent(QPaintEvent* e) {
             cb -= cb / 8;
             cg -= cg / 8;
             }
-      dc.selectColor                   = QColor(cr, cg, cb);
-      const QColor hoverMarkerBGColor  = dc.bgColor.darker(_darkMode ? 120 : -120);
-      const QColor markerBGColor       = dc.bgColor.darker(_darkMode ? -120 : 120);
-      dc.labelBGColor                  = QColor(100, 150, 255).darker(70);
+      dc.selectColor                  = QColor(cr, cg, cb);
+      const QColor hoverMarkerBGColor = dc.bgColor.darker(_darkMode ? 120 : -120);
+      const QColor markerBGColor      = dc.bgColor.darker(_darkMode ? -120 : 120);
+      dc.labelBGColor                 = QColor(100, 150, 255).darker(70);
 
       //
       // draw selection background

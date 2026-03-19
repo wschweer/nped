@@ -70,7 +70,7 @@ json GeminiClient::prompt(QNetworkRequest* request) {
       jmanifest["parts"]                = json::array({{{"text", agent->getManifest()}}});
       jmanifest["role"]                 = "system";
       requestJson["system_instruction"] = jmanifest;
-      json h = agent->historyManager->getActiveEntries();
+      json h                            = agent->historyManager->getActiveEntries();
       requestJson["contents"]           = h;
       requestJson["generationConfig"]   = {
                {"thinking_config", {{"include_thoughts", true}, {"thinking_level", "MEDIUM"}}}, // LOW, MINIMAL, MEDIUM, HIGH

@@ -77,33 +77,33 @@ class MCPToolBuilder
 
 struct Model {
       Q_GADGET
-      Q_PROPERTY(QString name              MEMBER name)
-      Q_PROPERTY(QString modelIdentifier   MEMBER modelIdentifier)
-      Q_PROPERTY(QString baseUrl           MEMBER baseUrl)
-      Q_PROPERTY(QString apiKey            MEMBER apiKey)
-      Q_PROPERTY(QString api               MEMBER api)
-      Q_PROPERTY(bool    isLocal           MEMBER isLocal)
+      Q_PROPERTY(QString name MEMBER name)
+      Q_PROPERTY(QString modelIdentifier MEMBER modelIdentifier)
+      Q_PROPERTY(QString baseUrl MEMBER baseUrl)
+      Q_PROPERTY(QString apiKey MEMBER apiKey)
+      Q_PROPERTY(QString api MEMBER api)
+      Q_PROPERTY(bool isLocal MEMBER isLocal)
       // --- Advanced parameters (fully exposed to QML) ---
-      Q_PROPERTY(bool    filterToolMessages MEMBER filterToolMessages)
-      Q_PROPERTY(bool    filterThoughts     MEMBER filterThoughts)
-      Q_PROPERTY(bool    supportsThinking   MEMBER supportsThinking)
-      Q_PROPERTY(double  temperature        MEMBER temperature)
-      Q_PROPERTY(double  topP               MEMBER topP)
-      Q_PROPERTY(int     maxTokens          MEMBER maxTokens)
+      Q_PROPERTY(bool filterToolMessages MEMBER filterToolMessages)
+      Q_PROPERTY(bool filterThoughts MEMBER filterThoughts)
+      Q_PROPERTY(bool supportsThinking MEMBER supportsThinking)
+      Q_PROPERTY(double temperature MEMBER temperature)
+      Q_PROPERTY(double topP MEMBER topP)
+      Q_PROPERTY(int maxTokens MEMBER maxTokens)
 
     public:
       QString name;
       QString modelIdentifier;
       QString baseUrl;
       QString apiKey;
-      QString api;  // "ollama", "gemini", "anthropic", "openai"
-      bool isLocal             = false; ///< true für Ollama
-      bool filterToolMessages  = true;
-      bool filterThoughts      = false;
-      bool supportsThinking    = false; ///< true: model supports Extended Thinking (e.g. claude-3-7-sonnet)
-      double temperature       = -1.0;  ///< <0: use API default
-      double topP              = -1.0;  ///< <0: use API default
-      int maxTokens            = -1;    ///< <0: use per-client default
+      QString api;                                       // "ollama", "gemini", "anthropic", "openai"
+      bool isLocal                              = false; ///< true für Ollama
+      bool filterToolMessages                   = true;
+      bool filterThoughts                       = false;
+      bool supportsThinking                     = false; ///< true: model supports Extended Thinking (e.g. claude-3-7-sonnet)
+      double temperature                        = -1.0;  ///< <0: use API default
+      double topP                               = -1.0;  ///< <0: use API default
+      int maxTokens                             = -1;    ///< <0: use per-client default
       bool operator==(const Model& other) const = default;
       };
 
@@ -172,7 +172,7 @@ class Agent : public QWidget
       QString currentSessionFileName;
       QString pendingModelName;
       size_t savedEntries{0};
-//      bool commitGitChanges(const QString& commitMessage);
+      //      bool commitGitChanges(const QString& commitMessage);
       void reinitSystemPrompt(); // Punkt 4: implementiert
       void updateChatDisplay();
       QString truncateOutput(const QString& text, int maxChars);
@@ -241,7 +241,7 @@ class Agent : public QWidget
 
       ChatDisplay* chatDisplay;
       QAction* filterToolMessagesAction = nullptr;
-      QAction* filterThoughtsAction = nullptr;
+      QAction* filterThoughtsAction     = nullptr;
       HistoryManager* historyManager;
 
       std::string getManifest() const;

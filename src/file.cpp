@@ -402,8 +402,8 @@ void File::setViewMode(ViewMode m, const Pos&) {
 //---------------------------------------------------------
 
 bool File::readOnly() const {
-//      if (editor && editor->getAgent() && editor->getAgent()->isWorking())
-//            return true;
+      //      if (editor && editor->getAgent() && editor->getAgent()->isWorking())
+      //            return true;
       return _readOnly || (_viewMode != ViewMode::File);
       }
 
@@ -487,7 +487,7 @@ bool File::load() {
       lcOpen(); // notify language server
       mode = f.permissions();
       if (editor && editor->getFileWatcher())
-          editor->getFileWatcher()->addPath(_fi.absoluteFilePath());
+            editor->getFileWatcher()->addPath(_fi.absoluteFilePath());
       return true;
       }
 
@@ -1246,7 +1246,7 @@ const Line& File::line(int row) const {
             case ViewMode::GitVersion: lines = &_gitVersion; break;
             case ViewMode::Bugs: lines = &_bugs; break;
             }
-            static const Line emptyLine;
+      static const Line emptyLine;
       if (!lines || lines->empty() || row >= lines->size())
             return emptyLine;
       return lines->at(row);
@@ -1275,7 +1275,7 @@ int File::rows() const {
 //---------------------------------------------------------
 
 int File::maxLineLength() const {
-      int maxLen = 0;
+      int maxLen         = 0;
       const Lines* lines = nullptr;
       switch (_viewMode) {
             default:
@@ -1285,11 +1285,9 @@ int File::maxLineLength() const {
             case ViewMode::Bugs: lines = &_bugs; break;
             }
       if (lines) {
-            for (const auto& line : *lines) {
-                  if (line.size() > maxLen) {
+            for (const auto& line : *lines)
+                  if (line.size() > maxLen)
                         maxLen = line.size();
-                        }
-                  }
             }
       return maxLen;
       }

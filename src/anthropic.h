@@ -21,11 +21,11 @@ class AnthropicClient : public LLMClient
       {
       Q_OBJECT
       std::string currentContent;
-      json currentThinkingBlock;        ///< Full thinking block object {type, thinking, signature} for round-trip
+      json currentThinkingBlock; ///< Full thinking block object {type, thinking, signature} for round-trip
       json _currentToolCalls;
       json tools;
-      size_t _inputTokens{0};           ///< From message_start usage
-      size_t _outputTokens{0};          ///< Accumulated from message_delta usage
+      size_t _inputTokens{0};  ///< From message_start usage
+      size_t _outputTokens{0}; ///< Accumulated from message_delta usage
 
       void processTools(json resolvedToolCalls);
 

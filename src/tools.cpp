@@ -159,7 +159,7 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
       auto trim = [](const QString& s, int maxLen = 80) {
             QString res = s.length() > maxLen ? s.left(maxLen - 3) + "..." : s;
             return res.toHtmlEscaped(); // Gleichzeitig HTML Sonderzeichen maskieren
-                                    };
+                                          };
 #endif
       // 1. Definiere, welche Tools harmlos sind (Nur-Lese-Zugriff)
       bool isReadOnlyTool = (functionName == "read_file" || functionName == "read_file_lines" || functionName == "search_project" ||

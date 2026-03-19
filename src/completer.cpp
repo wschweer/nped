@@ -50,16 +50,17 @@ void Completer::keyPressEvent(QKeyEvent* event) {
                         if (m_historyIndex > 0) {
                               m_historyIndex--;
                               setText(m_history[m_historyIndex]);
-                        }
+                              }
                         return;
                   case Qt::Key_Down:
                         if (m_historyIndex < m_history.size() - 1) {
                               m_historyIndex++;
                               setText(m_history[m_historyIndex]);
-                        } else if (m_historyIndex == m_history.size() - 1) {
+                              }
+                        else if (m_historyIndex == m_history.size() - 1) {
                               m_historyIndex++;
                               clear();
-                        }
+                              }
                         return;
                   default: break;
                   }

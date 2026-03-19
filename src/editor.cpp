@@ -149,8 +149,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
                         Critical("file <{}> changed on disk", path);
                   else
                         Critical("file <{}> deleted from disk", path);
-                  }
-            });
+                        }
+                  });
 #endif
 
       if (!initProject())
@@ -492,7 +492,7 @@ void Editor::initEnterWidget() {
       enterLayout->addWidget(enterLabel, 0, Qt::AlignLeft | Qt::AlignVCenter);
       enterLine = new Completer(enter);
 
-      connect(this, &Editor::fontChanged, [enterLabel, this] (QFont f) {
+      connect(this, &Editor::fontChanged, [enterLabel, this](QFont f) {
             enterLabel->setFont(f);
             enterLine->setFont(f);
             });
@@ -600,7 +600,7 @@ void Kontext::toggleViewMode() {
                   case ViewMode::File:
                         _viewMode = ViewMode::Functions;
                         break;
-                                                }
+                                                      }
 #endif
             setViewMode(ViewMode::Functions);
             }

@@ -350,7 +350,7 @@ void LSclient::readerLoop() {
                               break;
                               }
                         buffer.data()[bytesRead]  = '\0';
-                        message           += buffer.data();
+                        message                  += buffer.data();
                         //            Debug("{} {}", bytesRead, message.length());
                         for (;;) {
                               if (readHeader) {
@@ -481,8 +481,8 @@ bool LSclient::writeMessage(const std::string& jsonPayload) {
 bool LSclient::initializeRequest() {
       callbacks[id] = [this](const json& msg) {
             if (msg.contains("result") && msg["result"].contains("capabilities")) {
-                        // scap.read(msg["result"]["capabilities"]);
-                        }
+                  // scap.read(msg["result"]["capabilities"]);
+                  }
             notification("initialized");
             _initialized = true;
             emit initializedChanged();
