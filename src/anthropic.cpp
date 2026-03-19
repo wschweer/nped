@@ -71,8 +71,7 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
 
       anthropicRequest["system"] = agent->getManifest();
 
-      for (const auto& msg : agent->historyManager->data()) {
-            json item        = msg.content;
+      for (const auto& item : agent->historyManager->getActiveEntries()) {
             std::string role = item.value("role", "");
 
             if (role == "system") {

@@ -17,38 +17,36 @@
 
 bool HistoryManager::trim() {
       // 1. Wenn der letzte Turn eine Zusammenfassung war:
-      // Wir löschen ALLES vor dieser Zusammenfassung, da sie nun der neue Kontext-Anker ist.
+      // Wir setzen activeEntries auf 2 (Zusammenfassungs-Anfrage und Modell-Antwort).
       if (summaryRequested) {
             if (_data.size() >= 2) {
                   HistoryItem lastEntry = _data.back();
                   HistoryItem prevEntry = _data[_data.size() - 2];
-                  _data.clear();
-                  _data.push_back(prevEntry); // user summary request
-                  _data.push_back(lastEntry); // model summary response
+                  activeEntries = 2;
                   totalTokens = prevEntry.tokens + lastEntry.tokens;
                   }
             else if (_data.size() >= 1) {
-                  HistoryItem lastEntry = _data.back();
-                  _data.clear();
-                  _data.push_back(lastEntry);
-                  totalTokens = lastEntry.tokens;
+                  activeEntries = 1;
+                  totalTokens = _data.back().tokens;
                   }
             summaryRequested = false;
             return false;
             }
 
-      // 2. Klassisches Rolling Window (von vorne kürzen)
-      while (_data.size() > maxEntries) {
-            if (_data.empty())
+      // 2. Klassisches Rolling Window (nur activeEntries reduzieren statt Löschen)
+      while (activeEntries > maxEntries) {
+            if (activeEntries == 0)
                   break;
-            totalTokens -= _data.front().tokens;
-            _data.erase(_data.begin());
-            while (!_data.empty()) {
-                  std::string r = _data.front().content.value("role", "");
+            size_t idx = _data.size() - activeEntries;
+            totalTokens -= _data[idx].tokens;
+            activeEntries--;
+            while (activeEntries > 0) {
+                  idx = _data.size() - activeEntries;
+                  std::string r = _data[idx].content.value("role", "");
                   if (r == "user")
                         break;
-                  totalTokens -= _data.front().tokens;
-                  _data.erase(_data.begin());
+                  totalTokens -= _data[idx].tokens;
+                  activeEntries--;
                   }
             }
       if (hitLimit()) {
@@ -75,6 +73,7 @@ bool HistoryManager::trim() {
 bool HistoryManager::addResult(const json& content, size_t tokens) {
       _data.push_back({content, tokens});
       totalTokens      += tokens;
+      activeEntries++;
       bool needSummary  = trim();
       return needSummary;
       }
@@ -94,6 +93,9 @@ void HistoryManager::setHistory(const json& h) {
                               tokens += part["text"].get<std::string>().length() / 4;
                   }
             _data.push_back({item, tokens});
+            // note: totalTokens will be recomputed by the caller using setActiveEntries,
+            // or we assume all are active initially for backward compatibility
             totalTokens += tokens;
+            activeEntries++;
             }
       }

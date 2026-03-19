@@ -159,14 +159,13 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
       auto trim = [](const QString& s, int maxLen = 80) {
             QString res = s.length() > maxLen ? s.left(maxLen - 3) + "..." : s;
             return res.toHtmlEscaped(); // Gleichzeitig HTML Sonderzeichen maskieren
-                              };
+                                    };
 #endif
       // 1. Definiere, welche Tools harmlos sind (Nur-Lese-Zugriff)
-      bool isReadOnlyTool =
-          (functionName == "read_file" || functionName == "read_file_lines" || functionName == "search_project" ||
-           functionName == "find_symbol" || functionName == "list_directory" || functionName == "fetch_web_documentation" ||
-           functionName == "get_git_status" || functionName == "get_git_diff" || functionName == "get_git_log" ||
-           functionName == "run_build_command");
+      bool isReadOnlyTool = (functionName == "read_file" || functionName == "read_file_lines" || functionName == "search_project" ||
+                             functionName == "find_symbol" || functionName == "list_directory" ||
+                             functionName == "fetch_web_documentation" || functionName == "get_git_status" ||
+                             functionName == "get_git_diff" || functionName == "get_git_log" || functionName == "run_build_command");
 
       // 2. Entwurfs-Modus Check
       if (!isExecuteMode() && !isReadOnlyTool) {
@@ -428,16 +427,30 @@ QString Agent::createFile(const QString& path, const QString& content) {
 //   modifyFile
 //---------------------------------------------------------
 
-QString Agent::modifyFile(const QString& path, const QString& content) {
-      if (!QFile::exists(path))
+QString Agent::modifyFile(const QString& ipath, const QString& content) {
+      if (!QFile::exists(ipath))
             return "Error: File does not exist. Use create_file.";
+      QString path;
+      if (ipath.startsWith("/"))
+            path = _editor->projectRoot() + "/" + ipath;
+      else
+            path = ipath;
 
-      QFile file(path);
-      // QIODevice::Truncate löscht den alten Inhalt der Datei
-      if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
-            return "Error modifying file (" + file.errorString() + ")";
-      QTextStream out(&file);
-      out << content;
+      File* f = _editor->findFile(path);
+      if (f) {
+            f->undo()->beginMacro();
+            f->undo()->push(new Patch(f, Pos(0,0), f->plainText().size(), content, Cursor(), Cursor()));
+            f->undo()->endMacro();
+            }
+      else {
+
+            QFile file(path);
+            // QIODevice::Truncate löscht den alten Inhalt der Datei
+            if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
+                  return "Error modifying file (" + file.errorString() + ")";
+            QTextStream out(&file);
+            out << content;
+            }
       return "Success: File " + path + " successfully modified.";
       }
 
@@ -703,16 +716,13 @@ QString Agent::runBuildCommand(const QString& command) {
             args << "-u" << "ai" << "-n" << "bwrap";
             }
 
-      args << "--ro-bind" << "/" << "/"
-           << (isExecuteMode() ? "--bind" : "--ro-bind") << projRoot << projRoot
-           << "--dev" << "/dev"
+      args << "--ro-bind" << "/" << "/" << (isExecuteMode() ? "--bind" : "--ro-bind") << projRoot << projRoot << "--dev" << "/dev"
            << "--proc" << "/proc"
            << "--tmpfs" << "/tmp"
            << "--unshare-all"
            << "--share-net"
-//           << "--chdir" << buildDir
-           << "--chdir" << projRoot
-           << "/bin/sh" << "-c" << command;
+           //           << "--chdir" << buildDir
+           << "--chdir" << projRoot << "/bin/sh" << "-c" << command;
 
       QProcess process;
       process.start(program, args);

@@ -158,6 +158,7 @@ class Agent : public QWidget
       std::vector<json> getMCPTools() const;
       QString currentSessionFileName;
       QString pendingModelName;
+      size_t savedEntries{0};
       bool commitGitChanges(const QString& commitMessage);
       void reinitSystemPrompt(); // Punkt 4: implementiert
       void updateChatDisplay();
@@ -268,6 +269,6 @@ class Agent : public QWidget
       static constexpr int kGitDiffMaxChars    = 10000;
       static constexpr int kSearchMaxChars     = 10000;
       static constexpr int kChatResultMaxChars = 20000;
-      static constexpr int kChatMaxMessages    = 500;
+      static constexpr int kChatMaxMessages    = 40;
       std::string truncateOutput(const std::string& text, int maxChars);
       };

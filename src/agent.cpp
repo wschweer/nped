@@ -257,6 +257,7 @@ void Agent::setCurrentModel(const QString& s, bool clearChat) {
 
                   if (clearChat) {
                         historyManager->clear();
+      savedEntries = 0;
                         chatDisplay->clear();
                         chatDisplay->append("<i>[System: New session started. Ready.]</i><br>");
                         }
@@ -722,6 +723,7 @@ QString Agent::sessionName(bool getNext) const {
 void Agent::startNewSession() {
       saveStatus();
       historyManager->clear();
+      savedEntries = 0;
       chatDisplay->clear();
 
       currentSessionFileName = sessionName(true); // create new session file name
@@ -748,6 +750,7 @@ void Agent::deleteCurrentSession() {
 
       currentSessionFileName = QString();
       historyManager->clear();
+      savedEntries = 0;
       chatDisplay->clear();
       updateSessionList();
       userInput->setFocus();
@@ -856,20 +859,34 @@ void Agent::saveStatus() {
                   return;
                   }
             }
-      std::ofstream f(currentSessionFileName.toStdString());
+      
+      std::ios_base::openmode mode = (savedEntries == 0) ? std::ios::out : std::ios::app;
+      std::ofstream f(currentSessionFileName.toStdString(), mode);
+      
       if (f.is_open()) {
-            json root;
-            root["model"] = currentModel().toStdString();
-            json h        = json::array();
-            for (const auto& item : historyManager->data())
-                  h.push_back(item.content);
-            root["history"] = h;
-            f << root.dump(3);
-            f.close();
+            if (savedEntries == 0) {
+                  json header;
+                  header["model"] = currentModel().toStdString();
+                  header["activeEntries"] = historyManager->getActiveEntriesCount();
+                  f << header.dump() << "\n";
             }
-      else
+            const auto& data = historyManager->data();
+            if (savedEntries < data.size()) {
+                  if (savedEntries > 0) {
+                        json meta;
+                        meta["activeEntries"] = historyManager->getActiveEntriesCount();
+                        f << meta.dump() << "\n";
+                  }
+                  for (size_t i = savedEntries; i < data.size(); ++i) {
+                        f << data[i].content.dump() << "\n";
+                  }
+                  savedEntries = data.size();
+            }
+            f.close();
+      } else {
             Critical("Could not open session file for writing: {}", currentSessionFileName.toStdString());
       }
+}
 
 //---------------------------------------------------------
 //   loadStatus
@@ -887,47 +904,76 @@ void Agent::loadStatus(const QString& sessionPath) {
             }
 
       if (!fileToLoad.isEmpty()) {
-            try {
-                  std::ifstream i(fileToLoad.toStdString());
-                  json root;
-                  i >> root;
-
-                  if (root.is_object() && root.contains("history")) {
-                        if (root.contains("model")) {
-                              std::string model = root["model"];
-                              QString m         = QString::fromStdString(model);
-                              setCurrentModel(m, false);
+            std::ifstream i(fileToLoad.toStdString());
+            if (i.is_open()) {
+                  std::string content((std::istreambuf_iterator<char>(i)), std::istreambuf_iterator<char>());
+                  try {
+                        json root = json::parse(content);
+                        if (root.is_object() && root.contains("history")) {
+                              if (root.contains("model")) {
+                                    std::string model = root["model"];
+                                    QString m         = QString::fromStdString(model);
+                                    setCurrentModel(m, false);
+                                    }
+                              const json& history = root["history"];
+                              historyManager->setHistory(history);
+                              if (root.contains("activeEntries")) {
+                                    historyManager->setActiveEntries(root["activeEntries"]);
+                                    }
                               }
-                        const json& history = root["history"];
-                        historyManager->setHistory(history);
+                        else if (root.is_array()) {
+                              historyManager->setHistory(root);
+                              }
+                        savedEntries = historyManager->data().size();
+                        currentSessionFileName = fileToLoad;
+                        updateSessionList();
+                        updateChatDisplay();
+                        chatDisplay->scrollToBottom();
+                        return;
+                  }
+                  catch (const json::parse_error& e) {
+                        // Not a valid full JSON object? Try JSON Lines fallback
+                        std::istringstream iss(content);
+                        std::string line;
+                        json h = json::array();
+                        size_t actEntries = 0;
+                        while (std::getline(iss, line)) {
+                              if (line.empty()) continue;
+                              try {
+                                    json obj = json::parse(line);
+                                    if (obj.contains("model")) {
+                                          std::string model = obj["model"];
+                                          setCurrentModel(QString::fromStdString(model), false);
+                                          }
+                                    if (obj.contains("activeEntries")) {
+                                          actEntries = obj["activeEntries"];
+                                          }
+                                    if (obj.contains("role") || obj.contains("parts") || obj.contains("content")) {
+                                          h.push_back(obj);
+                                          }
+                              } catch (...) {}
                         }
-                  else if (root.is_array()) {
-                        historyManager->setHistory(root);
-                        }
-
-                  currentSessionFileName = fileToLoad;
-                  updateSessionList();
-                  updateChatDisplay();
-                  chatDisplay->scrollToBottom();
-                  return;
+                        historyManager->setHistory(h);
+                        historyManager->setActiveEntries(actEntries);
+                        savedEntries = historyManager->data().size();
+                        currentSessionFileName = fileToLoad;
+                        updateSessionList();
+                        updateChatDisplay();
+                        chatDisplay->scrollToBottom();
+                        return;
                   }
-            catch (const json::parse_error& e) {
-                  Debug("Parse Error: {}", e.what());
-                  }
-            catch (const json::type_error& e) {
-                  Debug("<{}>: TypeError: {}", fileToLoad, e.what());
-                  }
-            catch (...) {
-                  Critical("Unexpected error");
-                  }
+            } else {
+                  Debug("no session file found <{}>", fileToLoad);
             }
-      else
-            Debug("no session file found <{}>", fileToLoad);
+      }
+      
       // No last session found -> Start new session
       currentSessionFileName = sessionName(true);
+      savedEntries = 0;
       updateSessionList();
       chatDisplay->addMessage("system", "<i>[System: No previous session found. New session started.]</i><br>");
       historyManager->clear();
+      savedEntries = 0;
       }
 
 //---------------------------------------------------------

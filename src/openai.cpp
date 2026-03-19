@@ -75,7 +75,7 @@ json OpenAiClient::prompt(QNetworkRequest* request) {
       jmanifest["role"]    = "system";
       history.push_back(jmanifest);
 
-      for (const auto& [msg, tokens] : agent->historyManager->data()) {
+      for (const auto& msg : agent->historyManager->getActiveEntries()) {
             json jmsg;
             if (msg.contains("role"))
                   jmsg["role"] = msg["role"];
