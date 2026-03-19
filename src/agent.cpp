@@ -302,12 +302,8 @@ void Agent::setCurrentModel(const QString& s, bool clearChat) {
                   retryPause         = 2000;
                   rateLimitResetTime = QDateTime();
 
-                  if (clearChat) {
-                        historyManager->clear();
-                        savedEntries = 0;
-                        chatDisplay->clear();
-                        chatDisplay->addMessage("system", "<i>[System: New session started. Ready.]</i><br>");
-                        }
+                  if (clearChat)
+                        startNewSession();
                   if (modelMenu)
                         modelMenu->setCurrentText(s);
                   emit modelChanged();
@@ -647,6 +643,8 @@ void Agent::saveSettings() {
             obj["key"]              = m.apiKey;
             obj["modelId"]          = m.modelIdentifier;
             obj["api"]              = m.api;
+            obj["filterToolMessages"] = m.filterToolMessages;
+            obj["filterThoughts"]   = m.filterThoughts;
             obj["supportsThinking"] = m.supportsThinking;
             obj["temperature"]      = m.temperature;
             obj["topP"]             = m.topP;
@@ -686,6 +684,10 @@ void Agent::loadSettings() {
             m.api             = obj["api"].toString();
             m.isLocal         = false;
             // Optional fields – graceful fallback to struct defaults if absent
+            if (obj.contains("filterToolMessages"))
+                  m.filterToolMessages = obj["filterToolMessages"].toBool(true);
+            if (obj.contains("filterThoughts"))
+                  m.filterThoughts = obj["filterThoughts"].toBool(false);
             if (obj.contains("supportsThinking"))
                   m.supportsThinking = obj["supportsThinking"].toBool();
             if (obj.contains("temperature"))

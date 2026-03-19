@@ -1,6 +1,12 @@
 
 ## TODO
 
+### Configuration erweitern
+
+Erweitere das Konfigurationspanel in qml/ConfigDialog.qml um alle noch nicht behandelten Felder in Model
+configurieren zu können.
+Erstelle auch die Verbindung zu Model im c++ Teil des editors.
+
 ### Check Anthropic Implementation
 
 Analysiere im Detail die Implementation der Anthropic Model Integration in

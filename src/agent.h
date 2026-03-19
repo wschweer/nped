@@ -77,12 +77,19 @@ class MCPToolBuilder
 
 struct Model {
       Q_GADGET
-      Q_PROPERTY(QString name MEMBER name)
-      Q_PROPERTY(QString modelIdentifier MEMBER modelIdentifier)
-      Q_PROPERTY(QString baseUrl MEMBER baseUrl)
-      Q_PROPERTY(QString apiKey MEMBER apiKey)
-      Q_PROPERTY(QString api MEMBER api)
-      Q_PROPERTY(bool isLocal MEMBER isLocal)
+      Q_PROPERTY(QString name              MEMBER name)
+      Q_PROPERTY(QString modelIdentifier   MEMBER modelIdentifier)
+      Q_PROPERTY(QString baseUrl           MEMBER baseUrl)
+      Q_PROPERTY(QString apiKey            MEMBER apiKey)
+      Q_PROPERTY(QString api               MEMBER api)
+      Q_PROPERTY(bool    isLocal           MEMBER isLocal)
+      // --- Advanced parameters (fully exposed to QML) ---
+      Q_PROPERTY(bool    filterToolMessages MEMBER filterToolMessages)
+      Q_PROPERTY(bool    filterThoughts     MEMBER filterThoughts)
+      Q_PROPERTY(bool    supportsThinking   MEMBER supportsThinking)
+      Q_PROPERTY(double  temperature        MEMBER temperature)
+      Q_PROPERTY(double  topP               MEMBER topP)
+      Q_PROPERTY(int     maxTokens          MEMBER maxTokens)
 
     public:
       QString name;
@@ -90,7 +97,7 @@ struct Model {
       QString baseUrl;
       QString apiKey;
       QString api;  // "ollama", "gemini", "anthropic", "openai"
-      bool isLocal;            ///< true für Ollama
+      bool isLocal             = false; ///< true für Ollama
       bool filterToolMessages  = true;
       bool filterThoughts      = false;
       bool supportsThinking    = false; ///< true: model supports Extended Thinking (e.g. claude-3-7-sonnet)

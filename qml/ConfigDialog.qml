@@ -383,7 +383,7 @@ Rectangle {
                                 Material.foreground: Material.accent
                                 onClicked: {
                                     var list = agent.models
-                                    list.push({name: "New Model", modelIdentifier: "", api: "ollama", baseUrl: "http://localhost:11434", apiKey: "", isLocal: true})
+                                    list.push({name: "New Model", modelIdentifier: "", api: "ollama", baseUrl: "http://localhost:11434", apiKey: "", isLocal: false, filterToolMessages: true, filterThoughts: false, supportsThinking: false, temperature: -1.0, topP: -1.0, maxTokens: -1})
                                     agent.models = list
                                     }
                                 }
@@ -462,6 +462,51 @@ Rectangle {
                                         placeholderText: "sk-..."
                                         onEditingFinished: { var l=agent.models; l[index].apiKey=text; agent.models=l }
                                         }
+
+                                    // --- Advanced Settings ---
+                                    Label { text: "Temperature:"; Layout.alignment: Qt.AlignRight }
+                                    TextField {
+                                        text: modelData.temperature.toString()
+                                        Layout.fillWidth: true
+                                        placeholderText: "-1.0 for default"
+                                        onEditingFinished: { var l=agent.models; l[index].temperature=parseFloat(text); agent.models=l }
+                                        }
+
+                                    Label { text: "Top P:"; Layout.alignment: Qt.AlignRight }
+                                    TextField {
+                                        text: modelData.topP.toString()
+                                        Layout.fillWidth: true
+                                        placeholderText: "-1.0 for default"
+                                        onEditingFinished: { var l=agent.models; l[index].topP=parseFloat(text); agent.models=l }
+                                        }
+
+                                    Label { text: "Max Tokens:"; Layout.alignment: Qt.AlignRight }
+                                    TextField {
+                                        text: modelData.maxTokens.toString()
+                                        Layout.fillWidth: true
+                                        placeholderText: "-1 for default"
+                                        onEditingFinished: { var l=agent.models; l[index].maxTokens=parseInt(text); agent.models=l }
+                                        }
+
+                                    Label { text: "Options:"; Layout.alignment: Qt.AlignRight }
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        CheckBox {
+                                            text: "Supports Thinking"
+                                            checked: modelData.supportsThinking
+                                            onCheckedChanged: { var l=agent.models; l[index].supportsThinking=checked; agent.models=l }
+                                        }
+                                        CheckBox {
+                                            text: "Filter Tools"
+                                            checked: modelData.filterToolMessages
+                                            onCheckedChanged: { var l=agent.models; l[index].filterToolMessages=checked; agent.models=l }
+                                        }
+                                        CheckBox {
+                                            text: "Filter Thoughts"
+                                            checked: modelData.filterThoughts
+                                            onCheckedChanged: { var l=agent.models; l[index].filterThoughts=checked; agent.models=l }
+                                        }
+                                    }
 
                                     // --- Actions ---
                                     Item { Layout.columnSpan: 2; height: 5 } // Spacer
