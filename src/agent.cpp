@@ -37,6 +37,7 @@
 #include <QStandardPaths>
 #include <QStyle>
 #include <QDebug>
+#include <QBuffer>
 #include <iostream>
 #include <fstream>
 
@@ -48,6 +49,7 @@
 #include "llm.h"
 #include "chatdisplay.h"
 #include "historymanager.h"
+#include "screenshot.h"
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -84,8 +86,25 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
 
       QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
-      // --- 1. Toolbar & Model Selection ---
+      // --- 1. Toolbar & Model Selection (toolbar placed at the bottom) ---
       toolBar = new QToolBar(this);
+
+      toolBar->setIconSize(QSize(32, 32));
+
+      // Run button – leftmost item in the toolbar
+      statusLabel = new QToolButton(this);
+      statusLabel->setText(">");
+      statusLabel->setMinimumWidth(30);
+      statusLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
+      connect(statusLabel, &QToolButton::clicked, [this] {
+            QString s = userInput->toPlainText();
+            if (!s.isEmpty()) {
+                  sendMessage(s);
+                  userInput->clear();
+                  }
+            });
+      toolBar->addWidget(statusLabel);
+      toolBar->addSeparator();
 
       modelMenu = new QComboBox(this);
       modelMenu->setMinimumWidth(250);
@@ -151,75 +170,106 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
                   }
             });
 
-      QToolButton* optionButton = new QToolButton(this);
-      optionButton->setText("⋮");
-      optionButton->setMinimumWidth(32);
-      //      optionButton->setProperty("class", "actionButton");
-
-      QMenu* optionMenu        = new QMenu(optionButton);
-      filterToolMessagesAction = new QAction("Filter Tool Messages", optionMenu);
+      // Filter toggle buttons (icon-only, no pulldown menu needed)
+      filterToolMessagesAction = new QAction("🔧", this);
       filterToolMessagesAction->setCheckable(true);
       filterToolMessagesAction->setChecked(model.filterToolMessages);
+      filterToolMessagesAction->setToolTip("Filter Tool Messages");
       connect(filterToolMessagesAction, &QAction::toggled, [this](bool checked) {
             model.filterToolMessages = checked;
             saveStatus();
             updateChatDisplay();
             chatDisplay->scrollToBottom();
             });
-      optionMenu->addAction(filterToolMessagesAction);
+      toolBar->addAction(filterToolMessagesAction);
 
-      filterThoughtsAction = new QAction("Filter Thoughts", optionMenu);
+      filterThoughtsAction = new QAction(this);
+      filterThoughtsAction->setIcon(QIcon(":images/reasoning-black.svg"));
       filterThoughtsAction->setCheckable(true);
       filterThoughtsAction->setChecked(model.filterThoughts);
+      filterThoughtsAction->setToolTip("Filter Thoughts");
       connect(filterThoughtsAction, &QAction::toggled, [this](bool checked) {
             model.filterThoughts = checked;
             saveStatus();
             updateChatDisplay();
             chatDisplay->scrollToBottom();
             });
-      optionMenu->addAction(filterThoughtsAction);
+      toolBar->addAction(filterThoughtsAction);
 
-      optionButton->setMenu(optionMenu);
-      optionButton->setPopupMode(QToolButton::InstantPopup);
-      toolBar->addWidget(optionButton);
+      // Screenshot button
+      screenshotButton = new QToolButton(this);
+      screenshotButton->setText("📷");
+      connect(_editor, &Editor::fontChanged, [this] (QFont f) { screenshotButton->setFont(f); });
+      screenshotButton->setToolTip("Take Screenshot and attach to next prompt");
+      screenshotButton->setCheckable(true);
+      screenshotButton->setChecked(false);
+      toolBar->addWidget(screenshotButton);
 
-      mainLayout->addWidget(toolBar);
+      screenshotHelper = new ScreenshotHelper(this);
+      connect(screenshotHelper, &ScreenshotHelper::screenshotReady, this, &Agent::onScreenshotReady);
+      connect(screenshotHelper, &ScreenshotHelper::screenshotFailed, this, &Agent::onScreenshotFailed);
+
+      connect(screenshotButton, &QToolButton::clicked, [this](bool) {
+            // If a screenshot is already attached, discard it
+            if (!_pendingScreenshotBase64.isEmpty()) {
+                  _pendingScreenshotBase64.clear();
+                  screenshotButton->setChecked(false);
+                  screenshotButton->setToolTip("Take Screenshot and attach to next prompt");
+                  chatDisplay->addMessage("system", "<i>[Screenshot detached]</i><br>");
+                  updateDataPanel();
+                  return;
+                  }
+            screenshotHelper->takeScreenshot();
+            });
 
       // --- 2. Chat Display ---
       chatDisplay = new ChatDisplay(_editor, parent);
       chatDisplay->setZoomFactor(1.2);
       chatDisplay->setDarkMode(_editor->darkMode());
       chatDisplay->setup();
-      mainLayout->addWidget(chatDisplay->widget());
+      mainLayout->addWidget(chatDisplay->widget(), 1);   // stretch=1: nimmt den gesamten verbleibenden Platz
       connect(_editor, &Editor::darkModeChanged, chatDisplay, &ChatDisplay::setDarkMode);
 
-      // --- 3. Input Field ---
-      QHBoxLayout* inputLayout = new QHBoxLayout();
-      statusLabel              = new QToolButton(this);
-      statusLabel->setText(">");
-      connect(statusLabel, &QToolButton::clicked, [this] {
-            QString s = userInput->toPlainText();
-            if (!s.isEmpty()) {
-                  sendMessage(s);
-                  userInput->clear();
-                  }
-            });
+      // --- 3. Input Row: [DataPanel | UserInput] ---
 
+      // 3b. Prompt input field (zuerst anlegen, damit die Höhe bekannt ist)
       userInput = new QPlainTextEdit(this);
       userInput->setCursorWidth(8);
-
-      statusLabel->setMinimumWidth(30);
-      statusLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
-      //      statusLabel->setAlignment(Qt::AlignCenter);
-
       userInput->setPlaceholderText("enter message to LLM...");
       QFontMetrics fm(userInput->font());
-      userInput->setFixedHeight((fm.lineSpacing() * 4) + 10);
+      const int inputHeight = (fm.lineSpacing() * 4) + 10;
+      userInput->setFixedHeight(inputHeight);
       userInput->installEventFilter(this);
 
-      inputLayout->addWidget(statusLabel, Qt::AlignCenter);
-      inputLayout->addWidget(userInput);
-      mainLayout->addLayout(inputLayout);
+      // 3a. Schmales vertikales Icon-Panel links neben dem Prompt-Eingabefeld
+      dataPanel = new QWidget(this);
+      dataPanel->setFixedWidth(28);
+      dataPanel->setFixedHeight(inputHeight);            // exakt so hoch wie das Eingabefeld
+      QVBoxLayout* dataPanelLayout = new QVBoxLayout(dataPanel);
+      dataPanelLayout->setContentsMargins(2, 2, 2, 2);
+      dataPanelLayout->setSpacing(4);
+      dataPanelLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+
+      screenshotIconLabel = new QLabel("🖼", dataPanel);
+      screenshotIconLabel->setAlignment(Qt::AlignCenter);
+      screenshotIconLabel->setToolTip("Screenshot attached – will be sent with the next prompt");
+      screenshotIconLabel->setVisible(false);
+      dataPanelLayout->addWidget(screenshotIconLabel);
+      dataPanelLayout->addStretch(1);
+
+      // 3c. Beide Widgets in einer horizontalen Zeile kombinieren
+      QWidget* inputRow = new QWidget(this);
+      inputRow->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);  // kein vertikales Wachstum
+      QHBoxLayout* inputRowLayout = new QHBoxLayout(inputRow);
+      inputRowLayout->setContentsMargins(0, 0, 0, 0);
+      inputRowLayout->setSpacing(2);
+      inputRowLayout->addWidget(dataPanel);
+      inputRowLayout->addWidget(userInput);
+
+      mainLayout->addWidget(inputRow);                   // kein Stretch: nimmt nur den nötigen Platz
+
+      // Toolbar placed below the prompt input
+      mainLayout->addWidget(toolBar);
       loadSettings();
 
       connect(_editor, &Editor::fontChanged, [this](QFont f) {
@@ -386,6 +436,20 @@ void Agent::sendMessage(QString qtext) {
       if (text.empty() || model.name == "")
             return;
 
+      // If the agent is waiting for a user answer (ask_user tool),
+      // capture the reply and unblock the event loop instead of sending to LLM.
+      if (_waitingForUserInput) {
+            _waitingForUserInput = false;
+            _userInputAnswer     = qtext.trimmed();
+            userInput->setEnabled(false);
+            chatDisplay->startNewStreamingMessage("User");
+            chatDisplay->handleIncomingChunk("", text);
+            chatDisplay->scrollToBottom();
+            if (_askUserLoop && _askUserLoop->isRunning())
+                  _askUserLoop->quit();
+            return;
+            }
+
       chatDisplay->startNewStreamingMessage("User");
       chatDisplay->handleIncomingChunk("", text);
 
@@ -393,8 +457,18 @@ void Agent::sendMessage(QString qtext) {
       msg["role"] = "user";
       if (model.api == "gemini")
             msg["parts"] = json::array({{{"text", text}}});
-      else // ollama
+      else // ollama / anthropic / openai
             msg["content"] = text;
+
+      // Attach pending screenshot (if any) as base64-encoded PNG
+      if (!_pendingScreenshotBase64.isEmpty()) {
+            msg["image"] = _pendingScreenshotBase64.toStdString();
+            _pendingScreenshotBase64.clear();
+            screenshotButton->setChecked(false);
+            screenshotButton->setToolTip("Take Screenshot and attach to next prompt");
+            updateDataPanel();
+            }
+
       // Approximate token count: 4 chars per token
       historyManager->addRequest(msg, text.length() / 4);
       sendMessage2();
@@ -998,7 +1072,11 @@ void Agent::loadStatus(const QString& sessionPath) {
                                     }
                               }
                         historyManager->setHistory(h);
-                        historyManager->setActiveEntries(actEntries);
+                        // Only override activeEntries when an explicit value was found in the file.
+                        // If actEntries == 0 (old session format without activeEntries metadata),
+                        // setHistory() has already set activeEntries = data.size(), which is correct.
+                        if (actEntries > 0)
+                              historyManager->setActiveEntries(actEntries);
                         savedEntries           = historyManager->data().size();
                         currentSessionFileName = fileToLoad;
                         updateSessionList();
@@ -1241,4 +1319,61 @@ void Agent::enableInput(bool flag) {
       setInputEnabled(flag);
       if (flag)
             userInput->setFocus();
+      }
+
+//---------------------------------------------------------
+//   onScreenshotReady
+//    Called when the XDG portal delivers a screenshot image.
+//    Converts the image to base64-encoded PNG and stores it.
+//    The data will be attached to the next prompt sent to the LLM.
+//---------------------------------------------------------
+
+void Agent::onScreenshotReady(const QImage& image) {
+      // Encode image as PNG into a QByteArray, then base64
+      QByteArray pngData;
+      QBuffer buf(&pngData);
+      buf.open(QIODevice::WriteOnly);
+      image.save(&buf, "JPEG", 70); // quality 70 – good balance between size and fidelity
+
+      _pendingScreenshotBase64 = pngData.toBase64();
+
+      screenshotButton->setChecked(true);
+      screenshotButton->setToolTip(
+          QString("Screenshot attached (%1×%2). Click to discard.")
+              .arg(image.width())
+              .arg(image.height()));
+
+      chatDisplay->addMessage(
+          "system",
+          QString("<i>[Screenshot captured (%1×%2 px) – will be sent with next prompt. "
+                  "Click 📷 to discard.]</i><br>")
+              .arg(image.width())
+              .arg(image.height())
+              .toStdString());
+      updateDataPanel();
+      }
+
+//---------------------------------------------------------
+//   onScreenshotFailed
+//    Called when the portal screenshot fails or is cancelled.
+//---------------------------------------------------------
+
+void Agent::onScreenshotFailed(const QString& reason) {
+      screenshotButton->setChecked(false);
+      chatDisplay->addMessage(
+          "system",
+          std::string("<font color='orange'><i>[Screenshot failed: ") +
+              reason.toStdString() + "]</i></font><br>");
+      updateDataPanel();
+      }
+
+//---------------------------------------------------------
+//   updateDataPanel
+//    Refreshes icon visibility in the narrow left panel
+//    next to the prompt input. Shows the picture icon
+//    whenever a screenshot is attached to the next prompt.
+//---------------------------------------------------------
+
+void Agent::updateDataPanel() {
+      screenshotIconLabel->setVisible(!_pendingScreenshotBase64.isEmpty());
       }

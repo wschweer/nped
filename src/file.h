@@ -59,7 +59,6 @@ static const std::array<const FileType, 9> fileTypes = {
    FileType({".*\\.py$"}, "python", "pylsp", 6, false, false, false, false),
    FileType({".*\\.qml$"}, "qml", "qmlls", 4, false, false, false, false),
    FileType({".*\\.md$"}, "markdown", "none", 6, false, false, false, false),
-   FileType({".*\\.html$"}, "html", "none", 6, false, false, false, false),
    FileType({"Makefile$"}, "makefile", "none", 6, false, false, true, false),
       };
 

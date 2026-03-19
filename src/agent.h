@@ -14,6 +14,7 @@
 #include <QWidget>
 #include <QList>
 #include <QDateTime>
+#include <QImage>
 #include <map>
 #include <QQuickWidget>
 
@@ -36,6 +37,8 @@ class QAction;
 class LLMClient;
 class ChatDisplay;
 class HistoryManager;
+class QEventLoop;
+class ScreenshotHelper;
 
 //---------------------------------------------------------
 //   MCPToolBuilder
@@ -148,8 +151,17 @@ class Agent : public QWidget
       QToolButton* statusLabel;
       QToolButton* modeButton;
       QToolButton* configButton;
+      QToolButton* screenshotButton;
+      QWidget* dataPanel{nullptr};          ///< narrow vertical icon panel left of prompt input
+      QLabel* screenshotIconLabel{nullptr}; ///< shown when a screenshot is attached
+      void updateDataPanel();               ///< refreshes icon visibility
+
       QTimer* spinnerTimer;
       int spinnerFrame{0};
+
+      // Screenshot
+      ScreenshotHelper* screenshotHelper{nullptr};
+      QString _pendingScreenshotBase64; ///< base64-encoded PNG, non-empty when a screenshot is attached
 
       // Netzwerk & Status
       QNetworkAccessManager* networkManager;
@@ -210,9 +222,15 @@ class Agent : public QWidget
       QString getGitDiff(const QString& path = "");
       QString getGitLog(int limit = 5);
       QString createGitCommit(const QString& message);
+      QString askUser(const QString& question);
 
       void setInputEnabled(bool enabled);
       QPlainTextEdit* userInput;
+
+      // ask_user tool: non-modal blocking via QEventLoop
+      bool _waitingForUserInput{false};
+      QString _userInputAnswer;
+      QEventLoop* _askUserLoop{nullptr};
 
     protected:
       bool eventFilter(QObject* obj, QEvent* event) override;
@@ -226,6 +244,8 @@ class Agent : public QWidget
       void startNewSession();
       void deleteCurrentSession();
       void onSessionSelected(int index);
+      void onScreenshotReady(const QImage& image);
+      void onScreenshotFailed(const QString& reason);
 
     public slots:
       void sendMessage(QString);

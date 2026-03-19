@@ -55,6 +55,8 @@ class Git
       Git();
       ~Git();
       void init();
+      bool isInitialized() const { return initialized; }
+      QString getCurrentBranch();
       void getHistory(const QString&, std::vector<GitHistory*>&);
       Lines getFile(const git_oid* oid);
       };

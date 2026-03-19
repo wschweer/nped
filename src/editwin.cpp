@@ -138,7 +138,7 @@ void EditWidget::wheelEvent(QWheelEvent* ev) {
 //---------------------------------------------------------
 
 QPointF EditWidget::charPosToPixel(const Pos& e) {
-      return QPointF((e.col - leftMargin() - EditWidget::BORDER) * editor->fw(), (e.row * editor->fh() + EditWidget::BORDER));
+      return QPointF(e.col * editor->fw() + leftMargin() + EditWidget::BORDER, e.row * editor->fh() + EditWidget::BORDER);
       }
 
 //---------------------------------------------------------

@@ -90,6 +90,22 @@ json OpenAiClient::prompt(QNetworkRequest* request) {
                   jmsg["name"] = msg["name"];
             if (msg.contains("tool_call_id"))
                   jmsg["tool_call_id"] = msg["tool_call_id"];
+
+            // Embed screenshot: OpenAI Vision uses content block array with image_url
+            if (msg.contains("image")) {
+                  std::string dataUri = "data:image/jpeg;base64," + msg["image"].get<std::string>();
+                  json contentArray   = json::array();
+                  contentArray.push_back({{"type", "image_url"}, {"image_url", {{"url", dataUri}}}});
+
+                  std::string textContent;
+                  if (msg.contains("content")) {
+                        if (msg["content"].is_string())
+                              textContent = msg["content"].get<std::string>();
+                        }
+                  contentArray.push_back({{"type", "text"}, {"text", textContent}});
+                  jmsg["content"] = contentArray;
+                  }
+
             history.push_back(jmsg);
             }
       requestJson["messages"] = history;

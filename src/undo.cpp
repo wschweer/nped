@@ -124,7 +124,7 @@ void UndoStack::endMacro(bool rollback) {
 
 void UndoStack::push(UndoCommand* cmd) {
       //      Debug("{}", cmd->name());
-      if (_active) // do not record command if not active
+//      if (_active) // do not record command if not active
             push1(cmd);
       cmd->redo(); // execute command
       }
@@ -190,7 +190,6 @@ void UndoStack::reset() {
       list.clear();
       curIdx = cleanIdx = 0;
       setDirty(false);
-      _active = true;
       emit undoChanged();
       }
 

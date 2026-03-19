@@ -21,7 +21,7 @@ Hier ist eine Übersicht der zentralen Funktionen und Architekturmerkmale des Pr
   * Hover-Informationen: Anzeigen von Typen- oder Dokumentationshinweisen beim Verweilen mit dem Cursor.
   * Refactoring: Kontextweites Umbenennen von Symbolen (Rename).
 
-#### Integrierter KI-Agent (AgentUI)
+#### Integrierter KI-Agent
 
 Das wohl herausstechendste Merkmal ist die enge Integration eines KI-Agenten, der aktiv in die Entwicklung eingreifen kann:
 
@@ -244,6 +244,35 @@ Für eine bessere Übersichtlichkeit kann der generierte Text auch einfach beim 
 übersprungen werden. Ein Kommentar in der ersten Zeile der Datei mit dem Text "//##H" schaltet
 dieses Verhalten ein.
 
+## AI Agent
+### Model
+
+LLM Modelle müssen konfiguriert werden und erscheinen dann im AI Panel Pulldown Menü "Models".
+Läuft auf dem Rechner ein Ollama-Server dann werden die verfügbaren Ollama-Modelle
+automatisch ermittelt und dem Pulldown Menü hinzugefügt.
+
+Unterstützt werden Modell von Google (Gemini), Anthropic (Claude) und Ollama.
+Ollama ist besonders interessant, da darüber lokale Modelle genutzt werden können.
+Ollama wird z.B. festverdrahtet über die Url http://localhost:11434 angesprochen.
+
+Reasoning wird bei geeigneten Modellen unterstützt.
+
+### Session
+
+Sessions werden automatisch auf Platte gespeichert. Es können neue Sessions angelegt und
+bestehende Sessions gelöscht werden. Über das Session Pulldown Menü im AI Panel kann
+zwischen Sessions umgeschaltet werden.
+Eine Session ist immer mit einem AI-Modell verbunden. Beim Umschalten eines Modells wird
+immer das zugehörige Modell ausgewählt. Wird das Modell gewechselt, wird die aktuelle
+Session gesichert und eine neue Session für dieses Modell angelegt.
+
+### Build/Plan Mode
+
+Im "Plan" Modus hat das AI-Modell nur Leserechte im System. Im "Build" Modus kann das AI-Modell
+im und unterhalb des Projektverzeichnisses auch Dateien erstellen/löschen und verändern.
+
+Wenn NPed nicht in einem Projekt gestartet wurde, dann kann der "Build" Modus nicht eingeschaltet
+werden.
 
 ## Installation
 ### Font
@@ -278,14 +307,6 @@ Nped kann nur Schriften verwenden, die nichtproportional (Monospace) sind.
 Für die "C" Sprachfamilie: c, c++
 
       sudo apt install clangd
-
-### LLM
-#### Ollama
-
-Ollama wird über die Url http://localhost:11434 angesprochen. Wenn der Ollama Server beim Start von NPed
-erreichbar ist werden die verfügbaren LLM's automatisch ermittelt und können
-im Pulldownmenü angezeigt werden.
-
 
 ### Core Dumps
 

@@ -330,6 +330,7 @@ class Editor : public QMainWindow
       QLabel* lineLabel;
       QLabel* colLabel;
       QLabel* _keyLabel;
+      QLabel* branchLabel{nullptr};
 
       TabBar* tabBar{nullptr};
       QWidget* eframe;
@@ -360,6 +361,8 @@ class Editor : public QMainWindow
 
       QString _projectRoot;
       bool _projectMode{false};
+      bool _hasGit{false};
+      QString _currentBranchName;
       Git _git;
       bool _darkMode;
       QColor _fgColor{0, 0, 0};
@@ -451,11 +454,14 @@ class Editor : public QMainWindow
       const ShortcutConfig& getSC(Cmd cmd);
       void saveAll();
       Kontext* kontext() {
+            // _kontextList should never be empty
             if (_currentKontext >= _kontextList.size())
-                  return nullptr;
+                  _currentKontext = 0;
             return _kontextList[_currentKontext];
             }
-      const Kontext* kontext() const { return _kontextList[_currentKontext]; }
+      const Kontext* kontext() const {
+            return _kontextList.at(_currentKontext);
+            }
       Agent* getAgent() const { return agent; }
       QFont font() { return _font; }
       qreal fh() const { return _fh; }

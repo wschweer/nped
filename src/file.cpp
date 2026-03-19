@@ -1430,7 +1430,7 @@ bool Line::clearPrettyMarks() {
             if (m.type != Marker::Search && m.type != Marker::Normal) {
                   m.type = Marker::Normal;
                   rv     = true;
-                  break;
+                  // break;
                   }
             }
       return rv;

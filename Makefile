@@ -28,6 +28,12 @@ i:
 	cp build/nped  /home/ws/bin
 
 #
+#     push
+#
+push:
+	git rebase -i origin/main
+
+#
 #     "valgrind" target
 #
 v:

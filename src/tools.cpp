@@ -25,6 +25,7 @@
 
 #include "editor.h"
 #include "agent.h"
+#include "chatdisplay.h"
 #include "logger.h"
 #include "undo.h"
 #include "kontext.h"
@@ -139,6 +140,16 @@ std::vector<json> Agent::getMCPTools() const {
             tools.push_back(MCPToolBuilder("create_git_commit", "Stages all current changes (git add .) and creates a new commit.")
                                 .add_parameter("message", "string", "A clear and concise commit message.")
                                 .build());
+
+            // 5. User Interaction
+            tools.push_back(
+                MCPToolBuilder("ask_user",
+                               "Asks the user a clarifying question and waits for their response. "
+                               "Use this tool whenever you need more information or confirmation from the user "
+                               "before proceeding with a task.")
+                    .add_parameter("question", "string", "The question to present to the user.")
+                    .build());
+
             return tools;
             }
       catch (const json::parse_error& e) {
@@ -165,7 +176,8 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
       bool isReadOnlyTool = (functionName == "read_file" || functionName == "read_file_lines" || functionName == "search_project" ||
                              functionName == "find_symbol" || functionName == "list_directory" ||
                              functionName == "fetch_web_documentation" || functionName == "get_git_status" ||
-                             functionName == "get_git_diff" || functionName == "get_git_log" || functionName == "run_build_command");
+                             functionName == "get_git_diff" || functionName == "get_git_log" || functionName == "run_build_command" ||
+                             functionName == "ask_user");
 
       // 2. Entwurfs-Modus Check
       if (!isExecuteMode() && !isReadOnlyTool) {
@@ -178,7 +190,13 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
       // Tools OHNE lokales Datei-Pfad Argument
       // ==========================================================
 
-      if (functionName == "run_build_command") {
+      if (functionName == "ask_user") {
+            if (!arguments.contains("question"))
+                  return "Error: Parameter 'question' missing.";
+            QString question = QString::fromStdString(arguments["question"].get<std::string>());
+            return askUser(question).toStdString();
+            }
+      else if (functionName == "run_build_command") {
             if (!arguments.contains("command"))
                   return "Error: Parameter 'command' missing.";
             QString cmd = QString::fromStdString(arguments["command"].get<std::string>());
@@ -667,6 +685,36 @@ QString Agent::createGitCommit(const QString& message) {
             return "Warning/Error during commit: " + QString::fromUtf8(err);
 
       return "Commit successful: " + QString::fromUtf8(out);
+      }
+
+//---------------------------------------------------------
+//   askUser
+//    Presents a question to the user via the prompt input field and
+//    returns their answer. Uses a blocking QEventLoop so the tool
+//    call remains synchronous from the agent's perspective.
+//---------------------------------------------------------
+
+QString Agent::askUser(const QString& question) {
+      // 1. Show the question as an assistant message in the chat
+      chatDisplay->addMessage("assistant", question.toStdString());
+      chatDisplay->scrollToBottom();
+
+      // 2. Enable the input field without stopping the spinner
+      _waitingForUserInput = true;
+      userInput->setEnabled(true);
+      userInput->setPlaceholderText("Answer the AI's question and press Enter...");
+      userInput->setFocus();
+
+      // 3. Block until sendMessage() delivers the user's answer
+      QEventLoop loop;
+      _askUserLoop = &loop;
+      loop.exec();
+      _askUserLoop = nullptr;
+
+      // 4. Restore the normal placeholder text
+      userInput->setPlaceholderText("enter message to LLM...");
+
+      return _userInputAnswer;
       }
 
 //---------------------------------------------------------

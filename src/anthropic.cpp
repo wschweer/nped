@@ -198,6 +198,40 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                               }
                         // Otherwise keep the structured array as-is (e.g. text+image blocks).
                         }
+
+                  // Embed screenshot if present as an Anthropic image content block
+                  if (cleaned.contains("image")) {
+                        std::string b64 = cleaned["image"].get<std::string>();
+                        cleaned.erase("image");
+
+                        // Build a content block array: image block first, then text
+                        json contentArray = json::array();
+                        contentArray.push_back({
+                                 {"type", "image"},
+                                 {
+                                  "source", {
+                                           {      "type",  "base64"},
+                                           {"media_type", "image/jpeg"},
+                                           {      "data",          b64}
+                                        }
+                                 }
+                              });
+
+                        // Extract existing text content (may be string or array)
+                        std::string textContent;
+                        if (cleaned.contains("content")) {
+                              if (cleaned["content"].is_string())
+                                    textContent = cleaned["content"].get<std::string>();
+                              else if (cleaned["content"].is_array()) {
+                                    for (const auto& p : cleaned["content"])
+                                          if (p.is_string())
+                                                textContent += p.get<std::string>();
+                                    }
+                              }
+                        contentArray.push_back({{"type", "text"}, {"text", textContent}});
+                        cleaned["content"] = contentArray;
+                        }
+
                   anthropicMessages.push_back(cleaned);
                   }
             }

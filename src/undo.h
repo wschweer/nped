@@ -32,7 +32,6 @@ class UndoStack : public QObject
       QList<UndoCommand*> list;
       int curIdx{0};
       int cleanIdx{0};
-      bool _active{true}; // don't record commands if not active
       bool _dirty{false};
 
     signals:
@@ -44,7 +43,6 @@ class UndoStack : public QObject
       ~UndoStack();
 
       void reset();
-      bool active() const { return curCmd != 0; }
       void beginMacro();
       void endMacro(bool rollback = false);
       void push(UndoCommand*); // push & execute
@@ -67,7 +65,6 @@ class UndoStack : public QObject
       UndoCommand* current() const { return curCmd; }
       void undo();
       void redo();
-      void setActive(bool v) { _active = v; }
       };
 
 //---------------------------------------------------------

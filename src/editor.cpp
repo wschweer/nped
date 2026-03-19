@@ -149,8 +149,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
                         Critical("file <{}> changed on disk", path);
                   else
                         Critical("file <{}> deleted from disk", path);
-                        }
-                  });
+                                          }
+                                    });
 #endif
 
       if (!initProject())
@@ -361,11 +361,11 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       configButton = new QToolButton();
       configButton->setObjectName("configButton");
       QString iconPath = darkMode() ? ":/images/configure_white.svg" : ":/images/configure.svg";
-      configButton->setIcon(QIcon(iconPath));
+      configButton->setIcon(QIcon::fromTheme("preferences-system", QIcon(iconPath)));
       configButton->setToolTip("Configure...");
       connect(this, &Editor::darkModeChanged, [this]() {
             QString iconPath = darkMode() ? ":/images/configure_white.svg" : ":/images/configure.svg";
-            configButton->setIcon(QIcon(iconPath));
+            configButton->setIcon(QIcon::fromTheme("preferences-system", QIcon(iconPath)));
             });
       connect(configButton, &QToolButton::clicked, [this] {
             ConfigDialogWrapper dialog(this, this);
@@ -404,6 +404,15 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
 
       auto sb = new QHBoxLayout(sbw);
 
+      branchLabel = new QLabel();
+      branchLabel->setObjectName("branchLabel");
+      branchLabel->setToolTip("current git branch");
+    branchLabel->setStatusTip("current git branch");
+      branchLabel->setVisible(_projectMode);
+      if (_hasGit)
+            branchLabel->setText(_currentBranchName);
+      sb->addWidget(branchLabel, 0);
+
       urlLabel = new QLabel();
       urlLabel->setText("url");
       urlLabel->setToolTip("url current document");
@@ -435,11 +444,19 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
                   removeKontext(index);
                   }
             });
+#if 0
       connect(tabBar, &QTabBar::tabMoved, [this](int from, int to) {
             _currentKontext = from;
             auto k          = _kontextList[to];
             _kontextList.remove(to);
             _kontextList.insert(from, k);
+                  });
+#endif
+      connect(tabBar, &QTabBar::tabMoved, [this](int from, int to) {
+            auto k = _kontextList[from];
+            _kontextList.remove(from);
+            _kontextList.insert(to, k);
+            _currentKontext = to;
             });
 
       connect(hScroll, SIGNAL(valueChanged(int)), this, SLOT(hScrollTo(int)));
@@ -463,7 +480,6 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       _editWidget->setFocus();
       _editWidget->installEventFilter(kl);
       initFont();
-      _git.init();
       updateGitHistory();
 
       connect(this, &Editor::fgColorChanged, [this] { update(); });
@@ -600,7 +616,7 @@ void Kontext::toggleViewMode() {
                   case ViewMode::File:
                         _viewMode = ViewMode::Functions;
                         break;
-                                                      }
+                                                                        }
 #endif
             setViewMode(ViewMode::Functions);
             }
@@ -777,9 +793,15 @@ void Editor::updateCursor() {
 void Editor::removeKontext(int idx) {
       Kontext* kontextToErase = _kontextList[idx];
       _kontextList.erase(idx);
-      if (_currentKontext >= _kontextList.size() - 1)
-            _currentKontext -= 1;
-      setCurrentKontext(_currentKontext);
+
+      if (_kontextList.empty()) {
+            // Sollte nicht passieren – mindestens 1 Tab muss offen bleiben
+            delete kontextToErase;
+            return;
+            }
+      if (_currentKontext >= _kontextList.size())
+            _currentKontext = _kontextList.size() - 1;
+
       if (kontextToErase->file()->dereference()) {
             kontextToErase->file()->save(); // save unconditionally, do not ask
             std::erase(files, kontextToErase->file());
@@ -835,7 +857,8 @@ void Editor::updateHScrollbar() {
 
 void Editor::hScrollTo(int xpos) {
       startCmd();
-      kontext()->cursor().screenPos = Pos(kontext()->fileCol() - xpos, kontext()->screenRow());
+      int col = std::max(0, kontext()->fileCol() - xpos);
+      kontext()->cursor().screenPos = Pos(col, kontext()->screenRow());
       update();
       endCmd();
       }
@@ -936,7 +959,9 @@ void Editor::saveAll() {
 
 void Editor::saveQuitCmd() {
       saveAll();
+      saveProjectStatus();
       saveStatus();
+      agent->saveStatus();
       close();
       }
 
@@ -962,6 +987,7 @@ void Editor::initFont() {
       tabBar->setFont(f);
       infoButton->setFont(f);
       _gitButton->setFont(f);
+      branchLabel->setFont(f);
       urlLabel->setFont(f);
       lineLabel->setFont(f);
       colLabel->setFont(f);

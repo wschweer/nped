@@ -12,23 +12,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
-#include <QActionGroup>
 #include <QApplication>
-#include <QCompleter>
-#include <QDir>
-#include <QFileDialog>
-#include <QFileSystemModel>
-#include <QMenu>
-#include <QMenuBar>
-#include <QShortcut>
-#include <QStatusBar>
-#include <QToolBar>
-#include <QToolButton>
 #include <QQuickStyle>
-
-#include <QJsonDocument>
-#include <QJsonArray>
-#include <iostream>
 
 #include "editor.h"
 #include "file.h"

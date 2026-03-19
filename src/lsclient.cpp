@@ -747,10 +747,11 @@ bool LSclient::processMessage(const std::string& message) {
             }
       catch (json::parse_error& e) {
             Critical("json::parse failed: {}", e.what());
+            return true;
             }
       if (response.contains("error")) {
-            Debug("Server error: {}", response["error"]["message"].dump(4));
-            return false;
+            Debug("Server error: <{}>", response.dump(4));
+            // do not return false here to avoid infinite loop
             }
       if (response.contains("id")) {
             //*********************************************
@@ -762,7 +763,7 @@ bool LSclient::processMessage(const std::string& message) {
                   }
             catch (...) {
                   Debug("Server error: {}", response.dump(4));
-                  return false;
+                  return true;
                   }
             }
       else {
@@ -809,6 +810,11 @@ void LSclient::handleNotification(json response) {
 //---------------------------------------------------------
 
 void LSclient::handleResponse(int id, json response) {
+      if (response.contains("error")) {
+            if (callbacks.contains(id))
+                  callbacks.erase(id);
+            return;
+            }
       if (callbacks.contains(id)) {
             callbacks[id](response);
             callbacks.erase(id);

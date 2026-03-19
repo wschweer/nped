@@ -29,6 +29,7 @@ find_package(Qt6 REQUIRED COMPONENTS
       Quick
       QuickControls2
       QuickWidgets
+      DBus
       )
 
 qt_policy(SET QTP0001 NEW)
@@ -85,6 +86,7 @@ qt_add_executable(nped
       src/openai.cpp
       src/chatdisplay.cpp
       src/historymanager.cpp
+      src/screenshot.cpp
       )
 
 qt_add_resources(nped "qmls"
@@ -92,10 +94,11 @@ qt_add_resources(nped "qmls"
       )
 qt_add_resources(nped "mages"
       FILES images/Git-Icon-1788C.svg
-      FILES images/configure.svg
-      FILES images/configure_white.svg
-      FILES images/trash.svg
-      FILES images/trash_white.svg
+      images/configure.svg
+      images/configure_white.svg
+      images/trash.svg
+      images/trash_white.svg
+      images/reasoning-black.svg
       )
 
 qt_add_qml_module(nped
@@ -133,6 +136,7 @@ target_link_libraries(nped PRIVATE
       Qt::Quick
       Qt::QuickControls2
       Qt::QuickWidgets
+      Qt::DBus
       pthread
       git2
       md4c-html

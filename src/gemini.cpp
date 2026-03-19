@@ -70,9 +70,23 @@ json GeminiClient::prompt(QNetworkRequest* request) {
       jmanifest["parts"]                = json::array({{{"text", agent->getManifest()}}});
       jmanifest["role"]                 = "system";
       requestJson["system_instruction"] = jmanifest;
-      json h                            = agent->historyManager->getActiveEntries();
-      requestJson["contents"]           = h;
-      requestJson["generationConfig"]   = {
+
+      // Transform history: embed images stored as generic "image" field
+      // into Gemini's inline_data part format
+      json contents = json::array();
+      for (auto msg : agent->historyManager->getActiveEntries()) {
+            if (msg.contains("image")) {
+                  std::string b64 = msg["image"].get<std::string>();
+                  msg["parts"].push_back({
+                           {"inline_data", {{"mime_type", "image/jpeg"}, {"data", b64}}}
+                        });
+                  msg.erase("image");
+                  }
+            contents.push_back(msg);
+            }
+
+      requestJson["contents"]         = contents;
+      requestJson["generationConfig"] = {
                {"thinking_config", {{"include_thoughts", true}, {"thinking_level", "MEDIUM"}}}, // LOW, MINIMAL, MEDIUM, HIGH
                                                                                           //               {"temperature",  0.2},
                                                                                           //               { "candidateCount", 1 },

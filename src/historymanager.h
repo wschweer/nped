@@ -28,8 +28,8 @@ class HistoryManager
             size_t tokens{0};
             };
       std::vector<HistoryItem> _data;
-      const size_t maxEntries         = 30;
-      const size_t criticalTokenCount = 30000; // Trigger summary if total context > 30k tokens
+      const size_t maxEntries         = 60;
+      const size_t criticalTokenCount = 60000; // Trigger summary if total context > 30k tokens
       size_t totalTokens{0};
       size_t activeEntries{0};
       bool summaryRequested{false};

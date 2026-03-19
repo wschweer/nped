@@ -92,6 +92,9 @@ json OllamaClient::prompt(QNetworkRequest* request) {
                   jmsg["name"] = msg["name"];
             if (msg.contains("tool_call_id"))
                   jmsg["tool_call_id"] = msg["tool_call_id"];
+            // Embed screenshot: Ollama multimodal uses "images" array with base64 strings
+            if (msg.contains("image"))
+                  jmsg["images"] = json::array({msg["image"].get<std::string>()});
             history.push_back(jmsg);
             }
       requestJson["messages"] = history;

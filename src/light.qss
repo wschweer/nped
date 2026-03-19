@@ -1,7 +1,14 @@
 #deleteSessionButton {
     background: transparent;
-    border: none;
+    border: 1px solid transparent;
     qproperty-icon: url(:/images/trash.svg);
+    qproperty-iconSize: 32px;
+    min-width: 32px;
+    min-height: 32px;
+}
+
+#deleteSessionButton:hover {
+    border: 1px solid #888;
 }
 
 QPlainTextEdit {
@@ -10,18 +17,61 @@ QPlainTextEdit {
     border: 1px solid #ccc;
     selection-background-color: #eee;
 }
+QToolBar {
+    icon-size: 32px 32px;
+}
+
 QToolButton {
     border-radius: 0px;
-    padding: 0px;
+    border: 1px solid transparent;
+    padding: 4px;
+    min-width: 32px;
+    min-height: 32px;
     background-color: #000000ff;
     color: #444;
     height: 32px;
     qproperty-iconSize: 32px
 }
+
+QToolButton:hover {
+    background-color: #ddd;
+    border: 1px solid #888;
+}
+
+QToolButton:pressed {
+    background-color: #bbb;
+    border: 1px solid #555;
+}
+
+QToolButton:checked {
+    background-color: #add8e6;
+    color: #000;
+    border: 1px solid #888;
+}
+
 QToolButton[class="errorButton"] {
     background-color: #ff8888;
+    border: 1px solid #cc4444;
+}
+
+QToolButton[class="errorButton"]:hover {
+    border: 1px solid #aa2222;
 }
 
 QToolButton[class="actionButton"] {
     background-color: #88ff88;
+    border: 1px solid #44aa44;
+}
+
+QToolButton[class="actionButton"]:hover {
+    border: 1px solid #228822;
+}
+
+#branchLabel {
+    background-color: #d6f0d6;
+    color: #1a5e1a;
+    border: 1px solid #8bc48b;
+    border-radius: 3px;
+    padding: 1px 8px;
+    font-weight: bold;
 }

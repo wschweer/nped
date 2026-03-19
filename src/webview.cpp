@@ -191,14 +191,28 @@ QString MarkdownWebView::getHighlightJsAssets(bool darkMode) const {
                     hljs.highlightElement(el);
                 }});
             }});
+            function fallbackCopy(text) {{
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                try {{ document.execCommand('copy'); }} catch(e) {{}}
+                document.body.removeChild(ta);
+            }}
             function copyCode(btn) {{
                 const codeBlock = btn.parentElement.nextElementSibling.querySelector('code');
                 const text = codeBlock.innerText;
-                navigator.clipboard.writeText(text).then(() => {{
-                    const originalHTML = btn.innerHTML;
-                    btn.innerHTML = '&#10003;';
-                    setTimeout(() => btn.innerHTML = originalHTML, 2000);
-                }});
+                const originalHTML = btn.innerHTML;
+                const ok = () => {{ btn.innerHTML = '&#10003;'; setTimeout(() => btn.innerHTML = originalHTML, 2000); }};
+                if (navigator.clipboard) {{
+                    navigator.clipboard.writeText(text).then(ok).catch(() => {{ fallbackCopy(text); ok(); }});
+                }} else {{
+                    fallbackCopy(text);
+                    ok();
+                }}
             }}
         </script>
     )",

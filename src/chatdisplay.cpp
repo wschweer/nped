@@ -59,15 +59,18 @@ pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5p
 
 QString ChatDisplay::getChatCss() const {
       return R"(
-        body { font-family: 'Inter', sans-serif; background: #ffffff; color: #1f2328; line-height: 1.0; }
+        body { font-family: 'Inter', sans-serif; background: #ffffff; color: #1f2328; line-height: 1.0; margin: 0; padding: 4px 8px; box-sizing: border-box; }
+        #chat-container { display: flex; flex-direction: column; width: 100%; box-sizing: border-box; }
         .message {
             padding: 12px 16px;
-            margin: 10px 0;
+            margin: 6px 0;
             border-radius: 12px;
-            max-width: 90%;
+            max-width: 96%;
+            box-sizing: border-box;
+            word-wrap: break-word;
             }
-        .ai      { background: #f6f8fa; border-left: 4px solid #0969da; }
-        .user    { background: #e6f0ff; margin-left: auto; border-right: 4px solid #555; }
+        .ai      { background: #f6f8fa; border-left: 4px solid #0969da; align-self: flex-start; width: 96%; }
+        .user    { background: #e6f0ff; border-right: 4px solid #555; align-self: flex-end; }
         /* Tabellen Styling */
         table { border-collapse: collapse; width: 100%; margin: 10px 0; }
         th, td { border: 1px solid #d0d7de; padding: 8px; text-align: left; }
@@ -111,15 +114,18 @@ QString ChatDisplay::getChatCss() const {
 
 QString ChatDisplay::getChatDarkCss() const {
       return R"(
-        body { font-family: 'Inter', sans-serif; background: #121212; color: #e0e0e0; line-height: 1.0; }
+        body { font-family: 'Inter', sans-serif; background: #121212; color: #e0e0e0; line-height: 1.0; margin: 0; padding: 4px 8px; box-sizing: border-box; }
+        #chat-container { display: flex; flex-direction: column; width: 100%; box-sizing: border-box; }
         .message {
             padding: 12px 16px;
-            margin: 10px 0;
+            margin: 6px 0;
             border-radius: 12px;
-            max-width: 90%;
+            max-width: 96%;
+            box-sizing: border-box;
+            word-wrap: break-word;
             }
-        .ai      { background: #1e1e1e; border-left: 4px solid #0078d4; }
-        .user    { background: #2c2c2c; margin-left: auto; border-right: 4px solid #555; }
+        .ai      { background: #1e1e1e; border-left: 4px solid #0078d4; align-self: flex-start; width: 96%; }
+        .user    { background: #2c2c2c; border-right: 4px solid #555; align-self: flex-end; }
         /* Tabellen Styling */
         table { border-collapse: collapse; width: 100%; margin: 10px 0; }
         th, td { border: 1px solid #444; padding: 8px; text-align: left; }
@@ -179,6 +185,29 @@ void ChatDisplay::setup() {
 <body>
       <div id="chat-container"></div>
       <script>
+      function fallbackCopy(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            try { document.execCommand('copy'); } catch(e) {}
+            document.body.removeChild(ta);
+      }
+      function copyCode(btn) {
+            const codeBlock = btn.parentElement.nextElementSibling.querySelector('code');
+            const text = codeBlock.innerText;
+            const originalHTML = btn.innerHTML;
+            const ok = () => { btn.innerHTML = '&#10003;'; setTimeout(() => btn.innerHTML = originalHTML, 2000); };
+            if (navigator.clipboard) {
+                  navigator.clipboard.writeText(text).then(ok).catch(() => { fallbackCopy(text); ok(); });
+            } else {
+                  fallbackCopy(text);
+                  ok();
+            }
+      }
       let currentStreamingMessage = null;
 
       function startNewStreamingMessage(role) {

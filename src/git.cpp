@@ -74,6 +74,22 @@ bool Git::check_error(int error_code, const char* action) {
       }
 
 //---------------------------------------------------------
+//   getCurrentBranch
+//---------------------------------------------------------
+
+QString Git::getCurrentBranch() {
+      if (!initialized)
+            return QString();
+      git_reference* head = nullptr;
+      if (git_repository_head(&head, repo) < 0)
+            return QString("HEAD");
+      const char* shorthand = git_reference_shorthand(head);
+      QString result        = QString::fromUtf8(shorthand);
+      git_reference_free(head);
+      return result;
+      }
+
+//---------------------------------------------------------
 //   getHistory
 //---------------------------------------------------------
 

@@ -43,7 +43,6 @@ class Completer : public QLineEdit
 
     public:
       explicit Completer(QWidget* parent = nullptr) : QLineEdit(parent), m_completer(new QCompleter(this)) {
-
             m_completer->setCaseSensitivity(Qt::CaseInsensitive);
             m_completer->setCompletionMode(QCompleter::PopupCompletion);
             setCompleter(m_completer);

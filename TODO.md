@@ -1,6 +1,51 @@
 
 ## TODO
 
+### Datenanzeige
+
+- Erstelle eine schmales vertikales Fenster zur Aufname von Icons links neben der Prompt Eingabe im Ai-Window.
+  Immer wenn ein Image (z.B. ein screenshot) für den nächsten Prompt zur verfügung steht,
+  soll hier ein "Picture" Icon erscheinen.
+
+### screen shot
+
+- [x] Ergänze die Tool Leiste unter dem Ai panel um einen button, der einen screen shot auslösen soll und
+  der ein kamera icon zeigt.
+
+- [x] implementiere eine screen shot funktionalität für linux und wayland. Benutze dazu d-bus und das
+  xdg desktop portal
+
+- [x] Füge das bild dem aktuellen promt an das ai-modell hinzu. Implementiere dazu die umwandlung in ein
+  passendes format sowie die erstellung eines prompts für gemini anthropic und ollama
+
+
+### ask_user tool
+- Implementiere für die Interaktion von Ai-Modell und User das tool "ask_user" mit einem Parameter
+  "question", um dem
+  Modell eine Möglichkeit zu geben, Rückfragen zu stellen.
+
+### Umbau Ai Panel
+- [x] Verschiebe die tool bar im Titel nach unten unter die promt Eingabe.
+- [x] Implementiere die beiden flags im pulldownmenü "Filter Tool Messages" und "Filter Thoughts" als zwei
+  Buttons in der Tool Bar die jeweils nur ein Icon zeigen: ein "Tool" icon sowie ein "Brain" icon.
+  Das Pulldown Menu ist dann leer und kann entfernt werden.
+- [x] verschiebe den "Run" Button links neben der Prompt Eingabe auch in die tool bar und plaziere ihn ganz
+  links
+
+### GIT current branch label
+- [x] Erweitere die Editor() Klasse um das Status-Flag "hasGit". Dieses Flag wird in initProjekt
+gesetzt um anzuzeigen, das das aktuelle Project von GIT verwaltet wird.
+Der Check auf vorhandensein von GIT wird nur durchgeführt, wenn ein Projekt gefunden wurde, d.h. wenn
+Editor->projectMode true ist.
+
+- [x] Erweitere die Editor() Klasse um den string "currentBranchName". Wenn in initProjekt() festgestellt wurde,
+das wir ein Projekt gefunden haben welches von GIT verwaltet wird, dann initialisiere den string
+mit dem aktuelle git branch.
+
+- [x] Füge in die Statuszeile des Editor Hauptfensters links neben dem Pfad der aktuellen Datei ein
+Label ein welches "currentBranchName" zeigt.
+Das Label wird nur angezeigt, wenn Editor->projectMode true ist.
+
 ### Configuration erweitern
 
 Erweitere das Konfigurationspanel in qml/ConfigDialog.qml um alle noch nicht behandelten Felder in Model
