@@ -26,6 +26,8 @@ class ChatDisplay : public MarkdownWebView
       QString getHighlightJsDarkCss() const;
       QString getChatCss() const;
       QString getChatDarkCss() const;
+      bool mustStartMessage { false };
+      std::string role;
 
     public slots:
       void handleIncomingChunk(const std::string& thoughtChunk, const std::string& textChunk);
@@ -42,12 +44,13 @@ class ChatDisplay : public MarkdownWebView
       QWidget* widget() { return (QWidget*)this; }
       void setFont(QFont f) { MarkdownWebView::setFont(f); }
       QString quoteForJs(const QString& str);
-      void startNewStreamingMessage(const std::string& role) {
-            currentStreamingThought.clear();
-            currentStreamingText.clear();
-            auto s = std::format("startNewStreamingMessage('{}');", role);
-            page()->runJavaScript(QString::fromStdString(s));
+
+      void startNewStreamingMessage(const std::string& r) {
+            // delay creation of new message until real data arrived to avoid display of empty messages
+            mustStartMessage = true;
+            role = r;
             }
+      void startMessage();
       void appendStaticHtml(const QString& role, const QString& html, const QString& thoughtHtml = "");
 
       void setDarkMode(bool enabled) override;

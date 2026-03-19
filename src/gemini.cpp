@@ -107,6 +107,10 @@ void GeminiClient::processJsonItem(const json& item) {
                   continue;
                   }
             for (const auto& part : content["parts"]) {
+                  if (part.contains("functionCall")) {
+                        _currentToolCalls.push_back(part);
+                        agent->chatDisplay->startNewStreamingMessage("tool");
+                        }
                   if (part.contains("text")) {
                         std::string s = part["text"];
                         if (!s.empty()) {
@@ -116,8 +120,6 @@ void GeminiClient::processJsonItem(const json& item) {
                                     agent->chatDisplay->handleIncomingChunk("", s);
                               }
                         }
-                  if (part.contains("functionCall"))
-                        _currentToolCalls.push_back(part);
                   currentContent["parts"].push_back(part);
                   }
             currentContent["role"] = content["role"];
@@ -134,8 +136,11 @@ void GeminiClient::processJsonItem(const json& item) {
 void GeminiClient::processTools() {
       json msg; // tool answer message
       try {
+            agent->chatDisplay->startNewStreamingMessage("model");
             msg["role"]  = "function";
             msg["parts"] = json::array();
+
+            std::string displayMsg;
             for (const auto& call : _currentToolCalls) {
                   if (!call.contains("functionCall")) {
                         Critical("ToolCall does not contain <functionCall>");
@@ -148,7 +153,11 @@ void GeminiClient::processTools() {
                   msg["parts"].push_back({
                            {"functionResponse", {{"name", fc["name"]}, {"response", {{"content", result}}}}}
                         });
+                  if (!model->filterToolMessages)
+                        displayMsg += agent->formatToolCall(fc["name"], args);
                   }
+
+            agent->chatDisplay->handleIncomingChunk("", displayMsg);
             }
       catch (const json::parse_error& e) {
             Critical("Parse Error: {}", e.what());
@@ -163,6 +172,7 @@ void GeminiClient::processTools() {
       std::string thinking;
       std::string text;
       agent->logContent(msg, text, thinking);
+      agent->chatDisplay->startNewStreamingMessage("tool");
       agent->chatDisplay->handleIncomingChunk(thinking, text);
 
       // put on history
@@ -188,8 +198,18 @@ void GeminiClient::dataFinished() {
       if (_currentToolCalls.empty()) {
             // No tools: this is a final turn or a summary request
             if (agent->historyManager->addResult(responseContent, totalTokens)) {
-                  // trim() returned true: A summary was requested and added to history.
-                  // We must send this summary request to the LLM.
+                  std::string text = "Please provide a concise technical summary of our conversation so far. "
+                                     "Focus specifically on the results obtained from the tool calls and the final "
+                                     "conclusions reached. Discard the raw, voluminous data output from the tools, "
+                                     "but retain the key facts, parameters used, and the current state of the task. "
+                                     "This summary will serve as the new starting point for our context, "
+                                     "so ensure no critical logical step is lost.";
+                  json msg;
+                  msg["role"]  = "user";
+                  msg["parts"] = json::array({{{"text", text}}});
+                  // Approximate token count: 4 chars per token
+                  agent->historyManager->addRequest(msg, text.length() / 4);
+
                   agent->sendMessage2();
                   }
             else {

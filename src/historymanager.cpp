@@ -51,6 +51,7 @@ bool HistoryManager::trim() {
             }
       if (hitLimit()) {
             // request summary
+#if 0
             std::string text = "Please provide a concise technical summary of our conversation so far. "
                                "Focus specifically on the results obtained from the tool calls and the final "
                                "conclusions reached. Discard the raw, voluminous data output from the tools, "
@@ -58,9 +59,14 @@ bool HistoryManager::trim() {
                                "This summary will serve as the new starting point for our context, "
                                "so ensure no critical logical step is lost.";
             json msg;
-            msg["role"]  = "user";
-            msg["parts"] = json::array({{{"text", text}}});
-            addRequest(msg, text.length() / 4);
+            msg["role"] = "user";
+            if (model.api == "gemini")
+                  msg["parts"] = json::array({{{"text", text}}});
+            else // ollama
+                  msg["content"] = text;
+            // Approximate token count: 4 chars per token
+            historyManager->addRequest(msg, text.length() / 4);
+#endif
             summaryRequested = true;
             }
       return summaryRequested;

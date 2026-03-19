@@ -72,6 +72,14 @@ QString ChatDisplay::getChatCss() const {
         table { border-collapse: collapse; width: 100%; margin: 10px 0; }
         th, td { border: 1px solid #d0d7de; padding: 8px; text-align: left; }
         th { background: #f6f8fa; }
+        /* Code-Container (erzeugt von renderMarkdownToHtml) */
+        .code-container { border: 1px solid #d0d7de; border-radius: 6px; margin: 10px 0; display: block; }
+        .code-header { background: #f6f8fa; padding: 5px 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #d0d7de; font-size: 0.8em; font-family: sans-serif; }
+        .code-body { max-height: 400px; overflow-y: auto; overflow-x: auto; display: block; }
+        .code-body pre { margin: 0; padding: 10px; overflow: visible; background: #f6f8fa; border: none; border-radius: 0; }
+        .copy-btn { cursor: pointer; background: #fff; border: 1px solid #d0d7de; border-radius: 4px; padding: 3px 6px; font-size: 0.9em; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+        .copy-btn:hover { background: #f0f0f0; }
+        /* Fallback für einfaches pre/code ohne Wrapper */
         pre { background: #f6f8fa; padding: 12px; border-radius: 6px; overflow-x: auto; border: 1px solid #d0d7de; }
         code { font-family: 'Fira Code', monospace; font-size: 0.9em; }
         .thought-box {
@@ -116,6 +124,14 @@ QString ChatDisplay::getChatDarkCss() const {
         table { border-collapse: collapse; width: 100%; margin: 10px 0; }
         th, td { border: 1px solid #444; padding: 8px; text-align: left; }
         th { background: #333; }
+        /* Code-Container (erzeugt von renderMarkdownToHtml) */
+        .code-container { border: 1px solid #30363d; border-radius: 6px; margin: 10px 0; display: block; }
+        .code-header { background: #161b22; padding: 5px 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; font-size: 0.8em; font-family: sans-serif; color: #c9d1d9; }
+        .code-body { max-height: 400px; overflow-y: auto; overflow-x: auto; display: block; }
+        .code-body pre { margin: 0; padding: 10px; overflow: visible; background: #0d1117; border: none; border-radius: 0; }
+        .copy-btn { cursor: pointer; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; padding: 3px 6px; font-size: 0.9em; color: #c9d1d9; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+        .copy-btn:hover { background: #21262d; }
+        /* Fallback für einfaches pre/code ohne Wrapper */
         pre { background: #000; padding: 12px; border-radius: 6px; overflow-x: auto; }
         code { font-family: 'Fira Code', monospace; font-size: 0.9em; }
         .thought-box {
@@ -180,7 +196,7 @@ void ChatDisplay::setup() {
         <strong style="display: block; margin-bottom: 5px;">${role}:</strong>
         <details class="thought-box" id="${msgId}-thought-container" style="display:none;">
             <summary style="color: #0078d4; cursor: pointer; font-weight: bold;">
-                Gemini 3 Reasoning...
+                Reasoning...
             </summary>
             <div class="thought-content" id="${msgId}-thought-body" style="padding: 8px; border-left: 2px solid #333; font-style: italic;">
             </div>
@@ -278,10 +294,32 @@ void ChatDisplay::setDarkMode(bool enabled) {
       }
 
 //---------------------------------------------------------
+//   startMessage
+//---------------------------------------------------------
+
+void ChatDisplay::startMessage() {
+      currentStreamingThought.clear();
+      currentStreamingText.clear();
+      auto s = std::format("startNewStreamingMessage('{}');", role);
+      page()->runJavaScript(QString::fromStdString(s));
+      }
+
+//---------------------------------------------------------
 //   handleIncomingChunk
 //---------------------------------------------------------
 
 void ChatDisplay::handleIncomingChunk(const std::string& thoughtChunk, const std::string& textChunk) {
+      if (thoughtChunk.empty() && textChunk.empty())
+            return;
+
+      // startMessage was delayed until some date arrived
+      // this avoids display of empty messages
+
+      if (mustStartMessage) {
+            mustStartMessage = false;
+            startMessage();
+            }
+
       if (!thoughtChunk.empty()) {
             currentStreamingThought += thoughtChunk;
             QString html             = renderMarkdownToHtml(currentStreamingThought);

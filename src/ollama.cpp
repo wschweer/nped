@@ -192,8 +192,20 @@ void OllamaClient::dataFinished() {
       size_t totalTokens = 0;
 
       if (_currentToolCalls.empty()) {
-            if (agent->historyManager->addResult(responseContent, totalTokens))
+            if (agent->historyManager->addResult(responseContent, totalTokens)) {
+                  std::string text = "Please provide a concise technical summary of our conversation so far. "
+                                     "Focus specifically on the results obtained from the tool calls and the final "
+                                     "conclusions reached. Discard the raw, voluminous data output from the tools, "
+                                     "but retain the key facts, parameters used, and the current state of the task. "
+                                     "This summary will serve as the new starting point for our context, "
+                                     "so ensure no critical logical step is lost.";
+                  json msg;
+                  msg["role"]    = "user";
+                  msg["content"] = text;
+                  // Approximate token count: 4 chars per token
+                  agent->historyManager->addRequest(msg, text.length() / 4);
                   agent->sendMessage2();
+                  }
             else
                   agent->enableInput(true);
             }

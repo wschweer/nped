@@ -129,10 +129,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       if (!_editor->projectMode()) {
             _isExecuteMode = false;
             modeButton->setEnabled(false);
-            Debug("disable execute mode");
             }
-      else
-            Debug("enable execute mode");
       modeButton->setChecked(_isExecuteMode);
       modeButton->setEnabled(_editor->projectMode());
       modeButton->setText(_isExecuteMode ? "Build" : "Plan");
@@ -865,45 +862,6 @@ void Agent::onSessionSelected(int index) {
             }
       }
 
-#if 0
-
-//---------------------------------------------------------
-//   commitGitChanges
-//---------------------------------------------------------
-
-bool Agent::commitGitChanges(const QString& commitMessage) {
-      if (!_editor)
-            return false;
-
-      QString projRoot = QDir::cleanPath(_editor->projectRoot());
-      QProcess process;
-      process.setWorkingDirectory(projRoot);
-
-      // 1. Check for uncommitted changes
-      process.start("git", QStringList() << "status" << "--porcelain");
-      process.waitForFinished();
-      QByteArray output = process.readAllStandardOutput();
-
-      if (output.trimmed().isEmpty()) {
-            Debug("Git: No changes found. Skip commit.");
-            return false;
-                              }
-
-      chatDisplay->append("<i>[System: Changes detected, executing Git auto-commit...]</i>");
-
-      // 2. Stage all changes (git add .)
-      process.start("git", QStringList() << "add" << ".");
-      process.waitForFinished();
-
-      // 3. Commit changes
-      process.start("git", QStringList() << "commit" << "-m" << commitMessage);
-      process.waitForFinished();
-
-      chatDisplay->append("<i>[System: Git auto-commit successfully completed.]</i>");
-      return true;
-                        }
-#endif
-
 //---------------------------------------------------------
 //   saveStatus
 //---------------------------------------------------------
@@ -1248,12 +1206,6 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
 void Agent::updateChatDisplay() {
       chatDisplay->clear();
 
-      // Wait for the web view to finish loading before appending messages
-      //      QTimer::singleShot(250, this, [this]() {
-      std::string lastRole;
-      std::string mergedMsg;
-      std::string mergedThought;
-
       for (const auto& item : historyManager->data()) {
             const auto& content = item.content;
             std::string role;
@@ -1268,37 +1220,16 @@ void Agent::updateChatDisplay() {
             std::string msg;
             std::string thought;
             logContent(content, msg, thought);
+
             if (model.filterThoughts)
                   thought.clear();
-            if (msg.empty() && thought.empty()) {
-                  // Debug("chatHistory entry: empty");
+
+            if (msg.empty() && thought.empty())
                   continue;
-                  }
 
-            /*            if (role == "function" || role == "tool") {
-                  if (lastRole.empty())
-                        lastRole = role;
-                  mergedMsg     += msg;
-                  mergedThought += thought;
-                                                                        }
-            else {
-*/
-            if (!lastRole.empty() && !(mergedMsg.empty() && mergedThought.empty())) {
-                  QString s  = chatDisplay->renderMarkdownToHtml(mergedMsg);
-                  QString th = chatDisplay->renderMarkdownToHtml(mergedThought);
-                  chatDisplay->appendStaticHtml(QString::fromStdString(lastRole), s, th);
-                  }
-            lastRole      = role;
-            mergedMsg     = msg;
-            mergedThought = thought;
-            //                  }
-            }
-
-      if (!lastRole.empty() && !(mergedMsg.empty() && mergedThought.empty())) {
-            QString s  = chatDisplay->renderMarkdownToHtml(mergedMsg);
-            QString th = chatDisplay->renderMarkdownToHtml(mergedThought);
-            chatDisplay->appendStaticHtml(QString::fromStdString(lastRole), s, th);
-            chatDisplay->scrollToBottom();
+            QString s  = chatDisplay->renderMarkdownToHtml(msg);
+            QString th = chatDisplay->renderMarkdownToHtml(thought);
+            chatDisplay->appendStaticHtml(QString::fromStdString(role), s, th);
             }
       }
 

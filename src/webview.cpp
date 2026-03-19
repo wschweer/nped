@@ -13,6 +13,7 @@
 #include <QStackedWidget>
 #include <QToolButton>
 #include <QLabel>
+#include <QRegularExpression>
 
 #include "webview.h"
 #include "kontext.h"
@@ -190,6 +191,15 @@ QString MarkdownWebView::getHighlightJsAssets(bool darkMode) const {
                     hljs.highlightElement(el);
                 }});
             }});
+            function copyCode(btn) {{
+                const codeBlock = btn.parentElement.nextElementSibling.querySelector('code');
+                const text = codeBlock.innerText;
+                navigator.clipboard.writeText(text).then(() => {{
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '&#10003;';
+                    setTimeout(() => btn.innerHTML = originalHTML, 2000);
+                }});
+            }}
         </script>
     )",
                                                 theme.toStdString()));
@@ -221,7 +231,32 @@ QString MarkdownWebView::renderMarkdownToHtml(const std::string& _stdMarkdown) {
             Critical("Markdown conversion failed with code: {}", _result);
             return "<b>Error: Markdown rendering failed.</b>";
             }
-      return _output;
+
+      // Code-Block Wrapping (mit weniger strengem Regex)
+      QRegularExpression re("<pre><code( class=\"language-(.*?)\")?>(.*?)</code></pre>", QRegularExpression::DotMatchesEverythingOption);
+      int offset = 0;
+      QString result;
+      QRegularExpressionMatch match;
+      while ((match = re.match(_output, offset)).hasMatch()) {
+          result += _output.mid(offset, match.capturedStart() - offset);
+          QString lang = match.captured(2).isEmpty() ? "code" : match.captured(2);
+          QString codeClass = match.captured(1).isEmpty() ? "" : match.captured(1).mid(1);
+          QString code = match.captured(3);
+          result += QString(R"X(
+              <div class="code-container">
+                  <div class="code-header">
+                      <span>%1</span>
+                      <button class="copy-btn" onclick="copyCode(this)" title="Copy"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/></svg></button>
+                  </div>
+                  <div class="code-body">
+                      <pre><code class="%2">%3</code></pre>
+                  </div>
+              </div>
+          )X").arg(lang, codeClass, code);
+          offset = match.capturedEnd();
+      }
+      result += _output.mid(offset);
+      return result;
       }
 
 //---------------------------------------------------------
@@ -235,6 +270,13 @@ QString MarkdownWebView::getGithubCss() const {
             line-height: 1.5; padding: 32px; max-width: 980px; margin: 0 auto; color: #1f2328; background-color: #ffffff;
             scroll-behavior: smooth;
         }
+        .code-container { border: 1px solid #d0d7de; border-radius: 6px; margin: 10px 0; display: block; }
+        .code-header { background: #f6f8fa; padding: 5px 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #d0d7de; font-size: 0.8em; font-family: sans-serif; }
+        .code-body { max-height: 400px; overflow-y: auto; overflow-x: auto; display: block; }
+        .code-body pre { margin: 0; padding: 10px; overflow: visible; }
+        .copy-btn { cursor: pointer; background: #fff; border: 1px solid #d0d7de; border-radius: 4px; padding: 3px 6px; font-size: 0.9em; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+        .copy-btn:hover { background: #f0f0f0; }
+
         .markdown-body h1, .markdown-body h2 { border-bottom: 1px solid #d8dee4; padding-bottom: .3em; margin-top: 24px; margin-bottom: 16px; font-weight: 600; }
         .markdown-body a { color: #0969da; text-decoration: none; }
         .markdown-body a:hover { text-decoration: underline; }
@@ -243,7 +285,7 @@ QString MarkdownWebView::getGithubCss() const {
             font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
         }
         .markdown-body pre {
-            background-color: #f6f8fa; border-radius: 6px; padding: 16px; overflow: auto; font-size: 85%; line-height: 1.45;
+            background-color: #f6f8fa; border-radius: 6px; padding: 16px; font-size: 85%; line-height: 1.45;
         }
         .markdown-body pre code {
             background-color: transparent; border: 0; display: inline; line-height: inherit; margin: 0; padding: 0;
@@ -338,6 +380,13 @@ QString MarkdownWebView::getGithubDarkCss() const {
             scroll-behavior: smooth;
         }
 
+        .code-container { border: 1px solid #30363d; border-radius: 6px; margin: 10px 0; display: block; }
+        .code-header { background: #161b22; padding: 5px 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; font-size: 0.8em; font-family: sans-serif; }
+        .code-body { max-height: 400px; overflow-y: auto; overflow-x: auto; display: block; }
+        .code-body pre { margin: 0; padding: 10px; overflow: visible; }
+        .copy-btn { cursor: pointer; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; padding: 3px 6px; font-size: 0.9em; color: #c9d1d9; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+        .copy-btn:hover { background: #21262d; }
+
         .markdown-body h1, .markdown-body h2 {
             border-bottom: 1px solid #21262d;
             color: #e6edf3;
@@ -358,7 +407,6 @@ QString MarkdownWebView::getGithubDarkCss() const {
             background-color: #161b22;
             border-radius: 6px;
             padding: 16px;
-            overflow: auto;
             border: 1px solid #30363d;
         }
 
