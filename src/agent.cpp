@@ -170,6 +170,18 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             chatDisplay->scrollToBottom();
       });
       optionMenu->addAction(filterToolMessagesAction);
+
+      filterThoughtsAction = new QAction("Filter Thoughts", optionMenu);
+      filterThoughtsAction->setCheckable(true);
+      filterThoughtsAction->setChecked(model.filterThoughts);
+      connect(filterThoughtsAction, &QAction::toggled, [this](bool checked) {
+            model.filterThoughts = checked;
+            saveStatus();
+            updateChatDisplay();
+            chatDisplay->scrollToBottom();
+      });
+      optionMenu->addAction(filterThoughtsAction);
+
       optionButton->setMenu(optionMenu);
       optionButton->setPopupMode(QToolButton::InstantPopup);
       toolBar->addWidget(optionButton);
@@ -274,8 +286,19 @@ void Agent::setCurrentModel(const QString& s, bool clearChat) {
                         filterToolMessagesAction->setChecked(model.filterToolMessages);
                         filterToolMessagesAction->blockSignals(false);
                   }
+                  if (filterThoughtsAction) {
+                        filterThoughtsAction->blockSignals(true);
+                        filterThoughtsAction->setChecked(model.filterThoughts);
+                        filterThoughtsAction->blockSignals(false);
+                  }
                   llm   = llmFactory(this, &model, mcpTools);
-                  connect(llm, &LLMClient::incomingChunk, chatDisplay, &ChatDisplay::handleIncomingChunk);
+                  connect(llm, &LLMClient::incomingChunk, this, [this](const std::string& thoughtChunk, const std::string& textChunk) {
+                        if (model.filterThoughts) {
+                              chatDisplay->handleIncomingChunk("", textChunk);
+                        } else {
+                              chatDisplay->handleIncomingChunk(thoughtChunk, textChunk);
+                        }
+                  });
                   currentRetryCount  = 0;
                   retryPause         = 2000;
                   rateLimitResetTime = QDateTime();
@@ -894,6 +917,7 @@ void Agent::saveStatus() {
                   header["model"] = currentModel().toStdString();
                   header["activeEntries"] = historyManager->getActiveEntriesCount();
                   header["filterToolMessages"] = model.filterToolMessages;
+                  header["filterThoughts"] = model.filterThoughts;
                   f << header.dump() << "\n";
             }
             const auto& data = historyManager->data();
@@ -902,6 +926,7 @@ void Agent::saveStatus() {
                         json meta;
                         meta["activeEntries"] = historyManager->getActiveEntriesCount();
                         meta["filterToolMessages"] = model.filterToolMessages;
+                        meta["filterThoughts"] = model.filterThoughts;
                         f << meta.dump() << "\n";
                   }
                   for (size_t i = savedEntries; i < data.size(); ++i) {
@@ -947,6 +972,11 @@ void Agent::loadStatus(const QString& sessionPath) {
                                     if (filterToolMessagesAction)
                                           filterToolMessagesAction->setChecked(model.filterToolMessages);
                                     }
+                              if (root.contains("filterThoughts")) {
+                                    model.filterThoughts = root["filterThoughts"];
+                                    if (filterThoughtsAction)
+                                          filterThoughtsAction->setChecked(model.filterThoughts);
+                                    }
                               const json& history = root["history"];
                               historyManager->setHistory(history);
                               if (root.contains("activeEntries")) {
@@ -984,6 +1014,11 @@ void Agent::loadStatus(const QString& sessionPath) {
                                           model.filterToolMessages = obj["filterToolMessages"];
                                           if (filterToolMessagesAction)
                                                 filterToolMessagesAction->setChecked(model.filterToolMessages);
+                                          }
+                                    if (obj.contains("filterThoughts")) {
+                                          model.filterThoughts = obj["filterThoughts"];
+                                          if (filterThoughtsAction)
+                                                filterThoughtsAction->setChecked(model.filterThoughts);
                                           }
                                     if (obj.contains("role") || obj.contains("parts") || obj.contains("content")) {
                                           h.push_back(obj);
@@ -1206,6 +1241,9 @@ void Agent::updateChatDisplay() {
             std::string msg;
             std::string thought;
             logContent(content, msg, thought);
+            if (model.filterThoughts) {
+                  thought.clear();
+            }
             if (msg.empty() && thought.empty()) {
                   // Debug("chatHistory entry: empty");
                   continue;

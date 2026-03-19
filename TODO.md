@@ -17,6 +17,8 @@ Wenn filterToolMessages true ist, dann sollen Model Tool Requests sowie die Antw
 des Agenten an das Model nicht mehr im ChatDisplay angezeigt werden.
 
 
+
+
 ### Do not truncate chat history:
 
 Currently, the entire history is always transmitted to the AI model.
