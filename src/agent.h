@@ -161,7 +161,7 @@ class Agent : public QWidget
       QString currentSessionFileName;
       QString pendingModelName;
       size_t savedEntries{0};
-      bool commitGitChanges(const QString& commitMessage);
+//      bool commitGitChanges(const QString& commitMessage);
       void reinitSystemPrompt(); // Punkt 4: implementiert
       void updateChatDisplay();
       QString truncateOutput(const QString& text, int maxChars);

@@ -1,6 +1,12 @@
 
 ## TODO
 
+### Check Anthropic Implementation
+
+Analysiere im Detail die Implementation der Anthropic Model Integration in
+der Datei src/anthropic.cpp. Suche Fehler und mache Verbesserungsvorschläge.
+Checke auch, ob die Funktionalität der Anthropic API voll abedeckt wird.
+
 ### Option Pulldown Menü
 
 Füge rechts neben dem "Build"/"Plan" mode button einen weiteren Button für ein
@@ -15,8 +21,6 @@ D.h. sie ist Teil des Chat Log Files.
 
 Wenn filterToolMessages true ist, dann sollen Model Tool Requests sowie die Antwort
 des Agenten an das Model nicht mehr im ChatDisplay angezeigt werden.
-
-
 
 
 ### Do not truncate chat history:

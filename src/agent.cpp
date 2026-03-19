@@ -149,17 +149,17 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             modeButton->style()->polish(modeButton);
 
             if (chatDisplay) {
-                  chatDisplay->append(
-                      QString("<br><i>[System: Mode changed to <b>%1</b>]</i>").arg(checked ? "Build (read/write)" : "Plan (read only)"));
+                  chatDisplay->addMessage("system", format("<br><i>[System: Mode changed to <b>{}</b>]</i>",
+                                                           (checked ? "Build (read/write)" : "Plan (read only)")));
                   }
             });
 
       QToolButton* optionButton = new QToolButton(this);
       optionButton->setText("⋮");
       optionButton->setMinimumWidth(32);
-//      optionButton->setProperty("class", "actionButton");
+      //      optionButton->setProperty("class", "actionButton");
 
-      QMenu* optionMenu = new QMenu(optionButton);
+      QMenu* optionMenu        = new QMenu(optionButton);
       filterToolMessagesAction = new QAction("Filter Tool Messages", optionMenu);
       filterToolMessagesAction->setCheckable(true);
       filterToolMessagesAction->setChecked(model.filterToolMessages);
@@ -168,7 +168,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             saveStatus();
             updateChatDisplay();
             chatDisplay->scrollToBottom();
-      });
+            });
       optionMenu->addAction(filterToolMessagesAction);
 
       filterThoughtsAction = new QAction("Filter Thoughts", optionMenu);
@@ -179,7 +179,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             saveStatus();
             updateChatDisplay();
             chatDisplay->scrollToBottom();
-      });
+            });
       optionMenu->addAction(filterThoughtsAction);
 
       optionButton->setMenu(optionMenu);
@@ -285,29 +285,28 @@ void Agent::setCurrentModel(const QString& s, bool clearChat) {
                         filterToolMessagesAction->blockSignals(true);
                         filterToolMessagesAction->setChecked(model.filterToolMessages);
                         filterToolMessagesAction->blockSignals(false);
-                  }
+                        }
                   if (filterThoughtsAction) {
                         filterThoughtsAction->blockSignals(true);
                         filterThoughtsAction->setChecked(model.filterThoughts);
                         filterThoughtsAction->blockSignals(false);
-                  }
-                  llm   = llmFactory(this, &model, mcpTools);
-                  connect(llm, &LLMClient::incomingChunk, this, [this](const std::string& thoughtChunk, const std::string& textChunk) {
-                        if (model.filterThoughts) {
-                              chatDisplay->handleIncomingChunk("", textChunk);
-                        } else {
-                              chatDisplay->handleIncomingChunk(thoughtChunk, textChunk);
                         }
-                  });
+                  llm = llmFactory(this, &model, mcpTools);
+                  connect(llm, &LLMClient::incomingChunk, this, [this](const std::string& thoughtChunk, const std::string& textChunk) {
+                        if (model.filterThoughts)
+                              chatDisplay->handleIncomingChunk("", textChunk);
+                        else
+                              chatDisplay->handleIncomingChunk(thoughtChunk, textChunk);
+                        });
                   currentRetryCount  = 0;
                   retryPause         = 2000;
                   rateLimitResetTime = QDateTime();
 
                   if (clearChat) {
                         historyManager->clear();
-      savedEntries = 0;
+                        savedEntries = 0;
                         chatDisplay->clear();
-                        chatDisplay->append("<i>[System: New session started. Ready.]</i><br>");
+                        chatDisplay->addMessage("system", "<i>[System: New session started. Ready.]</i><br>");
                         }
                   if (modelMenu)
                         modelMenu->setCurrentText(s);
@@ -515,19 +514,16 @@ void Agent::handleChatFinished() {
                               // Safety margin (jitter)
                               waitMs += (rand() % 500);
 
-                              chatDisplay->append(
-                                  QString("<br><font color='orange'><b>[Rate Limit]:</b> Pause for %1 seconds...</font><br>")
-                                      .arg(waitMs / 1000.0));
+                              chatDisplay->addMessage(
+                                  "system", format("<br><font color='orange'><b>[Rate Limit]:</b> Pause for {} seconds...</font><br>",
+                                                   waitMs / 1000.0));
                               }
                         // B: Server Error (5xx) -> Exponential Backoff
                         else {
                               waitMs = 2000 * std::pow(2, currentRetryCount);
-                              chatDisplay->append(
-                                  QString("<br><font color='orange'><b>[Server Error %1]:</b> Retry %2/%3 in %4s...</font><br>")
-                                      .arg(statusCode)
-                                      .arg(currentRetryCount + 1)
-                                      .arg(maxRetries)
-                                      .arg(waitMs / 1000.0));
+                              chatDisplay->addMessage(
+                                  "system", format("<br><font color='orange'><b>[Server Error {}]:</b> Retry {}/{} in {}s...</font><br>",
+                                                   statusCode, currentRetryCount + 1, maxRetries, waitMs / 1000.0));
                               }
 
                         currentReply->deleteLater();
@@ -542,8 +538,8 @@ void Agent::handleChatFinished() {
                         }
                   else {
                         Debug("too many reply's");
-                        chatDisplay->append(
-                            QString("<br><font color='red'><b>[Abort]:</b> Too many attempts (%1).</font><br>").arg(maxRetries));
+                        chatDisplay->addMessage(
+                            "system", format("<br><font color='red'><b>[Abort]:</b> Too many attempts ({}).</font><br>", maxRetries));
                         }
                   }
 
@@ -560,7 +556,7 @@ void Agent::handleChatFinished() {
             Debug("Network/API error {}: {}", int(currentReply->error()), errorMessage);
 
             // Show the error to the user in the UI
-            chatDisplay->append(QString("<br><font color='red'><b>[Connection abort]:</b> %1</font><br>").arg(errorMessage));
+            chatDisplay->addMessage("system", format("<br><font color='red'><b>[Connection abort]:</b> {}</font><br>", errorMessage));
             currentReply->deleteLater();
             currentReply = nullptr;
             return;
@@ -746,7 +742,7 @@ QString Agent::sessionName(bool getNext) const {
 
       int nextNumber = info.lastNumber + 1; // default: increment
       if (!getNext && info.lastNumber != 0)
-            nextNumber = info.lastNumber;    // reuse existing number
+            nextNumber = info.lastNumber; // reuse existing number
 
       // Format: Session-dd-MM-yyyy-n.json
       // 'z' sorgt dafür, dass führende Nullen bei Tag/Monat erhalten bleiben (dd-MM)
@@ -854,6 +850,7 @@ void Agent::onSessionSelected(int index) {
             }
       }
 
+#if 0
 //---------------------------------------------------------
 //   commitGitChanges
 //---------------------------------------------------------
@@ -889,6 +886,7 @@ bool Agent::commitGitChanges(const QString& commitMessage) {
       chatDisplay->append("<i>[System: Git auto-commit successfully completed.]</i>");
       return true;
       }
+#endif
 
 //---------------------------------------------------------
 //   saveStatus
@@ -914,31 +912,31 @@ void Agent::saveStatus() {
       if (f.is_open()) {
             if (savedEntries == 0) {
                   json header;
-                  header["model"] = currentModel().toStdString();
-                  header["activeEntries"] = historyManager->getActiveEntriesCount();
+                  header["model"]              = currentModel().toStdString();
+                  header["activeEntries"]      = historyManager->getActiveEntriesCount();
                   header["filterToolMessages"] = model.filterToolMessages;
-                  header["filterThoughts"] = model.filterThoughts;
+                  header["filterThoughts"]     = model.filterThoughts;
                   f << header.dump() << "\n";
-            }
+                  }
             const auto& data = historyManager->data();
             if (savedEntries < data.size()) {
                   if (savedEntries > 0) {
                         json meta;
-                        meta["activeEntries"] = historyManager->getActiveEntriesCount();
+                        meta["activeEntries"]      = historyManager->getActiveEntriesCount();
                         meta["filterToolMessages"] = model.filterToolMessages;
-                        meta["filterThoughts"] = model.filterThoughts;
+                        meta["filterThoughts"]     = model.filterThoughts;
                         f << meta.dump() << "\n";
-                  }
-                  for (size_t i = savedEntries; i < data.size(); ++i) {
+                        }
+                  for (size_t i = savedEntries; i < data.size(); ++i)
                         f << data[i].content.dump() << "\n";
-                  }
                   savedEntries = data.size();
-            }
+                  }
             f.close();
-      } else {
+            }
+      else {
             Critical("Could not open session file for writing: {}", currentSessionFileName.toStdString());
+            }
       }
-}
 
 //---------------------------------------------------------
 //   loadStatus
@@ -964,7 +962,7 @@ void Agent::loadStatus(const QString& sessionPath) {
                         if (root.is_object() && root.contains("history")) {
                               if (root.contains("model")) {
                                     std::string modelName = root["model"];
-                                    QString m         = QString::fromStdString(modelName);
+                                    QString m             = QString::fromStdString(modelName);
                                     setCurrentModel(m, false);
                                     }
                               if (root.contains("filterToolMessages")) {
@@ -979,37 +977,36 @@ void Agent::loadStatus(const QString& sessionPath) {
                                     }
                               const json& history = root["history"];
                               historyManager->setHistory(history);
-                              if (root.contains("activeEntries")) {
+                              if (root.contains("activeEntries"))
                                     historyManager->setActiveEntries(root["activeEntries"]);
-                                    }
                               }
                         else if (root.is_array()) {
                               historyManager->setHistory(root);
                               }
-                        savedEntries = historyManager->data().size();
+                        savedEntries           = historyManager->data().size();
                         currentSessionFileName = fileToLoad;
                         updateSessionList();
                         updateChatDisplay();
                         chatDisplay->scrollToBottom();
                         return;
-                  }
+                        }
                   catch (const json::parse_error& e) {
                         // Not a valid full JSON object? Try JSON Lines fallback
                         std::istringstream iss(content);
                         std::string line;
-                        json h = json::array();
+                        json h            = json::array();
                         size_t actEntries = 0;
                         while (std::getline(iss, line)) {
-                              if (line.empty()) continue;
+                              if (line.empty())
+                                    continue;
                               try {
                                     json obj = json::parse(line);
                                     if (obj.contains("model")) {
                                           std::string modelName = obj["model"];
                                           setCurrentModel(QString::fromStdString(modelName), false);
                                           }
-                                    if (obj.contains("activeEntries")) {
+                                    if (obj.contains("activeEntries"))
                                           actEntries = obj["activeEntries"];
-                                          }
                                     if (obj.contains("filterToolMessages")) {
                                           model.filterToolMessages = obj["filterToolMessages"];
                                           if (filterToolMessagesAction)
@@ -1020,28 +1017,30 @@ void Agent::loadStatus(const QString& sessionPath) {
                                           if (filterThoughtsAction)
                                                 filterThoughtsAction->setChecked(model.filterThoughts);
                                           }
-                                    if (obj.contains("role") || obj.contains("parts") || obj.contains("content")) {
+                                    if (obj.contains("role") || obj.contains("parts") || obj.contains("content"))
                                           h.push_back(obj);
-                                          }
-                              } catch (...) {}
-                        }
+                                    }
+                              catch (...) {
+                                    }
+                              }
                         historyManager->setHistory(h);
                         historyManager->setActiveEntries(actEntries);
-                        savedEntries = historyManager->data().size();
+                        savedEntries           = historyManager->data().size();
                         currentSessionFileName = fileToLoad;
                         updateSessionList();
                         updateChatDisplay();
                         chatDisplay->scrollToBottom();
                         return;
+                        }
                   }
-            } else {
+            else {
                   Debug("no session file found <{}>", fileToLoad);
+                  }
             }
-      }
 
       // No last session found -> Start new session
       currentSessionFileName = sessionName(true);
-      savedEntries = 0;
+      savedEntries           = 0;
       updateSessionList();
       chatDisplay->addMessage("system", "<i>[System: No previous session found. New session started.]</i><br>");
       historyManager->clear();
@@ -1146,7 +1145,11 @@ std::string Agent::formatToolCall(const std::string& name, const json& args, con
 void Agent::logContent(const json& content, std::string& msg, std::string& thought) {
       try {
             if (!content.contains("parts")) {
-                  // ollama
+                  // Anthropic Extended Thinking: top-level "thinking" field on assistant messages.
+                  if (content.contains("thinking") && content["thinking"].is_string()) {
+                        thought += content["thinking"].get<std::string>();
+                        }
+                  // ollama / openai / anthropic
                   if (content.contains("content")) {
                         json c = content["content"];
                         std::string s;
@@ -1188,9 +1191,11 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                               }
                         if (part.contains("functionResponse")) {
                               if (!model.filterToolMessages) {
-                                    json fr            = part["functionResponse"];
-                                    std::string output = std::format("\n\n<i>[System: Tool Response: {}()]</i>\n\n", std::string(fr["name"]));
-                                    std::string s      = truncateOutput(static_cast<std::string>(fr["response"]["content"]), kChatResultMaxChars);
+                                    json fr = part["functionResponse"];
+                                    std::string output =
+                                        std::format("\n\n<i>[System: Tool Response: {}()]</i>\n\n", std::string(fr["name"]));
+                                    std::string s =
+                                        truncateOutput(static_cast<std::string>(fr["response"]["content"]), kChatResultMaxChars);
                                     msg += std::format("\n\n```\n{}\n```\n\n", s);
                                     }
                               }
@@ -1241,9 +1246,8 @@ void Agent::updateChatDisplay() {
             std::string msg;
             std::string thought;
             logContent(content, msg, thought);
-            if (model.filterThoughts) {
+            if (model.filterThoughts)
                   thought.clear();
-            }
             if (msg.empty() && thought.empty()) {
                   // Debug("chatHistory entry: empty");
                   continue;
@@ -1254,7 +1258,7 @@ void Agent::updateChatDisplay() {
                         lastRole = role;
                   mergedMsg     += msg;
                   mergedThought += thought;
-                                                }
+                                                      }
             else {
 */
             if (!lastRole.empty() && !(mergedMsg.empty() && mergedThought.empty())) {
