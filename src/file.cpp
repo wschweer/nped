@@ -402,8 +402,8 @@ void File::setViewMode(ViewMode m, const Pos&) {
 //---------------------------------------------------------
 
 bool File::readOnly() const {
-      if (editor && editor->getAgent() && editor->getAgent()->isWorking())
-            return true;
+//      if (editor && editor->getAgent() && editor->getAgent()->isWorking())
+//            return true;
       return _readOnly || (_viewMode != ViewMode::File);
       }
 
@@ -914,8 +914,10 @@ bool File::posValid(const Pos& pos) const {
 //--------------------------------------------------------------
 
 void File::patch(Patches& items) {
-      if (readOnly())
+      if (readOnly()) {
+            Critical("read only");
             return;
+            }
       bool nothingToRemove = true;
       for (auto& pi : items) {
             if (pi.toRemove < 0) {

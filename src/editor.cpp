@@ -886,6 +886,10 @@ void Editor::update(QRect r) {
       _editWidget->update(r);
       }
 
+//---------------------------------------------------------
+//   update
+//---------------------------------------------------------
+
 void Editor::update() {
       _editWidget->update();
       }

@@ -431,19 +431,22 @@ QString Agent::modifyFile(const QString& ipath, const QString& content) {
       if (!QFile::exists(ipath))
             return "Error: File does not exist. Use create_file.";
       QString path;
-      if (ipath.startsWith("/"))
+      if (!ipath.startsWith("/"))
             path = _editor->projectRoot() + "/" + ipath;
       else
             path = ipath;
 
       File* f = _editor->findFile(path);
       if (f) {
+            int n = f->plainText().size();
+            if (f->readOnly())
+                  return "Error: File is only readable";
             f->undo()->beginMacro();
-            f->undo()->push(new Patch(f, Pos(0,0), f->plainText().size(), content, Cursor(), Cursor()));
+            f->undo()->push(new Patch(f, {0, 0}, n, content, Cursor(), Cursor()));
             f->undo()->endMacro();
+            _editor->update();
             }
       else {
-
             QFile file(path);
             // QIODevice::Truncate löscht den alten Inhalt der Datei
             if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
