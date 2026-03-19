@@ -91,6 +91,7 @@ struct Model {
       QString apiKey;
       QString api;  // "ollama", "gemini", "anthropic", "openai"
       bool isLocal; // true für Ollama
+      bool filterToolMessages = true;
       bool operator==(const Model& other) const = default;
       };
 
@@ -227,6 +228,7 @@ class Agent : public QWidget
       ~Agent();
 
       ChatDisplay* chatDisplay;
+      QAction* filterToolMessagesAction = nullptr;
       HistoryManager* historyManager;
 
       std::string getManifest() const;

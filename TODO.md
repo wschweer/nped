@@ -1,12 +1,28 @@
 
 ## TODO
 
+### Option Pulldown Menü
+
+Füge rechts neben dem "Build"/"Plan" mode button einen weiteren Button für ein
+Option-Menü ein. Der Button soll drei vertikale punkte oder kurze horizontale
+Striche zeigen.
+
+### Filter Tool Messages
+Füge in das neue Options-Menü einen Toggle Switch ein, der mit einer neuen Variablen
+bool Model::filterToolMessages verbunden ist. Die Variable soll persistent sein
+und mit Agent::saveStatus() gespeichert und mit Agent::loadStatus() geladen werden.
+D.h. sie ist Teil des Chat Log Files.
+
+Wenn filterToolMessages true ist, dann sollen Model Tool Requests sowie die Antwort
+des Agenten an das Model nicht mehr im ChatDisplay angezeigt werden.
+
+
 ### Do not truncate chat history:
 
-Currently, the entire history is always transmitted to the AI model. 
+Currently, the entire history is always transmitted to the AI model.
 To prevent the context from becoming too large, the list is implemented as a "sliding window",
 where old entries are removed after exceeding a limit.
-However, I would like to keep the complete list, save it in the session file, 
+However, I would like to keep the complete list, save it in the session file,
 and only transmit a maximum of `HistoryManager::maxEntries` entries when preparing the AI context.
 
 Procedure:

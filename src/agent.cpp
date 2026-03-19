@@ -154,6 +154,26 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
                   }
             });
 
+      QToolButton* optionButton = new QToolButton(this);
+      optionButton->setText("⋮");
+      optionButton->setMinimumWidth(32);
+//      optionButton->setProperty("class", "actionButton");
+
+      QMenu* optionMenu = new QMenu(optionButton);
+      filterToolMessagesAction = new QAction("Filter Tool Messages", optionMenu);
+      filterToolMessagesAction->setCheckable(true);
+      filterToolMessagesAction->setChecked(model.filterToolMessages);
+      connect(filterToolMessagesAction, &QAction::toggled, [this](bool checked) {
+            model.filterToolMessages = checked;
+            saveStatus();
+            updateChatDisplay();
+            chatDisplay->scrollToBottom();
+      });
+      optionMenu->addAction(filterToolMessagesAction);
+      optionButton->setMenu(optionMenu);
+      optionButton->setPopupMode(QToolButton::InstantPopup);
+      toolBar->addWidget(optionButton);
+
       mainLayout->addWidget(toolBar);
 
       // --- 2. Chat Display ---
@@ -249,6 +269,11 @@ void Agent::setCurrentModel(const QString& s, bool clearChat) {
             if (m.name == s) {
                   pendingModelName.clear();
                   model = m;
+                  if (filterToolMessagesAction) {
+                        filterToolMessagesAction->blockSignals(true);
+                        filterToolMessagesAction->setChecked(model.filterToolMessages);
+                        filterToolMessagesAction->blockSignals(false);
+                  }
                   llm   = llmFactory(this, &model, mcpTools);
                   connect(llm, &LLMClient::incomingChunk, chatDisplay, &ChatDisplay::handleIncomingChunk);
                   currentRetryCount  = 0;
@@ -859,15 +884,16 @@ void Agent::saveStatus() {
                   return;
                   }
             }
-      
+
       std::ios_base::openmode mode = (savedEntries == 0) ? std::ios::out : std::ios::app;
       std::ofstream f(currentSessionFileName.toStdString(), mode);
-      
+
       if (f.is_open()) {
             if (savedEntries == 0) {
                   json header;
                   header["model"] = currentModel().toStdString();
                   header["activeEntries"] = historyManager->getActiveEntriesCount();
+                  header["filterToolMessages"] = model.filterToolMessages;
                   f << header.dump() << "\n";
             }
             const auto& data = historyManager->data();
@@ -875,6 +901,7 @@ void Agent::saveStatus() {
                   if (savedEntries > 0) {
                         json meta;
                         meta["activeEntries"] = historyManager->getActiveEntriesCount();
+                        meta["filterToolMessages"] = model.filterToolMessages;
                         f << meta.dump() << "\n";
                   }
                   for (size_t i = savedEntries; i < data.size(); ++i) {
@@ -911,9 +938,14 @@ void Agent::loadStatus(const QString& sessionPath) {
                         json root = json::parse(content);
                         if (root.is_object() && root.contains("history")) {
                               if (root.contains("model")) {
-                                    std::string model = root["model"];
-                                    QString m         = QString::fromStdString(model);
+                                    std::string modelName = root["model"];
+                                    QString m         = QString::fromStdString(modelName);
                                     setCurrentModel(m, false);
+                                    }
+                              if (root.contains("filterToolMessages")) {
+                                    model.filterToolMessages = root["filterToolMessages"];
+                                    if (filterToolMessagesAction)
+                                          filterToolMessagesAction->setChecked(model.filterToolMessages);
                                     }
                               const json& history = root["history"];
                               historyManager->setHistory(history);
@@ -942,11 +974,16 @@ void Agent::loadStatus(const QString& sessionPath) {
                               try {
                                     json obj = json::parse(line);
                                     if (obj.contains("model")) {
-                                          std::string model = obj["model"];
-                                          setCurrentModel(QString::fromStdString(model), false);
+                                          std::string modelName = obj["model"];
+                                          setCurrentModel(QString::fromStdString(modelName), false);
                                           }
                                     if (obj.contains("activeEntries")) {
                                           actEntries = obj["activeEntries"];
+                                          }
+                                    if (obj.contains("filterToolMessages")) {
+                                          model.filterToolMessages = obj["filterToolMessages"];
+                                          if (filterToolMessagesAction)
+                                                filterToolMessagesAction->setChecked(model.filterToolMessages);
                                           }
                                     if (obj.contains("role") || obj.contains("parts") || obj.contains("content")) {
                                           h.push_back(obj);
@@ -966,7 +1003,7 @@ void Agent::loadStatus(const QString& sessionPath) {
                   Debug("no session file found <{}>", fileToLoad);
             }
       }
-      
+
       // No last session found -> Start new session
       currentSessionFileName = sessionName(true);
       savedEntries = 0;
@@ -1084,19 +1121,23 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                         else
                               s = truncateOutput(c.get<std::string>(), kChatResultMaxChars);
                         if (content.contains("role") && (content["role"] == "function" || content["role"] == "tool")) {
-                              if (content.contains("function")) {
-                                    json fc  = content["function"];
-                                    msg     += formatToolCall(fc["name"], fc["arguments"], s);
+                              if (!model.filterToolMessages) {
+                                    if (content.contains("function")) {
+                                          json fc  = content["function"];
+                                          msg     += formatToolCall(fc["name"], fc["arguments"], s);
+                                          }
                                     }
                               }
                         else
                               msg += s;
                         }
                   if (content.contains("tool_calls")) {
-                        for (const auto& tool : content["tool_calls"]) {
-                              if (tool.contains("function")) {
-                                    json fc  = tool["function"];
-                                    msg     += formatToolCall(fc["name"], fc["arguments"], "");
+                        if (!model.filterToolMessages) {
+                              for (const auto& tool : content["tool_calls"]) {
+                                    if (tool.contains("function")) {
+                                          json fc  = tool["function"];
+                                          msg     += formatToolCall(fc["name"], fc["arguments"], "");
+                                          }
                                     }
                               }
                         }
@@ -1111,14 +1152,18 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                                     msg += part["text"];
                               }
                         if (part.contains("functionResponse")) {
-                              json fr            = part["functionResponse"];
-                              std::string output = std::format("\n\n<i>[System: Tool Response: {}()]</i>\n\n", std::string(fr["name"]));
-                              std::string s      = truncateOutput(static_cast<std::string>(fr["response"]["content"]), kChatResultMaxChars);
-                              msg += std::format("\n\n```\n{}\n```\n\n", s);
+                              if (!model.filterToolMessages) {
+                                    json fr            = part["functionResponse"];
+                                    std::string output = std::format("\n\n<i>[System: Tool Response: {}()]</i>\n\n", std::string(fr["name"]));
+                                    std::string s      = truncateOutput(static_cast<std::string>(fr["response"]["content"]), kChatResultMaxChars);
+                                    msg += std::format("\n\n```\n{}\n```\n\n", s);
+                                    }
                               }
                         if (part.contains("functionCall")) {
-                              json fc  = part["functionCall"];
-                              msg     += formatToolCall(fc["name"], fc["args"]);
+                              if (!model.filterToolMessages) {
+                                    json fc  = part["functionCall"];
+                                    msg     += formatToolCall(fc["name"], fc["args"]);
+                                    }
                               }
                         }
                   }
