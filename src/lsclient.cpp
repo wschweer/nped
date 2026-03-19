@@ -480,8 +480,9 @@ bool LSclient::writeMessage(const std::string& jsonPayload) {
 
 bool LSclient::initializeRequest() {
       callbacks[id] = [this](const json& msg) {
-            if (msg.contains("result") && msg["result"].contains("capabilities"))
-                  ; // scap.read(msg["result"]["capabilities"]);
+            if (msg.contains("result") && msg["result"].contains("capabilities")) {
+                        // scap.read(msg["result"]["capabilities"]);
+                        }
             notification("initialized");
             _initialized = true;
             emit initializedChanged();

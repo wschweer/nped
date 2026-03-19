@@ -744,9 +744,9 @@ QString Agent::sessionName(bool getNext) const {
       SessionInfo info = getSessionInfo();
       QDate today      = QDate::currentDate();
 
-      int nextNumber;
-      if (info.lastNumber == 0 || getNext)
-            nextNumber = info.lastNumber + 1;
+      int nextNumber = info.lastNumber + 1; // default: increment
+      if (!getNext && info.lastNumber != 0)
+            nextNumber = info.lastNumber;    // reuse existing number
 
       // Format: Session-dd-MM-yyyy-n.json
       // 'z' sorgt dafür, dass führende Nullen bei Tag/Monat erhalten bleiben (dd-MM)

@@ -338,7 +338,7 @@ QStringList Lines::toStringList() {
 //   onFileChangedOnDisk
 //---------------------------------------------------------
 
-void File::onFileChangedOnDisk(const QString& path) {
+void File::onFileChangedOnDisk(const QString& /*path*/) {
       Debug("===========");
       // TODO: implement
       }

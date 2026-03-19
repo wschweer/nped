@@ -67,7 +67,7 @@ void Logger::write(MsgType t, const MsgLogContext& c, const std::string& msg) {
             case MsgType::Info:
                   if (!verbose)
                         break;
-
+                  [[fallthrough]];
             case MsgType::Critical:
             case MsgType::Fatal:
             case MsgType::Printf: write(std::cerr, t, c, msg); break;
