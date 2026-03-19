@@ -162,15 +162,17 @@ void AnthropicClient::processJsonItem(const json& item) {
       std::string type = item["type"];
 
       if (type == "content_block_delta") {
+            if (!item.contains("delta"))
+                  return;
             const auto& delta = item["delta"];
             if (delta.contains("type") && delta["type"] == "text_delta") {
-                  std::string text = delta["text"];
+                  std::string text = delta.value("text", "");
                   agent->chatDisplay->handleIncomingChunk("", text);
                   currentContent += text;
                   }
             else if (delta.contains("type") && delta["type"] == "input_json_delta") {
-                  // Append to current tool call arguments string
-                  if (!_currentToolCalls.empty()) {
+                  // Accumulate streamed JSON fragments for the current tool call.
+                  if (!_currentToolCalls.empty() && delta.contains("partial_json")) {
                         auto& currentCall = _currentToolCalls.back();
                         if (!currentCall.contains("arguments_str"))
                               currentCall["arguments_str"] = "";
@@ -180,12 +182,15 @@ void AnthropicClient::processJsonItem(const json& item) {
                   }
             }
       else if (type == "content_block_start") {
+            if (!item.contains("content_block"))
+                  return;
             const auto& block = item["content_block"];
             if (block.contains("type") && block["type"] == "tool_use") {
                   json toolCall;
-                  toolCall["id"]       = block["id"];
+                  toolCall["id"]   = block.value("id", "");
+                  toolCall["type"] = "tool_use";
                   toolCall["function"] = {
-                           {     "name",  block["name"]},
+                           {     "name",  block.value("name", "")},
                            {"arguments", json::object()}
                         };
                   toolCall["arguments_str"] = "";
@@ -196,14 +201,18 @@ void AnthropicClient::processJsonItem(const json& item) {
 
 //---------------------------------------------------------
 //   processTools
+//    receives the already-resolved tool calls (arguments already parsed as JSON
+//    objects) so that this method is independent of the _currentToolCalls member
+//    state, which has already been cleared by dataFinished().
 //---------------------------------------------------------
 
-void AnthropicClient::processTools() {
+void AnthropicClient::processTools(json resolvedToolCalls) {
       try {
-            for (auto& call : _currentToolCalls) {
+            for (auto& call : resolvedToolCalls) {
                   std::string functionName = call["function"]["name"];
 
-                  // Arguments are already parsed into call["function"]["arguments"] by dataFinished()
+                  // Arguments have been parsed from arguments_str by dataFinished()
+                  // and are stored in call["function"]["arguments"] as a JSON object.
                   json args = call["function"]["arguments"];
 
                   std::string result = agent->executeTool(functionName, args);
@@ -235,7 +244,6 @@ void AnthropicClient::processTools() {
             Critical("Unexpected error");
             }
 
-      _currentToolCalls.clear();
       agent->sendMessage2();
       }
 
@@ -248,33 +256,45 @@ void AnthropicClient::dataFinished() {
       responseContent["role"]    = "assistant";
       responseContent["content"] = currentContent;
 
-      // We need to store tool_calls in standard format so that prompt() can convert them later
-      if (!_currentToolCalls.empty()) {
-            json standardToolCalls = json::array();
-            for (auto& call : _currentToolCalls) {
-                  if (call.contains("arguments_str")) {
-                        std::string argsStr = call["arguments_str"];
-                        if (!argsStr.empty())
-                              call["function"]["arguments"] = json::parse(argsStr);
-                        call.erase("arguments_str");
+      // Parse arguments_str → JSON object and build the standard tool_calls array
+      // that prompt() can later convert back to the Anthropic wire format.
+      json resolvedToolCalls = json::array();
+      for (auto& call : _currentToolCalls) {
+            if (call.contains("arguments_str")) {
+                  std::string argsStr = call["arguments_str"].get<std::string>();
+                  try {
+                        call["function"]["arguments"] = argsStr.empty() ? json::object() : json::parse(argsStr);
                         }
-                  standardToolCalls.push_back(call);
+                  catch (const json::parse_error& e) {
+                        Critical("Failed to parse tool arguments: {}", e.what());
+                        call["function"]["arguments"] = json::object();
+                        }
+                  call.erase("arguments_str");
                   }
-            responseContent["tool_calls"] = standardToolCalls;
+            // Ensure "type" field is present for round-trip conversion in prompt()
+            if (!call.contains("type"))
+                  call["type"] = "tool_use";
+            resolvedToolCalls.push_back(call);
             }
 
       currentContent.clear();
+      _currentToolCalls.clear();
 
-      size_t totalTokens = 0; // Anthropic usage could be extracted from "message_stop" item
+      const size_t totalTokens = 0; // Anthropic usage could be extracted from "message_stop" item
 
-      if (_currentToolCalls.empty()) {
+      if (resolvedToolCalls.empty()) {
+            // Plain text response — let the history manager decide whether a summary is needed.
             if (agent->historyManager->addResult(responseContent, totalTokens))
                   agent->sendMessage2();
             else
                   agent->enableInput(true);
             }
       else {
+            // Store the assistant turn (with tool_calls) and immediately execute the tools.
+            // processTools() receives the fully resolved list by value so it is independent
+            // of _currentToolCalls, which has already been cleared above.
+            responseContent["tool_calls"] = resolvedToolCalls;
             agent->historyManager->addRequest(responseContent, totalTokens);
-            processTools();
+            processTools(std::move(resolvedToolCalls));
             }
       }

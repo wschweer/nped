@@ -20,11 +20,11 @@
 class AnthropicClient : public LLMClient
       {
       Q_OBJECT
-      json currentContent;
+      std::string currentContent;
       json _currentToolCalls;
       json tools;
 
-      void processTools();
+      void processTools(json resolvedToolCalls);
 
     public:
       AnthropicClient(Agent* a, Model* m, const std::vector<json>& mcps);
