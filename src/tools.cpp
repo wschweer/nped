@@ -492,11 +492,14 @@ QString Agent::listDirectory(const QString& path) {
       if (list.isEmpty())
             return result + "(Directory is empty)";
 
-      for (const QFileInfo& fileInfo : list)
+      for (const QFileInfo& fileInfo : list) {
+            if (fileInfo.fileName().startsWith("."))
+                  continue;
             if (fileInfo.isDir())
                   result += "[DIR]    " + fileInfo.fileName() + "\n";
             else
                   result += "[FILE]   " + fileInfo.fileName() + " (" + QString::number(fileInfo.size()) + " bytes)\n";
+            }
       return result;
       }
 
