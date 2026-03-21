@@ -25,6 +25,10 @@
 //---------------------------------------------------------
 
 OpenAiClient::OpenAiClient(Agent* a, Model* m, const std::vector<json>& mcps) : LLMClient(a, m) {
+      setTools(mcps);
+      }
+
+void OpenAiClient::setTools(const std::vector<json>& mcps) {
       try {
             tools = json::array();
             for (auto& tool : mcps) {
@@ -47,7 +51,7 @@ OpenAiClient::OpenAiClient(Agent* a, Model* m, const std::vector<json>& mcps) : 
       catch (...) {
             Critical("Unexpected error");
             }
-      };
+      }
 
 //---------------------------------------------------------
 //   prompt

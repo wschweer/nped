@@ -38,6 +38,13 @@
 #include <QStyle>
 #include <QDebug>
 #include <QBuffer>
+#include <QPixmap>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QMimeData>
+#include <QInputDialog>
+#include <QMessageBox>
+#include <QRegularExpression>
 #include <iostream>
 #include <fstream>
 
@@ -54,26 +61,23 @@
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
-static std::string manifest = "You are an experienced C++ developer. "
-                              "Your task is to analyze and write code in the project and to fix build errors.\n\n"
-                              "Use modern c++. Prefer object oriented design and use modern design patterns.\n"
-                              "ERROR ANALYSIS RULES:\n"
-                              "1. If a build fails, analyze the output of 'run_build_command'.\n"
-                              "2. Look for lines like 'file.cpp:42:10: error: ...'.\n"
-                              "TOOL FORMAT:\n"
-                              "Answer exclusively in JSON format when you call a tool:\n"
-                              "{\n"
-                              "  \"tool\": \"replace_in_file\",\n"
-                              "  \"args\": {\n"
-                              "    \"path\": \"src/main.cpp\",\n"
-                              "    \"search\": \"old code\",\n"
-                              "    \"replace\": \"new code\"\n"
-                              "  }\n"
-                              "}\n\n"
-                              "PROJECT STRUCTURE:\n"
-                              "Standard Qt6 layout. The build directory is './build'. Use CMake with ninja.\n"
-                              "Do not invent your own tasks and never act on your own authority! "
-                              "Use the run_build_command tool to compile the project and check if errors occur. ";
+// Default manifests
+static const std::string manifestBuildDefault =
+    "You are an experienced C++ developer. "
+    "Your task is to analyze and write code in the project and to fix build errors.\n\n"
+    "Use modern c++. Prefer object oriented design and use modern design patterns.\n"
+    "Answer exclusively in JSON format when you call a tool:\n"
+    "PROJECT STRUCTURE:\n"
+    "Standard Qt6 layout. The build directory is './build'. Use CMake with ninja.\n"
+    "Use the run_build_command tool to compile the project and check if errors occur. ";
+
+static const std::string manifestPlanDefault =
+    "You are an experienced C++ developer acting as a system architect. "
+    "Your task is to analyze the project, read code, and create an implementation plan.\n\n"
+    "You are currently in PLAN MODE. This means you have read-only access. "
+    "You can search and read files, but you cannot write files or execute build commands.\n"
+    "Answer exclusively in JSON format when you call a tool.\n"
+    "Focus on deeply understanding the problem and propose a detailed step-by-step solution. ";
 
 //---------------------------------------------------------
 //   Agent (Constructor)
@@ -107,7 +111,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       toolBar->addSeparator();
 
       modelMenu = new QComboBox(this);
-      modelMenu->setMinimumWidth(250);
+      modelMenu->setMinimumWidth(210);
       toolBar->addWidget(modelMenu);
       connect(this, &Agent::modelsChanged, [this] {
             bool blocked = modelMenu->blockSignals(true);
@@ -139,6 +143,12 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       toolBar->addWidget(deleteSessionButton);
       connect(deleteSessionButton, &QToolButton::clicked, this, &Agent::deleteCurrentSession);
 
+      renameSessionButton = new QToolButton(this);
+      renameSessionButton->setText("✎");
+      renameSessionButton->setToolTip("Rename Session");
+      toolBar->addWidget(renameSessionButton);
+      connect(renameSessionButton, &QToolButton::clicked, this, &Agent::renameCurrentSession);
+
       QWidget* spacer = new QWidget();
       spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
       toolBar->addWidget(spacer);
@@ -163,6 +173,10 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             modeButton->setProperty("class", checked ? "errorButton" : "actionButton");
             modeButton->style()->unpolish(modeButton);
             modeButton->style()->polish(modeButton);
+
+            mcpTools = getMCPTools();
+            if (llm)
+                  llm->setTools(mcpTools);
 
             if (chatDisplay) {
                   chatDisplay->addMessage("system", format("<br><i>[System: Mode changed to <b>{}</b>]</i>",
@@ -210,12 +224,12 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       connect(screenshotHelper, &ScreenshotHelper::screenshotFailed, this, &Agent::onScreenshotFailed);
 
       connect(screenshotButton, &QToolButton::clicked, [this](bool) {
-            // If a screenshot is already attached, discard it
-            if (!_pendingScreenshotBase64.isEmpty()) {
-                  _pendingScreenshotBase64.clear();
+            // If images are already attached, discard all of them
+            if (!_pendingImages.isEmpty()) {
+                  _pendingImages.clear();
                   screenshotButton->setChecked(false);
                   screenshotButton->setToolTip("Take Screenshot and attach to next prompt");
-                  chatDisplay->addMessage("system", "<i>[Screenshot detached]</i><br>");
+                  chatDisplay->addMessage("system", "<i>[All attached images discarded]</i><br>");
                   updateDataPanel();
                   return;
                   }
@@ -233,13 +247,15 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       // --- 3. Input Row: [DataPanel | UserInput] ---
 
       // 3b. Prompt input field (zuerst anlegen, damit die Höhe bekannt ist)
-      userInput = new QPlainTextEdit(this);
+      userInput = new DropAwarePlainTextEdit(this);
+      userInput->setAcceptDrops(true);
       userInput->setCursorWidth(8);
       userInput->setPlaceholderText("enter message to LLM...");
       QFontMetrics fm(userInput->font());
       const int inputHeight = (fm.lineSpacing() * 4) + 10;
       userInput->setFixedHeight(inputHeight);
       userInput->installEventFilter(this);
+      connect(userInput, &DropAwarePlainTextEdit::imageDropped, this, &Agent::onScreenshotReady);
 
       // 3a. Schmales vertikales Icon-Panel links neben dem Prompt-Eingabefeld
       dataPanel = new QWidget(this);
@@ -250,12 +266,9 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       dataPanelLayout->setSpacing(4);
       dataPanelLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
 
-      screenshotIconLabel = new QLabel("🖼", dataPanel);
-      screenshotIconLabel->setAlignment(Qt::AlignCenter);
-      screenshotIconLabel->setToolTip("Screenshot attached – will be sent with the next prompt");
-      screenshotIconLabel->setVisible(false);
-      dataPanelLayout->addWidget(screenshotIconLabel);
-      dataPanelLayout->addStretch(1);
+      // Save layout pointer so updateDataPanel() can add/remove thumbnail labels dynamically
+      _dataPanelLayout = dataPanelLayout;
+      _dataPanelLayout->addStretch(1);
 
       // 3c. Beide Widgets in einer horizontalen Zeile kombinieren
       QWidget* inputRow = new QWidget(this);
@@ -365,16 +378,33 @@ void Agent::setCurrentModel(const QString& s, bool clearChat) {
 //   getManifest
 //---------------------------------------------------------
 
-std::string Agent::getManifest() const {
-      QString fullPath = _editor->projectRoot() + "/agents.md";
-      QFile file(fullPath);
-      if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QTextStream in(&file);
-            std::string content = in.readAll().toStdString();
-            return manifest + content;
+std::string Agent::getManifest() {
+      if (!_manifestsLoaded) {
+            _manifestsLoaded = true;
+
+            // Load Build Manifest
+            QString buildPath = _editor->projectRoot() + "/agents-build.md";
+            QFile buildFile(buildPath);
+            if (buildFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                  QTextStream in(&buildFile);
+                  _manifestBuild = in.readAll().toStdString();
+            } else {
+                  _manifestBuild = manifestBuildDefault;
             }
-      return manifest;
+
+            // Load Plan Manifest
+            QString planPath = _editor->projectRoot() + "/agents-plan.md";
+            QFile planFile(planPath);
+            if (planFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                  QTextStream in(&planFile);
+                  _manifestPlan = in.readAll().toStdString();
+            } else {
+                  _manifestPlan = manifestPlanDefault;
+            }
       }
+
+      return isExecuteMode() ? _manifestBuild : _manifestPlan;
+}
 
 //---------------------------------------------------------
 //   fetchModels
@@ -460,10 +490,13 @@ void Agent::sendMessage(QString qtext) {
       else // ollama / anthropic / openai
             msg["content"] = text;
 
-      // Attach pending screenshot (if any) as base64-encoded PNG
-      if (!_pendingScreenshotBase64.isEmpty()) {
-            msg["image"] = _pendingScreenshotBase64.toStdString();
-            _pendingScreenshotBase64.clear();
+      // Attach all pending images (if any) as a base64-encoded JPEG array
+      if (!_pendingImages.isEmpty()) {
+            json imagesArray = json::array();
+            for (const QString& b64 : _pendingImages)
+                  imagesArray.push_back(b64.toStdString());
+            msg["images"] = imagesArray;
+            _pendingImages.clear();
             screenshotButton->setChecked(false);
             screenshotButton->setToolTip("Take Screenshot and attach to next prompt");
             updateDataPanel();
@@ -887,6 +920,60 @@ void Agent::deleteCurrentSession() {
       }
 
 //---------------------------------------------------------
+//   renameCurrentSession
+//---------------------------------------------------------
+
+void Agent::renameCurrentSession() {
+      if (currentSessionFileName.isEmpty())
+            return;
+
+      QFileInfo currentInfo(currentSessionFileName);
+      QString   currentBase = currentInfo.completeBaseName(); // ohne ".json"
+
+      bool    ok      = false;
+      QString newName = QInputDialog::getText(
+            this,
+            tr("Rename Session"),
+            tr("New session name:"),
+            QLineEdit::Normal,
+            currentBase,
+            &ok);
+
+      if (!ok || newName.trimmed().isEmpty())
+            return;
+
+      newName = newName.trimmed();
+
+      // Ungültige Zeichen für Dateinamen entfernen
+      static const QRegularExpression invalidChars(R"([\\/:*?"<>|])");
+      newName.replace(invalidChars, "_");
+
+      QString dir        = currentInfo.absolutePath();
+      QString suffix     = currentInfo.suffix(); // "json"
+      QString targetName = newName;
+
+      // Prüfen ob Zieldatei bereits existiert → automatisch nummerieren
+      QString targetPath = dir + "/" + targetName + "." + suffix;
+      if (targetPath != currentSessionFileName && QFile::exists(targetPath)) {
+            int counter = 2;
+            do {
+                  targetName = newName + "-" + QString::number(counter++);
+                  targetPath = dir + "/" + targetName + "." + suffix;
+                  } while (QFile::exists(targetPath));
+            }
+
+      // Umbenennen
+      if (!QFile::rename(currentSessionFileName, targetPath)) {
+            QMessageBox::warning(this, tr("Rename failed"),
+                                 tr("Could not rename session file."));
+            return;
+            }
+
+      currentSessionFileName = targetPath;
+      updateSessionList();
+      }
+
+//---------------------------------------------------------
 //   updateSessionList
 //---------------------------------------------------------
 
@@ -1141,15 +1228,19 @@ void Agent::updateSpinner() {
 //---------------------------------------------------------
 
 bool Agent::eventFilter(QObject* obj, QEvent* event) {
-      if (obj == userInput && event->type() == QEvent::KeyPress) {
-            QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
-            if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
-                  if (keyEvent->modifiers() & Qt::ShiftModifier)
-                        return false;
-                  sendMessage(userInput->toPlainText());
-                  userInput->clear();
-                  return true;
+      if (obj == userInput || obj == userInput->viewport()) {
+            // --- Key handling ---
+            if (event->type() == QEvent::KeyPress) {
+                  QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+                  if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
+                        if (keyEvent->modifiers() & Qt::ShiftModifier)
+                              return false;
+                        sendMessage(userInput->toPlainText());
+                        userInput->clear();
+                        return true;
+                        }
                   }
+
             }
       return QWidget::eventFilter(obj, event);
       }
@@ -1329,24 +1420,24 @@ void Agent::enableInput(bool flag) {
 //---------------------------------------------------------
 
 void Agent::onScreenshotReady(const QImage& image) {
-      // Encode image as PNG into a QByteArray, then base64
-      QByteArray pngData;
-      QBuffer buf(&pngData);
+      // Encode image as JPEG into a QByteArray, then base64
+      QByteArray jpegData;
+      QBuffer buf(&jpegData);
       buf.open(QIODevice::WriteOnly);
       image.save(&buf, "JPEG", 70); // quality 70 – good balance between size and fidelity
 
-      _pendingScreenshotBase64 = pngData.toBase64();
+      _pendingImages.append(jpegData.toBase64());
 
+      const int count = _pendingImages.size();
       screenshotButton->setChecked(true);
       screenshotButton->setToolTip(
-          QString("Screenshot attached (%1×%2). Click to discard.")
-              .arg(image.width())
-              .arg(image.height()));
+          QString("%1 image(s) attached. Click 📷 to discard all.").arg(count));
 
       chatDisplay->addMessage(
           "system",
-          QString("<i>[Screenshot captured (%1×%2 px) – will be sent with next prompt. "
-                  "Click 📷 to discard.]</i><br>")
+          QString("<i>[Image #%1 attached (%2×%3 px) – will be sent with next prompt. "
+                  "Click 📷 to discard all.]</i><br>")
+              .arg(count)
               .arg(image.width())
               .arg(image.height())
               .toStdString());
@@ -1369,11 +1460,49 @@ void Agent::onScreenshotFailed(const QString& reason) {
 
 //---------------------------------------------------------
 //   updateDataPanel
-//    Refreshes icon visibility in the narrow left panel
-//    next to the prompt input. Shows the picture icon
-//    whenever a screenshot is attached to the next prompt.
+//    Rebuilds thumbnail labels in the narrow left panel next
+//    to the prompt input. Creates one 24×24 thumbnail for
+//    every image currently pending in _pendingImages.
+//    Old labels are removed from the layout and deleted.
 //---------------------------------------------------------
 
 void Agent::updateDataPanel() {
-      screenshotIconLabel->setVisible(!_pendingScreenshotBase64.isEmpty());
+      // Remove and delete all existing thumbnail labels
+      for (QLabel* lbl : _imageIconLabels) {
+            _dataPanelLayout->removeWidget(lbl);
+            delete lbl;
+            }
+      _imageIconLabels.clear();
+
+      // Remove the trailing stretch so we can re-add it after the new labels
+      // Qt stores the stretch item at the last position; removeItem(int) works by index.
+      // The simplest approach: just remove the last item if it is a spacer.
+      int itemCount = _dataPanelLayout->count();
+      if (itemCount > 0) {
+            QLayoutItem* last = _dataPanelLayout->itemAt(itemCount - 1);
+            if (last && last->spacerItem()) {
+                  _dataPanelLayout->removeItem(last);
+                  delete last;
+                  }
+            }
+
+      // Create one thumbnail label per pending image
+      for (int i = 0; i < _pendingImages.size(); ++i) {
+            const QByteArray raw = QByteArray::fromBase64(_pendingImages[i].toUtf8());
+            QImage img;
+            img.loadFromData(raw, "JPEG");
+
+            QLabel* lbl = new QLabel(dataPanel);
+            lbl->setAlignment(Qt::AlignCenter);
+            if (!img.isNull())
+                  lbl->setPixmap(QPixmap::fromImage(img).scaled(24, 24, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+            else
+                  lbl->setText("🖼");
+            lbl->setToolTip(QString("Image #%1 – will be sent with next prompt").arg(i + 1));
+            lbl->setVisible(true);
+            _dataPanelLayout->addWidget(lbl);
+            _imageIconLabels.append(lbl);
+            }
+
+      _dataPanelLayout->addStretch(1);
       }

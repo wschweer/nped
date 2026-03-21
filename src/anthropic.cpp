@@ -25,6 +25,10 @@
 //---------------------------------------------------------
 
 AnthropicClient::AnthropicClient(Agent* a, Model* m, const std::vector<json>& mcps) : LLMClient(a, m) {
+      setTools(mcps);
+      }
+
+void AnthropicClient::setTools(const std::vector<json>& mcps) {
       try {
             tools = json::array();
             for (auto& tool : mcps) {
@@ -97,7 +101,47 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
 
       anthropicRequest["system"] = agent->getManifest();
 
-      for (const auto& item : agent->historyManager->getActiveEntries()) {
+      // ── Strategy: Strip thinking blocks from all but the very last assistant turn.
+      // Anthropic only requires the thinking block (with its signature) from the
+      // immediately preceding assistant message.  Keeping older thinking blocks
+      // wastes thousands of tokens per turn without any benefit.
+      const json activeHistory = agent->historyManager->getActiveEntries();
+      size_t lastThinkingAssistantIdx = SIZE_MAX;
+      for (size_t i = 0; i < activeHistory.size(); ++i) {
+            const auto& h = activeHistory[i];
+            if (h.value("role", "") == "assistant" && h.contains("thinking"))
+                  lastThinkingAssistantIdx = i;
+            }
+
+      // We will build anthropicMessages by ensuring consecutive messages of the same role are merged.
+      auto addMessage = [&anthropicMessages](const json& newMsg) {
+            if (!anthropicMessages.empty() && anthropicMessages.back()["role"] == newMsg["role"]) {
+                  // Merge content
+                  auto& lastMsg = anthropicMessages.back();
+                  
+                  // Ensure both contents are arrays to merge them safely
+                  json lastContent = lastMsg.contains("content") ? lastMsg["content"] : json::array();
+                  if (!lastContent.is_array()) {
+                        lastContent = json::array({ {{"type", "text"}, {"text", lastContent}} });
+                  }
+                  
+                  json newContent = newMsg.contains("content") ? newMsg["content"] : json::array();
+                  if (!newContent.is_array()) {
+                        newContent = json::array({ {{"type", "text"}, {"text", newContent}} });
+                  }
+                  
+                  for (const auto& item : newContent) {
+                        lastContent.push_back(item);
+                  }
+                  lastMsg["content"] = lastContent;
+            } else {
+                  anthropicMessages.push_back(newMsg);
+            }
+      };
+
+      size_t historyIdx = 0;
+      for (const auto& item : activeHistory) {
+            const size_t currentIdx = historyIdx++;
             std::string role = item.value("role", "");
 
             if (role == "system") {
@@ -114,7 +158,7 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                   toolResult["content"]     = item.value("content", "");
                   contentArray.push_back(toolResult);
                   toolMsg["content"] = contentArray;
-                  anthropicMessages.push_back(toolMsg);
+                  addMessage(toolMsg);
                   }
             else if (role == "assistant") {
                   json contentArray = json::array();
@@ -123,7 +167,12 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                   // The API requires the full thinking object including its "signature"
                   // field to be sent back verbatim.  We store it as a JSON object so
                   // nothing is lost between turns.
-                  if (item.contains("thinking")) {
+                  //
+                  // Context-reduction strategy: only round-trip the thinking block for
+                  // the very last assistant turn that contains one.  All earlier thinking
+                  // blocks are stripped – they can consume 5 000–20 000 tokens each and
+                  // the model neither needs nor uses them once the turn has passed.
+                  if (item.contains("thinking") && currentIdx == lastThinkingAssistantIdx) {
                         const auto& th = item["thinking"];
                         if (th.is_object()) {
                               // Stored as full block {type, thinking, signature} – pass through.
@@ -175,10 +224,10 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                         json converted;
                         converted["role"]    = "assistant";
                         converted["content"] = contentArray;
-                        anthropicMessages.push_back(converted);
+                        addMessage(converted);
                         }
                   else {
-                        anthropicMessages.push_back(item);
+                        addMessage(item);
                         }
                   }
             else {
@@ -207,14 +256,8 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                         // Build a content block array: image block first, then text
                         json contentArray = json::array();
                         contentArray.push_back({
-                                 {"type", "image"},
-                                 {
-                                  "source", {
-                                           {      "type",  "base64"},
-                                           {"media_type", "image/jpeg"},
-                                           {      "data",          b64}
-                                        }
-                                 }
+                                 {  "type",                                                           "image"},
+                                 {"source", {{"type", "base64"}, {"media_type", "image/jpeg"}, {"data", b64}}}
                               });
 
                         // Extract existing text content (may be string or array)
@@ -228,11 +271,14 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                                                 textContent += p.get<std::string>();
                                     }
                               }
-                        contentArray.push_back({{"type", "text"}, {"text", textContent}});
+                        contentArray.push_back({
+                                 {"type",      "text"},
+                                 {"text", textContent}
+                              });
                         cleaned["content"] = contentArray;
                         }
 
-                  anthropicMessages.push_back(cleaned);
+                  addMessage(cleaned);
                   }
             }
 
@@ -345,6 +391,12 @@ void AnthropicClient::processJsonItem(const json& item) {
 //---------------------------------------------------------
 
 void AnthropicClient::processTools(json resolvedToolCalls) {
+      // Context-reduction strategy: cap individual tool results so that a single
+      // large file-read or search result cannot flood the entire context window.
+      // 12 000 chars ≈ 3 000 tokens – generous enough for most outputs while still
+      // leaving room for conversation and thinking budgets.
+      static constexpr size_t maxToolResultChars = 12000;
+
       try {
             for (auto& call : resolvedToolCalls) {
                   std::string functionName = call["function"]["name"];
@@ -354,6 +406,12 @@ void AnthropicClient::processTools(json resolvedToolCalls) {
                   json args = call["function"]["arguments"];
 
                   std::string result = agent->executeTool(functionName, args);
+
+                  // Truncate oversized tool results before they enter the history.
+                  if (result.size() > maxToolResultChars) {
+                        result.resize(maxToolResultChars);
+                        result += "\n...[output truncated to " + std::to_string(maxToolResultChars) + " chars]";
+                        }
 
                   json msg;
                   msg["role"]    = "tool";
@@ -369,7 +427,12 @@ void AnthropicClient::processTools(json resolvedToolCalls) {
                   agent->logContent(msg, text, thinking);
                   agent->chatDisplay->handleIncomingChunk(thinking, text);
 
-                  agent->historyManager->addRequest(msg, 0);
+                  // Context-reduction strategy: count actual tool result tokens so
+                  // the history manager's budget is accurate and trim() fires correctly.
+                  // Previously every tool result was stored with 0 tokens, hiding their
+                  // true footprint from the rolling-window and summary logic.
+                  const size_t toolTokens = (result.size() + functionName.size()) / 4;
+                  agent->historyManager->addRequest(msg, toolTokens);
                   }
             }
       catch (const json::parse_error& e) {
@@ -428,22 +491,24 @@ void AnthropicClient::dataFinished() {
 
       if (resolvedToolCalls.empty()) {
             // Plain text response — let the history manager decide whether a summary is needed.
+#if 0  // does not work well with claude
             if (agent->historyManager->addResult(responseContent, totalTokens)) {
                   // request summary
                   std::string text = "Please provide a concise technical summary of our conversation so far. "
-                               "Focus specifically on the results obtained from the tool calls and the final "
-                               "conclusions reached. Discard the raw, voluminous data output from the tools, "
-                               "but retain the key facts, parameters used, and the current state of the task. "
-                               "This summary will serve as the new starting point for our context, "
-                               "so ensure no critical logical step is lost.";
+                                     "Focus specifically on the results obtained from the tool calls and the final "
+                                     "conclusions reached. Discard the raw, voluminous data output from the tools, "
+                                     "but retain the key facts, parameters used, and the current state of the task. "
+                                     "This summary will serve as the new starting point for our context, "
+                                     "so ensure no critical logical step is lost.";
 
                   json msg;
-                  msg["role"] = "user";
+                  msg["role"]    = "user";
                   msg["content"] = text;
                   agent->historyManager->addRequest(msg, text.length() / 4);
                   agent->sendMessage2();
                   }
             else
+#endif
                   agent->enableInput(true);
             }
       else {

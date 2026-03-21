@@ -72,24 +72,26 @@ std::vector<json> Agent::getMCPTools() const {
                                 .add_parameter("path", "string", "The absolute or relative path to the file.")
                                 .build());
 
-            tools.push_back(MCPToolBuilder("create_file", "Creates a new file at the specified path with the provided content.")
-                                .add_parameter("path", "string", "The path where the file should be created.")
-                                .add_parameter("content", "string", "The initial content of the file.")
-                                .build());
+            if (isExecuteMode()) {
+                  tools.push_back(MCPToolBuilder("create_file", "Creates a new file at the specified path with the provided content.")
+                                      .add_parameter("path", "string", "The path where the file should be created.")
+                                      .add_parameter("content", "string", "The initial content of the file.")
+                                      .build());
 
-            tools.push_back(MCPToolBuilder("modify_file", "Completely overwrites an existing file with new content.")
-                                .add_parameter("path", "string", "The path to the file to be modified.")
-                                .add_parameter("content", "string", "The new content for the file.")
-                                .build());
+                  tools.push_back(MCPToolBuilder("modify_file", "Completely overwrites an existing file with new content.")
+                                      .add_parameter("path", "string", "The path to the file to be modified.")
+                                      .add_parameter("content", "string", "The new content for the file.")
+                                      .build());
 
-            tools.push_back(
-                MCPToolBuilder(
-                    "replace_in_file",
-                    "Replaces a specific text block with new content. Use this for targeted edits to avoid overwriting the whole file.")
-                    .add_parameter("path", "string", "The path to the file.")
-                    .add_parameter("search", "string", "The exact text string to be replaced.")
-                    .add_parameter("replace", "string", "The new text to insert.")
-                    .build());
+                  tools.push_back(
+                      MCPToolBuilder(
+                          "replace_in_file",
+                          "Replaces a specific text block with new content. Use this for targeted edits to avoid overwriting the whole file.")
+                          .add_parameter("path", "string", "The path to the file.")
+                          .add_parameter("search", "string", "The exact text string to be replaced.")
+                          .add_parameter("replace", "string", "The new text to insert.")
+                          .build());
+            }
 
             tools.push_back(MCPToolBuilder("read_file_lines", "Reads a specific range of lines from a file (useful for large files).")
                                 .add_parameter("path", "string", "The path to the file.")
@@ -137,9 +139,11 @@ std::vector<json> Agent::getMCPTools() const {
                                 .add_parameter("limit", "integer", "Number of commits to retrieve (default: 5).", false)
                                 .build());
 
-            tools.push_back(MCPToolBuilder("create_git_commit", "Stages all current changes (git add .) and creates a new commit.")
-                                .add_parameter("message", "string", "A clear and concise commit message.")
-                                .build());
+            if (isExecuteMode()) {
+                  tools.push_back(MCPToolBuilder("create_git_commit", "Stages all current changes (git add .) and creates a new commit.")
+                                      .add_parameter("message", "string", "A clear and concise commit message.")
+                                      .build());
+            }
 
             // 5. User Interaction
             tools.push_back(

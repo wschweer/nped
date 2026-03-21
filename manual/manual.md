@@ -14,7 +14,7 @@ Hier ist eine Übersicht der zentralen Funktionen und Architekturmerkmale des Pr
   * Standard-Editing: Undo/Redo-Stack (undo.cpp), Suche & Ersetzen mit Regulären Ausdrücken (search.cpp), Code Folding, sowie zeilen- und spaltenweises Auswählen (Pick/Put).
   * Syntax-Highlighting & Formatting: Automatisiertes Formatieren und Pretty-Printing des Codes (pretty.cpp).
 
-#### Language Server Protocol (LSP) Integration
+### Language Server Protocol (LSP) Integration
 
 Über den eingebauten LSclient kann der Editor mit Sprachservern kommunizieren (z.B. clangd für C/C++). Daraus resultieren fortgeschrittene IDE-Funktionen:
 
@@ -23,7 +23,7 @@ Hier ist eine Übersicht der zentralen Funktionen und Architekturmerkmale des Pr
   * Hover-Informationen: Anzeigen von Typen- oder Dokumentationshinweisen beim Verweilen mit dem Cursor.
   * Refactoring: Kontextweites Umbenennen von Symbolen (Rename).
 
-#### Integrierter KI-Agent
+### Integrierter KI-Agent
 
 Das wohl herausstechendste Merkmal ist die enge Integration eines KI-Agenten, der aktiv in die Entwicklung eingreifen kann:
 
@@ -56,19 +56,19 @@ Art "Mini-IDE für die Kommandozeile, aber mit GUI" konzipiert.
 
 Hier sind die wesentlichen Aspekte des Bedienkonzepts:
 
-### 1. Tastaturzentriert ("Blindes Editieren")
+#### Tastaturzentriert ("Blindes Editieren")
 * **Kein Mauszwang:** Nahezu alle Funktionen werden über Tastaturkürzel aufgerufen. Du sollst deine Hände nicht von der Tastatur nehmen müssen.
 * **Zehnfingersystem empfohlen:** Das Konzept ist nicht optimal für das \"Zwei-Finger-Suchsystem\", da die Befehle blind und schnell ausgeführt werden sollen.
 * **Keine überladenen Menüs:** Die verfügbaren Befehle sind im Programm nicht prominent als Schaltflächen sichtbar. Das Erlernen der Shortcuts über eine Referenzkarte oder das Manual ist notwendig.
 
-### 2. Das Befehlssystem (Command Entry)
+#### Das Befehlssystem (Command Entry)
 Funktionen, die Parameter benötigen (wie das Öffnen einer Datei oder Suchen/Ersetzen), folgen einem speziellen Workflow:
 
 1. **`<Escape>`** drücken: Dadurch öffnet sich am unteren Bildschirmrand (in der Statuszeile) ein Eingabefeld.
 2. **Text eingeben:** Du tippst das Argument ein (z. B. den Suchbegriff oder den Dateinamen).
 3. **Kommando-Taste drücken:** Anstatt Enter zu drücken, beendest du die Eingabe mit dem Shortcut der gewünschten Funktion. Wenn du z. B. nach dem eingegebenen Text suchen willst, drückst du `<F7>`.
 
-### 3. Cursor-Steuerung (WordStar/Turbo-Pascal-Stil)
+#### Cursor-Steuerung (WordStar/Turbo-Pascal-Stil)
 Die Cursor-Bewegungen orientieren sich an einem klassischen Block-Konzept um die Tasten `S, E, D, X`
 (der "Cursor-Block"), wobei `Ctrl` als Modifikator und `Ctrl+Q` als Verstärker (Prefix) genutzt wird.
 Dieses Layout ist stark an Editoren wie *WordStar* oder dem alten *Turbo Pascal / Borland* Editor angelehnt.
@@ -92,7 +92,7 @@ Dieses Layout ist stark an Editoren wie *WordStar* oder dem alten *Turbo Pascal 
   * `Ctrl+Q, Ctrl+R`: Textanfang
   * `Ctrl+Q, Ctrl+C`: Textende
 
-### 4. Code-spezifische Formatierungsregeln (Auto-Clean)
+#### Code-spezifische Formatierungsregeln (Auto-Clean)
 Der Editor erzwingt bestimmte Formatierungen automatisch, um sauberen Code zu gewährleisten:
 
 * Leerzeichen (Trailing Spaces) am Ende einer Zeile werden automatisch entfernt.
@@ -100,7 +100,7 @@ Der Editor erzwingt bestimmte Formatierungen automatisch, um sauberen Code zu ge
 * Die letzte Zeile wird **immer** mit einem Zeilenumbruch (`\\n`) abgeschlossen.
 * Es können keine komplett leeren Dateien gespeichert werden; sie werden beim Sichern ignoriert.
 
-### 5. IDE-Features über Shortcuts
+#### IDE-Features über Shortcuts
 Da nped als Mini-IDE fungiert, sind LSP-Funktionen ebenfalls auf Tasten gelegt (oft im Zusammenspiel mit
 dem Command Entry).
 Zum Beispiel das Formatieren der aktuellen Datei geschieht über die Kombination `Ctrl+O, Ctrl+F`.
@@ -327,3 +327,6 @@ dann:
 
       sudo systemctl stop apport.service
       sudo systemctl disable apport.service
+
+## Examples
+[Examples](manual/examples.md)

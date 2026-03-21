@@ -25,6 +25,10 @@
 //---------------------------------------------------------
 
 OllamaClient::OllamaClient(Agent* a, Model* m, const std::vector<json>& mcps) : LLMClient(a, m) {
+      setTools(mcps);
+      }
+
+void OllamaClient::setTools(const std::vector<json>& mcps) {
       try {
             tools = json::array();
             for (auto& tool : mcps) {
@@ -47,7 +51,7 @@ OllamaClient::OllamaClient(Agent* a, Model* m, const std::vector<json>& mcps) : 
       catch (...) {
             Critical("Unexpected error");
             }
-      };
+      }
 
 //---------------------------------------------------------
 //   prompt

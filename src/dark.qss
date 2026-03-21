@@ -43,12 +43,12 @@ QToolBar {
 QToolButton {
     border-radius: 4px;
     border: 1px solid transparent;
-    padding: 4px;
+    padding: 0px;
     min-width: 32px;
     min-height: 32px;
     background-color: #000000ff;
     color: #eee;
-    qproperty-iconSize: 32px
+    qproperty-iconSize: 32px;
 }
 
 QToolButton:hover {

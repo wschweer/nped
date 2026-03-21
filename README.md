@@ -10,3 +10,5 @@ NPed (Program Editor) is a modern C++23 and Qt6-based text editor and lightweigh
 - [Overview](manual/overview.md)
 - [Current Status](manual/status.md)
 - [Build](manual/build.md)
+- [Manual](manual/manual.md)
+- [Usage Examples](manual/examples.md)

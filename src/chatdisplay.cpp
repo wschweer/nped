@@ -69,8 +69,8 @@ QString ChatDisplay::getChatCss() const {
             box-sizing: border-box;
             word-wrap: break-word;
             }
-        .ai      { background: #f6f8fa; border-left: 4px solid #0969da; align-self: flex-start; width: 96%; }
-        .user    { background: #e6f0ff; border-right: 4px solid #555; align-self: flex-end; }
+        .ai      { background: #f6f8fa; border-left: 4px solid #0969da; align-self: flex-start; width: 100%; }
+        .user    { background: #e6f0ff; border-right: 4px solid #555; align-self: flex-end; width: 96%;}
         /* Tabellen Styling */
         table { border-collapse: collapse; width: 100%; margin: 10px 0; }
         th, td { border: 1px solid #d0d7de; padding: 8px; text-align: left; }
@@ -124,8 +124,8 @@ QString ChatDisplay::getChatDarkCss() const {
             box-sizing: border-box;
             word-wrap: break-word;
             }
-        .ai      { background: #1e1e1e; border-left: 4px solid #0078d4; align-self: flex-start; width: 96%; }
-        .user    { background: #2c2c2c; border-right: 4px solid #555; align-self: flex-end; }
+        .ai      { background: #1e1e1e; border-left: 4px solid #0078d4; align-self: flex-start; width: 100%; }
+        .user    { background: #2c2c2c; border-right: 4px solid #555; align-self: flex-end; width: 96%;}
         /* Tabellen Styling */
         table { border-collapse: collapse; width: 100%; margin: 10px 0; }
         th, td { border: 1px solid #444; padding: 8px; text-align: left; }

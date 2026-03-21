@@ -12,11 +12,19 @@
 #pragma once
 
 #include <QWidget>
+#include <QDebug>
 #include <QList>
+#include <QPlainTextEdit>
+#include <QDragEnterEvent>
+#include <QDragMoveEvent>
+#include <QDropEvent>
+#include <QMimeData>
+#include <QUrl>
 #include <QDateTime>
 #include <QImage>
 #include <map>
 #include <QQuickWidget>
+#include <QVBoxLayout>
 
 #include "types.h"
 #include "llm.h"
@@ -24,7 +32,7 @@
 class Editor;
 class QTextEdit;
 class MarkdownWebView;
-class QPlainTextEdit;
+// DropAwarePlainTextEdit is defined above – no forward declaration needed
 class QToolBar;
 class QComboBox;
 class QToolButton;
@@ -124,6 +132,92 @@ struct SessionInfo {
       };
 
 //---------------------------------------------------------
+//   DropAwarePlainTextEdit
+//   A QPlainTextEdit that intercepts image drag-and-drop
+//   at the virtual-function level and emits imageDropped()
+//   instead of inserting content into the text field.
+//---------------------------------------------------------
+
+class DropAwarePlainTextEdit : public QPlainTextEdit
+      {
+      Q_OBJECT
+    public:
+      explicit DropAwarePlainTextEdit(QWidget* parent = nullptr)
+            : QPlainTextEdit(parent) {}
+
+    signals:
+      void imageDropped(const QImage& image);
+
+    protected:
+      void dragEnterEvent(QDragEnterEvent* e) override {
+            const QMimeData* m = e->mimeData();
+            qDebug() << "[DropAware] dragEnterEvent — hasImage:" << m->hasImage()
+                     << "hasUrls:" << m->hasUrls()
+                     << "formats:" << m->formats();
+            if (m->hasImage() || (m->hasUrls() && !m->urls().isEmpty()))
+                  e->acceptProposedAction();
+            else
+                  QPlainTextEdit::dragEnterEvent(e);
+            }
+
+      void dragMoveEvent(QDragMoveEvent* e) override {
+            const QMimeData* m = e->mimeData();
+            qDebug() << "[DropAware] dragMoveEvent — hasImage:" << m->hasImage()
+                     << "hasUrls:" << m->hasUrls();
+            if (m->hasImage() || (m->hasUrls() && !m->urls().isEmpty()))
+                  e->acceptProposedAction();
+            else
+                  QPlainTextEdit::dragMoveEvent(e);
+            }
+
+      void dropEvent(QDropEvent* e) override {
+            const QMimeData* m = e->mimeData();
+            qDebug() << "[DropAware] dropEvent — hasImage:" << m->hasImage()
+                     << "hasUrls:" << m->hasUrls()
+                     << "formats:" << m->formats();
+            QImage image;
+            if (m->hasImage()) {
+                  qDebug() << "[DropAware] dropEvent — extracting image from imageData";
+                  image = qvariant_cast<QImage>(m->imageData());
+                  }
+            else if (m->hasUrls()) {
+                  for (const QUrl& url : m->urls()) {
+                        qDebug() << "[DropAware] dropEvent — trying URL:" << url.toString().left(80);
+                        if (url.isLocalFile()) {
+                              QImage loaded(url.toLocalFile());
+                              qDebug() << "[DropAware] dropEvent — loaded local file, null:" << loaded.isNull();
+                              if (!loaded.isNull()) { image = loaded; break; }
+                              }
+                        else {
+                              // Handle data: URIs dragged from a browser (e.g. "data:image/jpeg;base64,...")
+                              const QString urlStr = url.toString();
+                              if (urlStr.startsWith("data:image/")) {
+                                    const int commaPos = urlStr.indexOf(',');
+                                    if (commaPos != -1) {
+                                          const QByteArray raw = QByteArray::fromBase64(
+                                                urlStr.mid(commaPos + 1).toUtf8());
+                                          if (image.loadFromData(raw)) {
+                                                qDebug() << "[DropAware] dropEvent — decoded data: URI image, size:" << image.size();
+                                                break;
+                                                }
+                                          }
+                                    }
+                              }
+                        }
+                  }
+            if (!image.isNull()) {
+                  qDebug() << "[DropAware] dropEvent — emitting imageDropped, size:" << image.size();
+                  e->acceptProposedAction();
+                  emit imageDropped(image);
+                  }
+            else {
+                  qDebug() << "[DropAware] dropEvent — no image found, delegating to base class";
+                  QPlainTextEdit::dropEvent(e);
+                  }
+            }
+      };
+
+//---------------------------------------------------------
 //   Agent
 //---------------------------------------------------------
 
@@ -146,6 +240,7 @@ class Agent : public QWidget
       QToolBar* toolBar;
       QToolButton* newSessionButton;
       QToolButton* deleteSessionButton;
+      QToolButton* renameSessionButton;
       QComboBox* sessionComboBox;
       QComboBox* modelMenu;
       QToolButton* statusLabel;
@@ -153,15 +248,16 @@ class Agent : public QWidget
       QToolButton* configButton;
       QToolButton* screenshotButton;
       QWidget* dataPanel{nullptr};          ///< narrow vertical icon panel left of prompt input
-      QLabel* screenshotIconLabel{nullptr}; ///< shown when a screenshot is attached
-      void updateDataPanel();               ///< refreshes icon visibility
+      void updateDataPanel();               ///< rebuilds thumbnail labels for all pending images
 
       QTimer* spinnerTimer;
       int spinnerFrame{0};
 
       // Screenshot
       ScreenshotHelper* screenshotHelper{nullptr};
-      QString _pendingScreenshotBase64; ///< base64-encoded PNG, non-empty when a screenshot is attached
+      QList<QString>    _pendingImages;       ///< base64-encoded JPEG strings, one per attached image/screenshot
+      QVBoxLayout*      _dataPanelLayout{nullptr};
+      QList<QLabel*>    _imageIconLabels;     ///< one thumbnail label per pending image
 
       // Netzwerk & Status
       QNetworkAccessManager* networkManager;
@@ -225,7 +321,7 @@ class Agent : public QWidget
       QString askUser(const QString& question);
 
       void setInputEnabled(bool enabled);
-      QPlainTextEdit* userInput;
+      DropAwarePlainTextEdit* userInput;
 
       // ask_user tool: non-modal blocking via QEventLoop
       bool _waitingForUserInput{false};
@@ -243,6 +339,7 @@ class Agent : public QWidget
       void updateSpinner();
       void startNewSession();
       void deleteCurrentSession();
+      void renameCurrentSession();
       void onSessionSelected(int index);
       void onScreenshotReady(const QImage& image);
       void onScreenshotFailed(const QString& reason);
@@ -264,7 +361,13 @@ class Agent : public QWidget
       QAction* filterThoughtsAction     = nullptr;
       HistoryManager* historyManager;
 
-      std::string getManifest() const;
+    private:
+      bool _manifestsLoaded = false;
+      std::string _manifestPlan;
+      std::string _manifestBuild;
+
+    public:
+      std::string getManifest();
 
       static QString configPath();
       Models& models() { return _models; }

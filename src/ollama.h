@@ -31,6 +31,7 @@ class OllamaClient : public LLMClient
 
     public:
       OllamaClient(Agent*, Model* m, const std::vector<json>& mcps);
+      virtual void setTools(const std::vector<json>& mcps) override;
       virtual QString name() const override { return "ollama"; }
       virtual json prompt(QNetworkRequest* request) override;
       virtual void processJsonItem(const json& item) override;

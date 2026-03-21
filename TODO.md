@@ -1,16 +1,42 @@
 ## TODO
 
+### Check Prompt Verkürzung
+
+- [x] Checke, ob beim Zusammenbau des Prompts bei einer verkürzten Historie diese immer auch
+      die erste Benutzeranfrage enthält (Wobei wir hoffen, das die nicht nur ein einfaches "Hallo"
+      enthält sondern die Aufgaben/Problembeschreibung). Checke dies für alle Modell API's.
+
+### System Prompt
+
+- [x] Erzeuge separate System Prompts (Manifest) für Build/Plan Mode.
+- [x] Versuche im Plan Modus den System Prompt aud der Datei agents-plan.md und
+      im "Build" Modus aus der Datei agents-build.md zu lesen. Sind die Dateien nicht
+      vorhanden, dann nimm die eingebauten Prompts.
+- [x] Merke dir, wenn du den System Prompt aus einer Datei gelesen hast, so dass
+      nur einmal gelesen wird.
+
+### Tool-Sets
+
+- [x] Erzeuge separate Tool-Sets für Build/Plan Mode. Übergib im Prompt nur die Tools
+      des jeweiligen Modes.
+
+### Image drop
+- [x] intercept the image drop event of the prompt input widget, if necessary create an
+  derived class for this.
+- [x] Handle the image drop like the screenshot is handled: save data into _pendingScreenshotBase64
+  and notify the user with a screenshotIconLabel in the dataPanel
+
 ### Screen Shot
 
-- Erstelle eine neue Editor Funktion "CMD_SCREENSHOT" mit dem default Key Binding "Ctrl+O, Ctrl+O, Ctrl+P"
-- Erstelle eine Editor() Methode screenshot(), die ein Image des aktuellen Editor-Bildschirm Inhalts
+- [x] Erstelle eine neue Editor Funktion "CMD_SCREENSHOT" mit dem default Key Binding "Ctrl+O, Ctrl+O, Ctrl+P"
+- [x] Erstelle eine Editor() Methode screenshot(), die ein Image des aktuellen Editor-Bildschirm Inhalts
   erstellt und als Datei "screenshot-nn.jpg" im jpeg format im Projekt Rootverzeichnis ablegt. "nn" ist
   dabei eine fortlaufende Nummer die hochgezählt wird um keine vorhandenen shots zu überschreiben.
   Benutze die Qt Klasse QScreen
 
 ### Datenanzeige
 
-- Erstelle eine schmales vertikales Fenster zur Aufname von Icons links neben der Prompt Eingabe im Ai-Window.
+- {x] Erstelle eine schmales vertikales Fenster zur Aufname von Icons links neben der Prompt Eingabe im Ai-Window.
   Immer wenn ein Image (z.B. ein screenshot) für den nächsten Prompt zur verfügung steht,
   soll hier ein "Picture" Icon erscheinen.
 

@@ -51,22 +51,6 @@ bool HistoryManager::trim() {
             }
       if (hitLimit()) {
             // request summary
-#if 0
-            std::string text = "Please provide a concise technical summary of our conversation so far. "
-                               "Focus specifically on the results obtained from the tool calls and the final "
-                               "conclusions reached. Discard the raw, voluminous data output from the tools, "
-                               "but retain the key facts, parameters used, and the current state of the task. "
-                               "This summary will serve as the new starting point for our context, "
-                               "so ensure no critical logical step is lost.";
-            json msg;
-            msg["role"] = "user";
-            if (model.api == "gemini")
-                  msg["parts"] = json::array({{{"text", text}}});
-            else // ollama
-                  msg["content"] = text;
-            // Approximate token count: 4 chars per token
-            historyManager->addRequest(msg, text.length() / 4);
-#endif
             summaryRequested = true;
             }
       return summaryRequested;
@@ -104,4 +88,56 @@ void HistoryManager::setHistory(const json& h) {
             totalTokens += tokens;
             activeEntries++;
             }
+      }
+
+//---------------------------------------------------------
+//   setActiveEntries
+//---------------------------------------------------------
+
+void HistoryManager::setActiveEntries(size_t a) {
+      activeEntries   = std::min(a, _data.size());
+      totalTokens     = 0;
+      size_t startIdx = _data.size() - activeEntries;
+      for (size_t i = startIdx; i < _data.size(); ++i)
+            totalTokens += _data[i].tokens;
+      }
+
+//---------------------------------------------------------
+//   getActiveEntries
+//---------------------------------------------------------
+
+json HistoryManager::getActiveEntries() const {
+      json arr        = json::array();
+      size_t startIdx = _data.size() > activeEntries ? _data.size() - activeEntries : 0;
+      
+      // Always include the very first user request if history is truncated
+      if (startIdx > 0 && !_data.empty()) {
+            arr.push_back(_data[0].content);
+            }
+
+      for (size_t i = startIdx; i < _data.size(); ++i) {
+            arr.push_back(_data[i].content);
+            }
+            
+      return arr;
+      }
+
+//---------------------------------------------------------
+//   addRequest
+//---------------------------------------------------------
+
+void HistoryManager::addRequest(json content, size_t tokens) {
+      _data.push_back({content, tokens});
+      totalTokens += tokens;
+      activeEntries++;
+      }
+
+//---------------------------------------------------------
+//   clear
+//---------------------------------------------------------
+
+void HistoryManager::clear() {
+      _data.clear();
+      totalTokens   = 0;
+      activeEntries = 0;
       }

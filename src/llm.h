@@ -43,6 +43,7 @@ class LLMClient : public QObject
             }
       virtual ~LLMClient() = default;
 
+      virtual void setTools(const std::vector<json>& mcpTools) = 0;
       virtual QString name() const                   = 0;
       virtual json prompt(QNetworkRequest* request)  = 0;
       virtual void processJsonItem(const json& item) = 0;

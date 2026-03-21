@@ -25,6 +25,10 @@
 //---------------------------------------------------------
 
 GeminiClient::GeminiClient(Agent* a, Model* m, const std::vector<json>& mcps) : LLMClient(a, m) {
+      setTools(mcps);
+      }
+
+void GeminiClient::setTools(const std::vector<json>& mcps) {
       try {
             json fd = json::array();
             for (auto& tool : mcps) {
@@ -45,7 +49,7 @@ GeminiClient::GeminiClient(Agent* a, Model* m, const std::vector<json>& mcps) : 
       catch (...) {
             Critical("Unexpected error");
             }
-      };
+      }
 
 //---------------------------------------------------------
 //   prompt
@@ -71,18 +75,45 @@ json GeminiClient::prompt(QNetworkRequest* request) {
       jmanifest["role"]                 = "system";
       requestJson["system_instruction"] = jmanifest;
 
-      // Transform history: embed images stored as generic "image" field
+      // Transform history: embed images stored as generic "images" array (or legacy "image")
       // into Gemini's inline_data part format
       json contents = json::array();
+      
+      auto addMessage = [&contents](const json& msg) {
+            if (!contents.empty() && contents.back()["role"] == msg["role"]) {
+                  // Merge parts
+                  auto& lastMsg = contents.back();
+                  json newParts = msg.contains("parts") ? msg["parts"] : json::array();
+                  json lastParts = lastMsg.contains("parts") ? lastMsg["parts"] : json::array();
+                  for (const auto& part : newParts) {
+                        lastParts.push_back(part);
+                  }
+                  lastMsg["parts"] = lastParts;
+            } else {
+                  contents.push_back(msg);
+            }
+      };
+
       for (auto msg : agent->historyManager->getActiveEntries()) {
-            if (msg.contains("image")) {
+            // New format: "images" array
+            if (msg.contains("images") && msg["images"].is_array()) {
+                  for (const auto& imgItem : msg["images"]) {
+                        std::string b64 = imgItem.get<std::string>();
+                        msg["parts"].push_back({
+                                 {"inline_data", {{"mime_type", "image/jpeg"}, {"data", b64}}}
+                              });
+                        }
+                  msg.erase("images");
+                  }
+            // Legacy format: single "image" string
+            else if (msg.contains("image")) {
                   std::string b64 = msg["image"].get<std::string>();
                   msg["parts"].push_back({
                            {"inline_data", {{"mime_type", "image/jpeg"}, {"data", b64}}}
                         });
                   msg.erase("image");
                   }
-            contents.push_back(msg);
+            addMessage(msg);
             }
 
       requestJson["contents"]         = contents;
