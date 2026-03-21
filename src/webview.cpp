@@ -192,17 +192,21 @@ QString MarkdownWebView::getHighlightJsAssets(bool darkMode) const {
       // Wähle das passende Theme: 'github' vs 'github-dark'
       QString theme = darkMode ? "github-dark.min.css" : "github.min.css";
 
-      // Nutze std::format für sauberen String-Bau
-      return QString::fromStdString(std::format(R"(
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/{}">
+      // Nutze eine einfache Verkettung statt std::format wegen der vielen {} und Zeichenkollisionen in JS
+      QString js = R"(
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/)";
+      js += theme;
+      js += R"(">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
         <script>
-            document.addEventListener('DOMContentLoaded', (event) => {{
-                document.querySelectorAll('pre code').forEach((el) => {{
-                    hljs.highlightElement(el);
-                }});
-            }});
-            function fallbackCopy(text) {{
+            document.addEventListener('DOMContentLoaded', (event) => {
+                if (typeof hljs !== 'undefined') {
+                    document.querySelectorAll('pre code').forEach((el) => {
+                        hljs.highlightElement(el);
+                    });
+                }
+            });
+            function fallbackCopy(text) {
                 const ta = document.createElement('textarea');
                 ta.value = text;
                 ta.style.position = 'fixed';
@@ -210,24 +214,24 @@ QString MarkdownWebView::getHighlightJsAssets(bool darkMode) const {
                 document.body.appendChild(ta);
                 ta.focus();
                 ta.select();
-                try {{ document.execCommand('copy'); }} catch(e) {{}}
+                try { document.execCommand('copy'); } catch(e) {}
                 document.body.removeChild(ta);
-            }}
-            function copyCode(btn) {{
+            }
+            function copyCode(btn) {
                 const codeBlock = btn.parentElement.nextElementSibling.querySelector('code');
                 const text = codeBlock.innerText;
                 const originalHTML = btn.innerHTML;
-                const ok = () => {{ btn.innerHTML = '&#10003;'; setTimeout(() => btn.innerHTML = originalHTML, 2000); }};
-                if (navigator.clipboard) {{
-                    navigator.clipboard.writeText(text).then(ok).catch(() => {{ fallbackCopy(text); ok(); }});
-                }} else {{
+                const ok = () => { btn.innerHTML = '&#10003;'; setTimeout(() => btn.innerHTML = originalHTML, 2000); };
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(text).then(ok).catch(() => { fallbackCopy(text); ok(); });
+                } else {
                     fallbackCopy(text);
                     ok();
-                }}
-            }}
+                }
+            }
         </script>
-    )",
-                                                theme.toStdString()));
+    )";
+      return js;
       }
 
 //---------------------------------------------------------
@@ -248,7 +252,7 @@ QString MarkdownWebView::renderMarkdownToHtml(const std::string& _stdMarkdown) {
 
       // GFM-Flags: Tabellen, Tasklisten, Durchgestrichen, Autolinks
       // unsigned int _flags = MD_DIALECT_GITHUB | MD_FLAG_NOINDENTEDCODEBLOCKS;
-      unsigned int _flags = MD_DIALECT_GITHUB | MD_FLAG_HARD_SOFT_BREAKS;
+      unsigned int _flags = MD_DIALECT_GITHUB;
 
       int _result = md_html(_stdMarkdown.c_str(), static_cast<MD_SIZE>(_stdMarkdown.size()), md4c_callback, &_output, _flags, 0);
 
