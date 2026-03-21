@@ -1,5 +1,12 @@
-
 ## TODO
+
+### Screen Shot
+
+- Erstelle eine neue Editor Funktion "CMD_SCREENSHOT" mit dem default Key Binding "Ctrl+O, Ctrl+O, Ctrl+P"
+- Erstelle eine Editor() Methode screenshot(), die ein Image des aktuellen Editor-Bildschirm Inhalts
+  erstellt und als Datei "screenshot-nn.jpg" im jpeg format im Projekt Rootverzeichnis ablegt. "nn" ist
+  dabei eine fortlaufende Nummer die hochgezählt wird um keine vorhandenen shots zu überschreiben.
+  Benutze die Qt Klasse QScreen
 
 ### Datenanzeige
 

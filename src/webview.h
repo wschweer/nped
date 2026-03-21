@@ -18,6 +18,7 @@
 #include <vector>
 #include <format>
 #include <iostream>
+#include <QUrl>
 
 #include "logger.h"
 #include "editor.h"
@@ -60,7 +61,7 @@ class MarkdownWebView : public QWebEngineView
     public:
       explicit MarkdownWebView(Editor*, QWidget* parent = nullptr);
 
-      void setHtml(const QString& html);
+      void setHtml(const QString& html, const QUrl& baseUrl = QUrl());
       void setMarkdown(const QString& markdown);
       void append(const QString&);
       void clear() { setMarkdown(""); }

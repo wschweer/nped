@@ -56,6 +56,7 @@ class Completion;
 class QProgressBar;
 class Agent;
 class MarkdownWebView;
+class ScreenshotHelper;
 
 using Completions = std::vector<Completion>;
 
@@ -125,7 +126,11 @@ enum class Cmd {
       CMD_ENTER_ADD_FILE,
       CMD_ENTER_SEARCH,
       CMD_ENTER_CREATE_FUNCTION,
-      CMD_ENTER_GOTO_LINE
+      CMD_ENTER_GOTO_LINE,
+      CMD_SCREENSHOT,
+      // Web-Navigation:
+      CMD_LINK_BACK,
+      CMD_LINK_FORWARD
       };
 
 //---------------------------------------------------------
@@ -350,6 +355,7 @@ class Editor : public QMainWindow
       QToolButton* _gitButton;
       QToolButton* configButton;
       QProgressBar* progressBar;
+      ScreenshotHelper* screenshotHelper{nullptr};
 
       QRegularExpression searchPattern;
       QString replace;
@@ -435,6 +441,7 @@ class Editor : public QMainWindow
       void startCmd();
       void endCmd();
       void updateViewMode();
+      void screenshot();
 
     signals:
       void fontFamilyChanged();

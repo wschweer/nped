@@ -31,6 +31,7 @@
 #include <QProgressBar>
 #include <QMetaType>
 #include <QDataStream>
+#include <QPainter>
 
 #include <functional>
 #include <thread>
@@ -46,11 +47,38 @@
 #include "agent.h"
 #include "webview.h"
 #include "completion.h"
+#include "screenshot.h"
+
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
 extern bool persistent;
+
+//---------------------------------------------------------
+//   screenshot
+//---------------------------------------------------------
+
+void Editor::screenshot() {
+      QImage image(size(), QImage::Format_ARGB32_Premultiplied);
+      image.fill(Qt::transparent);
+      QPainter painter(&image);
+      render(&painter);
+      painter.end();
+
+      int n = 0;
+      QString path;
+      while (true) {
+            path = QString("screenshot-%1.jpg").arg(n, 2, 10, QChar('0'));
+            if (!QFile::exists(path))
+                  break;
+            n++;
+            }
+      if (image.save(path, "JPG"))
+            msg("Screenshot saved to {}", path.toStdString());
+      else
+            msg("Screenshot save failed");
+      }
 
 //---------------------------------------------------------
 //   clear
@@ -255,6 +283,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
          Action(getSC(Cmd::CMD_FOLD_TOGGLE), [this] { foldToggle(); }),
          //             Action(getSC(Cmd::CMD_SEARCH_LIST, [this] { kontext()->setViewMode(ViewMode::SearchResults); }),
          Action(getSC(Cmd::CMD_RENAME), [this] { rename(); }),
+         Action(getSC(Cmd::CMD_SCREENSHOT), [this] { screenshot(); }),
             };
 
       KeyLogger* kl = new KeyLogger(&_pedActions, this);

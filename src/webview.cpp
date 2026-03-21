@@ -14,6 +14,9 @@
 #include <QToolButton>
 #include <QLabel>
 #include <QRegularExpression>
+#include <QFileInfo>
+#include <QDir>
+#include <QUrl>
 
 #include "webview.h"
 #include "kontext.h"
@@ -34,6 +37,8 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
          Action(e->getSC(Cmd::CMD_FILE_END), [this] { scrollToBottom(); }),
          Action(e->getSC(Cmd::CMD_PAGE_UP), [this] { scrollPageUp(); }),
          Action(e->getSC(Cmd::CMD_PAGE_DOWN), [this] { scrollPageDown(); }),
+         Action(e->getSC(Cmd::CMD_LINK_BACK), [this] { back(); }),
+         Action(e->getSC(Cmd::CMD_LINK_FORWARD), [this] { forward(); }),
 #if 0
          Action(e->getSC(Cmd::CMD_LINE_TOP), [] { }),
          Action(e->getSC(Cmd::CMD_LINE_BOTTOM), [] {}),
@@ -100,10 +105,10 @@ void MarkdownWebView::installFilterOnProxy() {
 //   setHtml
 //---------------------------------------------------------
 
-void MarkdownWebView::setHtml(const QString& _html) {
+void MarkdownWebView::setHtml(const QString& _html, const QUrl& _baseUrl) {
       _currentRawHtml = _html;
       isLoaded        = false;
-      QWebEngineView::setHtml(_html);
+      QWebEngineView::setHtml(_html, _baseUrl);
       }
 
 //---------------------------------------------------------
@@ -170,7 +175,13 @@ void MarkdownWebView::setMarkdown(const QString& _markdown) {
           _tocScript.toStdString() // Hier wird das Skript eingefügt
           ));
 
-      setHtml(_fullHtml);
+      QUrl baseUrl;
+      if (editor && editor->kontext() && editor->kontext()->file()) {
+          QFileInfo fi(editor->kontext()->file()->path());
+          baseUrl = QUrl::fromLocalFile(fi.absoluteDir().absolutePath() + "/");
+      }
+
+      setHtml(_fullHtml, baseUrl);
       }
 
 //---------------------------------------------------------
