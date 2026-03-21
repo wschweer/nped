@@ -1,6 +1,6 @@
 ## Build
 
-- create an build directory if not exists alreay:
+- create a build directory if not already exists:
 - enter build directory
 - configure by calling cmake
 - build the app

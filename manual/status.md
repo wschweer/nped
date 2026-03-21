@@ -1,45 +1,28 @@
 ## Current Status
 
-NPed als Mini-IDE bedient in der vorliegenden Version nur meine
-persönlichen Vorlieben und meinen Workflow und ist nicht einfach auf
-andere Umgebungen anpassbar. Dazu müssten die Konfigurationsmöglichkeiten
-erheblich erweitert werden.
+In its current version, NPed as a mini-IDE serves only my personal preferences and workflow, and is not easily adaptable to other environments. To achieve this, the configuration options would need to be significantly expanded.
 
-Aber hey, dies ist eine C++ IDE, du bist also Programmierer und kannst den
-Code direkt anpassen :-)
+But hey, this is a C++ IDE, so you are a programmer and can modify the code directly :-)
 
-Die Details:
+The Details:
 
 - Editor
 
-  NPed wird mit NPed entwickelt, der Editor-Part ist fast vollständig
-  und (für mich) "Feature-Complete".
+  NPed is developed using NPed; the editor part is almost complete and (for me) "feature-complete".
 
-- Language-Server
+- Language Server
 
-  - Die Implementation ist nicht ganz vollständig,
-  - enthält wahrscheinlich noch Fehler
-  - die Integration in den Workflow ist teilweise experimentell
+  - The implementation is not entirely complete,
+  - likely still contains bugs,
+  - and the integration into the workflow is partially experimental.
 
-- Code Formatierung
+- Code Formatting
 
-Die Code Formatierung nutzt clang-format.
-Mein bevorzugter Code-Stil ist xxx (name vergessen).
-Unglücklicherweise unterstütz clang-format genau den nicht. Der aktuelle
-Hack nutzt eine spezielle clang-format Konfigurationsdatei mit einem
-kleinen Postprozessor im Editor. Das ist der Grund, warum ein einfaches
-austauschen der clang Konfiguration nicht das gewünschte Ergebnis bringen
-wird. Dazu muss auch der Postprozessor Hack aus dem Editor entfernt
-werden.
+  Code formatting uses `clang-format`.
+  My preferred code style is xxx (I forgot the name). Unfortunately, `clang-format` does not support it exactly. The current hack uses a special `clang-format` configuration file with a small post-processor in the editor. This is why a simple swap of the `clang` configuration will not yield the desired result. For that, the post-processor hack must also be removed from the editor.
 
-- Ai Integration
+- AI Integration
 
-Ich nutzt Claude (Anthropic), Gemini (Google) und lokale LLM's über Ollama für
-die Entwicklung dieses Editors sowie für andere Projekte. OpenAi ist ungetested.
-Techniken zur Verkürzung der Chat Historie (dem Kontext) sind existentiell um den
-Token-Verbrauch (und damit die Kosten) zu reduzieren und müssen noch weiter verfeinert
-werden.
+  I use Claude (Anthropic), Gemini (Google), and local LLMs via Ollama for the development of this editor as well as for other projects. OpenAI is untested. Techniques for shortening the chat history (the context) are essential to reduce token consumption (and thus costs) and still need to be further refined.
 
-Manchmal verrennt sich die AI in einen Loop der z.Z. nur durch Beenden des Programms abgebrochen
-werden kann. Hier ist noch weiterer Code gefragt, um solche Situationen zu erkennen und zu
-behandeln.
+  Sometimes the AI gets stuck in a loop that currently can only be broken by terminating the program. Further code is required here to detect and handle such situations.
