@@ -3,7 +3,7 @@
 #     "make" dependencies for easy command line usage
 #
 
-export LOGFILE=/home/ws/nped/nped.log
+export LOGFILE=/home/ws/nped/.nped.log
 
 nped:
 	#export QT_FATAL_WARNINGS=true

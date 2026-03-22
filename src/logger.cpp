@@ -11,6 +11,7 @@
 
 #include <format>
 #include <ostream>
+#include <string>
 #include "logger.h"
 namespace Logger {
 
@@ -48,15 +49,19 @@ void Logger::write(std::ostream& f, MsgType t, const MsgLogContext& c, const std
 Logger::Logger() {
       const char* logfile = getenv("LOGFILE");
       if (!logfile)
-            logfile = "/home/ws/LOG";
-      f.open(logfile);
-      if (!f) {
-            cerr << "cannot open logfile <" << logfile << ">==\n";
+            logfile = "LOG";
+      // lets create lots of tracefiles:
+      std::string s = std::format("{}-{}", logfile, getpid());
+      f.open(s.c_str(), std::ios_base::out);
+
+      if (!f.is_open()) {
+            cerr << "cannot open logfile <" << s << ">: " << strerror(errno) << "\n";
             exit(-1);
             }
       //      else
       //            cerr << format("writing into logfile <{}>\n", logfile);
       }
+
 
 void Logger::write(MsgType t, const MsgLogContext& c, const std::string& msg) {
       switch (t) {
