@@ -640,7 +640,7 @@ bool File::save() {
       //
       // rename old file into backup
       //
-      if (!dir.rename(path(), backupName))
+      if (dir.exists(path()) && !dir.rename(path(), backupName))
             Critical("**rename failed: {} -> {}", path(), backupName);
 
       //
