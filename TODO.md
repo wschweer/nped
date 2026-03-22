@@ -1,7 +1,7 @@
 ## TODO
 
 ### Bug Kontext Umschalten
-- [ ] Wenn sich eine Seite im View Mode Render-View befindet, d.h. z.B. ein
+- [x] Wenn sich eine Seite im View Mode Render-View befindet, d.h. z.B. ein
       Markdown Text gerendert in einem WebView dargestellt wird, dann kann
       der Kontext im Tab-Bar umgeschaltet werden, aber der dargestellte Inhalt
       verändert sich nicht.

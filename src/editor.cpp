@@ -780,6 +780,7 @@ void Editor::setCurrentKontext(size_t idx) {
       update();
       updateGitHistory();
       updateCursor();
+      updateViewMode();
       }
 
 void Editor::setCurrentKontext(Kontext* k) {
