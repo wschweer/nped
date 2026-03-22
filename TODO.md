@@ -1,5 +1,11 @@
 ## TODO
 
+### Bug Kontext Umschalten
+- [ ] Wenn sich eine Seite im View Mode Render-View befindet, d.h. z.B. ein
+      Markdown Text gerendert in einem WebView dargestellt wird, dann kann
+      der Kontext im Tab-Bar umgeschaltet werden, aber der dargestellte Inhalt
+      verändert sich nicht.
+
 ### Check Prompt Verkürzung
 
 - [x] Checke, ob beim Zusammenbau des Prompts bei einer verkürzten Historie diese immer auch
@@ -36,7 +42,7 @@
 
 ### Datenanzeige
 
-- {x] Erstelle eine schmales vertikales Fenster zur Aufname von Icons links neben der Prompt Eingabe im Ai-Window.
+- [x] Erstelle eine schmales vertikales Fenster zur Aufname von Icons links neben der Prompt Eingabe im Ai-Window.
   Immer wenn ein Image (z.B. ein screenshot) für den nächsten Prompt zur verfügung steht,
   soll hier ein "Picture" Icon erscheinen.
 

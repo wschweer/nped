@@ -72,8 +72,10 @@ void Logger::write(MsgType t, const MsgLogContext& c, const std::string& msg) {
             case MsgType::Fatal:
             case MsgType::Printf: write(std::cerr, t, c, msg); break;
             }
-      if (f)
+      if (f) {
             write(f, t, c, msg);
+            flush(f);
+            }
       if (t == MsgType::Fatal)
             abort();
       }

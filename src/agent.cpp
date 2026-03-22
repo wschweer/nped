@@ -657,6 +657,8 @@ void Agent::handleChatFinished() {
             chatDisplay->addMessage("system", format("<br><font color='red'><b>[Connection abort]:</b> {}</font><br>", errorMessage));
             currentReply->deleteLater();
             currentReply = nullptr;
+            
+            enableInput(true);
             return;
             }
       QByteArray newData = currentReply->readAll();

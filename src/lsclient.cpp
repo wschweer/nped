@@ -39,11 +39,10 @@ struct LServer {
       };
 
 static std::vector<LServer> lServer = {
-         {     "clangd",
-    "clangd", {"--query-driver", "--log=error", "--completion-style=detailed", "--compile-commands-dir=build", "--background-index"}                                            },
-         {"vscode-html",          "vscode-html-languageserver",                                                                                                            {"--stdio"}},
-         {      "pylsp",                               "pylsp",                                                                                                                     {}},
-         {      "qmlls", "/home/ws/Qt/6.11.0/gcc_64/bin/qmlls",                                                                                                                     {}}
+         {     "clangd", "clangd", {"--query-driver", "--log=error", "--completion-style=detailed", "--compile-commands-dir=build", "--background-index"}                                            },
+         {"vscode-html", "vscode-html-languageserver",                                                                                                            {"--stdio"}},
+         {      "pylsp", "pylsp",                                                                                                                     {}},
+         {      "qmlls", "/home/ws/Qt/6.11.0/gcc_64/bin/qmlls", {}}
       };
 
 //---------------------------------------------------------

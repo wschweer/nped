@@ -74,7 +74,7 @@ Die Cursor-Bewegungen orientieren sich an einem klassischen Block-Konzept um die
 Dieses Layout ist stark an Editoren wie *WordStar* oder dem alten *Turbo Pascal / Borland* Editor angelehnt.
 
 * **Einzelne Schritte:**
-  * `Ctrl+S`: Zeichen links
+  * <kbd>Ctrl+S</kbd>: Zeichen links
   * `Ctrl+D`: Zeichen rechts
   * `Ctrl+E`: Zeile hoch
   * `Ctrl+X`: Zeile tief
