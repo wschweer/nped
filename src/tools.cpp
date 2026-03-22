@@ -194,13 +194,7 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
       // Tools OHNE lokales Datei-Pfad Argument
       // ==========================================================
 
-      if (functionName == "ask_user") {
-            if (!arguments.contains("question"))
-                  return "Error: Parameter 'question' missing.";
-            QString question = QString::fromStdString(arguments["question"].get<std::string>());
-            return askUser(question).toStdString();
-            }
-      else if (functionName == "run_build_command") {
+      if (functionName == "run_build_command") {
             if (!arguments.contains("command"))
                   return "Error: Parameter 'command' missing.";
             QString cmd = QString::fromStdString(arguments["command"].get<std::string>());
@@ -692,36 +686,6 @@ QString Agent::createGitCommit(const QString& message) {
             return "Warning/Error during commit: " + QString::fromUtf8(err);
 
       return "Commit successful: " + QString::fromUtf8(out);
-      }
-
-//---------------------------------------------------------
-//   askUser
-//    Presents a question to the user via the prompt input field and
-//    returns their answer. Uses a blocking QEventLoop so the tool
-//    call remains synchronous from the agent's perspective.
-//---------------------------------------------------------
-
-QString Agent::askUser(const QString& question) {
-      // 1. Show the question as an assistant message in the chat
-      chatDisplay->addMessage("assistant", question.toStdString());
-      chatDisplay->scrollToBottom();
-
-      // 2. Enable the input field without stopping the spinner
-      _waitingForUserInput = true;
-      userInput->setEnabled(true);
-      userInput->setPlaceholderText("Answer the AI's question and press Enter...");
-      userInput->setFocus();
-
-      // 3. Block until sendMessage() delivers the user's answer
-      QEventLoop loop;
-      _askUserLoop = &loop;
-      loop.exec();
-      _askUserLoop = nullptr;
-
-      // 4. Restore the normal placeholder text
-      userInput->setPlaceholderText("enter message to LLM...");
-
-      return _userInputAnswer;
       }
 
 //---------------------------------------------------------

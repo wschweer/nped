@@ -475,8 +475,6 @@ void Agent::sendMessage(QString qtext) {
             chatDisplay->startNewStreamingMessage("User");
             chatDisplay->handleIncomingChunk("", text);
             chatDisplay->scrollToBottom();
-            if (_askUserLoop && _askUserLoop->isRunning())
-                  _askUserLoop->quit();
             return;
             }
 

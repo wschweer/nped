@@ -318,7 +318,6 @@ class Agent : public QWidget
       QString getGitDiff(const QString& path = "");
       QString getGitLog(int limit = 5);
       QString createGitCommit(const QString& message);
-      QString askUser(const QString& question);
 
       void setInputEnabled(bool enabled);
       DropAwarePlainTextEdit* userInput;
@@ -326,7 +325,6 @@ class Agent : public QWidget
       // ask_user tool: non-modal blocking via QEventLoop
       bool _waitingForUserInput{false};
       QString _userInputAnswer;
-      QEventLoop* _askUserLoop{nullptr};
 
     protected:
       bool eventFilter(QObject* obj, QEvent* event) override;
