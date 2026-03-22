@@ -355,8 +355,8 @@ class Agent : public QWidget
       ~Agent();
 
       ChatDisplay* chatDisplay;
-      QAction* filterToolMessagesAction = nullptr;
-      QAction* filterThoughtsAction     = nullptr;
+      QAction* showToolMessageAction = nullptr;
+      QAction* showThoughtsAction     = nullptr;
       HistoryManager* historyManager;
 
     private:

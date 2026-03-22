@@ -390,7 +390,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       configButton = new QToolButton();
       configButton->setObjectName("configButton");
       QString iconPath = darkMode() ? ":/images/configure_white.svg" : ":/images/configure.svg";
-      configButton->setIcon(QIcon::fromTheme("preferences-system", QIcon(iconPath)));
+      configButton->setIcon(QIcon(iconPath));
       configButton->setToolTip("Configure...");
       connect(this, &Editor::darkModeChanged, [this]() {
             QString iconPath = darkMode() ? ":/images/configure_white.svg" : ":/images/configure.svg";

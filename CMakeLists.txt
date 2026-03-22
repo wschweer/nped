@@ -98,7 +98,12 @@ qt_add_resources(nped "mages"
       images/configure_white.svg
       images/trash.svg
       images/trash_white.svg
-      images/reasoning-black.svg
+      images/thinking.svg
+      images/thinking-dark.svg
+      images/camera.svg
+      images/camera-dark.svg
+      images/tool.svg
+      images/tool-dark.svg
       )
 
 qt_add_qml_module(nped

@@ -185,30 +185,31 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             });
 
       // Filter toggle buttons (icon-only, no pulldown menu needed)
-      filterToolMessagesAction = new QAction("🔧", this);
-      filterToolMessagesAction->setCheckable(true);
-      filterToolMessagesAction->setChecked(model.filterToolMessages);
-      filterToolMessagesAction->setToolTip("Filter Tool Messages");
-      connect(filterToolMessagesAction, &QAction::toggled, [this](bool checked) {
-            model.filterToolMessages = checked;
+      showToolMessageAction = new QAction("🔧", this);
+      showToolMessageAction->setCheckable(true);
+      showToolMessageAction->setChecked(!model.filterToolMessages);
+      showToolMessageAction->setToolTip("Show Tool Messages");
+      showToolMessageAction->setIcon(QIcon(_editor->darkMode() ? "images/tool-dark.svg" : ":images/tool.svg"));
+      connect(showToolMessageAction, &QAction::toggled, [this](bool checked) {
+            model.filterToolMessages = !checked;
             saveStatus();
             updateChatDisplay();
             chatDisplay->scrollToBottom();
             });
-      toolBar->addAction(filterToolMessagesAction);
+      toolBar->addAction(showToolMessageAction);
 
-      filterThoughtsAction = new QAction(this);
-      filterThoughtsAction->setIcon(QIcon(":images/reasoning-black.svg"));
-      filterThoughtsAction->setCheckable(true);
-      filterThoughtsAction->setChecked(model.filterThoughts);
-      filterThoughtsAction->setToolTip("Filter Thoughts");
-      connect(filterThoughtsAction, &QAction::toggled, [this](bool checked) {
-            model.filterThoughts = checked;
+      showThoughtsAction = new QAction(this);
+      showThoughtsAction->setIcon(QIcon(_editor->darkMode() ? "images/thinking-dark.svg" : ":images/thinking.svg"));
+      showThoughtsAction->setCheckable(true);
+      showThoughtsAction->setChecked(!model.filterThoughts);
+      showThoughtsAction->setToolTip("Show Thoughts");
+      connect(showThoughtsAction, &QAction::toggled, [this](bool checked) {
+            model.filterThoughts = !checked;
             saveStatus();
             updateChatDisplay();
             chatDisplay->scrollToBottom();
             });
-      toolBar->addAction(filterThoughtsAction);
+      toolBar->addAction(showThoughtsAction);
 
       // Screenshot button
       screenshotButton = new QToolButton(this);
@@ -217,6 +218,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       screenshotButton->setToolTip("Take Screenshot and attach to next prompt");
       screenshotButton->setCheckable(true);
       screenshotButton->setChecked(false);
+            screenshotButton->setIcon(QIcon(_editor->darkMode() ? "images/camera-dark.svg" : ":images/camera.svg"));
       toolBar->addWidget(screenshotButton);
 
       screenshotHelper = new ScreenshotHelper(this);
@@ -234,6 +236,12 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
                   return;
                   }
             screenshotHelper->takeScreenshot();
+            });
+
+      connect(_editor, &Editor::darkModeChanged, [this]() {
+            showThoughtsAction->setIcon(QIcon(_editor->darkMode() ? "images/thinking-dark.svg" : ":images/thinking.svg"));
+            showToolMessageAction->setIcon(QIcon(_editor->darkMode() ? "images/tool-dark.svg" : ":images/tool.svg"));
+            screenshotButton->setIcon(QIcon(_editor->darkMode() ? "images/camera-dark.svg" : ":images/camera.svg"));
             });
 
       // --- 2. Chat Display ---
@@ -341,15 +349,15 @@ void Agent::setCurrentModel(const QString& s, bool clearChat) {
             if (m.name == s) {
                   pendingModelName.clear();
                   model = m;
-                  if (filterToolMessagesAction) {
-                        filterToolMessagesAction->blockSignals(true);
-                        filterToolMessagesAction->setChecked(model.filterToolMessages);
-                        filterToolMessagesAction->blockSignals(false);
+                  if (showToolMessageAction) {
+                        showToolMessageAction->blockSignals(true);
+                        showToolMessageAction->setChecked(model.filterToolMessages);
+                        showToolMessageAction->blockSignals(false);
                         }
-                  if (filterThoughtsAction) {
-                        filterThoughtsAction->blockSignals(true);
-                        filterThoughtsAction->setChecked(model.filterThoughts);
-                        filterThoughtsAction->blockSignals(false);
+                  if (showThoughtsAction) {
+                        showThoughtsAction->blockSignals(true);
+                        showThoughtsAction->setChecked(model.filterThoughts);
+                        showThoughtsAction->blockSignals(false);
                         }
                   llm = llmFactory(this, &model, mcpTools);
                   connect(llm, &LLMClient::incomingChunk, this, [this](const std::string& thoughtChunk, const std::string& textChunk) {
@@ -657,7 +665,7 @@ void Agent::handleChatFinished() {
             chatDisplay->addMessage("system", format("<br><font color='red'><b>[Connection abort]:</b> {}</font><br>", errorMessage));
             currentReply->deleteLater();
             currentReply = nullptr;
-            
+
             enableInput(true);
             return;
             }
@@ -1102,13 +1110,13 @@ void Agent::loadStatus(const QString& sessionPath) {
                                     }
                               if (root.contains("filterToolMessages")) {
                                     model.filterToolMessages = root["filterToolMessages"];
-                                    if (filterToolMessagesAction)
-                                          filterToolMessagesAction->setChecked(model.filterToolMessages);
+                                    if (showToolMessageAction)
+                                          showToolMessageAction->setChecked(model.filterToolMessages);
                                     }
                               if (root.contains("filterThoughts")) {
                                     model.filterThoughts = root["filterThoughts"];
-                                    if (filterThoughtsAction)
-                                          filterThoughtsAction->setChecked(model.filterThoughts);
+                                    if (showThoughtsAction)
+                                          showThoughtsAction->setChecked(model.filterThoughts);
                                     }
                               const json& history = root["history"];
                               historyManager->setHistory(history);
@@ -1144,13 +1152,13 @@ void Agent::loadStatus(const QString& sessionPath) {
                                           actEntries = obj["activeEntries"];
                                     if (obj.contains("filterToolMessages")) {
                                           model.filterToolMessages = obj["filterToolMessages"];
-                                          if (filterToolMessagesAction)
-                                                filterToolMessagesAction->setChecked(model.filterToolMessages);
+                                          if (showToolMessageAction)
+                                                showToolMessageAction->setChecked(model.filterToolMessages);
                                           }
                                     if (obj.contains("filterThoughts")) {
                                           model.filterThoughts = obj["filterThoughts"];
-                                          if (filterThoughtsAction)
-                                                filterThoughtsAction->setChecked(model.filterThoughts);
+                                          if (showThoughtsAction)
+                                                showThoughtsAction->setChecked(model.filterThoughts);
                                           }
                                     if (obj.contains("role") || obj.contains("parts") || obj.contains("content"))
                                           h.push_back(obj);
