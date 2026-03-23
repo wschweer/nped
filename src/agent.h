@@ -109,7 +109,7 @@ struct Model {
       QString apiKey;
       QString api;                                       // "ollama", "gemini", "anthropic", "openai"
       bool isLocal                              = false; ///< true für Ollama
-      bool filterToolMessages                   = true;
+      bool filterToolMessages                   = false;
       bool filterThoughts                       = false;
       bool supportsThinking                     = false; ///< true: model supports Extended Thinking (e.g. claude-3-7-sonnet)
       double temperature                        = -1.0;  ///< <0: use API default

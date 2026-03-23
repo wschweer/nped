@@ -53,7 +53,7 @@ bool MarkdownWebPage::acceptNavigationRequest(const QUrl &url, NavigationType ty
                                     e->setCurrentKontext(k);
                                     QFileInfo fi(path);
                                     QString ext = fi.suffix().toLower();
-                                    if (ext == "md" || ext == "markdown") {
+                                    if (ext == "md" || ext == "markdown" || ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "gif" || ext == "svg" || ext == "webp" || ext == "html" || ext == "htm") {
                                           if (k->viewMode() != ViewMode::WebView) {
                                                 k->toggleViewMode();
                                                 e->updateViewMode();
@@ -311,6 +311,10 @@ QString MarkdownWebView::renderMarkdownToHtml(const std::string& _stdMarkdown) {
             Critical("Markdown conversion failed with code: {}", _result);
             return "<b>Error: Markdown rendering failed.</b>";
             }
+
+      // Convert links to JPGs into image tags
+      QRegularExpression imgRe("<a href=\"([^\"]+\\.jpe?g)\"[^>]*>([^<]*)</a>", QRegularExpression::CaseInsensitiveOption);
+      _output.replace(imgRe, "<img src=\"\\1\" alt=\"\\2\" style=\"max-width: 100%;\" />");
 
       // Code-Block Wrapping (mit weniger strengem Regex)
       QRegularExpression re("<pre><code( class=\"language-(.*?)\")?>(.*?)</code></pre>", QRegularExpression::DotMatchesEverythingOption);

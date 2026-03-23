@@ -454,6 +454,13 @@ bool File::load() {
                   }
             }
 
+      if (languageId() == "image") {
+            _fileText = Lines(QString("[Image File: %1]").arg(_fi.fileName()));
+            _readOnly = true;
+            created = false;
+            return true;
+            }
+
       QTextStream os(&f);
       QString s = os.readAll();
       _fileText = Lines(s);

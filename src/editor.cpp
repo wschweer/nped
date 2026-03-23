@@ -348,16 +348,67 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       _mdWidget   = new MarkdownWebView(this, this);
       _mdWidget->setZoomFactor(1.5);
 
-      _stack->addWidget(_editWidget);
-      _stack->addWidget(_mdWidget);
+      QWidget* mdContainer = new QWidget(this);
+      QVBoxLayout* mdLayout = new QVBoxLayout(mdContainer);
+      mdLayout->setContentsMargins(0, 0, 0, 0);
+      mdLayout->setSpacing(0);
 
-      connect(this, &Editor::darkModeChanged, [this](bool dark) {
+      QWidget* navBar = new QWidget(mdContainer);
+      QHBoxLayout* navLayout = new QHBoxLayout(navBar);
+      navLayout->setContentsMargins(4, 4, 4, 4);
+      navLayout->setSpacing(4);
+
+      QToolButton* btnBack = new QToolButton(navBar);
+      btnBack->setToolTip("Back");
+      connect(btnBack, &QToolButton::clicked, _mdWidget, &QWebEngineView::back);
+
+      QToolButton* btnForward = new QToolButton(navBar);
+      btnForward->setToolTip("Forward");
+      connect(btnForward, &QToolButton::clicked, _mdWidget, &QWebEngineView::forward);
+
+      QToolButton* btnReload = new QToolButton(navBar);
+      btnReload->setToolTip("Reload");
+      connect(btnReload, &QToolButton::clicked, _mdWidget, &QWebEngineView::reload);
+
+      QToolButton* btnHome = new QToolButton(navBar);
+      btnHome->setToolTip("Home");
+      connect(btnHome, &QToolButton::clicked, [this]() {
+            if (kontext() && kontext()->file()) {
+                  if (kontext()->file()->languageId() == "markdown")
+                        _mdWidget->setMarkdown(kontext()->file()->plainText());
+                  else
+                        _mdWidget->setHtml(kontext()->file()->plainText());
+            }
+      });
+
+      navLayout->addWidget(btnBack);
+      navLayout->addWidget(btnForward);
+      navLayout->addWidget(btnReload);
+      navLayout->addWidget(btnHome);
+      navLayout->addStretch();
+
+      mdLayout->addWidget(navBar, 0);
+      mdLayout->addWidget(_mdWidget, 1);
+
+      _stack->addWidget(_editWidget);
+      _stack->addWidget(mdContainer);
+
+      connect(this, &Editor::darkModeChanged, [this, btnBack, btnForward, btnReload, btnHome](bool dark) {
+            btnBack->setIcon(QIcon(dark ? ":/images/back_white.svg" : ":/images/back.svg"));
+            btnForward->setIcon(QIcon(dark ? ":/images/forward_white.svg" : ":/images/forward.svg"));
+            btnReload->setIcon(QIcon(dark ? ":/images/reload_white.svg" : ":/images/reload.svg"));
+            btnHome->setIcon(QIcon(dark ? ":/images/home_white.svg" : ":/images/home.svg"));
             markerDefinitions.setDarkMode(dark);
             updateStyle();
             update();
             });
       // Initial style
-      markerDefinitions.setDarkMode(darkMode());
+      bool dark = darkMode();
+      btnBack->setIcon(QIcon(dark ? ":/images/back_white.svg" : ":/images/back.svg"));
+      btnForward->setIcon(QIcon(dark ? ":/images/forward_white.svg" : ":/images/forward.svg"));
+      btnReload->setIcon(QIcon(dark ? ":/images/reload_white.svg" : ":/images/reload.svg"));
+      btnHome->setIcon(QIcon(dark ? ":/images/home_white.svg" : ":/images/home.svg"));
+      markerDefinitions.setDarkMode(dark);
       updateStyle();
       _editWidget->setFocus();
       connect(_editWidget, &EditWidget::markerClicked, [this](int row) {
@@ -650,6 +701,9 @@ void Editor::updateViewMode() {
                         _mdWidget->setMarkdown(kontext()->file()->plainText());
                   else if (lid == "html")
                         _mdWidget->setHtml(kontext()->file()->plainText());
+                  else if (lid == "image") {
+                        _mdWidget->load(QUrl::fromLocalFile(kontext()->file()->path()));
+                  }
                   } break;
 
                   //            case ViewMode::Functions:
@@ -678,7 +732,7 @@ void Kontext::toggleViewMode() {
 #endif
             setViewMode(ViewMode::Functions);
             }
-      else if (l == "markdown" || l == "html") {
+      else if (l == "markdown" || l == "html" || l == "image") {
             switch (_viewMode) {
                   default:
                   case ViewMode::File: _viewMode = ViewMode::WebView; break;

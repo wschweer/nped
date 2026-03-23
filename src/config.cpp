@@ -58,7 +58,7 @@ QDataStream& operator>>(QDataStream& in, LanguageServerConfig& v) {
 
 QDataStream& operator<<(QDataStream& out, const Model& v) {
       out << v.name << v.modelIdentifier << v.baseUrl << v.apiKey << v.api << v.isLocal;
-      out << v.filterToolMessages << v.filterThoughts << v.supportsThinking << v.temperature << v.topP << v.maxTokens;
+      out << v.supportsThinking << v.temperature << v.topP << v.maxTokens;
       return out;
       }
 
