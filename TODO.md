@@ -1,5 +1,10 @@
 ## TODO
 
+### Bug: Links in gerenderten Markdown Seiten
+- [x] Wenn sich eine Seite im View Mode Render-View befindet und ich auf einen
+      Link clicke, dann wird die neue Seite im Text Mode dargestellt statt im
+      WebView als html angezeigt zu werden
+
 ### Bug Kontext Umschalten
 - [x] Wenn sich eine Seite im View Mode Render-View befindet, d.h. z.B. ein
       Markdown Text gerendert in einem WebView dargestellt wird, dann kann

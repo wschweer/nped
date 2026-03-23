@@ -21,11 +21,62 @@
 #include "webview.h"
 #include "kontext.h"
 
+#include <QDesktopServices>
+#include <QWebEnginePage>
+#include <QTimer>
+
+//---------------------------------------------------------
+//   MarkdownWebPage
+//---------------------------------------------------------
+
+MarkdownWebPage::MarkdownWebPage(Editor* e, QObject* parent) : QWebEnginePage(parent), editor(e) {
+}
+
+bool MarkdownWebPage::acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame) {
+      if (type == QWebEnginePage::NavigationTypeLinkClicked) {
+            if (url.scheme() == "file") {
+                  QString path = url.toLocalFile();
+                  // Check if it's an anchor link within the same page
+                  if (!url.fragment().isEmpty()) {
+                        // Let the view handle anchor links if they are for the same file
+                        if (editor && editor->kontext() && editor->kontext()->file() && 
+                            path == editor->kontext()->file()->path()) {
+                              return true;
+                        }
+                  }
+                  
+                  // For local files, open in Editor instead
+                  if (editor) {
+                        QTimer::singleShot(0, editor, [e = editor, path]() {
+                              Kontext* k = e->addFile(path);
+                              if (k) {
+                                    e->setCurrentKontext(k);
+                                    QFileInfo fi(path);
+                                    QString ext = fi.suffix().toLower();
+                                    if (ext == "md" || ext == "markdown") {
+                                          if (k->viewMode() != ViewMode::WebView) {
+                                                k->toggleViewMode();
+                                                e->updateViewMode();
+                                          }
+                                    }
+                              }
+                        });
+                  }
+                  return false;
+            } else if (url.scheme() == "http" || url.scheme() == "https") {
+                  QDesktopServices::openUrl(url);
+                  return false;
+            }
+      }
+      return QWebEnginePage::acceptNavigationRequest(url, type, isMainFrame);
+}
+
 //---------------------------------------------------------
 //   MarkdownWebView
 //---------------------------------------------------------
 
 MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_parent), editor(e) {
+      setPage(new MarkdownWebPage(e, this));
       _darkMode   = e->darkMode();
       textActions = {
          Action(e->getSC(Cmd::CMD_QUIT), [this] { editor->quitCmd(); }),

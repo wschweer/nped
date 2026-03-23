@@ -13,6 +13,7 @@
 
 #include <QWebEngineHistory>
 #include <QWebEngineView>
+#include <QWebEnginePage>
 #include <QString>
 #include <string>
 #include <vector>
@@ -24,6 +25,18 @@
 #include "editor.h"
 
 class KeyLogger;
+
+//---------------------------------------------------------
+//   MarkdownWebPage
+//---------------------------------------------------------
+class MarkdownWebPage : public QWebEnginePage {
+    Q_OBJECT
+    Editor* editor;
+public:
+    explicit MarkdownWebPage(Editor* e, QObject* parent = nullptr);
+protected:
+    bool acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame) override;
+};
 
 //---------------------------------------------------------
 //   MarkdownWebView

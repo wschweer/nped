@@ -402,8 +402,6 @@ class Editor : public QMainWindow
 
       void addKontext(Kontext* k, int idx = -1);
       void removeKontext(int idx);
-      void setCurrentKontext(size_t idx);
-      void setCurrentKontext(Kontext*);
 
       void leaveEnter();
       void rubout();
@@ -461,6 +459,9 @@ class Editor : public QMainWindow
     public:
       Editor(int argc, char** argv);
       ~Editor();
+
+      void setCurrentKontext(size_t idx);
+      void setCurrentKontext(Kontext*);
 
       const ShortcutConfig& getSC(Cmd cmd);
       void saveAll();
