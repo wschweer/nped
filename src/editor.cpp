@@ -378,6 +378,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
 
       agent = new Agent(this, box);
       agent->setMinimumWidth(agentMinimumWidth);
+      agent->setVisible(false);
       splitter->addWidget(agent);
       int agentIndex = splitter->indexOf(agent);
       splitter->setStretchFactor(agentIndex, 0);
@@ -1205,6 +1206,8 @@ bool Editor::loadStatus(int argc, char** argv) {
 
                   if (j.contains("aiVisible")) {
                         bool v = j["aiVisible"].get<bool>();
+                        if (!_projectMode)
+                              v = false;
                         agent->setVisible(v);
                         const QSignalBlocker blocker(aiButton);
                         aiButton->setChecked(v);
@@ -1212,8 +1215,8 @@ bool Editor::loadStatus(int argc, char** argv) {
 
                   if (j.contains("gitPanel")) {
                         bool val = j["gitPanel"].get<bool>();
-                        const QSignalBlocker blocker(_gitButton);
                         gitPanel->setVisible(val);
+                        const QSignalBlocker blocker(_gitButton);
                         _gitButton->setChecked(val);
                         }
 
