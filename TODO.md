@@ -1,5 +1,14 @@
 ## TODO
 
+### Feature: move filter
+- [x] the flags "filterToolMessages" and "filterThoughts" are not
+      properties of Model() anymore but only properties of Agent(),
+      So this flags do not depend on Model anymore.
+- [x] remove the flags from Model
+- [x] add the flags to Model
+- [x] adapt configuration for this flags
+- [x] adapt buttons in toolbar below the chat log
+
 ### Feature: Model Konfiguration
 - [x] Ändere den Panel-Basierten Ansatz zur Konfiguration der Ai-Modell
       wie folgt:

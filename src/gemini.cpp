@@ -202,7 +202,7 @@ void GeminiClient::processTools() {
                   msg["parts"].push_back({
                            {"functionResponse", {{"name", fc["name"]}, {"response", {{"content", result}}}}}
                         });
-                  if (!model->filterToolMessages)
+                  if (!agent->filterToolMessages)
                         displayMsg += agent->formatToolCall(fc["name"], args);
                   }
 

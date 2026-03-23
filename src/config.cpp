@@ -64,7 +64,8 @@ QDataStream& operator<<(QDataStream& out, const Model& v) {
 
 QDataStream& operator>>(QDataStream& in, Model& v) {
       in >> v.name >> v.modelIdentifier >> v.baseUrl >> v.apiKey >> v.api >> v.isLocal;
-      in >> v.filterToolMessages >> v.filterThoughts >> v.supportsThinking >> v.temperature >> v.topP >> v.maxTokens;
+      bool discardBool1, discardBool2;
+      in >> discardBool1 >> discardBool2 >> v.supportsThinking >> v.temperature >> v.topP >> v.maxTokens;
       return in;
       }
 

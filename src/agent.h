@@ -95,8 +95,6 @@ struct Model {
       Q_PROPERTY(QString api MEMBER api)
       Q_PROPERTY(bool isLocal MEMBER isLocal)
       // --- Advanced parameters (fully exposed to QML) ---
-      Q_PROPERTY(bool filterToolMessages MEMBER filterToolMessages)
-      Q_PROPERTY(bool filterThoughts MEMBER filterThoughts)
       Q_PROPERTY(bool supportsThinking MEMBER supportsThinking)
       Q_PROPERTY(double temperature MEMBER temperature)
       Q_PROPERTY(double topP MEMBER topP)
@@ -109,8 +107,6 @@ struct Model {
       QString apiKey;
       QString api;                                       // "ollama", "gemini", "anthropic", "openai"
       bool isLocal                              = false; ///< true für Ollama
-      bool filterToolMessages                   = false;
-      bool filterThoughts                       = false;
       bool supportsThinking                     = false; ///< true: model supports Extended Thinking (e.g. claude-3-7-sonnet)
       double temperature                        = -1.0;  ///< <0: use API default
       double topP                               = -1.0;  ///< <0: use API default
@@ -229,6 +225,8 @@ class Agent : public QWidget
 
       Q_PROPERTY(Models models READ models WRITE setModels NOTIFY modelsChanged)
       Q_PROPERTY(Models filteredModels READ filteredModels NOTIFY modelsChanged)
+      Q_PROPERTY(bool filterToolMessages MEMBER filterToolMessages)
+      Q_PROPERTY(bool filterThoughts MEMBER filterThoughts)
 
       // Stylesheet-Konstanten für Plan/Build-Button (Punkt 6)
       static const QString kPlanStyle;
@@ -358,6 +356,9 @@ class Agent : public QWidget
       QAction* showToolMessageAction = nullptr;
       QAction* showThoughtsAction     = nullptr;
       HistoryManager* historyManager;
+
+      bool filterToolMessages = false;
+      bool filterThoughts = false;
 
     private:
       bool _manifestsLoaded = false;

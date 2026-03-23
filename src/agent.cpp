@@ -187,11 +187,11 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       // Filter toggle buttons (icon-only, no pulldown menu needed)
       showToolMessageAction = new QAction("🔧", this);
       showToolMessageAction->setCheckable(true);
-      showToolMessageAction->setChecked(!model.filterToolMessages);
+      showToolMessageAction->setChecked(!filterToolMessages);
       showToolMessageAction->setToolTip("Show Tool Messages");
       showToolMessageAction->setIcon(QIcon(_editor->darkMode() ? "images/tool-dark.svg" : ":images/tool.svg"));
       connect(showToolMessageAction, &QAction::toggled, [this](bool checked) {
-            model.filterToolMessages = !checked;
+            filterToolMessages = !checked;
             saveStatus();
             updateChatDisplay();
             chatDisplay->scrollToBottom();
@@ -201,10 +201,10 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       showThoughtsAction = new QAction(this);
       showThoughtsAction->setIcon(QIcon(_editor->darkMode() ? "images/thinking-dark.svg" : ":images/thinking.svg"));
       showThoughtsAction->setCheckable(true);
-      showThoughtsAction->setChecked(!model.filterThoughts);
+      showThoughtsAction->setChecked(!filterThoughts);
       showThoughtsAction->setToolTip("Show Thoughts");
       connect(showThoughtsAction, &QAction::toggled, [this](bool checked) {
-            model.filterThoughts = !checked;
+            filterThoughts = !checked;
             saveStatus();
             updateChatDisplay();
             chatDisplay->scrollToBottom();
@@ -349,19 +349,9 @@ void Agent::setCurrentModel(const QString& s, bool clearChat) {
             if (m.name == s) {
                   pendingModelName.clear();
                   model = m;
-                  if (showToolMessageAction) {
-                        showToolMessageAction->blockSignals(true);
-                        showToolMessageAction->setChecked(model.filterToolMessages);
-                        showToolMessageAction->blockSignals(false);
-                        }
-                  if (showThoughtsAction) {
-                        showThoughtsAction->blockSignals(true);
-                        showThoughtsAction->setChecked(model.filterThoughts);
-                        showThoughtsAction->blockSignals(false);
-                        }
                   llm = llmFactory(this, &model, mcpTools);
                   connect(llm, &LLMClient::incomingChunk, this, [this](const std::string& thoughtChunk, const std::string& textChunk) {
-                        if (model.filterThoughts)
+                        if (filterThoughts)
                               chatDisplay->handleIncomingChunk("", textChunk);
                         else
                               chatDisplay->handleIncomingChunk(thoughtChunk, textChunk);
@@ -755,8 +745,6 @@ void Agent::saveSettings() {
             obj["key"]                = m.apiKey;
             obj["modelId"]            = m.modelIdentifier;
             obj["api"]                = m.api;
-            obj["filterToolMessages"] = m.filterToolMessages;
-            obj["filterThoughts"]     = m.filterThoughts;
             obj["supportsThinking"]   = m.supportsThinking;
             obj["temperature"]        = m.temperature;
             obj["topP"]               = m.topP;
@@ -796,10 +784,6 @@ void Agent::loadSettings() {
             m.api             = obj["api"].toString();
             m.isLocal         = false;
             // Optional fields – graceful fallback to struct defaults if absent
-            if (obj.contains("filterToolMessages"))
-                  m.filterToolMessages = obj["filterToolMessages"].toBool(true);
-            if (obj.contains("filterThoughts"))
-                  m.filterThoughts = obj["filterThoughts"].toBool(false);
             if (obj.contains("supportsThinking"))
                   m.supportsThinking = obj["supportsThinking"].toBool();
             if (obj.contains("temperature"))
@@ -1057,8 +1041,8 @@ void Agent::saveStatus() {
                   json header;
                   header["model"]              = currentModel().toStdString();
                   header["activeEntries"]      = historyManager->getActiveEntriesCount();
-                  header["filterToolMessages"] = model.filterToolMessages;
-                  header["filterThoughts"]     = model.filterThoughts;
+                  header["filterToolMessages"] = filterToolMessages;
+                  header["filterThoughts"]     = filterThoughts;
                   f << header.dump() << "\n";
                   }
             const auto& data = historyManager->data();
@@ -1066,8 +1050,8 @@ void Agent::saveStatus() {
                   if (savedEntries > 0) {
                         json meta;
                         meta["activeEntries"]      = historyManager->getActiveEntriesCount();
-                        meta["filterToolMessages"] = model.filterToolMessages;
-                        meta["filterThoughts"]     = model.filterThoughts;
+                        meta["filterToolMessages"] = filterToolMessages;
+                        meta["filterThoughts"]     = filterThoughts;
                         f << meta.dump() << "\n";
                         }
                   for (size_t i = savedEntries; i < data.size(); ++i)
@@ -1109,14 +1093,14 @@ void Agent::loadStatus(const QString& sessionPath) {
                                     setCurrentModel(m, false);
                                     }
                               if (root.contains("filterToolMessages")) {
-                                    model.filterToolMessages = root["filterToolMessages"];
+                                    filterToolMessages = root["filterToolMessages"];
                                     if (showToolMessageAction)
-                                          showToolMessageAction->setChecked(model.filterToolMessages);
+                                          showToolMessageAction->setChecked(!filterToolMessages);
                                     }
                               if (root.contains("filterThoughts")) {
-                                    model.filterThoughts = root["filterThoughts"];
+                                    filterThoughts = root["filterThoughts"];
                                     if (showThoughtsAction)
-                                          showThoughtsAction->setChecked(model.filterThoughts);
+                                          showThoughtsAction->setChecked(!filterThoughts);
                                     }
                               const json& history = root["history"];
                               historyManager->setHistory(history);
@@ -1151,14 +1135,14 @@ void Agent::loadStatus(const QString& sessionPath) {
                                     if (obj.contains("activeEntries"))
                                           actEntries = obj["activeEntries"];
                                     if (obj.contains("filterToolMessages")) {
-                                          model.filterToolMessages = obj["filterToolMessages"];
+                                          filterToolMessages = obj["filterToolMessages"];
                                           if (showToolMessageAction)
-                                                showToolMessageAction->setChecked(model.filterToolMessages);
+                                                showToolMessageAction->setChecked(!filterToolMessages);
                                           }
                                     if (obj.contains("filterThoughts")) {
-                                          model.filterThoughts = obj["filterThoughts"];
+                                          filterThoughts = obj["filterThoughts"];
                                           if (showThoughtsAction)
-                                                showThoughtsAction->setChecked(model.filterThoughts);
+                                                showThoughtsAction->setChecked(!filterThoughts);
                                           }
                                     if (obj.contains("role") || obj.contains("parts") || obj.contains("content"))
                                           h.push_back(obj);
@@ -1316,7 +1300,7 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                         else
                               s = truncateOutput(c.get<std::string>(), kChatResultMaxChars);
                         if (content.contains("role") && (content["role"] == "function" || content["role"] == "tool")) {
-                              if (!model.filterToolMessages) {
+                              if (!filterToolMessages) {
                                     if (content.contains("function")) {
                                           json fc  = content["function"];
                                           msg     += formatToolCall(fc["name"], fc["arguments"], s);
@@ -1327,7 +1311,7 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                               msg += s;
                         }
                   if (content.contains("tool_calls")) {
-                        if (!model.filterToolMessages) {
+                        if (!filterToolMessages) {
                               for (const auto& tool : content["tool_calls"]) {
                                     if (tool.contains("function")) {
                                           json fc  = tool["function"];
@@ -1347,7 +1331,7 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                                     msg += part["text"];
                               }
                         if (part.contains("functionResponse")) {
-                              if (!model.filterToolMessages) {
+                              if (!filterToolMessages) {
                                     json fr = part["functionResponse"];
                                     std::string output =
                                         std::format("\n\n<i>[System: Tool Response: {}()]</i>\n\n", std::string(fr["name"]));
@@ -1357,7 +1341,7 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                                     }
                               }
                         if (part.contains("functionCall")) {
-                              if (!model.filterToolMessages) {
+                              if (!filterToolMessages) {
                                     json fc  = part["functionCall"];
                                     msg     += formatToolCall(fc["name"], fc["args"]);
                                     }
@@ -1398,7 +1382,7 @@ void Agent::updateChatDisplay() {
             std::string thought;
             logContent(content, msg, thought);
 
-            if (model.filterThoughts)
+            if (filterThoughts)
                   thought.clear();
 
             if (msg.empty() && thought.empty())
