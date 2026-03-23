@@ -124,133 +124,191 @@ Rectangle {
                             }
                         Rectangle { height: 1; Layout.fillWidth: true; color: Material.accent }
 
-                        ListView {
+                        RowLayout {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            clip: true
-                            model: config.fileTypes
                             spacing: 15
 
-                            // Footer: Add Button
-                            footer: Button {
-                                text: "+ Add File Type"
-                                flat: true
-                                Material.foreground: Material.accent
-                                onClicked: {
-                                    var list = config.fileTypes
-                                    // Default Werte für neuen Eintrag
-                                    list.push({
-                                        extensions: "*.new",
-                                        languageId: "text",
-                                        languageServer: "none",
-                                        tabSize: 4,
-                                        parse: false
-                                        })
-                                    config.fileTypes = list
+                            // Left Side: File Types List
+                            Frame {
+                                Layout.preferredWidth: 200
+                                Layout.fillHeight: true
+                                padding: 0
+                                background: Rectangle {
+                                    color: Material.theme === Material.Dark ? "#424242" : "#eeeeee"
+                                    border.color: Material.theme === Material.Dark ? "#616161" : "#bdbdbd"
+                                    radius: 4
+                                }
+
+                                ColumnLayout {
+                                    anchors.fill: parent
+                                    spacing: 0
+
+                                    ListView {
+                                        id: fileTypeListView
+                                        Layout.fillWidth: true
+                                        Layout.fillHeight: true
+                                        clip: true
+                                        model: config.fileTypes
+                                        
+                                        Component.onCompleted: {
+                                            if (count > 0) currentIndex = 0
+                                        }
+                                        
+                                        delegate: ItemDelegate {
+                                            width: ListView.view.width
+                                            height: 40
+                                            text: modelData.extensions || "New Type"
+                                            highlighted: ListView.isCurrentItem
+                                            onClicked: ListView.view.currentIndex = index
+                                            font.weight: ListView.isCurrentItem ? Font.DemiBold : Font.Normal
+                                        }
+                                    }
+
+                                    Button {
+                                        Layout.fillWidth: true
+                                        text: "+ Add File Type"
+                                        flat: true
+                                        Material.foreground: Material.accent
+                                        onClicked: {
+                                            var list = config.fileTypes
+                                            list.push({
+                                                extensions: "*.new",
+                                                languageId: "text",
+                                                languageServer: "none",
+                                                tabSize: 4,
+                                                parse: false
+                                            })
+                                            config.fileTypes = list
+                                            fileTypeListView.currentIndex = list.length - 1
+                                        }
                                     }
                                 }
-                            delegate: Rectangle {
-                                width: ListView.view.width - 20
-                                // Automatische Höhe berechnen
-                                height: ftLayout.implicitHeight + 30
+                            }
 
-                                // Card Style (Dark Surface)
-                                color: Material.theme === Material.Dark ? "#424242" : "#ffffff"
-                                border.color: Material.theme === Material.Dark ? "#616161" : "#e0e0e0"
-                                radius: 6
+                            // Right Side: Details
+                            ScrollView {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                clip: true
+                                ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
-                                required property int index
-                                required property var modelData
+                                ColumnLayout {
+                                    width: parent.width - 20
+                                    spacing: 15
 
-                                GridLayout {
-                                    id: ftLayout
-                                    anchors.fill: parent
-                                    anchors.margins: 15
-                                    columns: 2
-                                    columnSpacing: 15
-                                    rowSpacing: 10
+                                    property var currentFileType: fileTypeListView.currentIndex >= 0 && fileTypeListView.currentIndex < config.fileTypes.length ? config.fileTypes[fileTypeListView.currentIndex] : null
+                                    
+                                    visible: currentFileType !== null
+                                    
+                                    Label {
+                                        text: "Edit File Type: " + (parent.currentFileType ? parent.currentFileType.extensions : "")
+                                        font.bold: true
+                                        font.pointSize: 14
+                                    }
 
-                                    // --- Extensions ---
-                                    Label { text: "Extensions:"; Layout.alignment: Qt.AlignRight }
-                                    TextField {
-                                        text: modelData.extensions
+                                    GridLayout {
                                         Layout.fillWidth: true
-                                        placeholderText: "*.cpp;*.h"
-                                        selectByMouse: true
-                                        onEditingFinished: {
-                                            var l=config.fileTypes; l[index].extensions=text; config.fileTypes=l
+                                        columns: 2
+                                        columnSpacing: 15
+                                        rowSpacing: 10
+
+                                        // Extensions
+                                        Label { text: "Extensions:"; Layout.alignment: Qt.AlignRight }
+                                        TextField {
+                                            text: parent.parent.currentFileType ? parent.parent.currentFileType.extensions : ""
+                                            Layout.fillWidth: true
+                                            placeholderText: "*.cpp;*.h"
+                                            onEditingFinished: {
+                                                if (fileTypeListView.currentIndex >= 0) {
+                                                    var l = config.fileTypes;
+                                                    l[fileTypeListView.currentIndex].extensions = text;
+                                                    config.fileTypes = l;
+                                                }
                                             }
                                         }
 
-                                    // --- Language ID & Server ---
-                                    Label { text: "Language ID:"; Layout.alignment: Qt.AlignRight }
-                                    TextField {
-                                        text: modelData.languageId
-                                        Layout.fillWidth: true
-                                        placeholderText: "cpp, python..."
-                                        onEditingFinished: {
-                                            var l=config.fileTypes; l[index].languageId=text; config.fileTypes=l
+                                        // Language ID
+                                        Label { text: "Language ID:"; Layout.alignment: Qt.AlignRight }
+                                        TextField {
+                                            text: parent.parent.currentFileType ? parent.parent.currentFileType.languageId : ""
+                                            Layout.fillWidth: true
+                                            placeholderText: "cpp, python..."
+                                            onEditingFinished: {
+                                                if (fileTypeListView.currentIndex >= 0) {
+                                                    var l = config.fileTypes;
+                                                    l[fileTypeListView.currentIndex].languageId = text;
+                                                    config.fileTypes = l;
+                                                }
                                             }
                                         }
 
-                                    Label { text: "LSP Server:"; Layout.alignment: Qt.AlignRight }
-                                    TextField {
-                                        text: modelData.languageServer
-                                        Layout.fillWidth: true
-                                        placeholderText: "clangd, pylsp..."
-                                        onEditingFinished: {
-                                            var l=config.fileTypes; l[index].languageServer=text; config.fileTypes=l
+                                        // Language Server
+                                        Label { text: "LSP Server:"; Layout.alignment: Qt.AlignRight }
+                                        TextField {
+                                            text: parent.parent.currentFileType ? parent.parent.currentFileType.languageServer : ""
+                                            Layout.fillWidth: true
+                                            placeholderText: "clangd, pylsp..."
+                                            onEditingFinished: {
+                                                if (fileTypeListView.currentIndex >= 0) {
+                                                    var l = config.fileTypes;
+                                                    l[fileTypeListView.currentIndex].languageServer = text;
+                                                    config.fileTypes = l;
+                                                }
                                             }
                                         }
 
-                                    // --- Settings (Row mit SpinBox und Switch) ---
-                                    Label { text: "Tab Size:"; Layout.alignment: Qt.AlignRight }
-                                    RowLayout {
-                                        Layout.fillWidth: true
-
+                                        // Tab Size
+                                        Label { text: "Tab Size:"; Layout.alignment: Qt.AlignRight }
                                         SpinBox {
                                             from: 1; to: 16
-                                            value: modelData.tabSize
+                                            value: parent.parent.currentFileType ? parent.parent.currentFileType.tabSize : 4
                                             editable: true
                                             Layout.preferredWidth: 100
                                             onValueModified: {
-                                                var l=config.fileTypes; l[index].tabSize=value; config.fileTypes=l
+                                                if (fileTypeListView.currentIndex >= 0) {
+                                                    var l = config.fileTypes;
+                                                    l[fileTypeListView.currentIndex].tabSize = value;
+                                                    config.fileTypes = l;
                                                 }
                                             }
-
-                                        // Spacer
-                                        Item { width: 20 }
-
-                                        Label { text: "Enable LSP:" }
-                                        Switch {
-                                            checked: modelData.parse
-                                            onToggled: {
-                                                var l=config.fileTypes; l[index].parse=checked; config.fileTypes=l
-                                                }
-                                            }
-
-                                        Item { Layout.fillWidth: true } // Spacer nach rechts
                                         }
 
-                                    // --- Action Buttons ---
-                                    Item { Layout.columnSpan: 2; height: 5 } // Kleiner Abstand
+                                        // Parse (Enable LSP)
+                                        Label { text: "Enable LSP:"; Layout.alignment: Qt.AlignRight }
+                                        Switch {
+                                            checked: parent.parent.currentFileType ? parent.parent.currentFileType.parse : false
+                                            onToggled: {
+                                                if (fileTypeListView.currentIndex >= 0) {
+                                                    var l = config.fileTypes;
+                                                    l[fileTypeListView.currentIndex].parse = checked;
+                                                    config.fileTypes = l;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    Item { height: 10 }
 
                                     Button {
-                                        Layout.columnSpan: 2
                                         Layout.alignment: Qt.AlignRight
-                                        text: "Remove"
+                                        text: "Delete File Type"
                                         flat: true
                                         Material.foreground: Material.Red
                                         onClicked: {
-                                            var list = config.fileTypes
-                                            list.splice(index, 1)
-                                            config.fileTypes = list
+                                            if (fileTypeListView.currentIndex >= 0) {
+                                                var list = config.fileTypes;
+                                                list.splice(fileTypeListView.currentIndex, 1);
+                                                config.fileTypes = list;
+                                                fileTypeListView.currentIndex = Math.min(fileTypeListView.currentIndex, list.length - 1);
                                             }
                                         }
                                     }
                                 }
                             }
                         }
+                    }
 
                     // --- Page 4: Language Servers ---
                     ColumnLayout {
@@ -264,99 +322,156 @@ Rectangle {
                             }
                         Rectangle { height: 1; Layout.fillWidth: true; color: Material.accent }
 
-                        ListView {
+                        RowLayout {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            clip: true
-                            model: config.languageServersConfig
-                            spacing: 10
+                            spacing: 15
 
-                            // Footer: Button zum Hinzufügen
-                            footer: Button {
-                                text: "+ Add Server"
-                                flat: true
-                                Material.foreground: Material.accent
-                                onClicked: {
-                                    var list = config.languageServersConfig
-                                    list.push({name: "New Server", command: "/usr/bin/...", args: ""})
-                                    config.languageServersConfig = list
-                                    }
+                            // Left Side: Server List
+                            Frame {
+                                Layout.preferredWidth: 200
+                                Layout.fillHeight: true
+                                padding: 0
+                                background: Rectangle {
+                                    color: Material.theme === Material.Dark ? "#424242" : "#eeeeee"
+                                    border.color: Material.theme === Material.Dark ? "#616161" : "#bdbdbd"
+                                    radius: 4
                                 }
 
-                            delegate: Rectangle {
-                                width: ListView.view.width - 20 // Etwas Rand lassen
-                                height: serverLayout.implicitHeight + 30
-                                anchors.horizontalCenter: parent.horizontalCenter
-
-                                // Card Styling (Surface Color)
-                                color: Material.theme === Material.Dark ? "#424242" : "#ffffff"
-                                border.color: Material.theme === Material.Dark ? "#616161" : "#e0e0e0"
-                                radius: 6
-
-                                required property int index
-                                required property var modelData
-
-                                GridLayout {
-                                    id: serverLayout
+                                ColumnLayout {
                                     anchors.fill: parent
-                                    anchors.margins: 15
-                                    columns: 2
-                                    columnSpacing: 15
-                                    rowSpacing: 10
+                                    spacing: 0
 
-                                    // Name
-                                    Label { text: "Name:"; Layout.alignment: Qt.AlignRight }
-                                    TextField {
-                                        text: modelData.name
+                                    ListView {
+                                        id: serverListView
                                         Layout.fillWidth: true
-                                        placeholderText: "e.g. clangd"
-                                        selectByMouse: true
-                                        onEditingFinished: {
-                                            var l=config.languageServersConfig; l[index].name=text; config.languageServersConfig=l
-                                            }
+                                        Layout.fillHeight: true
+                                        clip: true
+                                        model: config.languageServersConfig
+                                        
+                                        Component.onCompleted: {
+                                            if (count > 0) currentIndex = 0
                                         }
-
-                                    // Command
-                                    Label { text: "Command:"; Layout.alignment: Qt.AlignRight }
-                                    TextField {
-                                        text: modelData.command
-                                        Layout.fillWidth: true
-                                        placeholderText: "/path/to/executable"
-                                        selectByMouse: true
-                                        onEditingFinished: {
-                                            var l=config.languageServersConfig; l[index].command=text; config.languageServersConfig=l
-                                            }
+                                        
+                                        delegate: ItemDelegate {
+                                            width: ListView.view.width
+                                            height: 40
+                                            text: modelData.name || "New Server"
+                                            highlighted: ListView.isCurrentItem
+                                            onClicked: ListView.view.currentIndex = index
+                                            font.weight: ListView.isCurrentItem ? Font.DemiBold : Font.Normal
                                         }
+                                    }
 
-                                    // Args
-                                    Label { text: "Arguments:"; Layout.alignment: Qt.AlignRight }
-                                    TextField {
-                                        text: modelData.args
-                                        Layout.fillWidth: true
-                                        placeholderText: "--stdio --log=verbose"
-                                        selectByMouse: true
-                                        onEditingFinished: {
-                                            var l=config.languageServersConfig; l[index].args=text; config.languageServersConfig=l
-                                            }
-                                        }
-
-                                    // Delete Button (Optional, oben rechts in der Karte)
                                     Button {
-                                        Layout.columnSpan: 2
+                                        Layout.fillWidth: true
+                                        text: "+ Add Server"
+                                        flat: true
+                                        Material.foreground: Material.accent
+                                        onClicked: {
+                                            var list = config.languageServersConfig
+                                            list.push({name: "New Server", command: "/usr/bin/...", args: ""})
+                                            config.languageServersConfig = list
+                                            serverListView.currentIndex = list.length - 1
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Right Side: Details
+                            ScrollView {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                clip: true
+                                ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+                                ColumnLayout {
+                                    width: parent.width - 20
+                                    spacing: 15
+
+                                    property var currentServer: serverListView.currentIndex >= 0 && serverListView.currentIndex < config.languageServersConfig.length ? config.languageServersConfig[serverListView.currentIndex] : null
+                                    
+                                    visible: currentServer !== null
+                                    
+                                    Label {
+                                        text: "Edit Server: " + (parent.currentServer ? parent.currentServer.name : "")
+                                        font.bold: true
+                                        font.pointSize: 14
+                                    }
+
+                                    GridLayout {
+                                        Layout.fillWidth: true
+                                        columns: 2
+                                        columnSpacing: 15
+                                        rowSpacing: 10
+
+                                        // Name
+                                        Label { text: "Name:"; Layout.alignment: Qt.AlignRight }
+                                        TextField {
+                                            text: parent.parent.currentServer ? parent.parent.currentServer.name : ""
+                                            Layout.fillWidth: true
+                                            placeholderText: "e.g. clangd"
+                                            onEditingFinished: {
+                                                if (serverListView.currentIndex >= 0) {
+                                                    var l = config.languageServersConfig;
+                                                    l[serverListView.currentIndex].name = text;
+                                                    config.languageServersConfig = l;
+                                                }
+                                            }
+                                        }
+
+                                        // Command
+                                        Label { text: "Command:"; Layout.alignment: Qt.AlignRight }
+                                        TextField {
+                                            text: parent.parent.currentServer ? parent.parent.currentServer.command : ""
+                                            Layout.fillWidth: true
+                                            placeholderText: "/path/to/executable"
+                                            onEditingFinished: {
+                                                if (serverListView.currentIndex >= 0) {
+                                                    var l = config.languageServersConfig;
+                                                    l[serverListView.currentIndex].command = text;
+                                                    config.languageServersConfig = l;
+                                                }
+                                            }
+                                        }
+
+                                        // Arguments
+                                        Label { text: "Arguments:"; Layout.alignment: Qt.AlignRight }
+                                        TextField {
+                                            text: parent.parent.currentServer ? parent.parent.currentServer.args : ""
+                                            Layout.fillWidth: true
+                                            placeholderText: "--stdio --log=verbose"
+                                            onEditingFinished: {
+                                                if (serverListView.currentIndex >= 0) {
+                                                    var l = config.languageServersConfig;
+                                                    l[serverListView.currentIndex].args = text;
+                                                    config.languageServersConfig = l;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    Item { height: 10 }
+
+                                    Button {
                                         Layout.alignment: Qt.AlignRight
-                                        text: "Remove"
+                                        text: "Delete Server"
                                         flat: true
                                         Material.foreground: Material.Red
                                         onClicked: {
-                                            var list = config.languageServersConfig
-                                            list.splice(index, 1)
-                                            config.languageServersConfig = list
+                                            if (serverListView.currentIndex >= 0) {
+                                                var list = config.languageServersConfig;
+                                                list.splice(serverListView.currentIndex, 1);
+                                                config.languageServersConfig = list;
+                                                serverListView.currentIndex = Math.min(serverListView.currentIndex, list.length - 1);
                                             }
                                         }
                                     }
                                 }
                             }
                         }
+                    }
 
                     // --- Page 5: AI Models ---
                     ColumnLayout {

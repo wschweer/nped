@@ -1,0 +1,5 @@
+- comment file system watcher
+- rename Editor->infoButton to aiButton
+- resize main window when enabling/disabling ai and git panel
+  so that the edit window does not change width
+- rename trace files to <cwd>/.<app-name>-log-<pid>

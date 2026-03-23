@@ -1,5 +1,21 @@
 ## TODO
 
+### Feature: Language Server Konfiguration
+- [x] Ändere den Panel-Basierten Ansatz zur Konfiguration der Language Server
+      wie folgt:
+      - die Language Server werden auf der linken Seite als Liste dargestellt.
+      - Auf der rechten Seite wird ein Language Server im Detail dargestellt.
+      - Wird links einServer ausgewählt, dann werden Details rechts
+        aktualisiert
+
+### Feature: Dateityp Konfiguration
+- [x] Ändere den Panel-Basierten Ansatz zur Konfiguration der File Types
+      wie folgt:
+      - die Dateitypen werden auf der linken Seite als Liste dargestellt.
+      - Auf der rechten Seite wird ein Dateityp im Detail dargestellt.
+      - Wird links ein Dateityp ausgewählt, dann werden Details rechts
+        aktualisiert
+
 ### Feature: move filter
 - [x] the flags "filterToolMessages" and "filterThoughts" are not
       properties of Model() anymore but only properties of Agent(),
