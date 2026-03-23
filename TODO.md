@@ -1,5 +1,20 @@
 ## TODO
 
+### Feature: Model Konfiguration
+- [x] Ändere den Panel-Basierten Ansatz zur Konfiguration der Ai-Modell
+      wie folgt:
+      - die Modellnamen werden auf der linken Seite als Liste dargestellt.
+      - Auf der rechten Seite wird ein Modell im Detail dargestellt.
+      - Wird links ein Modell ausgewählt, dann werden Details rechts
+        aktualisiert
+
+### Feature: Navigation Buttons for WebView
+- [x] Implement four buttons on top of the WebView widget in the main view.
+      Back, Forward, Reload, Home
+- [x] Implement the necessary functions and connect them to the buttons
+- [x] Createor or Search and Download svg icon images for the buttons and
+      style them for dark and light theme
+
 ### Bug: Links in gerenderten Markdown Seiten
 - [x] Wenn sich eine Seite im View Mode Render-View befindet und ich auf einen
       Link clicke, dann wird die neue Seite im Text Mode dargestellt statt im
