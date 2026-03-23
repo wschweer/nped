@@ -295,6 +295,10 @@ ConfigDialogWrapper::ConfigDialogWrapper(Editor* editor, QWidget* parent) : QDia
 
 void ConfigDialogWrapper::showEvent(QShowEvent* event) {
       QDialog::showEvent(event);
+      if (parentWidget()) {
+            QRect parentRect = parentWidget()->geometry();
+            move(parentRect.center() - rect().center());
+            }
       // Optional: Zentrieren oder Fokus setzen
       _quickWidget->setFocus();
       }
