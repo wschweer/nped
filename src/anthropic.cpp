@@ -105,7 +105,7 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
       // Anthropic only requires the thinking block (with its signature) from the
       // immediately preceding assistant message.  Keeping older thinking blocks
       // wastes thousands of tokens per turn without any benefit.
-      const json activeHistory = agent->historyManager->getActiveEntries();
+      const json activeHistory        = agent->historyManager->getActiveEntries();
       size_t lastThinkingAssistantIdx = SIZE_MAX;
       for (size_t i = 0; i < activeHistory.size(); ++i) {
             const auto& h = activeHistory[i];
@@ -118,31 +118,35 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
             if (!anthropicMessages.empty() && anthropicMessages.back()["role"] == newMsg["role"]) {
                   // Merge content
                   auto& lastMsg = anthropicMessages.back();
-                  
+
                   // Ensure both contents are arrays to merge them safely
                   json lastContent = lastMsg.contains("content") ? lastMsg["content"] : json::array();
                   if (!lastContent.is_array()) {
-                        lastContent = json::array({ {{"type", "text"}, {"text", lastContent}} });
-                  }
-                  
+                        lastContent = json::array({
+                                 {{"type", "text"}, {"text", lastContent}}
+                              });
+                        }
+
                   json newContent = newMsg.contains("content") ? newMsg["content"] : json::array();
                   if (!newContent.is_array()) {
-                        newContent = json::array({ {{"type", "text"}, {"text", newContent}} });
-                  }
-                  
-                  for (const auto& item : newContent) {
+                        newContent = json::array({
+                                 {{"type", "text"}, {"text", newContent}}
+                              });
+                        }
+
+                  for (const auto& item : newContent)
                         lastContent.push_back(item);
-                  }
                   lastMsg["content"] = lastContent;
-            } else {
+                  }
+            else {
                   anthropicMessages.push_back(newMsg);
-            }
-      };
+                  }
+            };
 
       size_t historyIdx = 0;
       for (const auto& item : activeHistory) {
             const size_t currentIdx = historyIdx++;
-            std::string role = item.value("role", "");
+            std::string role        = item.value("role", "");
 
             if (role == "system") {
                   // system messages are not allowed in messages array for Anthropic, they are in system prompt
@@ -491,7 +495,7 @@ void AnthropicClient::dataFinished() {
 
       if (resolvedToolCalls.empty()) {
             // Plain text response — let the history manager decide whether a summary is needed.
-#if 0  // does not work well with claude
+#if 0 // does not work well with claude
             if (agent->historyManager->addResult(responseContent, totalTokens)) {
                   // request summary
                   std::string text = "Please provide a concise technical summary of our conversation so far. "
@@ -506,10 +510,10 @@ void AnthropicClient::dataFinished() {
                   msg["content"] = text;
                   agent->historyManager->addRequest(msg, text.length() / 4);
                   agent->sendMessage2();
-                  }
+                        }
             else
 #endif
-                  agent->enableInput(true);
+            agent->enableInput(true);
             }
       else {
             // Store the assistant turn (with tool_calls) and immediately execute the tools.

@@ -23,7 +23,7 @@ enum Codec readCodec  = Codec::UTF8;
 enum Codec writeCodec = Codec::UTF8;
 bool persistent       = true;
 
-static const char* appName;
+static const char* appName { "nped" };
 
 //---------------------------------------------------------
 //   printVersion
@@ -54,6 +54,7 @@ static void usage(const char* reason) {
 //---------------------------------------------------------
 
 int main(int argc, char** argv) {
+      Logger::logger.open(appName);
       int c;
 
       signal(SIGPIPE, SIG_IGN);
@@ -64,7 +65,6 @@ int main(int argc, char** argv) {
 
       QApplication app(argc, argv);
       app.setDesktopFileName("nped");
-      appName = argv[0];
 
       while ((c = getopt(argc, argv, "vluitd")) != EOF) {
             switch (c) {

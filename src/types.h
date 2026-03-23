@@ -57,7 +57,7 @@ struct Cursor {
 //   Selection
 //---------------------------------------------------------
 
-enum class SelectionMode { NoSelect, RowSelect, ColSelect };
+enum class SelectionMode { NoSelect, RowSelect, ColSelect, CharSelect };
 struct Selection {
       SelectionMode mode;
       Cursor cursor;

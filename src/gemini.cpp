@@ -28,6 +28,10 @@ GeminiClient::GeminiClient(Agent* a, Model* m, const std::vector<json>& mcps) : 
       setTools(mcps);
       }
 
+//---------------------------------------------------------
+//   setTools
+//---------------------------------------------------------
+
 void GeminiClient::setTools(const std::vector<json>& mcps) {
       try {
             json fd = json::array();
@@ -78,21 +82,21 @@ json GeminiClient::prompt(QNetworkRequest* request) {
       // Transform history: embed images stored as generic "images" array (or legacy "image")
       // into Gemini's inline_data part format
       json contents = json::array();
-      
+
       auto addMessage = [&contents](const json& msg) {
             if (!contents.empty() && contents.back()["role"] == msg["role"]) {
                   // Merge parts
-                  auto& lastMsg = contents.back();
-                  json newParts = msg.contains("parts") ? msg["parts"] : json::array();
+                  auto& lastMsg  = contents.back();
+                  json newParts  = msg.contains("parts") ? msg["parts"] : json::array();
                   json lastParts = lastMsg.contains("parts") ? lastMsg["parts"] : json::array();
-                  for (const auto& part : newParts) {
+                  for (const auto& part : newParts)
                         lastParts.push_back(part);
-                  }
                   lastMsg["parts"] = lastParts;
-            } else {
+                  }
+            else {
                   contents.push_back(msg);
-            }
-      };
+                  }
+            };
 
       for (auto msg : agent->historyManager->getActiveEntries()) {
             // New format: "images" array

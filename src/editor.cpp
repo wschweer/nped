@@ -49,7 +49,6 @@
 #include "completion.h"
 #include "screenshot.h"
 
-
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
@@ -166,8 +165,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       qRegisterMetaType<LanguageServerConfig>("LanguageServerConfig");
       qRegisterMetaType<Model>("Model");
 
-      fileWatcher = new QFileSystemWatcher(this);
 #if 0 // experimental
+      fileWatcher = new QFileSystemWatcher(this);
       connect(fileWatcher, &QFileSystemWatcher::fileChanged, [](const QString& path) {
             // QFileSystemWatcher emits fileChanged for both modification and deletion
             File* f = findFile(path);
@@ -177,8 +176,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
                         Critical("file <{}> changed on disk", path);
                   else
                         Critical("file <{}> deleted from disk", path);
-                                          }
-                                    });
+                                                }
+                                          });
 #endif
 
       if (!initProject())
@@ -321,13 +320,26 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       //    AiButton
       //*****************************************
 
-      infoButton = new QToolButton();
-      infoButton->setText("Ai");
-      infoButton->setCheckable(true);
-      infoButton->setChecked(false);
-      infoButton->setToolTip("toggle AI panel");
-      hbox->addWidget(infoButton, 0, Qt::AlignRight);
-      connect(infoButton, &QToolButton::toggled, [this] { agent->setVisible(infoButton->isChecked()); });
+      aiButton = new QToolButton();
+      aiButton->setText("Ai");
+      aiButton->setCheckable(true);
+//      aiButton->setChecked(false);
+      aiButton->setToolTip("toggle AI panel");
+      hbox->addWidget(aiButton, 0, Qt::AlignRight);
+      connect(aiButton, &QToolButton::toggled, [this] {
+            bool visible = aiButton->isChecked();
+            if (!visible) {
+                  // The panel is visible and will be switched to invisible.
+                  // Save the actual width before switching.
+                  agentWidth = agent->size().width() + splitter->handleWidth();
+                  }
+            // Try to adjust the main window so that the edit widget does
+            // not change in width.
+            auto sz      = size();
+            int newWidth = sz.width() + (visible ? agentWidth : -(agentWidth));
+            agent->setVisible(visible);
+            resize(newWidth, sz.height());
+            });
 
       _stack      = new QStackedWidget(this);
       hScroll     = new QScrollBar(Qt::Horizontal);
@@ -361,11 +373,15 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       grid->setRowStretch(1, 500);
       grid->setColumnStretch(0, 500);
       splitter->addWidget(w);
+      int wIndex = splitter->indexOf(w);
+      splitter->setStretchFactor(wIndex, 100);
 
       agent = new Agent(this, box);
-      agent->setMinimumWidth(500);
+      agent->setMinimumWidth(agentMinimumWidth);
       splitter->addWidget(agent);
-      splitter->setCollapsible(splitter->indexOf(agent), false);
+      int agentIndex = splitter->indexOf(agent);
+      splitter->setStretchFactor(agentIndex, 0);
+      splitter->setCollapsible(agentIndex, false);
 
       //*****************************************
       //    Git
@@ -375,12 +391,24 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       _gitButton->setIcon(QIcon(":images/Git-Icon-1788C.svg"));
       _gitButton->setToolTip("toggle GIT panel");
       _gitButton->setCheckable(true);
-      _gitButton->setChecked(false);
+//      _gitButton->setChecked(false);
       hbox->addWidget(_gitButton, 0);
 
       connect(_gitButton, &QToolButton::toggled, [this] {
             updateGitHistory();
-            gitPanel->setVisible(_gitButton->isChecked());
+            bool visible = _gitButton->isChecked();
+
+            if (!visible) {
+                  // The panel is visible and will be switched to invisible.
+                  // Save the actual width before switching.
+                  gitPanelWidth = gitPanel->size().width() + splitter->handleWidth();
+                  }
+            // Try to adjust the main window so that the edit widget does
+            // not change in width.
+            auto sz      = size();
+            int newWidth = sz.width() + (visible ? gitPanelWidth : -(gitPanelWidth));
+            gitPanel->setVisible(visible);
+            resize(newWidth, sz.height());
             });
 
       //*****************************************
@@ -407,7 +435,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
 
       gitPanel = new QListView(box);
       gitPanel->setObjectName("gitPanel");
-      gitPanel->setMinimumWidth(500);
+      gitPanel->setMinimumWidth(gitPanelMinimumWidth);
       gitPanel->setVisible(false);
       gitPanel->setModel(&gitList);
       connect(gitPanel, &QListView::clicked, [this](const QModelIndex& index) {
@@ -436,7 +464,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       branchLabel = new QLabel();
       branchLabel->setObjectName("branchLabel");
       branchLabel->setToolTip("current git branch");
-    branchLabel->setStatusTip("current git branch");
+      branchLabel->setStatusTip("current git branch");
       branchLabel->setVisible(_projectMode);
       if (_hasGit)
             branchLabel->setText(_currentBranchName);
@@ -479,7 +507,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             auto k          = _kontextList[to];
             _kontextList.remove(to);
             _kontextList.insert(from, k);
-                  });
+                        });
 #endif
       connect(tabBar, &QTabBar::tabMoved, [this](int from, int to) {
             auto k = _kontextList[from];
@@ -645,7 +673,7 @@ void Kontext::toggleViewMode() {
                   case ViewMode::File:
                         _viewMode = ViewMode::Functions;
                         break;
-                                                                        }
+                                                                              }
 #endif
             setViewMode(ViewMode::Functions);
             }
@@ -887,7 +915,7 @@ void Editor::updateHScrollbar() {
 
 void Editor::hScrollTo(int xpos) {
       startCmd();
-      int col = std::max(0, kontext()->fileCol() - xpos);
+      int col                       = std::max(0, kontext()->fileCol() - xpos);
       kontext()->cursor().screenPos = Pos(col, kontext()->screenRow());
       update();
       endCmd();
@@ -1015,7 +1043,7 @@ void Editor::initFont() {
       auto f = qApp->font();
       f.setPointSizeF(_fontSize);
       tabBar->setFont(f);
-      infoButton->setFont(f);
+      aiButton->setFont(f);
       _gitButton->setFont(f);
       branchLabel->setFont(f);
       urlLabel->setFont(f);
@@ -1162,12 +1190,8 @@ bool Editor::loadStatus(int argc, char** argv) {
                   if (j.contains("splitter")) {
                         QByteArray splitterState = QByteArray::fromHex(QByteArray::fromStdString(j["splitter"].get<std::string>()));
                         splitter->restoreState(splitterState);
-                        }
-
-                  if (j.contains("aiVisible")) {
-                        bool v = j["aiVisible"].get<bool>();
-                        agent->setVisible(v);
-                        infoButton->setChecked(v);
+                        agentWidth =    agent->sizeHint().width(); // agent->size().width();
+                        gitPanelWidth = gitPanel->sizeHint().width(); // gitPanel->size().width();
                         }
 
                   if (j.contains("aiExecuteMode")) {
@@ -1175,8 +1199,23 @@ bool Editor::loadStatus(int argc, char** argv) {
                         agent->setExecuteMode(v);
                         }
 
-                  if (j.contains("aiModel"))
+                  if (j.contains("aiModel")) {
                         _settingsLLModel = QString::fromStdString(j["aiModel"].get<std::string>());
+                        }
+
+                  if (j.contains("aiVisible")) {
+                        bool v = j["aiVisible"].get<bool>();
+                        agent->setVisible(v);
+                        const QSignalBlocker blocker(aiButton);
+                        aiButton->setChecked(v);
+                        }
+
+                  if (j.contains("gitPanel")) {
+                        bool val = j["gitPanel"].get<bool>();
+                        const QSignalBlocker blocker(_gitButton);
+                        gitPanel->setVisible(val);
+                        _gitButton->setChecked(val);
+                        }
 
                   if (j.contains("state")) {
                         QByteArray state = QByteArray::fromHex(QByteArray::fromStdString(j["state"].get<std::string>()));
@@ -1187,11 +1226,6 @@ bool Editor::loadStatus(int argc, char** argv) {
                   if (j.contains("geometry")) {
                         QByteArray geom = QByteArray::fromHex(QByteArray::fromStdString(j["geometry"].get<std::string>()));
                         restoreGeometry(geom);
-                        }
-
-                  if (j.contains("gitPanel")) {
-                        bool val = j["gitPanel"].get<bool>();
-                        _gitButton->setChecked(val);
                         }
 
                   if (loadFiles && j.contains("kontexte") && j["kontexte"].is_array()) {
@@ -1512,6 +1546,9 @@ void Editor::deleteLine() {
                         }
                   file->undo()->push(upatch);
                   } break;
+            case SelectionMode::CharSelect:
+                  // not implemented
+                  break;
             }
       QClipboard* cb = QApplication::clipboard();
       cb->setText(pickText, QClipboard::Clipboard);
@@ -1579,6 +1616,9 @@ void Editor::pick() {
             case SelectionMode::ColSelect:
                   pickText     = kontext()->selectionText();
                   pickTextRows = false;
+                  break;
+            case SelectionMode::CharSelect:
+                  // not implemented
                   break;
             }
       QClipboard* cb = QApplication::clipboard();
@@ -1925,7 +1965,7 @@ void Editor::hover() {
       auto c = kontext()->file()->languageClient();
 
       if (k == hoverKontext) {
-            infoButton->toggle();
+            aiButton->toggle();
             }
       else {
             hoverKontext = k;

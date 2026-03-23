@@ -51,8 +51,6 @@
 #include "agent.h"
 #include "logger.h"
 #include "editor.h"
-#include "undo.h"
-#include "webview.h"
 #include "llm.h"
 #include "chatdisplay.h"
 #include "historymanager.h"
@@ -62,22 +60,20 @@
 using json = nlohmann::json;
 
 // Default manifests
-static const std::string manifestBuildDefault =
-    "You are an experienced C++ developer. "
-    "Your task is to analyze and write code in the project and to fix build errors.\n\n"
-    "Use modern c++. Prefer object oriented design and use modern design patterns.\n"
-    "Answer exclusively in JSON format when you call a tool:\n"
-    "PROJECT STRUCTURE:\n"
-    "Standard Qt6 layout. The build directory is './build'. Use CMake with ninja.\n"
-    "Use the run_build_command tool to compile the project and check if errors occur. ";
+static const std::string manifestBuildDefault = "You are an experienced C++ developer. "
+                                                "Your task is to analyze and write code in the project and to fix build errors.\n\n"
+                                                "Use modern c++. Prefer object oriented design and use modern design patterns.\n"
+                                                "Answer exclusively in JSON format when you call a tool:\n"
+                                                "PROJECT STRUCTURE:\n"
+                                                "Standard Qt6 layout. The build directory is './build'. Use CMake with ninja.\n"
+                                                "Use the run_build_command tool to compile the project and check if errors occur. ";
 
-static const std::string manifestPlanDefault =
-    "You are an experienced C++ developer acting as a system architect. "
-    "Your task is to analyze the project, read code, and create an implementation plan.\n\n"
-    "You are currently in PLAN MODE. This means you have read-only access. "
-    "You can search and read files, but you cannot write files or execute build commands.\n"
-    "Answer exclusively in JSON format when you call a tool.\n"
-    "Focus on deeply understanding the problem and propose a detailed step-by-step solution. ";
+static const std::string manifestPlanDefault = "You are an experienced C++ developer acting as a system architect. "
+                                               "Your task is to analyze the project, read code, and create an implementation plan.\n\n"
+                                               "You are currently in PLAN MODE. This means you have read-only access. "
+                                               "You can search and read files, but you cannot write files or execute build commands.\n"
+                                               "Answer exclusively in JSON format when you call a tool.\n"
+                                               "Focus on deeply understanding the problem and propose a detailed step-by-step solution. ";
 
 //---------------------------------------------------------
 //   Agent (Constructor)
@@ -214,11 +210,11 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       // Screenshot button
       screenshotButton = new QToolButton(this);
       screenshotButton->setText("📷");
-      connect(_editor, &Editor::fontChanged, [this] (QFont f) { screenshotButton->setFont(f); });
+      connect(_editor, &Editor::fontChanged, [this](QFont f) { screenshotButton->setFont(f); });
       screenshotButton->setToolTip("Take Screenshot and attach to next prompt");
       screenshotButton->setCheckable(true);
       screenshotButton->setChecked(false);
-            screenshotButton->setIcon(QIcon(_editor->darkMode() ? "images/camera-dark.svg" : ":images/camera.svg"));
+      screenshotButton->setIcon(QIcon(_editor->darkMode() ? "images/camera-dark.svg" : ":images/camera.svg"));
       toolBar->addWidget(screenshotButton);
 
       screenshotHelper = new ScreenshotHelper(this);
@@ -249,7 +245,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       chatDisplay->setZoomFactor(1.2);
       chatDisplay->setDarkMode(_editor->darkMode());
       chatDisplay->setup();
-      mainLayout->addWidget(chatDisplay->widget(), 1);   // stretch=1: nimmt den gesamten verbleibenden Platz
+      mainLayout->addWidget(chatDisplay->widget(), 1); // stretch=1: nimmt den gesamten verbleibenden Platz
       connect(_editor, &Editor::darkModeChanged, chatDisplay, &ChatDisplay::setDarkMode);
 
       // --- 3. Input Row: [DataPanel | UserInput] ---
@@ -268,7 +264,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       // 3a. Schmales vertikales Icon-Panel links neben dem Prompt-Eingabefeld
       dataPanel = new QWidget(this);
       dataPanel->setFixedWidth(28);
-      dataPanel->setFixedHeight(inputHeight);            // exakt so hoch wie das Eingabefeld
+      dataPanel->setFixedHeight(inputHeight); // exakt so hoch wie das Eingabefeld
       QVBoxLayout* dataPanelLayout = new QVBoxLayout(dataPanel);
       dataPanelLayout->setContentsMargins(2, 2, 2, 2);
       dataPanelLayout->setSpacing(4);
@@ -280,14 +276,14 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
 
       // 3c. Beide Widgets in einer horizontalen Zeile kombinieren
       QWidget* inputRow = new QWidget(this);
-      inputRow->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);  // kein vertikales Wachstum
+      inputRow->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed); // kein vertikales Wachstum
       QHBoxLayout* inputRowLayout = new QHBoxLayout(inputRow);
       inputRowLayout->setContentsMargins(0, 0, 0, 0);
       inputRowLayout->setSpacing(2);
       inputRowLayout->addWidget(dataPanel);
       inputRowLayout->addWidget(userInput);
 
-      mainLayout->addWidget(inputRow);                   // kein Stretch: nimmt nur den nötigen Platz
+      mainLayout->addWidget(inputRow); // kein Stretch: nimmt nur den nötigen Platz
 
       // Toolbar placed below the prompt input
       mainLayout->addWidget(toolBar);
@@ -396,9 +392,10 @@ std::string Agent::getManifest() {
             if (buildFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
                   QTextStream in(&buildFile);
                   _manifestBuild = in.readAll().toStdString();
-            } else {
+                  }
+            else {
                   _manifestBuild = manifestBuildDefault;
-            }
+                  }
 
             // Load Plan Manifest
             QString planPath = _editor->projectRoot() + "/agents-plan.md";
@@ -406,13 +403,14 @@ std::string Agent::getManifest() {
             if (planFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
                   QTextStream in(&planFile);
                   _manifestPlan = in.readAll().toStdString();
-            } else {
+                  }
+            else {
                   _manifestPlan = manifestPlanDefault;
+                  }
             }
-      }
 
       return isExecuteMode() ? _manifestBuild : _manifestPlan;
-}
+      }
 
 //---------------------------------------------------------
 //   fetchModels
@@ -936,16 +934,10 @@ void Agent::renameCurrentSession() {
             return;
 
       QFileInfo currentInfo(currentSessionFileName);
-      QString   currentBase = currentInfo.completeBaseName(); // ohne ".json"
+      QString currentBase = currentInfo.completeBaseName(); // ohne ".json"
 
-      bool    ok      = false;
-      QString newName = QInputDialog::getText(
-            this,
-            tr("Rename Session"),
-            tr("New session name:"),
-            QLineEdit::Normal,
-            currentBase,
-            &ok);
+      bool ok         = false;
+      QString newName = QInputDialog::getText(this, tr("Rename Session"), tr("New session name:"), QLineEdit::Normal, currentBase, &ok);
 
       if (!ok || newName.trimmed().isEmpty())
             return;
@@ -972,8 +964,7 @@ void Agent::renameCurrentSession() {
 
       // Umbenennen
       if (!QFile::rename(currentSessionFileName, targetPath)) {
-            QMessageBox::warning(this, tr("Rename failed"),
-                                 tr("Could not rename session file."));
+            QMessageBox::warning(this, tr("Rename failed"), tr("Could not rename session file."));
             return;
             }
 
@@ -1248,7 +1239,6 @@ bool Agent::eventFilter(QObject* obj, QEvent* event) {
                         return true;
                         }
                   }
-
             }
       return QWidget::eventFilter(obj, event);
       }
@@ -1438,17 +1428,14 @@ void Agent::onScreenshotReady(const QImage& image) {
 
       const int count = _pendingImages.size();
       screenshotButton->setChecked(true);
-      screenshotButton->setToolTip(
-          QString("%1 image(s) attached. Click 📷 to discard all.").arg(count));
+      screenshotButton->setToolTip(QString("%1 image(s) attached. Click 📷 to discard all.").arg(count));
 
-      chatDisplay->addMessage(
-          "system",
-          QString("<i>[Image #%1 attached (%2×%3 px) – will be sent with next prompt. "
-                  "Click 📷 to discard all.]</i><br>")
-              .arg(count)
-              .arg(image.width())
-              .arg(image.height())
-              .toStdString());
+      chatDisplay->addMessage("system", QString("<i>[Image #%1 attached (%2×%3 px) – will be sent with next prompt. "
+                                                "Click 📷 to discard all.]</i><br>")
+                                            .arg(count)
+                                            .arg(image.width())
+                                            .arg(image.height())
+                                            .toStdString());
       updateDataPanel();
       }
 
@@ -1459,10 +1446,8 @@ void Agent::onScreenshotReady(const QImage& image) {
 
 void Agent::onScreenshotFailed(const QString& reason) {
       screenshotButton->setChecked(false);
-      chatDisplay->addMessage(
-          "system",
-          std::string("<font color='orange'><i>[Screenshot failed: ") +
-              reason.toStdString() + "]</i></font><br>");
+      chatDisplay->addMessage("system",
+                              std::string("<font color='orange'><i>[Screenshot failed: ") + reason.toStdString() + "]</i></font><br>");
       updateDataPanel();
       }
 

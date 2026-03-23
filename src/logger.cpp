@@ -46,22 +46,26 @@ void Logger::write(std::ostream& f, MsgType t, const MsgLogContext& c, const std
             }
       }
 
-Logger::Logger() {
-      const char* logfile = getenv("LOGFILE");
-      if (!logfile)
-            logfile = "LOG";
+//---------------------------------------------------------
+//   open
+//    If open is not called, then no trace files are written
+//    <cwd>/.<appName>-log-<pid>
+//---------------------------------------------------------
+
+void Logger::open(const char* appName) {
       // lets create lots of tracefiles:
-      std::string s = std::format("{}-{}", logfile, getpid());
+      std::string s = std::format(".{}-log-{}", appName, getpid());
       f.open(s.c_str(), std::ios_base::out);
 
       if (!f.is_open()) {
             cerr << "cannot open logfile <" << s << ">: " << strerror(errno) << "\n";
             exit(-1);
             }
-      //      else
-      //            cerr << format("writing into logfile <{}>\n", logfile);
       }
 
+//---------------------------------------------------------
+//   write
+//---------------------------------------------------------
 
 void Logger::write(MsgType t, const MsgLogContext& c, const std::string& msg) {
       switch (t) {
@@ -77,9 +81,9 @@ void Logger::write(MsgType t, const MsgLogContext& c, const std::string& msg) {
             case MsgType::Fatal:
             case MsgType::Printf: write(std::cerr, t, c, msg); break;
             }
-      if (f) {
+      if (f.is_open()) {
             write(f, t, c, msg);
-            flush(f);
+            flush(f);               // this slows down things a bit
             }
       if (t == MsgType::Fatal)
             abort();

@@ -25,7 +25,7 @@
 #include <QListView>
 #include <QTextEdit>
 #include <QQuickWidget>
-#include <QFileSystemWatcher>
+// #include <QFileSystemWatcher>
 #include <vector>
 #include "file.h"
 #include "completer.h"
@@ -347,11 +347,15 @@ class Editor : public QMainWindow
       QTimer* cursorTimer;
       QTimer* lsUpdateTimer;
       Agent* agent;
+      static const int agentMinimumWidth { 500 };
+      int agentWidth { agentMinimumWidth };
+      static const int gitPanelMinimumWidth { 300 };
+      int gitPanelWidth { gitPanelMinimumWidth };
       QListView* gitPanel;
       GitList gitList;
 
       QSplitter* splitter;
-      QToolButton* infoButton;
+      QToolButton* aiButton;
       QToolButton* _gitButton;
       QToolButton* configButton;
       QProgressBar* progressBar;
@@ -375,7 +379,7 @@ class Editor : public QMainWindow
       QColor _bgColor{240, 240, 240};
 
       QString _settingsLLModel;
-      QFileSystemWatcher* fileWatcher;
+//       QFileSystemWatcher* fileWatcher;
 
       QFont _font;
       QString _fontFamily{"Source Code Pro"};
@@ -575,7 +579,7 @@ class Editor : public QMainWindow
                   }
             }
       void showCompletions(const Completions&);
-      QFileSystemWatcher* getFileWatcher() const { return fileWatcher; }
+//       QFileSystemWatcher* getFileWatcher() const { return fileWatcher; }
       enum UpdateFlag { UpdateNothing = 0, UpdateLine = 1, UpdateScreen = 2, UpdateAll = 4 };
       Q_DECLARE_FLAGS(UpdateFlags, UpdateFlag)
       };

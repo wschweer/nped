@@ -108,9 +108,10 @@ class Logger
       void write(std::ostream& f, MsgType t, const MsgLogContext& c, const std::string& msg);
 
     public:
-      Logger();
+      Logger() {}
       void close() { f.close(); }
       void write(MsgType t, const MsgLogContext& c, const std::string& msg);
+      void open(const char* appName);
       };
 
 extern Logger logger;

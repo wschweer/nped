@@ -6,7 +6,7 @@
 Session-*
 build
 nped.log
-.nped.log*
+.nped-log-*
 test.cpp
 core.*
 .cache
