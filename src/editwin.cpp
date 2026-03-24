@@ -34,6 +34,14 @@ EditWidget::EditWidget(QWidget* parent, Editor* e) : QWidget(parent) {
       }
 
 //---------------------------------------------------------
+//   darkMode
+//---------------------------------------------------------
+
+bool EditWidget::darkMode() const {
+      return editor->darkMode();
+      }
+
+//---------------------------------------------------------
 //   keyPressEvent
 //---------------------------------------------------------
 
@@ -345,7 +353,7 @@ void EditWidget::paintEvent(QPaintEvent* e) {
 
       int cr, cg, cb;
       dc.bgColor.getRgb(&cr, &cg, &cb);
-      if (_darkMode) {
+      if (darkMode()) {
             cr += (255 - cr) / 4;
             cg += (255 - cg) / 4;
             cb += (255 - cb) / 4;
@@ -356,9 +364,9 @@ void EditWidget::paintEvent(QPaintEvent* e) {
             cg -= cg / 8;
             }
       dc.selectColor                  = QColor(cr, cg, cb);
-      const QColor hoverMarkerBGColor = dc.bgColor.darker(_darkMode ? 120 : -120);
-      const QColor markerBGColor      = dc.bgColor.darker(_darkMode ? -120 : 120);
-      dc.labelBGColor                 = QColor(100, 150, 255).darker(70);
+      const QColor hoverMarkerBGColor = dc.bgColor.darker(darkMode() ? 120 : -120);
+      const QColor markerBGColor      = dc.bgColor.darker(darkMode() ? -120 : 120);
+      dc.labelBGColor                 = QColor(100, 150, 255).darker(darkMode() ? -70 : 70);
 
       //
       // draw selection background

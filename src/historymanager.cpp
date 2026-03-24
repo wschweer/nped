@@ -30,6 +30,7 @@ bool HistoryManager::trim() {
                   totalTokens   = _data.back().tokens;
                   }
             summaryRequested = false;
+            emit tokensChanged(totalTokens);
             return false;
             }
 
@@ -53,6 +54,7 @@ bool HistoryManager::trim() {
             // request summary
             summaryRequested = true;
             }
+      emit tokensChanged(totalTokens);
       return summaryRequested;
       }
 
@@ -65,6 +67,7 @@ bool HistoryManager::addResult(const json& content, size_t tokens) {
       totalTokens += tokens;
       activeEntries++;
       bool needSummary = trim();
+      emit tokensChanged(totalTokens);
       return needSummary;
       }
 
@@ -88,6 +91,7 @@ void HistoryManager::setHistory(const json& h) {
             totalTokens += tokens;
             activeEntries++;
             }
+      emit tokensChanged(totalTokens);
       }
 
 //---------------------------------------------------------
@@ -100,6 +104,7 @@ void HistoryManager::setActiveEntries(size_t a) {
       size_t startIdx = _data.size() - activeEntries;
       for (size_t i = startIdx; i < _data.size(); ++i)
             totalTokens += _data[i].tokens;
+      emit tokensChanged(totalTokens);
       }
 
 //---------------------------------------------------------
@@ -130,6 +135,7 @@ void HistoryManager::addRequest(json content, size_t tokens) {
       _data.push_back({content, tokens});
       totalTokens += tokens;
       activeEntries++;
+      emit tokensChanged(totalTokens);
       }
 
 //---------------------------------------------------------
@@ -140,4 +146,5 @@ void HistoryManager::clear() {
       _data.clear();
       totalTokens   = 0;
       activeEntries = 0;
+      emit tokensChanged(totalTokens);
       }

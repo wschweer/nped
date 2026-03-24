@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <QObject>
 #include "logger.h"
 #include "types.h"
 
@@ -20,8 +21,9 @@
 //   HistoryManager
 //---------------------------------------------------------
 
-class HistoryManager
+class HistoryManager : public QObject
       {
+      Q_OBJECT
     public:
       struct HistoryItem {
             json content;
@@ -47,4 +49,7 @@ class HistoryManager
       void setHistory(const json& h);
       void setActiveEntries(size_t a);
       size_t getActiveEntriesCount() const { return activeEntries; }
+
+    signals:
+      void tokensChanged(size_t tokens);
       };

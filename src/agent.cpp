@@ -90,10 +90,9 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
 
       QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
-      // --- 1. Toolbar & Model Selection (toolbar placed at the bottom) ---
-      toolBar = new QToolBar(this);
-
-      toolBar->setIconSize(QSize(32, 32));
+      // Add Dashboard
+      dashboard = new Dashboard(this);
+      mainLayout->addWidget(dashboard);
 
       // Run button – leftmost item in the toolbar
       statusLabel = new QToolButton(this);
@@ -107,12 +106,9 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
                   userInput->clear();
                   }
             });
-      toolBar->addWidget(statusLabel);
-      toolBar->addSeparator();
 
       modelMenu = new QComboBox(this);
       modelMenu->setMinimumWidth(210);
-      toolBar->addWidget(modelMenu);
       connect(this, &Agent::modelsChanged, [this] {
             bool blocked = modelMenu->blockSignals(true);
             modelMenu->clear();
@@ -124,34 +120,24 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             });
       connect(modelMenu, &QComboBox::activated, [this](int index) { setCurrentModel(_models[index].name); });
 
-      toolBar->addSeparator();
-
       sessionComboBox = new QComboBox(this);
       sessionComboBox->setMinimumWidth(230);
-      toolBar->addWidget(sessionComboBox);
       connect(sessionComboBox, &QComboBox::activated, this, &Agent::onSessionSelected);
 
       newSessionButton = new QToolButton(this);
       newSessionButton->setText("+");
       newSessionButton->setToolTip("New Session");
-      toolBar->addWidget(newSessionButton);
       connect(newSessionButton, &QToolButton::clicked, this, &Agent::startNewSession);
 
       deleteSessionButton = new QToolButton(this);
       deleteSessionButton->setObjectName("deleteSessionButton");
       deleteSessionButton->setToolTip("Delete Session");
-      toolBar->addWidget(deleteSessionButton);
       connect(deleteSessionButton, &QToolButton::clicked, this, &Agent::deleteCurrentSession);
 
       renameSessionButton = new QToolButton(this);
       renameSessionButton->setText("✎");
       renameSessionButton->setToolTip("Rename Session");
-      toolBar->addWidget(renameSessionButton);
       connect(renameSessionButton, &QToolButton::clicked, this, &Agent::renameCurrentSession);
-
-      QWidget* spacer = new QWidget();
-      spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-      toolBar->addWidget(spacer);
 
       modeButton = new QToolButton(this);
       modeButton->setCheckable(true);
@@ -163,7 +149,15 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       modeButton->setEnabled(_editor->projectMode());
       modeButton->setText(_isExecuteMode ? "Build" : "Plan");
       modeButton->setProperty("class", _isExecuteMode ? "errorButton" : "actionButton");
-      toolBar->addWidget(modeButton);
+
+
+      dashboard->addWidget(statusLabel);
+      dashboard->addWidget(modeButton, 0);
+      dashboard->addWidget(renameSessionButton, 0);
+      dashboard->addWidget(deleteSessionButton, 0);
+      dashboard->addWidget(newSessionButton, 0);
+      dashboard->addWidget(sessionComboBox, 0);
+      dashboard->addWidget(modelMenu, 0);
 
       connect(modeButton, &QToolButton::toggled, [this](bool checked) {
             if (!_editor->projectMode())
@@ -196,7 +190,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             updateChatDisplay();
             chatDisplay->scrollToBottom();
             });
-      toolBar->addAction(showToolMessageAction);
+      dashboard->addAction(showToolMessageAction, 1);
 
       showThoughtsAction = new QAction(this);
       showThoughtsAction->setIcon(QIcon(_editor->darkMode() ? "images/thinking-dark.svg" : ":images/thinking.svg"));
@@ -209,7 +203,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             updateChatDisplay();
             chatDisplay->scrollToBottom();
             });
-      toolBar->addAction(showThoughtsAction);
+      dashboard->addAction(showThoughtsAction, 1);
 
       // Screenshot button
       screenshotButton = new QToolButton(this);
@@ -219,7 +213,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       screenshotButton->setCheckable(true);
       screenshotButton->setChecked(false);
             screenshotButton->setIcon(QIcon(_editor->darkMode() ? "images/camera-dark.svg" : ":images/camera.svg"));
-      toolBar->addWidget(screenshotButton);
+      dashboard->addWidget(screenshotButton, 1);
 
       screenshotHelper = new ScreenshotHelper(this);
       connect(screenshotHelper, &ScreenshotHelper::screenshotReady, this, &Agent::onScreenshotReady);
@@ -237,6 +231,13 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
                   }
             screenshotHelper->takeScreenshot();
             });
+
+      // Initialize token count
+      dashboard->setTokenCount(historyManager->totalTokens);
+      // Connect token updates
+      connect(historyManager, &HistoryManager::tokensChanged, [this](size_t tokens) {
+            dashboard->setTokenCount(tokens);
+      });
 
       connect(_editor, &Editor::darkModeChanged, [this]() {
             showThoughtsAction->setIcon(QIcon(_editor->darkMode() ? "images/thinking-dark.svg" : ":images/thinking.svg"));
@@ -259,8 +260,9 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       userInput->setAcceptDrops(true);
       userInput->setCursorWidth(8);
       userInput->setPlaceholderText("enter message to LLM...");
+      userInput->setStyleSheet("QPlainTextEdit { padding: 5px; }");
       QFontMetrics fm(userInput->font());
-      const int inputHeight = (fm.lineSpacing() * 4) + 10;
+      const int inputHeight = (fm.lineSpacing() * 4) + 20;
       userInput->setFixedHeight(inputHeight);
       userInput->installEventFilter(this);
       connect(userInput, &DropAwarePlainTextEdit::imageDropped, this, &Agent::onScreenshotReady);
@@ -290,7 +292,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       mainLayout->addWidget(inputRow);                   // kein Stretch: nimmt nur den nötigen Platz
 
       // Toolbar placed below the prompt input
-      mainLayout->addWidget(toolBar);
+      // mainLayout->addWidget(toolBar);
       loadSettings();
 
       connect(_editor, &Editor::fontChanged, [this](QFont f) {
@@ -545,7 +547,8 @@ void Agent::sendMessage2() {
       json jsonPayLoad   = llm->prompt(&request);
       QByteArray payload = QString::fromStdString(jsonPayLoad.dump()).toUtf8();
 
-      Debug("send <{}>", jsonPayLoad.dump(3));
+      Debug("send <{}>", jsonPayLoad.size());
+      Log("send <{}>", jsonPayLoad.dump(3));
       request.setTransferTimeout(60000 * 5);
 
       chatDisplay->startNewStreamingMessage(model.name.toStdString());
@@ -703,7 +706,8 @@ void Agent::processData() {
                         // accept() ist schneller als parse(), da es kein Objekt im Speicher baut
                         if (json::accept(potentialJson)) {
                               auto j = json::parse(potentialJson);
-                              Debug("received <{}>", j.dump(3));
+                              Debug("received <{}>", j.size());
+                              Log("received <{}>", j.dump(3));
                               llm->processJsonItem(j);
 
                               // Puffer aktualisieren
@@ -1225,17 +1229,18 @@ bool Agent::eventFilter(QObject* obj, QEvent* event) {
             if (event->type() == QEvent::KeyPress) {
                   QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
                   if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
-                        if (keyEvent->modifiers() & Qt::ShiftModifier)
-                              return false;
-                        sendMessage(userInput->toPlainText());
-                        userInput->clear();
-                        return true;
+                        if (keyEvent->modifiers() & Qt::ControlModifier) {
+                              sendMessage(userInput->toPlainText());
+                              userInput->clear();
+                              return true;
                         }
+                        // Just insert a newline for normal Return
+                        return false;
                   }
-
             }
-      return QWidget::eventFilter(obj, event);
       }
+      return QWidget::eventFilter(obj, event);
+}
 
 //---------------------------------------------------------
 //   formatToolCall

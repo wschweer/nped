@@ -609,7 +609,7 @@ Editor::~Editor() {
 void Editor::initEnterWidget() {
       enter                   = new QWidget();
       QBoxLayout* enterLayout = new QBoxLayout(QBoxLayout::LeftToRight, enter);
-      enterLayout->setContentsMargins(0, 0, 0, 0);
+      enterLayout->setContentsMargins(5, 5, 5, 5);
       enterLayout->setSpacing(0);
 
       QLabel* enterLabel = new QLabel("Enter:", enter);

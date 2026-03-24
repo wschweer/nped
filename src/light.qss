@@ -11,6 +11,13 @@
     border: 1px solid #888;
 }
 
+#dashboardWidget {
+    background-color: #0e0e0e;
+    border: 1px solid #0c0c0c;
+    border-radius: 6px;
+    margin: 5px;
+}
+
 QPlainTextEdit {
     background-color: #fff;
     color: #000;

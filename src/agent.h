@@ -28,12 +28,12 @@
 
 #include "types.h"
 #include "llm.h"
+#include "dashboard.h"
 
 class Editor;
 class QTextEdit;
 class MarkdownWebView;
 // DropAwarePlainTextEdit is defined above – no forward declaration needed
-class QToolBar;
 class QComboBox;
 class QToolButton;
 class QMenu;
@@ -235,7 +235,7 @@ class Agent : public QWidget
       QByteArray streamBuffer;
       std::vector<json> mcpTools;
       Editor* _editor;
-      QToolBar* toolBar;
+      Dashboard* dashboard;
       QToolButton* newSessionButton;
       QToolButton* deleteSessionButton;
       QToolButton* renameSessionButton;

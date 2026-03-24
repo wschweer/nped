@@ -87,6 +87,8 @@ qt_add_executable(nped
       src/chatdisplay.cpp
       src/historymanager.cpp
       src/screenshot.cpp
+      src/dashboard.cpp
+      src/dashboard.h
       )
 
 qt_add_resources(nped "qmls"

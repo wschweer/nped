@@ -1,5 +1,10 @@
 ## TODO
 
+### Feature: Ai Dashboard
+- [ ] Extend the Toolbar at the bottom of the AI Panel into a Dashboard so that
+      it is possible to add more functionality. Move the current content of the
+      toolbar into the new dashboard and organize them in two rows.
+
 ### Feature: Language Server Konfiguration
 - [x] Ändere den Panel-Basierten Ansatz zur Konfiguration der Language Server
       wie folgt:
