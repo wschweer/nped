@@ -257,15 +257,15 @@ void Editor::loadSettings() {
 //---------------------------------------------------------
 
 ConfigDialogWrapper::ConfigDialogWrapper(Editor* editor, QWidget* parent) : QWidget(parent), _quickWidget(new QQuickWidget(this)) {
-      resize(1100, 650); // Startgröße, sollte zur QML-Größe passen
-
       // Layout erstellen, damit das QQuickWidget den ganzen Dialog füllt
       auto layout = new QVBoxLayout(this);
       layout->setContentsMargins(0, 0, 0, 0);
+      layout->setSizeConstraint(QLayout::SetFixedSize);
       layout->addWidget(_quickWidget);
 
       // Wichtig: Resize-Modus, damit sich QML dem Dialog anpasst
-      _quickWidget->setResizeMode(QQuickWidget::SizeRootObjectToView);
+      // enum ResizeMode { SizeViewToRootObject, SizeRootObjectToView };
+      _quickWidget->setResizeMode(QQuickWidget::SizeViewToRootObject);
 
       // Zugriff auf diesen Dialog für QML ermöglichen (für close/accept/reject)
       _quickWidget->rootContext()->setContextProperty("dialog", this);

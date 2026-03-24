@@ -17,6 +17,8 @@ import Nped.Config
 
 Rectangle {
     id: root
+    width: 1100
+    height: 650
 
     // Enhanced border and resizing area
     border.color: Material.theme === Material.Dark ? "#555555" : "#999999"
@@ -41,26 +43,26 @@ Rectangle {
             anchors.centerIn: parent
             color: Material.theme === Material.Dark ? "#777777" : "#aaaaaa"
             radius: 2
-        }
+            }
 
         MouseArea {
             anchors.fill: parent
             cursorShape: Qt.SizeFDiagCursor
             property point clickPos: "0,0"
-            
+
             onPressed: {
                 clickPos = Qt.point(mouseX, mouseY)
-            }
+                }
             onPositionChanged: {
                 if (pressed) {
                     let delta = Qt.point(mouseX - clickPos.x, mouseY - clickPos.y)
                     let newWidth = Math.max(600, root.width + delta.x)
                     let newHeight = Math.max(400, root.height + delta.y)
-                    
+
                     // Directly resize the QML component
                     root.width = newWidth
                     root.height = newHeight
-                    
+
                     // Signal the C++ wrapper to resize its container
                     // Since root is the root object, its size changes here,
                     // but the QQuickWidget size needs to sync.

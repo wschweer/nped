@@ -83,7 +83,7 @@ ColumnLayout {
                     Material.foreground: Material.accent
                     onClicked: {
                         var list = agent.models
-                        list.push({name: "New Model", modelIdentifier: "", api: "ollama", baseUrl: "http://localhost:11434", apiKey: "", isLocal: false, filterToolMessages: true, filterThoughts: false, supportsThinking: false, temperature: -1.0, topP: -1.0, maxTokens: -1})
+                        list.push({name: "New Model", modelIdentifier: "", api: "ollama", baseUrl: "http://localhost:11434", apiKey: "", isLocal: false, supportsThinking: false, temperature: -1.0, topP: -1.0, maxTokens: -1})
                         agent.models = list
                         modelListView.currentIndex = list.length - 1
                         }
@@ -259,28 +259,6 @@ ColumnLayout {
                                 if (modelListView.currentIndex >= 0) {
                                     var l = agent.models;
                                     l[modelListView.currentIndex].supportsThinking = checked;
-                                    agent.models = l;
-                                }
-                            }
-                        }
-                        CheckBox {
-                            text: "Filter Tools"
-                            checked: parent.parent.parent.currentModel ? parent.parent.currentModel.filterToolMessages : false
-                            onToggled: {
-                                if (modelListView.currentIndex >= 0) {
-                                    var l = agent.models;
-                                    l[modelListView.currentIndex].filterToolMessages = checked;
-                                    agent.models = l;
-                                }
-                            }
-                        }
-                        CheckBox {
-                            text: "Filter Thoughts"
-                            checked: parent.parent.parent.currentModel ? parent.parent.currentModel.filterThoughts : false
-                            onToggled: {
-                                if (modelListView.currentIndex >= 0) {
-                                    var l = agent.models;
-                                    l[modelListView.currentIndex].filterThoughts = checked;
                                     agent.models = l;
                                 }
                             }
