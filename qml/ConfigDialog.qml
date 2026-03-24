@@ -18,15 +18,65 @@ import Nped.Config
 Rectangle {
     id: root
 
+    // Enhanced border and resizing area
+    border.color: Material.theme === Material.Dark ? "#555555" : "#999999"
+    border.width: 2
+    radius: 4
+
     Material.theme: config.darkMode ? Material.Dark : Material.Light
+    color: Material.background
+
+    // Grip for visual indication
+    Rectangle {
+        width: 15
+        height: 15
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        color: "transparent"
+
+        // Small visual indicator for the resize handle
+        Rectangle {
+            width: 8
+            height: 8
+            anchors.centerIn: parent
+            color: Material.theme === Material.Dark ? "#777777" : "#aaaaaa"
+            radius: 2
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.SizeFDiagCursor
+            property point clickPos: "0,0"
+            
+            onPressed: {
+                clickPos = Qt.point(mouseX, mouseY)
+            }
+            onPositionChanged: {
+                if (pressed) {
+                    let delta = Qt.point(mouseX - clickPos.x, mouseY - clickPos.y)
+                    let newWidth = Math.max(600, root.width + delta.x)
+                    let newHeight = Math.max(400, root.height + delta.y)
+                    
+                    // Directly resize the QML component
+                    root.width = newWidth
+                    root.height = newHeight
+                    
+                    // Signal the C++ wrapper to resize its container
+                    // Since root is the root object, its size changes here,
+                    // but the QQuickWidget size needs to sync.
+                    // QQuickWidget.SizeRootObjectToView handles this automatically.
+                }
+            }
+        }
+    }
 
     // Haupt-Layout: Oben Inhalt, Unten Footer
     ColumnLayout {
         anchors.fill: parent
+        anchors.margins: 4
         spacing: 0
 
         // --- 1. Der eigentliche Inhalt (Sidebar + Pages) ---
-        // Dieser Teil nimmt den gesamten verfügbaren Platz ein (fillHeight: true)
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -36,7 +86,7 @@ Rectangle {
             Rectangle {
                 Layout.fillHeight: true
                 Layout.preferredWidth: 200
-                color: Material.theme === Material.Dark ? "#424242" : "#eeeeee"
+                color: Material.theme === Material.Dark ? "#333333" : "#f0f0f0"
 
                 ListView {
                     id: navList
@@ -95,17 +145,15 @@ Rectangle {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 60
-             color: Material.theme === Material.Dark ? "#424242" : "#eeeeee"
+             color: Material.theme === Material.Dark ? "#333333" : "#f0f0f0"
             Rectangle {
                 width: parent.width
                 height: 1
-                color: Material.theme === Material.Dark ? "#616161" : "#bdbdbd"
+                color: Material.theme === Material.Dark ? "#555555" : "#cccccc"
                 anchors.top: parent.top
                 }
             RowLayout {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
+                anchors.fill: parent
                 anchors.leftMargin: 10
                 anchors.rightMargin: 10
                 spacing: 10
@@ -120,7 +168,6 @@ Rectangle {
 
                 Button {
                     text: "Cancel"
-                    // Ruft die C++ Methode reject() auf (via context property)
                     onClicked: dialog.reject()
                     }
                 Button {

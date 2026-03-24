@@ -477,11 +477,10 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             configButton->setIcon(QIcon::fromTheme("preferences-system", QIcon(iconPath)));
             });
       connect(configButton, &QToolButton::clicked, [this] {
-            ConfigDialogWrapper dialog(this, this);
-            if (dialog.exec() == QDialog::Accepted)
-                  initFont();
-            else
-                  Debug("FAIL");
+            ConfigDialogWrapper* dialog = new ConfigDialogWrapper(this, this);
+            dialog->setAttribute(Qt::WA_DeleteOnClose);
+            connect(this, &Editor::configApplied, this, &Editor::initFont);
+            dialog->show();
             });
       hbox->addWidget(configButton, 0, Qt::AlignRight);
 

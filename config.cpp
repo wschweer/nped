@@ -58,6 +58,19 @@ QDataStream& operator>>(QDataStream& in, LanguageServerConfig& v) {
       return in;
       }
 
+QDataStream& operator<<(QDataStream& out, const Model& v) {
+      out << v.name << v.modelIdentifier << v.baseUrl << v.apiKey << v.api << v.isLocal;
+      out << v.supportsThinking << v.temperature << v.topP << v.maxTokens;
+      return out;
+      }
+
+QDataStream& operator>>(QDataStream& in, Model& v) {
+      in >> v.name >> v.modelIdentifier >> v.baseUrl >> v.apiKey >> v.api >> v.isLocal;
+      bool discardBool1, discardBool2;
+      in >> discardBool1 >> discardBool2 >> v.supportsThinking >> v.temperature >> v.topP >> v.maxTokens;
+      return in;
+      }
+
 //---------------------------------------------------------
 //   loadDefaults
 //---------------------------------------------------------
@@ -105,7 +118,7 @@ void Editor::loadDefaults() {
                {                  Cmd::CMD_PUT,                   "Cmd::CMD_PUT",     "Paste Line (Put)",                              "F9"},
                {          Cmd::CMD_SEARCH_PREV,           "CMD_SEARCH_PREV",          "Search Prev",                      "SHIFT + F7"},
                {          Cmd::CMD_DELETE_WORD,           "CMD_DELETE_WORD",          "Delete Word",                        "Ctrl + T"},
-               {           Cmd::CMD_ENTER_WORD,            "Cmd::CMD_ENTER_WORD",           "Enter Word",             "Ctrl + O,  Ctrl + W"},
+               {           Cmd::CMD_ENTER_WORD,            "CMD_ENTER_WORD",           "Enter Word",             "Ctrl + O,  Ctrl + W"},
                {            Cmd::CMD_GOTO_BACK,             "Cmd::CMD_GOTO_BACK",         "History Back",                      "Ctrl + F12"},
                {            Cmd::CMD_SHOW_INFO,             "Cmd::CMD_SHOW_INFO",        "Show AI Panel",                        "Ctrl + H"},
                {               Cmd::CMD_FORMAT,                "Cmd::CMD_FORMAT",               "Format",             "Ctrl + O,  Ctrl + F"},
@@ -293,11 +306,6 @@ void ConfigDialogWrapper::reject() {
 
 void ConfigDialogWrapper::resizeEvent(QResizeEvent* event) {
       QWidget::resizeEvent(event);
-      if (parentWidget()) {
-            QPoint center = parentWidget()->rect().center();
-            QSize mySize = size();
-            move(center.x() - mySize.width() / 2, center.y() - mySize.height() / 2);
-            }
       _quickWidget->setFocus();
       }
 

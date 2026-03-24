@@ -21,6 +21,7 @@
 #include <QRegularExpression>
 #include <QStatusBar>
 #include <QResizeEvent>
+#include <QDialog>
 #include <QListView>
 #include <QTextEdit>
 #include <QQuickWidget>
@@ -541,7 +542,6 @@ class Editor : public QMainWindow
             }
       QList<ShortcutConfig> shortcuts() const { return _shortcuts; }
       QList<FileTypeConfig> fileTypes() const { return _fileTypes; }
-      QList<FileTypeConfig>& fileTypesRef() { return _fileTypes; }
       QList<LanguageServerConfig> languageServersConfig() const { return _languageServersConfig; }
       void loadDefaults();
       void loadSettings();
@@ -620,12 +620,7 @@ class ConfigDialogWrapper : public QWidget
       QQuickWidget* _quickWidget;
 
     protected:
-      // Größe beim Start anpassen
       void resizeEvent(QResizeEvent* event) override;
-
-    public slots:
-      void accept();
-      void reject();
 
     public:
       explicit ConfigDialogWrapper(Editor*, QWidget* parent = nullptr);
