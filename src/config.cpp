@@ -19,6 +19,8 @@
 #include <QDebug>
 #include <QFontDatabase>
 #include <QSettings>
+#include <QScreen>
+#include <QGuiApplication>
 #include "editor.h"
 #include "kontext.h"
 #include "logger.h"
@@ -111,34 +113,34 @@ void Editor::loadDefaults() {
                {           Cmd::CMD_SELECT_ROW,            "CMD_SELECT_ROW",           "Row Select",                              "F5"},
                {           Cmd::CMD_SELECT_COL,            "CMD_SELECT_COL",           "Col Select",                              "F6"},
                {          Cmd::CMD_SEARCH_NEXT,           "CMD_SEARCH_NEXT",          "Search Next",                              "F7"},
-               {               Cmd::CMD_RENAME,                "CMD_RENAME",        "Global Rename",              "Ctrl + O, Ctrl + R"},
-               {                 Cmd::CMD_PICK,                  "CMD_PICK",     "Copy Line (Pick)",                              "F8"},
-               {                  Cmd::CMD_PUT,                   "CMD_PUT",     "Paste Line (Put)",                              "F9"},
+               {               Cmd::CMD_RENAME,                "Cmd::CMD_RENAME",        "Global Rename",              "Ctrl + O, Ctrl + R"},
+               {                 Cmd::CMD_PICK,                  "Cmd::CMD_PICK",     "Copy Line (Pick)",                              "F8"},
+               {                  Cmd::CMD_PUT,                   "Cmd::CMD_PUT",     "Paste Line (Put)",                              "F9"},
                {          Cmd::CMD_SEARCH_PREV,           "CMD_SEARCH_PREV",          "Search Prev",                      "SHIFT + F7"},
                {          Cmd::CMD_DELETE_WORD,           "CMD_DELETE_WORD",          "Delete Word",                        "Ctrl + T"},
                {           Cmd::CMD_ENTER_WORD,            "CMD_ENTER_WORD",           "Enter Word",             "Ctrl + O,  Ctrl + W"},
-               {            Cmd::CMD_GOTO_BACK,             "CMD_GOTO_BACK",         "History Back",                      "Ctrl + F12"},
-               {            Cmd::CMD_SHOW_INFO,             "CMD_SHOW_INFO",        "Show AI Panel",                        "Ctrl + H"},
-               {               Cmd::CMD_FORMAT,                "CMD_FORMAT",               "Format",             "Ctrl + O,  Ctrl + F"},
-               {       Cmd::CMD_VIEW_FUNCTIONS,        "CMD_VIEW_FUNCTIONS",          "Toggle View",                        "Ctrl + V"},
-               {            Cmd::CMD_VIEW_BUGS,             "CMD_VIEW_BUGS",   "View LS Annotation",                        "Ctrl + B"},
-               { Cmd::CMD_GOTO_TYPE_DEFINITION,  "CMD_GOTO_TYPE_DEFINITION", "Goto Type Definition",                             "F10"},
-               {  Cmd::CMD_GOTO_IMPLEMENTATION,   "CMD_GOTO_IMPLEMENTATION",  "Goto Implementation",                             "F11"},
-               {      Cmd::CMD_GOTO_DEFINITION,       "CMD_GOTO_DEFINITION",      "Goto Definition",                             "F12"},
-               {        Cmd::CMD_EXPAND_MACROS,         "CMD_EXPAND_MACROS",        "Expand Macros",              "Ctrl + O, Ctrl + E"},
-               {          Cmd::CMD_COMPLETIONS,           "CMD_COMPLETIONS",     "Show Completions",         "Ctrl + Tab; Shift + Tab"},
+               {            Cmd::CMD_GOTO_BACK,             "Cmd::CMD_GOTO_BACK",         "History Back",                      "Ctrl + F12"},
+               {            Cmd::CMD_SHOW_INFO,             "Cmd::CMD_SHOW_INFO",        "Show AI Panel",                        "Ctrl + H"},
+               {               Cmd::CMD_FORMAT,                "Cmd::CMD_FORMAT",               "Format",             "Ctrl + O,  Ctrl + F"},
+               {       Cmd::CMD_VIEW_FUNCTIONS,        "Cmd::CMD_VIEW_FUNCTIONS",          "Toggle View",                        "Ctrl + V"},
+               {            Cmd::CMD_VIEW_BUGS,             "Cmd::CMD_VIEW_BUGS",   "View LS Annotation",                        "Ctrl + B"},
+               { Cmd::CMD_GOTO_TYPE_DEFINITION,  "Cmd::CMD_GOTO_TYPE_DEFINITION", "Goto Type Definition",                             "F10"},
+               {  Cmd::CMD_GOTO_IMPLEMENTATION,   "Cmd::CMD_GOTO_IMPLEMENTATION",  "Goto Implementation",                             "F11"},
+               {      Cmd::CMD_GOTO_DEFINITION,       "Cmd::CMD_GOTO_DEFINITION",      "Goto Definition",                             "F12"},
+               {        Cmd::CMD_EXPAND_MACROS,         "Cmd::CMD_EXPAND_MACROS",        "Expand Macros",              "Ctrl + O, Ctrl + E"},
+               {          Cmd::CMD_COMPLETIONS,           "Cmd::CMD_COMPLETIONS",     "Show Completions",         "Ctrl + Tab; Shift + Tab"},
                {             Cmd::CMD_FOLD_ALL,              "Cmd::CMD_FOLD_ALL",             "Fold All",                        "Ctrl + M"},
-               {           Cmd::CMD_UNFOLD_ALL,            "CMD_UNFOLD_ALL",           "Unfold All",                "Ctrl + Shift + M"},
-               {          Cmd::CMD_FOLD_TOGGLE,           "CMD_FOLD_TOGGLE",          "Fold Toggle",                        "Ctrl + <"},
-               {      Cmd::CMD_FUNCTION_HEADER,       "CMD_FUNCTION_HEADER",        "Create Header",              "Ctrl + O, Ctrl + H"},
-               {           Cmd::CMD_GIT_TOGGLE,            "CMD_GIT_TOGGLE",       "Show Git Panel",              "Ctrl + O, Ctrl + G"},
-               {       Cmd::CMD_ENTER_ADD_FILE,        "CMD_ENTER_ADD_FILE",             "Add File",                              "F3"},
-               {         Cmd::CMD_ENTER_SEARCH,          "CMD_ENTER_SEARCH",       "Search/Replace",                              "F7"},
-               {Cmd::CMD_ENTER_CREATE_FUNCTION, "CMD_ENTER_CREATE_FUNCTION",      "Create Function",                          "Ctrl+F"},
-               {      Cmd::CMD_ENTER_GOTO_LINE,       "CMD_ENTER_GOTO_LINE",            "Goto Line",                          "Ctrl+G"},
-               {            Cmd::CMD_SCREENSHOT,            "CMD_SCREENSHOT",         "Screen Shot",            "Ctrl + O, Ctrl + O, Ctrl + P"},
-               {            Cmd::CMD_LINK_BACK,            "CMD_LINK_BACK",         "Link Back",            "Ctrl + PgUp"},
-               {            Cmd::CMD_LINK_FORWARD,            "CMD_LINK_FORWARD",         "Link Forward",            "Ctrl + PgDown"},
+               {           Cmd::CMD_UNFOLD_ALL,            "Cmd::CMD_UNFOLD_ALL",           "Unfold All",                "Ctrl + Shift + M"},
+               {          Cmd::CMD_FOLD_TOGGLE,           "Cmd::CMD_FOLD_TOGGLE",          "Fold Toggle",                        "Ctrl + <"},
+               {      Cmd::CMD_FUNCTION_HEADER,       "Cmd::CMD_FUNCTION_HEADER",        "Create Header",              "Ctrl + O, Ctrl + H"},
+               {           Cmd::CMD_GIT_TOGGLE,            "Cmd::CMD_GIT_TOGGLE",       "Show Git Panel",              "Ctrl + O, Ctrl + G"},
+               {       Cmd::CMD_ENTER_ADD_FILE,        "Cmd::CMD_ENTER_ADD_FILE",             "Add File",                              "F3"},
+               {         Cmd::CMD_ENTER_SEARCH,          "Cmd::CMD_ENTER_SEARCH",       "Search/Replace",                              "F7"},
+               {Cmd::CMD_ENTER_CREATE_FUNCTION, "Cmd::CMD_ENTER_CREATE_FUNCTION",      "Create Function",                          "Ctrl+F"},
+               {      Cmd::CMD_ENTER_GOTO_LINE,       "Cmd::CMD_ENTER_GOTO_LINE",            "Goto Line",                          "Ctrl+G"},
+               {            Cmd::CMD_SCREENSHOT,            "Cmd::CMD_SCREENSHOT",         "Screen Shot",            "Ctrl + O, Ctrl + O, Ctrl + P"},
+               {            Cmd::CMD_LINK_BACK,            "Cmd::CMD_LINK_BACK",         "Link Back",            "Ctrl + PgUp"},
+               {            Cmd::CMD_LINK_FORWARD,            "Cmd::CMD_LINK_FORWARD",         "Link Forward",            "Ctrl + PgDown"},
             };
 
       _fileTypes = {
@@ -269,7 +271,7 @@ void Editor::loadSettings() {
 
 ConfigDialogWrapper::ConfigDialogWrapper(Editor* editor, QWidget* parent) : QDialog(parent), _quickWidget(new QQuickWidget(this)) {
       setWindowTitle("IDE Configuration");
-      resize(900, 650); // Startgröße, sollte zur QML-Größe passen
+      resize(1100, 650); // Startgröße, sollte zur QML-Größe passen
 
       // Layout erstellen, damit das QQuickWidget den ganzen Dialog füllt
       auto layout = new QVBoxLayout(this);
@@ -296,10 +298,10 @@ ConfigDialogWrapper::ConfigDialogWrapper(Editor* editor, QWidget* parent) : QDia
 void ConfigDialogWrapper::showEvent(QShowEvent* event) {
       QDialog::showEvent(event);
       if (parentWidget()) {
-            QRect parentRect = parentWidget()->geometry();
-            move(parentRect.center() - rect().center());
+            QPoint center = parentWidget()->geometry().center();
+            QSize dialogSize = rect().size();
+            move(center - QPoint(dialogSize.width() / 2, dialogSize.height() / 2));
             }
-      // Optional: Zentrieren oder Fokus setzen
       _quickWidget->setFocus();
       }
 

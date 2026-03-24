@@ -124,6 +124,10 @@ qt_add_qml_module(nped
         qml/SettingsCategory.qml
         qml/InputRow.qml
         qml/GuiPanel.qml
+        qml/AiConfig.qml
+        qml/FiletypeConfig.qml
+        qml/LsConfig.qml
+        qml/ShortcutConfig.qml
       )
 
 qt_add_resources(nped files
