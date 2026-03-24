@@ -7,9 +7,8 @@ Fall festzustellen, ob der aktuelle Git Branch "clean" ist, dh. keine veränd Da
 enthält. Wenn der Branch clean ist, dann zeige das current branch label in der Statuszeile unter
 dem Edit-Window in hellgrün, ansonsten in einem hellen gelb.
 
-
 ### Feature: Ai Dashboard
-- [ ] Extend the Toolbar at the bottom of the AI Panel into a Dashboard so that
+- [x] Extend the Toolbar at the bottom of the AI Panel into a Dashboard so that
       it is possible to add more functionality. Move the current content of the
       toolbar into the new dashboard and organize them in two rows.
 

@@ -318,16 +318,12 @@ File::File(Editor* e, const QFileInfo& fi) : _fi(fi), editor(e) {
 
       QString filename = _fi.fileName();
       for (const auto& ft : editor->fileTypes()) {
-            for (const auto& pattern : ft.extensions) {
-                  QRegularExpression wildcard(pattern);
-                  auto match = wildcard.match(filename);
-                  if (match.hasMatch()) {
-                        fileType = ft;
-                        break;
-                        }
-                  }
-            if (fileType != defaultFileType)
+            QRegularExpression wildcard(ft.extensions);
+            auto match = wildcard.match(filename);
+            if (match.hasMatch()) {
+                  fileType = ft;
                   break;
+                  }
             }
       QString ls = fileType.languageServer;
       setLSclient(e->getLSclient(ls));
@@ -336,8 +332,8 @@ File::File(Editor* e, const QFileInfo& fi) : _fi(fi), editor(e) {
 File::~File() {
       if (client)
             client->didCloseNotification(this);
-//      if (!created && editor && editor->getFileWatcher())
-//            editor->getFileWatcher()->removePath(_fi.absoluteFilePath());
+      //      if (!created && editor && editor->getFileWatcher())
+      //            editor->getFileWatcher()->removePath(_fi.absoluteFilePath());
       f.close();
       }
 
@@ -417,7 +413,7 @@ bool File::load() {
       if (languageId() == "image") {
             _fileText = Lines(QString("[Image File: %1]").arg(_fi.fileName()));
             _readOnly = true;
-            created = false;
+            created   = false;
             return true;
             }
 
@@ -453,8 +449,8 @@ bool File::load() {
       created = false;
       lcOpen(); // notify language server
       mode = f.permissions();
-//      if (editor && editor->getFileWatcher())
-//            editor->getFileWatcher()->addPath(_fi.absoluteFilePath());
+      //      if (editor && editor->getFileWatcher())
+      //            editor->getFileWatcher()->addPath(_fi.absoluteFilePath());
       return true;
       }
 
