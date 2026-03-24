@@ -29,33 +29,16 @@
 enum DiagnosticSeverity { Error = 1, Warning, Information, Hint };
 //
 //---------------------------------------------------------
-//   LServer
-//---------------------------------------------------------
-
-struct LServer {
-      const char* name;
-      const std::string path;
-      const std::vector<std::string> arguments;
-      };
-
-static std::vector<LServer> lServer = {
-         {     "clangd", "clangd", {"--query-driver", "--log=error", "--completion-style=detailed", "--compile-commands-dir=build", "--background-index"}                                            },
-         {"vscode-html", "vscode-html-languageserver",                                                                                                            {"--stdio"}},
-         {      "pylsp", "pylsp",                                                                                                                     {}},
-         {      "qmlls", "/home/ws/Qt/6.11.0/gcc_64/bin/qmlls", {}}
-      };
-
-//---------------------------------------------------------
 //   createClient
 //---------------------------------------------------------
 
 LSclient* LSclient::createClient(Editor* editor, const std::string& name) {
-      for (const auto& s : lServer) {
+      for (const auto& s : editor->languageServersConfig()) {
             Debug("<{}> -- <{}>", s.name, name);
             if (s.name == name) {
                   auto* lc = new LSclient(editor, name);
-                  if (!lc->start(s.path, s.arguments)) {
-                        Critical("cannot init language server <{}>", s.path);
+                  if (!lc->start(s.command.toStdString(), s.args.toStdString())) {
+                        Critical("cannot init language server <{}>", s.command);
                         delete lc;
                         lc = nullptr;
                         }
@@ -393,7 +376,7 @@ void LSclient::readerLoop() {
 //   start
 //---------------------------------------------------------
 
-bool LSclient::start(const std::string& path, const std::vector<std::string>& args) {
+bool LSclient::start(const std::string& path, const std::string& args) {
       // Erstellen der drei Pipes
       if (pipe(stdinPipe) == -1 || pipe(stdoutPipe) == -1 || pipe(stderrPipe) == -1) {
             perror("pipe");
@@ -417,14 +400,7 @@ bool LSclient::start(const std::string& path, const std::vector<std::string>& ar
             close(stdoutPipe[0]);
             close(stderrPipe[0]);
 
-            // Argument-Vektor vorbereiten (execvp erwartet char* const*)
-            std::vector<char*> c_args;
-            c_args.push_back(const_cast<char*>(path.c_str()));
-            for (const auto& arg : args)
-                  c_args.push_back(const_cast<char*>(arg.c_str()));
-            c_args.push_back(nullptr);
-
-            execvp(path.c_str(), c_args.data());
+            execlp(path.c_str(), args.c_str());
 
             // Falls execvp fehlschlägt:
             perror("execvp");

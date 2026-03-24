@@ -91,7 +91,7 @@ class LSclient : public QObject
     public:
       explicit LSclient(Editor* e, const std::string& name);
       ~LSclient() override;
-      bool start(const std::string& path, const std::vector<std::string>& args);
+      bool start(const std::string& path, const std::string& args);
 
       void stop();
       std::string name() const { return _name; }

@@ -35,35 +35,34 @@ class File;
 //---------------------------------------------------------
 
 struct FileType {
-      std::vector<const char*> extensions;
-      const char* languageId; // language id to select the right language server
-      const char* languageServer;
-      int tab;         // tab expansion
-      bool parse;      // connect to language server
-      bool header;     // special handling of header files
-      bool createTabs; // spaces are converted to tabs when writing the file
-                       // on reading tabs are converted to spaces
-      bool pymacros;   // handle internal macro expansion
+      Q_GADGET
+      Q_PROPERTY(QString extensions MEMBER extensions)
+      Q_PROPERTY(QString languageId MEMBER languageId)
+      Q_PROPERTY(QString languageServer MEMBER languageServer)
+      Q_PROPERTY(int tabSize MEMBER tabSize)
+      Q_PROPERTY(bool parse MEMBER parse)
+
+   public:
+      QString extensions;
+      QString languageId; // language id to select the right language server
+      QString languageServer;
+      int tabSize{6};    // tab expansion
+      bool parse{false}; // connect to language server
+
+      bool header{false};     // special handling of header files
+      bool createTabs{false}; // spaces are converted to tabs when writing the file
+                              // on reading tabs are converted to spaces
+      bool pymacros{false};   // handle internal macro expansion
+      bool operator==(const FileType& other) const = default;
+
+      FileType() {}
+      FileType(const QString& a, const QString& b, const QString& c,  int d, bool e, bool f, bool g, bool h)
+         : extensions(a), languageId(b), languageServer(c), tabSize(d), parse(e), header(f), createTabs(g), pymacros(h) {}
       };
 
-//---------------------------------------------------------
-//   fileTypes
-//    order matters
-//---------------------------------------------------------
+Q_DECLARE_METATYPE(FileType)
 
-static const std::array<const FileType, 10> fileTypes = {
-   FileType({".*\\.cpp$"}, "cpp", "clangd", 6, true, false, false, false),
-   FileType({".*\\.c$"}, "c", "clangd", 6, true, false, false, false),
-   FileType({".*\\.html$"}, "html", "vscode-html", 4, false, false, false, false),
-   FileType({".*\\.h$"}, "cpp", "clangd", 6, true, true, false, true),
-   FileType({".*\\.py$"}, "python", "pylsp", 6, false, false, false, false),
-   FileType({".*\\.qml$"}, "qml", "qmlls", 4, false, false, false, false),
-   FileType({".*\\.md$"}, "markdown", "none", 6, false, false, false, false),
-   FileType({"Makefile$"}, "makefile", "none", 6, false, false, true, false),
-   FileType({".*\\.jpg$", ".*\\.jpeg$", ".*\\.png$", ".*\\.gif$", ".*\\.svg$", ".*\\.webp$"}, "image", "none", 6, false, false, false, false),
-      };
-
-static constexpr FileType defaultFileType = {std::vector<const char*>(), "", "none", 6, false, false, false, false};
+static const FileType defaultFileType = FileType(QString(), QString(), QString("none"), 6, false, false, false, false);
 
 enum class Codec { ISO_LATIN, UTF8 };
 
@@ -90,9 +89,9 @@ class File : public QObject
       std::vector<GitHistory*> _gitHistory;
       int _currentGitHistory{0};
 
-      QString _languageId{"c++"};
+//      QString _languageId{"c++"};
       int _version{1};
-      const FileType* fileType = &defaultFileType;
+      FileType fileType = defaultFileType;
 
       QFile::Permissions mode{QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther};
       QFileInfo _fi;
@@ -131,10 +130,9 @@ class File : public QObject
       QString fileName() const { return _fi.fileName(); }
       QFileInfo fi() const { return _fi; }
       void setViewMode(ViewMode, const Pos& pt = Pos());
-      bool mustUpdateLS() const { return fileType->parse; }
-      QString languageId() const { return fileType->languageId; }
-      int tab() const { return fileType->tab; }
-      bool pyMacros() const { return fileType->pymacros; }
+      QString languageId() const { return fileType.languageId; }
+      int tab() const { return fileType.tabSize; }
+      bool pyMacros() const { return fileType.pymacros; }
       QString plainText() const { return _fileText.join('\n'); }
       int indent(const Pos& pos) const;
 
@@ -161,7 +159,7 @@ class File : public QObject
       int columns(int y) const { return (y < rows()) ? line(y).size() : 0; }
       int rows() const;
       int maxLineLength() const;
-      bool parse() const { return fileType->parse; }
+      bool parse() const { return fileType.parse; }
       LSclient* languageClient() { return client; }
       void setLSclient(LSclient* c) { client = c; }
       // editing:

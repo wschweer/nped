@@ -161,7 +161,7 @@ void Editor::updateStyle() {
 
 Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       qRegisterMetaType<ShortcutConfig>("ShortcutConfig");
-      qRegisterMetaType<FileTypeConfig>("FileTypeConfig");
+      qRegisterMetaType<FileType>("FileType");
       qRegisterMetaType<LanguageServerConfig>("LanguageServerConfig");
       qRegisterMetaType<Model>("Model");
 
@@ -183,8 +183,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       if (!initProject())
             Critical("init project failed");
       loadDefaults();
-      loadProjectStatus();
       loadSettings();
+      loadProjectStatus();
 
       // Associate a KeySequence with a function which performs an editor action.
       // The function is surrounded by an startCmd() and an endCmd() call.
@@ -999,7 +999,7 @@ void Editor::vScrollTo(int ypos) {
 
 void Editor::formatting() {
       File* f = kontext()->file();
-      if (f->mustUpdateLS())
+      if (f->parse())
             lclient()->formattingRequest(kontext());
       }
 
@@ -1211,7 +1211,7 @@ void Editor::loadProjectStatus() {
 //---------------------------------------------------------
 
 bool Editor::loadStatus(int argc, char** argv) {
-      loadSettings(); // TODO: inline here
+//      loadSettings(); // TODO: inline here
       // do not load history if there are filenames on the command line
       bool loadFiles = (argc == 0);
 
@@ -1343,7 +1343,7 @@ File* Editor::createNewFile(const QFileInfo& fi) {
       File* file = new File(this, fi);
       connect(file, &File::modifiedChanged, [this]() { tabBar->modifiedChanged(); });
       tabBar->modifiedChanged();
-      if (file->mustUpdateLS())
+      if (file->parse())
             connect(file, &File::fileChanged, [this] { lsUpdateTimer->start(400); });
       file->load();
       files.push_back(file);

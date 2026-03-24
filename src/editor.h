@@ -154,27 +154,6 @@ struct ShortcutConfig {
       };
 
 //---------------------------------------------------------
-//   FileTypeConfig
-//---------------------------------------------------------
-
-struct FileTypeConfig {
-      Q_GADGET
-      Q_PROPERTY(QString extensions MEMBER extensions)
-      Q_PROPERTY(QString languageId MEMBER languageId)
-      Q_PROPERTY(QString languageServer MEMBER languageServer)
-      Q_PROPERTY(int tabSize MEMBER tabSize)
-      Q_PROPERTY(bool parse MEMBER parse)
-
-    public:
-      QString extensions; // Regex oder *.cpp;*.h
-      QString languageId;
-      QString languageServer;
-      int tabSize                                        = 4;
-      bool parse                                         = false;
-      bool operator==(const FileTypeConfig& other) const = default;
-      };
-
-//---------------------------------------------------------
 //   LanguageServerConfig
 //---------------------------------------------------------
 
@@ -183,16 +162,30 @@ struct LanguageServerConfig {
       Q_PROPERTY(QString name MEMBER name)
       Q_PROPERTY(QString command MEMBER command)
       Q_PROPERTY(QString args MEMBER args)
-
-    public:
+   public:
       QString name;
       QString command;
       QString args;
       bool operator==(const LanguageServerConfig& other) const = default;
       };
 
+//---------------------------------------------------------
+//   LanguageServer
+//---------------------------------------------------------
+
+struct LanguageServer {
+      QString name;
+      LSclient* client { nullptr };
+      };
+
+//---------------------------------------------------------
+//   LanguageServerList
+//---------------------------------------------------------
+
+struct LanguageServerList : public std::vector<LanguageServer> {
+      };
+
 Q_DECLARE_METATYPE(ShortcutConfig)
-Q_DECLARE_METATYPE(FileTypeConfig)
 Q_DECLARE_METATYPE(LanguageServerConfig)
 
 //---------------------------------------------------------
@@ -225,22 +218,6 @@ class TabBar : public QTabBar
                   setTabTextColor(i, f->readOnly() ? QColor("blue") : (f->modified() ? QColor("red") : QColor("black")));
                   }
             }
-      };
-
-//---------------------------------------------------------
-//   LanguageServer
-//---------------------------------------------------------
-
-struct LanguageServer {
-      QString name;
-      LSclient* client;
-      };
-
-//---------------------------------------------------------
-//   LanguageServerList
-//---------------------------------------------------------
-
-struct LanguageServerList : public std::vector<LanguageServer> {
       };
 
 //---------------------------------------------------------
@@ -305,7 +282,7 @@ class Editor : public QMainWindow
 
       Q_PROPERTY(QString fontFamily READ fontFamily WRITE setFontFamily NOTIFY fontFamilyChanged)
       Q_PROPERTY(QList<ShortcutConfig> shortcuts READ shortcuts WRITE setShortcuts NOTIFY shortcutsChanged)
-      Q_PROPERTY(QList<FileTypeConfig> fileTypes READ fileTypes WRITE setFileTypes NOTIFY fileTypesChanged)
+      Q_PROPERTY(QList<FileType> fileTypes READ fileTypes WRITE setFileTypes NOTIFY fileTypesChanged)
       Q_PROPERTY(QList<LanguageServerConfig> languageServersConfig READ languageServersConfig WRITE setLanguageServersConfig NOTIFY
                      languageServersConfigChanged)
       Q_PROPERTY(QStringList monospacedFonts READ monospacedFonts CONSTANT)
@@ -314,7 +291,7 @@ class Editor : public QMainWindow
       Q_PROPERTY(QColor bgColor READ bgColor WRITE setBgColor NOTIFY bgColorChanged)
 
       QList<ShortcutConfig> _shortcuts;
-      QList<FileTypeConfig> _fileTypes;
+      QList<FileType> _fileTypes;
       QList<LanguageServerConfig> _languageServersConfig;
 
       std::vector<File*> files;
@@ -373,7 +350,7 @@ class Editor : public QMainWindow
       bool _hasGit{false};
       QString _currentBranchName;
       Git _git;
-      bool _darkMode;
+      bool _darkMode { false };
       QColor _fgColor{0, 0, 0};
       QColor _bgColor{240, 240, 240};
 
@@ -540,16 +517,16 @@ class Editor : public QMainWindow
                   }
             }
       QList<ShortcutConfig> shortcuts() const { return _shortcuts; }
-      QList<FileTypeConfig> fileTypes() const { return _fileTypes; }
-      QList<FileTypeConfig>& fileTypesRef() { return _fileTypes; }
+      QList<FileType> fileTypes() const { return _fileTypes; }
+      QList<FileType>& fileTypesRef() { return _fileTypes; }
       QList<LanguageServerConfig> languageServersConfig() const { return _languageServersConfig; }
       void loadDefaults();
       void loadSettings();
       void saveSettings();
       void setShortcuts(const QList<ShortcutConfig>& s);
-      void setFileTypes(const QList<FileTypeConfig>& f);
+      void setFileTypes(const QList<FileType>& f);
       void setLanguageServersConfig(const QList<LanguageServerConfig>& l);
-      void resetToDefaults();
+      Q_INVOKABLE void resetToDefaults();
       bool darkMode() const { return _darkMode; }
       void setDarkMode(bool v) {
             if (v != _darkMode) {
@@ -635,8 +612,8 @@ class ConfigDialogWrapper : public QWidget
 QDataStream& operator<<(QDataStream& out, const ShortcutConfig& v);
 QDataStream& operator>>(QDataStream& in, ShortcutConfig& v);
 
-QDataStream& operator<<(QDataStream& out, const FileTypeConfig& v);
-QDataStream& operator>>(QDataStream& in, FileTypeConfig& v);
+QDataStream& operator<<(QDataStream& out, const FileType& v);
+QDataStream& operator>>(QDataStream& in, FileType& v);
 
 QDataStream& operator<<(QDataStream& out, const LanguageServerConfig& v);
 QDataStream& operator>>(QDataStream& in, LanguageServerConfig& v);

@@ -317,19 +317,19 @@ File::File(Editor* e, const QFileInfo& fi) : _fi(fi), editor(e) {
       // lookup fileType:
 
       QString filename = _fi.fileName();
-      for (const auto& ft : fileTypes) {
+      for (const auto& ft : editor->fileTypes()) {
             for (const auto& pattern : ft.extensions) {
                   QRegularExpression wildcard(pattern);
                   auto match = wildcard.match(filename);
                   if (match.hasMatch()) {
-                        fileType = &ft;
+                        fileType = ft;
                         break;
                         }
                   }
-            if (fileType != &defaultFileType)
+            if (fileType != defaultFileType)
                   break;
             }
-      QString ls = fileType->languageServer;
+      QString ls = fileType.languageServer;
       setLSclient(e->getLSclient(ls));
       }
 
@@ -559,7 +559,7 @@ bool File::save() {
       for (int i = 0; i < lines; ++i) {
             auto& string = _fileText[i];
 
-            if (fileType->createTabs) {
+            if (fileType.createTabs) {
                   //                  int col = 0;
                   int t = 0;
                   QString nl;
@@ -650,7 +650,7 @@ void File::updateKollaps() {
 
 void File::dumpLine(Lines& lines, int level, int clevel, const ASTNode& node) const {
       bool selected;
-      if (fileType->header)
+      if (fileType.header)
             selected = node.p1.row != node.p2.row && node.role == "declaration";
       else
             selected =
