@@ -74,6 +74,23 @@ bool Git::check_error(int error_code, const char* action) {
       }
 
 //---------------------------------------------------------
+//   isClean
+//---------------------------------------------------------
+
+bool Git::isClean() {
+      if (!initialized)
+            return true;
+      git_status_options opts = GIT_STATUS_OPTIONS_INIT;
+      opts.flags = GIT_STATUS_OPT_INCLUDE_UNTRACKED | GIT_STATUS_OPT_RECURSE_UNTRACKED_DIRS;
+      git_status_list* status;
+      if (git_status_list_new(&status, repo, &opts) < 0)
+            return true;
+      size_t count = git_status_list_entrycount(status);
+      git_status_list_free(status);
+      return count == 0;
+      }
+
+//---------------------------------------------------------
 //   getCurrentBranch
 //---------------------------------------------------------
 

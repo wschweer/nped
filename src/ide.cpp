@@ -51,10 +51,5 @@ bool Editor::initProject() {
             _currentBranchName = _git.getCurrentBranch();
             Debug("git branch: <{}>", _currentBranchName);
             }
-      if (branchLabel) {
-            branchLabel->setVisible(_projectMode);
-            branchLabel->setText(_hasGit ? _currentBranchName : QString());
-            }
-
       return true;
       }

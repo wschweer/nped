@@ -517,8 +517,18 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       branchLabel->setToolTip("current git branch");
       branchLabel->setStatusTip("current git branch");
       branchLabel->setVisible(_projectMode);
-      if (_hasGit)
+      if (_hasGit) {
             branchLabel->setText(_currentBranchName);
+            if (_git.isClean()) {
+                  Debug("git clean");
+                  branchLabel->setStyleSheet("background-color: lightgreen;");
+                  }
+            else {
+                  branchLabel->setStyleSheet("background-color: lightyellow;");
+                  Debug("git dirty");
+                  }
+            }
+
       sb->addWidget(branchLabel, 0);
 
       urlLabel = new QLabel();

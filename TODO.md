@@ -1,5 +1,13 @@
 ## TODO
 
+### Clean Git
+- [x] Die Editor() Klasse enthält den String "currentBranchName" wenn in initProjekt() festgestellt
+wurde, das wir ein Projekt gefunden haben welches von GIT verwaltet wird. Versuche in dem
+Fall festzustellen, ob der aktuelle Git Branch "clean" ist, dh. keine veränd Dateien
+enthält. Wenn der Branch clean ist, dann zeige das current branch label in der Statuszeile unter
+dem Edit-Window in hellgrün, ansonsten in einem hellen gelb.
+
+
 ### Feature: Ai Dashboard
 - [ ] Extend the Toolbar at the bottom of the AI Panel into a Dashboard so that
       it is possible to add more functionality. Move the current content of the
