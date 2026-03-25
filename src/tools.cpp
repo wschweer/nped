@@ -36,12 +36,11 @@
 //---------------------------------------------------------
 //   getMCPTools
 //    return list of available tools
-//   ro read_file                   readFile(path)
 //   rw create_file                 createFile(path,content)
 //   rw modify_file                 modifiyFile(path,content)
 //   ro list_directory              listDirectory(path)
 //   ro search_project              searchProject(query, pattern="")
-//   ro read_file_lines             readFileLines(path, start, end)
+//   ro read_file                   readFile(path, start, end)
 //   ro find_symbol                 findSymbol(name)
 //   ro fetch_web_documentation     fetchWebDocumentation(url)
 //   rw run_build_command           runBuildCommand(cmd)
@@ -68,10 +67,6 @@ std::vector<json> Agent::getMCPTools() const {
             std::vector<json> tools = json::array();
 
             // 1. File Operations
-            tools.push_back(MCPToolBuilder("read_file", "Reads the full content of a file from the local file system.")
-                                .add_parameter("path", "string", "The absolute or relative path to the file.")
-                                .build());
-
             if (isExecuteMode()) {
                   tools.push_back(MCPToolBuilder("create_file", "Creates a new file at the specified path with the provided content.")
                                       .add_parameter("path", "string", "The path where the file should be created.")
@@ -79,24 +74,22 @@ std::vector<json> Agent::getMCPTools() const {
                                       .build());
 
                   tools.push_back(MCPToolBuilder("modify_file", "Completely overwrites an existing file with new content.")
-                                      .add_parameter("path", "string", "The path to the file to be modified.")
+                                      .add_parameter("path", "string", "The path to the file.")
                                       .add_parameter("content", "string", "The new content for the file.")
                                       .build());
 
-                  tools.push_back(
-                      MCPToolBuilder(
-                          "replace_in_file",
-                          "Replaces a specific text block with new content. Use this for targeted edits to avoid overwriting the whole file.")
-                          .add_parameter("path", "string", "The path to the file.")
-                          .add_parameter("search", "string", "The exact text string to be replaced.")
-                          .add_parameter("replace", "string", "The new text to insert.")
-                          .build());
-            }
+                  tools.push_back(MCPToolBuilder("replace_in_file", "Replaces a specific text block with new content. Use this for "
+                                                                    "targeted edits to avoid overwriting the whole file.")
+                                      .add_parameter("path", "string", "The path to the file.")
+                                      .add_parameter("search", "string", "The exact text string to be replaced.")
+                                      .add_parameter("replace", "string", "The new text to insert.")
+                                      .build());
+                  }
 
-            tools.push_back(MCPToolBuilder("read_file_lines", "Reads a specific range of lines from a file (useful for large files).")
+            tools.push_back(MCPToolBuilder("read_file", "Reads a file or a specific range of lines from a file.")
                                 .add_parameter("path", "string", "The path to the file.")
-                                .add_parameter("start_line", "integer", "The first line to read (1-indexed).")
-                                .add_parameter("end_line", "integer", "The last line to read.")
+                                .add_parameter("start_line", "integer", "The first line to read (1-indexed).", false)
+                                .add_parameter("end_line", "integer", "The last line to read.", false)
                                 .build());
 
             // 2. Navigation & Search
@@ -143,17 +136,7 @@ std::vector<json> Agent::getMCPTools() const {
                   tools.push_back(MCPToolBuilder("create_git_commit", "Stages all current changes (git add .) and creates a new commit.")
                                       .add_parameter("message", "string", "A clear and concise commit message.")
                                       .build());
-            }
-
-            // 5. User Interaction
-            tools.push_back(
-                MCPToolBuilder("ask_user",
-                               "Asks the user a clarifying question and waits for their response. "
-                               "Use this tool whenever you need more information or confirmation from the user "
-                               "before proceeding with a task.")
-                    .add_parameter("question", "string", "The question to present to the user.")
-                    .build());
-
+                  }
             return tools;
             }
       catch (const json::parse_error& e) {
@@ -174,14 +157,13 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
       auto trim = [](const QString& s, int maxLen = 80) {
             QString res = s.length() > maxLen ? s.left(maxLen - 3) + "..." : s;
             return res.toHtmlEscaped(); // Gleichzeitig HTML Sonderzeichen maskieren
-                                          };
+                                                            };
 #endif
       // 1. Definiere, welche Tools harmlos sind (Nur-Lese-Zugriff)
-      bool isReadOnlyTool = (functionName == "read_file" || functionName == "read_file_lines" || functionName == "search_project" ||
-                             functionName == "find_symbol" || functionName == "list_directory" ||
-                             functionName == "fetch_web_documentation" || functionName == "get_git_status" ||
-                             functionName == "get_git_diff" || functionName == "get_git_log" || functionName == "run_build_command" ||
-                             functionName == "ask_user");
+      bool isReadOnlyTool =
+          (functionName == "read_file" || functionName == "search_project" || functionName == "find_symbol" ||
+           functionName == "list_directory" || functionName == "fetch_web_documentation" || functionName == "get_git_status" ||
+           functionName == "get_git_diff" || functionName == "get_git_log" || functionName == "run_build_command");
 
       // 2. Entwurfs-Modus Check
       if (!isExecuteMode() && !isReadOnlyTool) {
@@ -255,16 +237,19 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
 
       // Lokale Datei-Operationen ausführen
       if (functionName == "read_file") {
-            QString result;
-            readFile(path, result);
-            return result.toStdString();
-            }
-      else if (functionName == "read_file_lines") {
-            if (!arguments.contains("start_line") || !arguments.contains("end_line"))
-                  return "Error: Parameters 'start_line' or 'end_line' missing.";
-            int startLine = arguments["start_line"].get<int>();
-            int endLine   = arguments["end_line"].get<int>();
-            return readFileLines(path, startLine, endLine).toStdString();
+            QString content;
+            if (!readFile(path, content))
+                  return content.toStdString();
+            QStringList lines = content.split('\n');
+            int startLine     = arguments.contains("start_line") ? arguments["start_line"].get<int>() - 1 : 0;
+            int endLine       = arguments.contains("end_line") ? arguments["end_line"].get<int>() - 1 : lines.size();
+            int n             = lines.size();
+            startLine         = std::clamp(startLine, 0, n);
+            endLine           = std::clamp(endLine, 0, n);
+            std::string result;
+            for (int i = startLine; i < endLine; ++i)
+                  result += std::format("{}: {}\n", i + 1, lines[i]);
+            return result;
             }
       else if (functionName == "list_directory") {
             return listDirectory(path).toStdString();

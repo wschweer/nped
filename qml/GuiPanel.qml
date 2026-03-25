@@ -58,9 +58,11 @@ ColumnLayout {
         }
     Row {
         spacing: 20
+        height: 50
 
         Label {
             text: "Background Color"
+            Layout.alignment: Qt.AlignVCenter
             }
         Rectangle {
             width: 50

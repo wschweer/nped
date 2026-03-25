@@ -12,6 +12,11 @@
 #pragma once
 #include <array>
 #include <QColor>
+
+//---------------------------------------------------------
+//   MarkerDefinition
+//---------------------------------------------------------
+
 struct MarkerDefinition {
       QColor fg; // text color
       QColor bg; // text background
@@ -19,12 +24,21 @@ struct MarkerDefinition {
       bool italic;
       };
 
+//---------------------------------------------------------
+//   Marker
+//---------------------------------------------------------
+
 enum class Marker { Normal, Flow, Type, Comment, String, Search, SearchHit };
+
+//---------------------------------------------------------
+//   MarkerDefinitions
+//---------------------------------------------------------
+
 class MarkerDefinitions : public std::array<MarkerDefinition, 7>
       {
     public:
       void setDarkMode(bool dark) {
-            (*this)[0] = {dark ? QColor(200, 200, 200) : QColor(0, 0, 0), QColor(), false, false};   // normal
+            (*this)[0] = {dark ? QColor(255, 255, 255) : QColor(0, 0, 0),   QColor(), false, false}; // normal
             (*this)[1] = {dark ? QColor(100, 150, 255) : QColor(0, 0, 150), QColor(), true, false};  // flow
             (*this)[2] = {dark ? QColor(200, 200, 100) : QColor(0, 0, 150), QColor(), false, false}; // type
             (*this)[3] = {dark ? QColor(100, 200, 100) : QColor(0, 100, 0), QColor(), false, true};  // comment

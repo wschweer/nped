@@ -226,6 +226,8 @@ void Editor::saveSettings() {
             lsList << QVariant::fromValue(l);
       settings.setValue("languageServers", lsList);
       settings.setValue("darkMode", darkMode());
+      settings.setValue("fgColor", fgColor());
+      settings.setValue("bgColor", bgColor());
       }
 
 //---------------------------------------------------------
@@ -251,6 +253,8 @@ void Editor::loadSettings() {
       loadList("fileTypes", _fileTypes);
       loadList("languageServers", _languageServersConfig);
       setDarkMode(settings.value("darkMode", darkMode()).toBool());
+      setFgColor(settings.value("fgColor", fgColor()).value<QColor>());
+      setBgColor(settings.value("bgColor", bgColor()).value<QColor>());
       }
 
 //---------------------------------------------------------

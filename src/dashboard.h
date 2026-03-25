@@ -24,6 +24,7 @@ class Dashboard : public QWidget
       QHBoxLayout* hLayout1;
       QHBoxLayout* hLayout2;
       QLabel* tokenLabel;
+      virtual void paintEvent(QPaintEvent*) override;
 
     public:
       explicit Dashboard(QWidget* parent = nullptr);

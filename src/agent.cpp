@@ -92,6 +92,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
 
       // Add Dashboard
       dashboard = new Dashboard(this);
+      dashboard->setObjectName("dashboardWidget");
       mainLayout->addWidget(dashboard);
 
       // Run button – leftmost item in the toolbar

@@ -12,12 +12,11 @@
 }
 
 #dashboardWidget {
-    background-color: #2a2a2a;
-    border: 1px solid #040404;
+    border: 1px solid #444;
     border-radius: 8px;
     margin: 8px;
     padding: 2px;
-}
+    }
 
 QMainWindow, QWidget {
     background-color: #222;
