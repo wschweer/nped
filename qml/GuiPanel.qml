@@ -43,6 +43,7 @@ ColumnLayout {
             // 3. Bei Auswahl speichern
             onActivated: {
                 config.fontFamily = currentText
+                config.update()
                 }
 
             // Optional: Popup-Liste scrollbar machen bei vielen Fonts
@@ -54,40 +55,6 @@ ColumnLayout {
         checked: config.darkMode
         onToggled: {
             config.darkMode = checked;
-            }
-        }
-    Row {
-        spacing: 20
-        height: 50
-
-        Label {
-            text: "Background Color"
-            Layout.alignment: Qt.AlignVCenter
-            }
-        Rectangle {
-            width: 50
-            height: 50
-            radius: 25
-            color: colorDialog.selectedColor
-            border.color: "grey"
-            border.width: 1
-
-            MouseArea {
-                anchors.fill: parent
-                onClicked: colorDialog.open()
-                cursorShape: Qt.PointingHandCursor
-                }
-            }
-        }
-
-    ColorDialog {
-        id: colorDialog
-        title: "Bitte wähle eine Farbe"
-        selectedColor: config.bgColor
-
-        onAccepted: {
-            console.log("Benutzer hat gewählt: " + selectedColor)
-            config.bgColor = selectedColor
             }
         }
 

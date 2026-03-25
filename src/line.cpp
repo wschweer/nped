@@ -12,8 +12,6 @@
 #include "logger.h"
 #include "line.h"
 
-MarkerDefinitions markerDefinitions;
-
 //---------------------------------------------------------
 //   setFold
 //---------------------------------------------------------
@@ -41,7 +39,7 @@ bool Line::clearSearchMarks() {
       for (;;) {
             bool hasChanged = false;
             for (const auto& m : _marks) {
-                  if (m.type == Marker::Search || m.type == Marker::SearchHit) {
+                  if (m.type == TextStyle::Search || m.type == TextStyle::SearchHit) {
                         removeMark(m);
                         hasChanged = true; // iterate again
                         rv         = true;
@@ -61,8 +59,8 @@ bool Line::clearSearchMarks() {
 bool Line::clearPrettyMarks() {
       bool rv = false;
       for (auto& m : _marks) {
-            if (m.type != Marker::Search && m.type != Marker::Normal) {
-                  m.type = Marker::Normal;
+            if (m.type != TextStyle::Search && m.type != TextStyle::Normal) {
+                  m.type = TextStyle::Normal;
                   rv     = true;
                   // break;
                   }
@@ -80,7 +78,7 @@ void Line::removeMark(const Mark& m) {
       for (size_t i = 0; i < _marks.size(); ++i) {
             Mark& mark = _marks[i];
             if (mark == m)
-                  mark.type = Marker::Normal;
+                  mark.type = TextStyle::Normal;
             }
       }
 
@@ -111,9 +109,9 @@ bool Line::isString() const {
       for (const auto& m : marks()) {
             // col1 points to first character in comment
             // Debug: special case: there is code before the comment
-            //            if (m.type == Marker::String)
+            //            if (m.type == TextStyle::String)
             //                  Debug("String {} {} <{}>", m.col1, m.col2, qstring());
-            if (m.type == Marker::String && m.col1 == 0 && m.col2 == size()) {
+            if (m.type == TextStyle::String && m.col1 == 0 && m.col2 == size()) {
                   val = true;
                   break;
                   }

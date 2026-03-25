@@ -42,8 +42,8 @@ Dashboard::Dashboard(QWidget* parent) : QWidget(parent) {
       mainLayout->addLayout(hLayout2);
 
       tokenLabel = new QLabel("Tokens: 0", this);
-      tokenLabel->setStyleSheet(
-          "font-size: 13px; color: #aaa; font-weight: bold; padding: 2px 8px; border-radius: 4px; background: rgba(0,0,0,0.2);");
+//      tokenLabel->setStyleSheet(
+//          "font-size: 13px; color: #aaa; font-weight: bold; padding: 2px 8px; border-radius: 4px; background: rgba(0,0,0,0.2);");
       hLayout2->insertWidget(-1, tokenLabel, 0, Qt::AlignRight);
       }
 

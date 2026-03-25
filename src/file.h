@@ -177,7 +177,7 @@ class File : public QObject
 
       void makePretty();
       void markCpp();
-      void addMark(int row, int idx1, int idx2, Marker m);
+      void addMark(int row, int idx1, int idx2, TextStyle::Style m);
       bool clearSearchMarks();
       void showGitVersion(int);
       int currentGitHistory() const { return _currentGitHistory; }

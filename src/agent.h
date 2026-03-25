@@ -245,7 +245,11 @@ class Agent : public QWidget
       QToolButton* modeButton;
       QToolButton* configButton;
       QToolButton* screenshotButton;
+      QToolButton* summaryButton;
+      QToolButton* button2;
+      QToolButton* button3;
       QWidget* dataPanel{nullptr};          ///< narrow vertical icon panel left of prompt input
+      QWidget* promptActionPanel{nullptr};
       void updateDataPanel();               ///< rebuilds thumbnail labels for all pending images
 
       QTimer* spinnerTimer;

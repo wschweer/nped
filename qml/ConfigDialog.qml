@@ -96,7 +96,8 @@ Rectangle {
                     anchors.topMargin: 20
                     focus: true
                     clip: true
-                    model: ["General & GUI", "Editor Shortcuts", "File Types", "Language Servers", "AI Models"]
+                    model: ["General & GUI", "Editor Shortcuts", "Light Text Styles",
+                        "Dark Text Styles", "File Types", "Language Servers", "AI Models"]
                     delegate: ItemDelegate {
                         width: ListView.view.width
                         height: 40
@@ -126,19 +127,12 @@ Rectangle {
                     anchors.margins: 20
                     currentIndex: navList.currentIndex
 
-                    // --- Page 1: GUI ---
                     GuiPanel { }
-
-                    // --- Page 2: Shortcuts ---
                     ShortcutConfig {}
-
-                    // --- Page 3: File Types ---
+                    TextStyleConfig { type: "Light" }
+                    TextStyleConfig { type: "Dark" }
                     FiletypeConfig {}
-
-                    // --- Page 4: Language Servers ---
                     LsConfig {}
-
-                    // --- Page 5: AI Models ---
                     AiConfig {}
                     }
                 }

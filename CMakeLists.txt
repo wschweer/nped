@@ -89,6 +89,7 @@ qt_add_executable(nped
       src/screenshot.cpp
       src/dashboard.cpp
       src/dashboard.h
+      src/textstyle.h
       )
 
 qt_add_resources(nped "qmls"
@@ -100,6 +101,8 @@ qt_add_resources(nped "mages"
       images/configure_white.svg
       images/trash.svg
       images/trash_white.svg
+      images/trash_sketch.svg
+      images/trash_sketch_white.svg
       images/thinking.svg
       images/thinking-dark.svg
       images/camera.svg
@@ -130,6 +133,8 @@ qt_add_qml_module(nped
         qml/FiletypeConfig.qml
         qml/LsConfig.qml
         qml/ShortcutConfig.qml
+        qml/TextStyleConfig.qml
+        qml/ColorConfigItem.qml
       )
 
 qt_add_resources(nped files

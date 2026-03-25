@@ -287,6 +287,7 @@ void EditWidget::paintLine(DrawingContext& dc, int fileRow, int y) {
 
       if (dc.selection.height() > 0 && fileRow >= dc.selection.top() && fileRow <= dc.selection.bottom()) {
             qreal yy = y - dc.fa;
+//            QRect r(dc.selection.left()+leftMargin(), yy, dc.selection.width()-leftMargin(), dc.fh + 2);
             QRect r(dc.selection.left(), yy, dc.selection.width(), dc.fh + 2);
             dc.painter->fillRect(r, dc.selectColor);
             }
@@ -305,18 +306,18 @@ void EditWidget::paintLine(DrawingContext& dc, int fileRow, int y) {
                   n -= dc.visibleColumns - (col1 - dc.xo + n);
 
             QString ts                 = l.mid(col1, n);
-            const MarkerDefinition* md = markerDefinitions.md(m.type);
+            auto md = editor->textStyle(m.type);
 
             int x = dc.lb + (col1 - dc.xo) * dc.fw;
-            if (md->bg.isValid()) {
+            if (md.bg.isValid()) {
                   qreal yy = y - dc.fa;
                   QRect r(x, yy, ts.size() * dc.fw, dc.fh);
-                  dc.painter->fillRect(r, md->bg.isValid() ? md->bg : dc.bgColor);
+                  dc.painter->fillRect(r, md.bg.isValid() ? md.bg : dc.bgColor);
                   }
             auto font = editor->font();
-            font.setItalic(md->italic);
-            font.setBold(md->bold);
-            dc.painter->setPen(md->fg);
+            font.setItalic(md.italic);
+            font.setBold(md.bold);
+            dc.painter->setPen(md.fg);
             dc.painter->setFont(font);
             dc.painter->drawText(x, y, ts);
             }
@@ -346,24 +347,12 @@ void EditWidget::paintEvent(QPaintEvent* e) {
       dc.xo = k->screenColumnOffset();
       //      dc.yo             = k->screenRowOffset();
       dc.painter        = &painter;
-      dc.bgColor        = editor->bgColor();
-      dc.fgColor        = editor->fgColor();
+      dc.bgColor        = editor->textStyle(TextStyle::Normal).bg;
+      dc.fgColor        = editor->textStyle(TextStyle::Normal).fg;
       dc.lb             = EditWidget::BORDER + lm; // left border in pixel
       dc.visibleColumns = visibleSize().width();
 
-      int cr, cg, cb;
-      dc.bgColor.getRgb(&cr, &cg, &cb);
-      if (darkMode()) {
-            cr += (255 - cr) / 4;
-            cg += (255 - cg) / 4;
-            cb += (255 - cb) / 4;
-            }
-      else {
-            cr -= cr / 8;
-            cb -= cb / 8;
-            cg -= cg / 8;
-            }
-      dc.selectColor                  = QColor(cr, cg, cb);
+      dc.selectColor                  = editor->textStyle(TextStyle::Selection).bg;
       const QColor hoverMarkerBGColor = dc.bgColor.darker(darkMode() ? 120 : -120);
       const QColor markerBGColor      = dc.bgColor.darker(darkMode() ? -120 : 120);
       dc.labelBGColor                 = QColor(100, 150, 255).darker(darkMode() ? -70 : 70);
@@ -420,13 +409,13 @@ void EditWidget::paintEvent(QPaintEvent* e) {
       //
       // draw cursor
       //
-      if (k->showCursor()) {
+      if (k->showCursor() && hasFocus()) {
             // draw cursor
             int cx = k->screenCol() * dc.fw + EditWidget::BORDER + lm;
             int cy = k->screenRow() * dc.fh + EditWidget::BORDER;
-            QRect rr(cx, cy, dc.fw, dc.fh);
-            painter.fillRect(rr, hasFocus() ? editor->fgColor() : QColor(160, 160, 160));
-            painter.setPen(dc.bgColor);
+            QRect rr(cx, cy, dc.fw+1, dc.fh+1);
+            painter.fillRect(rr, editor->textStyle(TextStyle::Cursor).bg);
+            painter.setPen(editor->textStyle(TextStyle::Cursor).fg);
             painter.setFont(editor->font());
             QString s = k->cursorValid() ? k->file()->line(k->fileRow())[k->fileCol()] : QString("");
             painter.drawText(cx, cy + dc.fa, s);

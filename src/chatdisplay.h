@@ -51,7 +51,7 @@ class ChatDisplay : public MarkdownWebView
             role = r;
             }
       void startMessage();
-      void appendStaticHtml(const QString& role, const QString& html, const QString& thoughtHtml = "");
+      void appendStaticHtml(const QString& role, const QString& html, const QString& thoughtHtml = "", bool isActive = true);
 
       void setDarkMode(bool enabled) override;
       void setMarkdown(const QString&) { Fatal("not impl."); };

@@ -126,6 +126,7 @@ QString ChatDisplay::getChatDarkCss() const {
             }
         .ai      { background: #1e1e1e; border-left: 4px solid #0078d4; align-self: flex-start; width: 100%; }
         .user    { background: #2c2c2c; border-right: 4px solid #555; align-self: flex-end; width: 96%;}
+        .inactive-message { opacity: 0.5; filter: grayscale(50%); }
         /* Tabellen Styling */
         table { border-collapse: collapse; width: 100%; margin: 10px 0; }
         th, td { border: 1px solid #444; padding: 8px; text-align: left; }
@@ -211,6 +212,7 @@ void ChatDisplay::setup() {
       let currentStreamingMessage = null;
 
       function startNewStreamingMessage(role) {
+            const isScrolledToBottom = Math.ceil(window.innerHeight + window.scrollY) >= document.body.scrollHeight - 50;
             const container = document.getElementById('chat-container');
             const wrapper = document.createElement('div');
 
@@ -235,12 +237,15 @@ void ChatDisplay::setup() {
 
             container.appendChild(wrapper);
             currentStreamingMessage = msgId;
-            window.scrollTo(0, document.body.scrollHeight);
+            if (isScrolledToBottom) {
+                  window.scrollTo(0, document.body.scrollHeight);
+            }
             }
 
       function updateStreamingThought(htmlContent) {
             if (!currentStreamingMessage)
                   return;
+            const isScrolledToBottom = Math.ceil(window.innerHeight + window.scrollY) >= document.body.scrollHeight - 50;
             const container = document.getElementById(currentStreamingMessage + '-thought-container');
             const body = document.getElementById(currentStreamingMessage + '-thought-body');
 
@@ -252,10 +257,14 @@ void ChatDisplay::setup() {
                         window.hljs.highlightAll();
                         }
                   }
+            if (isScrolledToBottom) {
+                  window.scrollTo(0, document.body.scrollHeight);
+            }
             }
       function updateStreamingText(htmlContent) {
             if (!currentStreamingMessage)
                   return;
+            const isScrolledToBottom = Math.ceil(window.innerHeight + window.scrollY) >= document.body.scrollHeight - 50;
             const body = document.getElementById(currentStreamingMessage + '-text-body');
             body.innerHTML = htmlContent;
 
@@ -263,14 +272,18 @@ void ChatDisplay::setup() {
             if (htmlContent.includes('</code>')) {
                   window.hljs.highlightAll();
                   }
-            window.scrollTo(0, document.body.scrollHeight);
+            if (isScrolledToBottom) {
+                  window.scrollTo(0, document.body.scrollHeight);
+            }
             }
 
-      function appendStaticMessage(role, htmlContent, thoughtHtml) {
+      function appendStaticMessage(role, htmlContent, thoughtHtml, isActive) {
+            const isScrolledToBottom = Math.ceil(window.innerHeight + window.scrollY) >= document.body.scrollHeight - 50;
             const container = document.getElementById('chat-container');
             const wrapper = document.createElement('div');
-            wrapper.className = 'message ' + (role === 'User' || role === 'user'
-               || role === 'tool' || role === 'function' ? 'user' : 'ai');
+            let baseClass = 'message ' + (role === 'User' || role === 'user' || role === 'tool' || role === 'function' ? 'user' : 'ai');
+            if (isActive === false) baseClass += ' inactive-message';
+            wrapper.className = baseClass;
 
             let thoughtHtmlPart = "";
             if (thoughtHtml && thoughtHtml.trim() !== "") {
@@ -289,6 +302,9 @@ void ChatDisplay::setup() {
                 `;
             container.appendChild(wrapper);
             window.hljs.highlightAll();
+            if (isScrolledToBottom) {
+                  window.scrollTo(0, document.body.scrollHeight);
+            }
             }
 
       </script>
@@ -382,11 +398,11 @@ QString ChatDisplay::quoteForJs(const QString& str) {
 //   appendStaticHtml
 //---------------------------------------------------------
 
-void ChatDisplay::appendStaticHtml(const QString& role, const QString& html, const QString& thoughtHtml) {
-      QString js = QString("if(typeof appendStaticMessage === 'function') { appendStaticMessage(%1, %2, %3); } else { "
-                           "  setTimeout(function() { if(typeof appendStaticMessage === 'function') { appendStaticMessage(%1, %2, %3); } "
+void ChatDisplay::appendStaticHtml(const QString& role, const QString& html, const QString& thoughtHtml, bool isActive) {
+      QString js = QString("if(typeof appendStaticMessage === 'function') { appendStaticMessage(%1, %2, %3, %4); } else { "
+                           "  setTimeout(function() { if(typeof appendStaticMessage === 'function') { appendStaticMessage(%1, %2, %3, %4); } "
                            "else { console.error('appendStaticMessage not found!'); } }, 100);"
                            "}")
-                       .arg(quoteForJs(role), quoteForJs(html), quoteForJs(thoughtHtml));
+                       .arg(quoteForJs(role), quoteForJs(html), quoteForJs(thoughtHtml), isActive ? "true" : "false");
       page()->runJavaScript(js, [](const QVariant& res) { (void)res; });
       }

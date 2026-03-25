@@ -82,7 +82,7 @@ bool Editor::createMatchList() {
                   int x1 = match.capturedStart(0);
                   int x2 = match.capturedEnd(0);
                   matches.push_back({i, x1, x2});
-                  file->addMark(i, x1, x2, Marker::Search);
+                  file->addMark(i, x1, x2, TextStyle::Search);
                   col = x2;
                   }
             }
@@ -116,7 +116,7 @@ void Editor::searchNext() {
                               }
                         else {
                               kontext()->moveCursorAbs(m.col2, m.line);
-                              kontext()->file()->addMark(m.line, m.col1, m.col2, Marker::SearchHit);
+                              kontext()->file()->addMark(m.line, m.col1, m.col2, TextStyle::SearchHit);
                               }
                         return;
                         }

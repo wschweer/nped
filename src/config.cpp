@@ -24,7 +24,11 @@
 #include "editor.h"
 #include "kontext.h"
 #include "logger.h"
+
+//---------------------------------------------------------
 // Hilfs-Operatoren für QDataStream
+//---------------------------------------------------------
+
 QDataStream& operator<<(QDataStream& out, const ShortcutConfig& v) {
       // Cmd ist ein enum class, daher als int casten
       out << static_cast<int>(v.cmd) << v.id << v.description << v.sequence;
@@ -44,7 +48,7 @@ QDataStream& operator<<(QDataStream& out, const FileType& v) {
       }
 
 QDataStream& operator>>(QDataStream& in, FileType& v) {
-      in >> v.extensions >> v.languageId >> v.languageServer >> v.tabSize >> v.parse >> v.header >> v.createTabs;
+      in >> v.extensions >> v.languageId >> v.languageServer >> v.tabSize >> v.parse >> v.header >> v.createTabs >> v.pymacros;
       return in;
       }
 
@@ -55,6 +59,16 @@ QDataStream& operator<<(QDataStream& out, const LanguageServerConfig& v) {
 
 QDataStream& operator>>(QDataStream& in, LanguageServerConfig& v) {
       in >> v.name >> v.command >> v.args;
+      return in;
+      }
+
+QDataStream& operator<<(QDataStream& out, const TextStyle& v) {
+      out << v.name << v.fg << v.bg << v.bold << v.italic;
+      return out;
+      }
+
+QDataStream& operator>>(QDataStream& in, TextStyle& v) {
+      in >> v.name >> v.fg >> v.bg >> v.bold >> v.italic;
       return in;
       }
 
@@ -147,9 +161,35 @@ void Editor::loadDefaults() {
                {      "pylsp",                               "pylsp",                                                                                                       ""},
                {      "qmlls", "/home/ws/Qt/6.11.0/gcc_64/bin/qmlls",                                                                                                       ""}
             };
+
+      _textStylesLight = {
+         TextStyle("normal", QColor(0, 0, 0), QColor(), false, false),
+         TextStyle("selected", QColor(0, 0, 0), QColor(150, 150, 150), false, false),
+         TextStyle("cursor", QColor(0, 0, 0), QColor(100, 100, 100), false, false),
+         TextStyle("flow", QColor(0, 0, 150), QColor(), true, false),
+         TextStyle("type", QColor(0, 0, 150), QColor(), false, false),
+         TextStyle("comment", QColor(0, 100, 0), QColor(), false, true),
+         TextStyle("string", QColor(150, 0, 0), QColor(), false, false),
+         TextStyle("search", QColor(255, 255, 255), QColor(120, 120, 120), false, false),
+         TextStyle("searchHit", QColor(0, 0, 0), QColor(), false, false),
+            };
+      _textStylesDark = {
+         TextStyle("normal", QColor(255, 255, 255), QColor(), false, false),
+         TextStyle("selected", QColor(255, 255, 255), QColor(150, 150, 150), false, false),
+         TextStyle("cursor", QColor(0, 0, 0), QColor(), false, false),
+         TextStyle("flow", QColor(100, 150, 255), QColor(), true, false),
+         TextStyle("type", QColor(200, 200, 100), QColor(), false, false),
+         TextStyle("comment", QColor(100, 200, 100), QColor(), false, true),
+         TextStyle("string", QColor(200, 100, 100), QColor(), false, false),
+         TextStyle("search", QColor(0, 0, 0), QColor(150, 150, 150), false, false),
+         TextStyle("searchHit", QColor(0, 0, 0), QColor(150, 150, 220), false, false),
+            };
+
       emit shortcutsChanged();
       emit fileTypesChanged();
       emit languageServersConfigChanged();
+      emit textStylesLightChanged();
+      emit textStylesDarkChanged();
       }
 
 //---------------------------------------------------------
@@ -172,6 +212,30 @@ void Editor::setFileTypes(const QList<FileType>& f) {
             return;
       _fileTypes = f;
       emit fileTypesChanged();
+      }
+
+//---------------------------------------------------------
+//   setTextStylesLight
+//---------------------------------------------------------
+
+void Editor::setTextStylesLight(const QList<TextStyle>& f) {
+      if (_textStylesLight == f)
+            return;
+      _textStylesLight = f;
+      emit textStylesLightChanged();
+      update();
+      }
+
+//---------------------------------------------------------
+//   setTextStylesDark
+//---------------------------------------------------------
+
+void Editor::setTextStylesDark(const QList<TextStyle>& f) {
+      if (_textStylesDark == f)
+            return;
+      _textStylesDark = f;
+      emit textStylesDarkChanged();
+      update();
       }
 
 //---------------------------------------------------------
@@ -225,9 +289,16 @@ void Editor::saveSettings() {
       for (const auto& l : _languageServersConfig)
             lsList << QVariant::fromValue(l);
       settings.setValue("languageServers", lsList);
-      settings.setValue("darkMode", darkMode());
-      settings.setValue("fgColor", fgColor());
-      settings.setValue("bgColor", bgColor());
+
+      QVariantList dtcList;
+      for (const auto& l : _textStylesDark)
+            dtcList << QVariant::fromValue(l);
+      settings.setValue("textStylesDark", dtcList);
+
+      QVariantList ltcList;
+      for (const auto& l : _textStylesLight)
+            ltcList << QVariant::fromValue(l);
+      settings.setValue("textStylesLight", ltcList);
       }
 
 //---------------------------------------------------------
@@ -252,9 +323,8 @@ void Editor::loadSettings() {
       loadList("shortcuts", _shortcuts);
       loadList("fileTypes", _fileTypes);
       loadList("languageServers", _languageServersConfig);
-      setDarkMode(settings.value("darkMode", darkMode()).toBool());
-      setFgColor(settings.value("fgColor", fgColor()).value<QColor>());
-      setBgColor(settings.value("bgColor", bgColor()).value<QColor>());
+      loadList("textStylesDark", _textStylesDark);
+      loadList("textStylesLight", _textStylesLight);
       }
 
 //---------------------------------------------------------

@@ -321,6 +321,7 @@ File::File(Editor* e, const QFileInfo& fi) : _fi(fi), editor(e) {
             QRegularExpression wildcard(ft.extensions);
             auto match = wildcard.match(filename);
             if (match.hasMatch()) {
+                  Debug("found filetype <{}> for <{}>", ft.languageId, filename);
                   fileType = ft;
                   break;
                   }
@@ -1244,7 +1245,7 @@ void Marks::add(const Mark& newMark) {
 //   addMark
 //---------------------------------------------------------
 
-void File::addMark(int row, int idx1, int idx2, Marker m) {
+void File::addMark(int row, int idx1, int idx2, TextStyle::Style m) {
       if (row >= _fileText.size())
             return;
       Line& line = _fileText[row];

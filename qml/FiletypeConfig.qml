@@ -110,7 +110,7 @@ ColumnLayout {
                 Label {
                     text: "Edit File Type: " + (parent.currentFileType ? parent.currentFileType.extensions : "")
                     font.bold: true
-                    font.pointSize: 14
+                    font.pointSize: 1
                 }
 
                 GridLayout {

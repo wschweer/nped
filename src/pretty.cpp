@@ -17,7 +17,6 @@
 #include "editor.h"
 #include "file.h"
 #include "kontext.h"
-#include "marker.h"
 
 //---------------------------------------------------------
 //   markToken
@@ -33,13 +32,13 @@ void Line::markCppToken(int col1, int col2, const QString& token) {
 
       for (const auto& key : flowKeywords) {
             if (key == token) {
-                  addMark(col1, col2, Marker::Flow);
+                  addMark(col1, col2, TextStyle::Flow);
                   return;
                   }
             }
       for (const auto& key : typeKeywords) {
             if (key == token) {
-                  addMark(col1, col2, Marker::Type);
+                  addMark(col1, col2, TextStyle::Type);
                   return;
                   }
             }
@@ -71,7 +70,7 @@ void File::markCpp() {
             for (int i = 0; i < l.size(); ++i) {
                   if (inComment) {
                         if ((l[i] == '*') && (i < (l.size() - 1)) && (l[i + 1] == '/')) {
-                              l.addMark(col1, ++i, Marker::Comment);
+                              l.addMark(col1, ++i, TextStyle::Comment);
                               inComment = false;
                               }
                         }
@@ -79,14 +78,14 @@ void File::markCpp() {
                         if (i < l.size() - rStringPattern.size() && l.qstring().mid(i).startsWith(rStringPattern)) {
                               inRString  = false;
                               i         += rStringPattern.size();
-                              l.addMark(col1, i, Marker::String);
+                              l.addMark(col1, i, TextStyle::String);
                               }
                         }
                   else if (inString) {
                         if (l[i] == '\\' && i < (l.size() - 1))
                               ++i;
                         else if (l[i] == '"') {
-                              l.addMark(col1, ++i, Marker::String);
+                              l.addMark(col1, ++i, TextStyle::String);
                               inString = false;
                               }
                         }
@@ -94,7 +93,7 @@ void File::markCpp() {
                         if (l[i] == '\\' && i < (l.size() - 1))
                               ++i;
                         else if (l[i] == '\'') {
-                              l.addMark(col1, ++i, Marker::String);
+                              l.addMark(col1, ++i, TextStyle::String);
                               inChar = false;
                               }
                         }
@@ -118,7 +117,7 @@ void File::markCpp() {
                         }
                   else if (l[i] == '/' && i < (l.size() - 1)) {
                         if (l[i + 1] == '/') {
-                              l.addMark(i, l.size(), Marker::Comment);
+                              l.addMark(i, l.size(), TextStyle::Comment);
                               break;
                               }
                         else if (l[i + 1] == '*') {
@@ -137,9 +136,9 @@ void File::markCpp() {
                   }
             if ((l.size() - col1) > 0) {
                   if (inComment)
-                        l.addMark(col1, l.size(), Marker::Comment);
+                        l.addMark(col1, l.size(), TextStyle::Comment);
                   else if (inRString)
-                        l.addMark(col1, l.size(), Marker::String);
+                        l.addMark(col1, l.size(), TextStyle::String);
                   }
             }
       }

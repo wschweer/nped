@@ -19,16 +19,18 @@ bool HistoryManager::trim() {
       // 1. Wenn der letzte Turn eine Zusammenfassung war:
       // Wir setzen activeEntries auf 2 (Zusammenfassungs-Anfrage und Modell-Antwort).
       if (summaryRequested) {
-            if (_data.size() >= 2) {
-                  HistoryItem lastEntry = _data.back();
-                  HistoryItem prevEntry = _data[_data.size() - 2];
-                  activeEntries         = 2;
-                  totalTokens           = prevEntry.tokens + lastEntry.tokens;
+            size_t n = 0;
+            for (auto it = _data.rbegin(); it != _data.rend(); ++it) {
+                  n++;
+                  if (it->content.value("role", "") == "user") {
+                        break;
                   }
-            else if (_data.size() >= 1) {
-                  activeEntries = 1;
-                  totalTokens   = _data.back().tokens;
-                  }
+            }
+            activeEntries = n;
+            totalTokens = 0;
+            for (size_t i = _data.size() - activeEntries; i < _data.size(); ++i) {
+                  totalTokens += _data[i].tokens;
+            }
             summaryRequested = false;
             emit tokensChanged(totalTokens);
             return false;

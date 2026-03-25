@@ -15,9 +15,8 @@
 #include <QStringList>
 #include <QPoint>
 #include <QColor>
-
-#include "marker.h"
 #include "types.h"
+#include "textstyle.h"
 
 class File;
 
@@ -40,7 +39,7 @@ class Mark
     public:
       int col1{0};
       int col2{};
-      Marker type{Marker::Normal};
+      TextStyle::Style type{TextStyle::Normal};
       bool operator==(const Mark& other) const { return col1 == other.col1 && col2 == other.col2 && type == other.type; }
       };
 
@@ -54,7 +53,7 @@ class Marks : public std::vector<Mark>
       void add(const Mark& m);
       void init(int n) {
             clear();
-            push_back(Mark(0, n, Marker::Normal));
+            push_back(Mark(0, n, TextStyle::Normal));
             }
       };
 
@@ -101,7 +100,7 @@ class Line : QString
       void setLabel(QChar c, QColor color = QColorConstants::Black);
       void setFold(FoldMark m, QColor color = QColorConstants::Black);
       FoldMark fold() const { return _fold; }
-      void addMark(int idx1, int idx2, Marker m) { _marks.add(Mark(idx1, idx2, m)); }
+      void addMark(int idx1, int idx2, TextStyle::Style m) { _marks.add(Mark(idx1, idx2, m)); }
       const Marks& marks() const { return _marks; }
       Marks& marks() { return _marks; }
       void removeMark(const Mark&);

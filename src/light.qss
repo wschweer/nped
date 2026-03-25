@@ -1,7 +1,7 @@
 #deleteSessionButton {
     background: transparent;
     border: 1px solid transparent;
-    qproperty-icon: url(:/images/trash.svg);
+    qproperty-icon: url(:/images/trash_sketch.svg);
     qproperty-iconSize: 32px;
     min-width: 32px;
     min-height: 32px;

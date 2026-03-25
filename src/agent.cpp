@@ -277,6 +277,25 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       dataPanelLayout->setSpacing(4);
       dataPanelLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
 
+      // New summary buttons (vertical bar)
+      summaryButton = new QToolButton(this);
+      summaryButton->setText("∑");
+      summaryButton->setToolTip("Summarize conversation");
+      connect(summaryButton, &QToolButton::clicked, [this] {
+            historyManager->summaryRequested = true;
+            QString prompt = "Please provide a concise technical summary of our conversation so far. Focus specifically on the results obtained from the tool calls and the final conclusions reached. Discard the raw, voluminous data output from the tools, but retain the key facts, parameters used, and the current state of the task. This summary will serve as the new starting point for our context, so ensure no critical logical step is lost.";
+            sendMessage(prompt);
+            });
+      dataPanelLayout->addWidget(summaryButton);
+
+      button2 = new QToolButton(this);
+      button2->setText(" ");
+      dataPanelLayout->addWidget(button2);
+
+      button3 = new QToolButton(this);
+      button3->setText(" ");
+      dataPanelLayout->addWidget(button3);
+
       // Save layout pointer so updateDataPanel() can add/remove thumbnail labels dynamically
       _dataPanelLayout = dataPanelLayout;
       _dataPanelLayout->addStretch(1);
@@ -335,7 +354,7 @@ void Agent::setExecuteMode(bool checked) {
 // Helper function for the path
 //---------------------------------------------------------
 
-QString getConfigPath() {
+QString Agent::configPath() {
       QString path = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
       QDir().mkpath(path);
       return path + "/models.json";
@@ -481,6 +500,7 @@ void Agent::sendMessage(QString qtext) {
 
       chatDisplay->startNewStreamingMessage("User");
       chatDisplay->handleIncomingChunk("", text);
+      chatDisplay->scrollToBottom();
 
       json msg;
       msg["role"] = "user";
@@ -607,24 +627,24 @@ void Agent::handleChatFinished() {
                                     waitMs = retryAfterRaw.toInt() * 1000;
                                     }
 
-                              // Fallback: Standard Exponential if no headers are there
-                              if (waitMs <= 0)
-                                    waitMs = 1000 * std::pow(2, currentRetryCount);
+                               // Fallback: Standard Exponential if no headers are there
+                               if (waitMs <= 0)
+                                     waitMs = 1000 * std::pow(2, currentRetryCount);
 
-                              // Safety margin (jitter)
-                              waitMs += (rand() % 500);
+                               // Safety margin (jitter)
+                               waitMs += (rand() % 500);
 
-                              chatDisplay->addMessage(
-                                  "system", format("<br><font color='orange'><b>[Rate Limit]:</b> Pause for {} seconds...</font><br>",
-                                                   waitMs / 1000.0));
-                              }
-                        // B: Server Error (5xx) -> Exponential Backoff
-                        else {
-                              waitMs = 2000 * std::pow(2, currentRetryCount);
-                              chatDisplay->addMessage(
-                                  "system", format("<br><font color='orange'><b>[Server Error {}]:</b> Retry {}/{} in {}s...</font><br>",
-                                                   statusCode, currentRetryCount + 1, maxRetries, waitMs / 1000.0));
-                              }
+                               chatDisplay->addMessage(
+                                   "system", format("<br><font color='orange'><b>[Rate Limit]:</b> Pause for {} seconds...</font><br>",
+                                                    waitMs / 1000.0));
+                               }
+                         // B: Server Error (5xx) -> Exponential Backoff
+                         else {
+                               waitMs = 2000 * std::pow(2, currentRetryCount);
+                               chatDisplay->addMessage(
+                                   "system", format("<br><font color='orange'><b>[Server Error {}]:</b> Retry {}/{} in {}s...</font><br>",
+                                                    statusCode, currentRetryCount + 1, maxRetries, waitMs / 1000.0));
+                               }
 
                         currentReply->deleteLater();
                         currentReply = nullptr;
@@ -674,6 +694,8 @@ void Agent::handleChatFinished() {
       currentReply = nullptr;
 
       llm->dataFinished();
+
+      updateChatDisplay();
       saveStatus();
       }
 
@@ -757,7 +779,7 @@ void Agent::saveSettings() {
             array.append(obj);
             }
 
-      QFile file(getConfigPath());
+      QFile file(configPath());
       if (file.open(QIODevice::WriteOnly)) {
             file.write(QJsonDocument(array).toJson());
             file.close();
@@ -769,9 +791,9 @@ void Agent::saveSettings() {
 //---------------------------------------------------------
 
 void Agent::loadSettings() {
-      QFile file(getConfigPath());
+      QFile file(configPath());
       if (!file.open(QIODevice::ReadOnly)) {
-            Debug("config file <{}> not found", getConfigPath());
+            Debug("config file <{}> not found", configPath());
             return;
             }
 
@@ -859,6 +881,8 @@ QString Agent::sessionName(bool getNext) const {
       int nextNumber = info.lastNumber + 1; // default: increment
       if (!getNext && info.lastNumber != 0)
             nextNumber = info.lastNumber; // reuse existing number
+      else
+            nextNumber = info.lastNumber + 1;
 
       // Format: Session-dd-MM-yyyy-n.json
       // 'z' sorgt dafür, dass führende Nullen bei Tag/Monat erhalten bleiben (dd-MM)
@@ -1097,82 +1121,82 @@ void Agent::loadStatus(const QString& sessionPath) {
                                     QString m             = QString::fromStdString(modelName);
                                     setCurrentModel(m, false);
                                     }
-                              if (root.contains("filterToolMessages")) {
-                                    filterToolMessages = root["filterToolMessages"];
-                                    if (showToolMessageAction)
-                                          showToolMessageAction->setChecked(!filterToolMessages);
-                                    }
-                              if (root.contains("filterThoughts")) {
-                                    filterThoughts = root["filterThoughts"];
-                                    if (showThoughtsAction)
-                                          showThoughtsAction->setChecked(!filterThoughts);
-                                    }
-                              const json& history = root["history"];
-                              historyManager->setHistory(history);
-                              if (root.contains("activeEntries"))
-                                    historyManager->setActiveEntries(root["activeEntries"]);
-                              }
-                        else if (root.is_array()) {
-                              historyManager->setHistory(root);
-                              }
-                        savedEntries           = historyManager->data().size();
-                        currentSessionFileName = fileToLoad;
-                        updateSessionList();
-                        updateChatDisplay();
-                        chatDisplay->scrollToBottom();
-                        return;
-                        }
-                  catch (const json::parse_error& e) {
-                        // Not a valid full JSON object? Try JSON Lines fallback
-                        std::istringstream iss(content);
-                        std::string line;
-                        json h            = json::array();
-                        size_t actEntries = 0;
-                        while (std::getline(iss, line)) {
-                              if (line.empty())
-                                    continue;
-                              try {
-                                    json obj = json::parse(line);
-                                    if (obj.contains("model")) {
-                                          std::string modelName = obj["model"];
-                                          setCurrentModel(QString::fromStdString(modelName), false);
-                                          }
-                                    if (obj.contains("activeEntries"))
-                                          actEntries = obj["activeEntries"];
-                                    if (obj.contains("filterToolMessages")) {
-                                          filterToolMessages = obj["filterToolMessages"];
-                                          if (showToolMessageAction)
-                                                showToolMessageAction->setChecked(!filterToolMessages);
-                                          }
-                                    if (obj.contains("filterThoughts")) {
-                                          filterThoughts = obj["filterThoughts"];
-                                          if (showThoughtsAction)
-                                                showThoughtsAction->setChecked(!filterThoughts);
-                                          }
-                                    if (obj.contains("role") || obj.contains("parts") || obj.contains("content"))
-                                          h.push_back(obj);
-                                    }
-                              catch (...) {
-                                    }
-                              }
-                        historyManager->setHistory(h);
-                        // Only override activeEntries when an explicit value was found in the file.
-                        // If actEntries == 0 (old session format without activeEntries metadata),
-                        // setHistory() has already set activeEntries = data.size(), which is correct.
-                        if (actEntries > 0)
-                              historyManager->setActiveEntries(actEntries);
-                        savedEntries           = historyManager->data().size();
-                        currentSessionFileName = fileToLoad;
-                        updateSessionList();
-                        updateChatDisplay();
-                        chatDisplay->scrollToBottom();
-                        return;
-                        }
-                  }
-            else {
-                  Debug("no session file found <{}>", fileToLoad);
-                  }
-            }
+                               if (root.contains("filterToolMessages")) {
+                                     filterToolMessages = root["filterToolMessages"];
+                                     if (showToolMessageAction)
+                                           showToolMessageAction->setChecked(!filterToolMessages);
+                                     }
+                               if (root.contains("filterThoughts")) {
+                                     filterThoughts = root["filterThoughts"];
+                                     if (showThoughtsAction)
+                                           showThoughtsAction->setChecked(!filterThoughts);
+                                     }
+                               const json& history = root["history"];
+                               historyManager->setHistory(history);
+                               if (root.contains("activeEntries"))
+                                     historyManager->setActiveEntries(root["activeEntries"]);
+                               }
+                         else if (root.is_array()) {
+                               historyManager->setHistory(root);
+                               }
+                         savedEntries           = historyManager->data().size();
+                         currentSessionFileName = fileToLoad;
+                         updateSessionList();
+                         updateChatDisplay();
+                         chatDisplay->scrollToBottom();
+                         return;
+                         }
+                   catch (const json::parse_error& e) {
+                         // Not a valid full JSON object? Try JSON Lines fallback
+                         std::istringstream iss(content);
+                         std::string line;
+                         json h            = json::array();
+                         size_t actEntries = 0;
+                         while (std::getline(iss, line)) {
+                               if (line.empty())
+                                     continue;
+                               try {
+                                     json obj = json::parse(line);
+                                     if (obj.contains("model")) {
+                                           std::string modelName = obj["model"];
+                                           setCurrentModel(QString::fromStdString(modelName), false);
+                                           }
+                                     if (obj.contains("activeEntries"))
+                                           actEntries = obj["activeEntries"];
+                                     if (obj.contains("filterToolMessages")) {
+                                           filterToolMessages = obj["filterToolMessages"];
+                                           if (showToolMessageAction)
+                                                 showToolMessageAction->setChecked(!filterToolMessages);
+                                           }
+                                     if (obj.contains("filterThoughts")) {
+                                           filterThoughts = obj["filterThoughts"];
+                                           if (showThoughtsAction)
+                                                 showThoughtsAction->setChecked(!filterThoughts);
+                                           }
+                                     if (obj.contains("role") || obj.contains("parts") || obj.contains("content"))
+                                           h.push_back(obj);
+                                     }
+                               catch (...) {
+                                     }
+                               }
+                         historyManager->setHistory(h);
+                         // Only override activeEntries when an explicit value was found in the file.
+                         // If actEntries == 0 (old session format without activeEntries metadata),
+                         // setHistory() has already set activeEntries = data.size(), which is correct.
+                         if (actEntries > 0)
+                               historyManager->setActiveEntries(actEntries);
+                         savedEntries           = historyManager->data().size();
+                         currentSessionFileName = fileToLoad;
+                         updateSessionList();
+                         updateChatDisplay();
+                         chatDisplay->scrollToBottom();
+                         return;
+                         }
+                   }
+             else {
+                   Debug("no session file found <{}>", fileToLoad);
+                   }
+             }
 
       // No last session found -> Start new session
       currentSessionFileName = sessionName(true);
@@ -1335,7 +1359,7 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                                     thought += part["text"];
                               else
                                     msg += part["text"];
-                              }
+                               }
                         if (part.contains("functionResponse")) {
                               if (!filterToolMessages) {
                                     json fr = part["functionResponse"];
@@ -1373,7 +1397,12 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
 void Agent::updateChatDisplay() {
       chatDisplay->clear();
 
-      for (const auto& item : historyManager->data()) {
+      size_t totalEntries = historyManager->data().size();
+      size_t activeCount = historyManager->getActiveEntriesCount();
+      size_t startActiveIdx = totalEntries > activeCount ? totalEntries - activeCount : 0;
+
+      for (size_t i = 0; i < totalEntries; ++i) {
+            const auto& item = historyManager->data()[i];
             const auto& content = item.content;
             std::string role;
             if (!content.contains("role")) {
@@ -1396,7 +1425,8 @@ void Agent::updateChatDisplay() {
 
             QString s  = chatDisplay->renderMarkdownToHtml(msg);
             QString th = chatDisplay->renderMarkdownToHtml(thought);
-            chatDisplay->appendStaticHtml(QString::fromStdString(role), s, th);
+            bool isActive = (i == 0 || i >= startActiveIdx);
+            chatDisplay->appendStaticHtml(QString::fromStdString(role), s, th, isActive);
             }
       }
 

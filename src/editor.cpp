@@ -164,6 +164,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       qRegisterMetaType<FileType>("FileType");
       qRegisterMetaType<LanguageServerConfig>("LanguageServerConfig");
       qRegisterMetaType<Model>("Model");
+      qRegisterMetaType<TextStyle>("TextStyle");
 
 #if 0 // experimental
       fileWatcher = new QFileSystemWatcher(this);
@@ -398,7 +399,6 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             btnForward->setIcon(QIcon(dark ? ":/images/forward_white.svg" : ":/images/forward.svg"));
             btnReload->setIcon(QIcon(dark ? ":/images/reload_white.svg" : ":/images/reload.svg"));
             btnHome->setIcon(QIcon(dark ? ":/images/home_white.svg" : ":/images/home.svg"));
-            markerDefinitions.setDarkMode(dark);
             updateStyle();
             update();
             });
@@ -408,7 +408,6 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       btnForward->setIcon(QIcon(dark ? ":/images/forward_white.svg" : ":/images/forward.svg"));
       btnReload->setIcon(QIcon(dark ? ":/images/reload_white.svg" : ":/images/reload.svg"));
       btnHome->setIcon(QIcon(dark ? ":/images/home_white.svg" : ":/images/home.svg"));
-      markerDefinitions.setDarkMode(dark);
       updateStyle();
       _editWidget->setFocus();
       connect(_editWidget, &EditWidget::markerClicked, [this](int row) {
@@ -562,14 +561,6 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
                   removeKontext(index);
                   }
             });
-#if 0
-      connect(tabBar, &QTabBar::tabMoved, [this](int from, int to) {
-            _currentKontext = from;
-            auto k          = _kontextList[to];
-            _kontextList.remove(to);
-            _kontextList.insert(from, k);
-                        });
-#endif
       connect(tabBar, &QTabBar::tabMoved, [this](int from, int to) {
             auto k = _kontextList[from];
             _kontextList.remove(from);
@@ -599,8 +590,6 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       _editWidget->installEventFilter(kl);
       initFont();
       updateGitHistory();
-
-      connect(this, &Editor::fgColorChanged, [this] { update(); });
       }
 
 Editor::~Editor() {
@@ -1139,6 +1128,8 @@ void Editor::saveStatus() {
       j["width"]   = width();
       j["height"]  = height();
 
+      j["darkMode"] = darkMode();
+
       QByteArray geom = saveGeometry();
       j["geometry"]   = geom.toHex().toStdString();
 
@@ -1275,7 +1266,6 @@ bool Editor::loadStatus(int argc, char** argv) {
                         const QSignalBlocker blocker(aiButton);
                         aiButton->setChecked(v);
                         }
-
                   if (j.contains("gitPanel")) {
                         bool val = j["gitPanel"].get<bool>();
                         gitPanel->setVisible(val);
@@ -1292,6 +1282,11 @@ bool Editor::loadStatus(int argc, char** argv) {
                   if (j.contains("geometry")) {
                         QByteArray geom = QByteArray::fromHex(QByteArray::fromStdString(j["geometry"].get<std::string>()));
                         restoreGeometry(geom);
+                        }
+
+                  if (j.contains("darkMode")) {
+                        bool v = j["darkMode"].get<bool>();
+                        setDarkMode(v);
                         }
 
                   if (loadFiles && j.contains("kontexte") && j["kontexte"].is_array()) {

@@ -1,3 +1,4 @@
+//=============================================================================
 //  nped Program Editor
 //
 //  Copyright (C) 2025-2026 Werner Schweer
@@ -161,7 +162,8 @@ struct LanguageServerConfig {
       Q_PROPERTY(QString name MEMBER name)
       Q_PROPERTY(QString command MEMBER command)
       Q_PROPERTY(QString args MEMBER args)
-   public:
+
+    public:
       QString name;
       QString command;
       QString args;
@@ -174,7 +176,7 @@ struct LanguageServerConfig {
 
 struct LanguageServer {
       QString name;
-      LSclient* client { nullptr };
+      LSclient* client{nullptr};
       };
 
 //---------------------------------------------------------
@@ -286,11 +288,13 @@ class Editor : public QMainWindow
                      languageServersConfigChanged)
       Q_PROPERTY(QStringList monospacedFonts READ monospacedFonts CONSTANT)
       Q_PROPERTY(bool darkMode READ darkMode WRITE setDarkMode NOTIFY darkModeChanged)
-      Q_PROPERTY(QColor fgColor READ fgColor WRITE setFgColor NOTIFY fgColorChanged)
-      Q_PROPERTY(QColor bgColor READ bgColor WRITE setBgColor NOTIFY bgColorChanged)
+      Q_PROPERTY(QList<TextStyle> textStylesLight READ textStylesLight WRITE setTextStylesLight NOTIFY textStylesLightChanged)
+      Q_PROPERTY(QList<TextStyle> textStylesDark READ textStylesDark WRITE setTextStylesDark NOTIFY textStylesDarkChanged)
 
       QList<ShortcutConfig> _shortcuts;
       QList<FileType> _fileTypes;
+      QList<TextStyle> _textStylesLight;
+      QList<TextStyle> _textStylesDark;
       QList<LanguageServerConfig> _languageServersConfig;
 
       std::vector<File*> files;
@@ -322,10 +326,10 @@ class Editor : public QMainWindow
       QTimer* cursorTimer;
       QTimer* lsUpdateTimer;
       Agent* agent;
-      static const int agentMinimumWidth { 500 };
-      int agentWidth { agentMinimumWidth };
-      static const int gitPanelMinimumWidth { 300 };
-      int gitPanelWidth { gitPanelMinimumWidth };
+      static const int agentMinimumWidth{500};
+      int agentWidth{agentMinimumWidth};
+      static const int gitPanelMinimumWidth{300};
+      int gitPanelWidth{gitPanelMinimumWidth};
       QListView* gitPanel;
       GitList gitList;
 
@@ -349,12 +353,10 @@ class Editor : public QMainWindow
       bool _hasGit{false};
       QString _currentBranchName;
       Git _git;
-      bool _darkMode { false };
-      QColor _fgColor{0, 0, 0};
-      QColor _bgColor{240, 240, 240};
+      bool _darkMode{false};
 
       QString _settingsLLModel;
-//       QFileSystemWatcher* fileWatcher;
+      //       QFileSystemWatcher* fileWatcher;
 
       QFont _font;
       QString _fontFamily{"Source Code Pro"};
@@ -428,8 +430,8 @@ class Editor : public QMainWindow
       void languageServersConfigChanged();
       void configApplied(); // Signal an Editor Core, Daten neu zu laden
       void darkModeChanged(bool);
-      void fgColorChanged();
-      void bgColorChanged();
+      void textStylesLightChanged();
+      void textStylesDarkChanged();
 
     public:
       Editor(int argc, char** argv);
@@ -446,9 +448,7 @@ class Editor : public QMainWindow
                   _currentKontext = 0;
             return _kontextList[_currentKontext];
             }
-      const Kontext* kontext() const {
-            return _kontextList.at(_currentKontext);
-            }
+      const Kontext* kontext() const { return _kontextList.at(_currentKontext); }
       Agent* getAgent() const { return agent; }
       QFont font() { return _font; }
       qreal fh() const { return _fh; }
@@ -517,7 +517,10 @@ class Editor : public QMainWindow
             }
       QList<ShortcutConfig> shortcuts() const { return _shortcuts; }
       QList<FileType> fileTypes() const { return _fileTypes; }
-      QList<FileType>& fileTypesRef() { return _fileTypes; }
+      QList<TextStyle> textStylesLight() { return _textStylesLight; }
+      void setTextStylesLight(const QList<TextStyle>& v);
+      QList<TextStyle> textStylesDark() { return _textStylesDark; }
+      void setTextStylesDark(const QList<TextStyle>& v);
       QList<LanguageServerConfig> languageServersConfig() const { return _languageServersConfig; }
       void loadDefaults();
       void loadSettings();
@@ -530,35 +533,23 @@ class Editor : public QMainWindow
       void setDarkMode(bool v) {
             if (v != _darkMode) {
                   _darkMode = v;
-                  if (_darkMode) {
-                        setBgColor(QColor(40, 40, 40));
-                        setFgColor(QColor(220, 220, 220));
-                        }
-                  else {
-                        setBgColor(QColor(240, 240, 240));
-                        setFgColor(QColor(0, 0, 0));
-                        }
                   emit darkModeChanged(_darkMode);
                   }
             }
-      QColor fgColor() const { return _fgColor; }
-      QColor bgColor() const { return _bgColor; }
-      void setFgColor(QColor v) {
-            if (v != _fgColor) {
-                  _fgColor = v;
-                  emit fgColorChanged();
-                  }
-            }
-      void setBgColor(QColor v) {
-            if (v != _bgColor) {
-                  _bgColor = v;
-                  emit bgColorChanged();
-                  }
-            }
       void showCompletions(const Completions&);
-//       QFileSystemWatcher* getFileWatcher() const { return fileWatcher; }
+      //       QFileSystemWatcher* getFileWatcher() const { return fileWatcher; }
       enum UpdateFlag { UpdateNothing = 0, UpdateLine = 1, UpdateScreen = 2, UpdateAll = 4 };
       Q_DECLARE_FLAGS(UpdateFlags, UpdateFlag)
+      const TextStyle& textStyle(TextStyle::Style style) { return darkMode() ? _textStylesDark[int(style)] : _textStylesLight[int(style)]; }
+      Q_INVOKABLE TextStyle textStyle(bool dark, int style) { return dark ? _textStylesDark[int(style)] : _textStylesLight[int(style)]; }
+      Q_INVOKABLE void setTextStyle(const TextStyle& s, bool dark, int style) {
+            Debug("dark {} style {}", dark, style);
+            if (dark)
+                  _textStylesDark[style] = s;
+            else
+                  _textStylesLight[style] = s;
+            update();
+            }
       };
 
 //---------------------------------------------------------
@@ -616,3 +607,6 @@ QDataStream& operator>>(QDataStream& in, FileType& v);
 
 QDataStream& operator<<(QDataStream& out, const LanguageServerConfig& v);
 QDataStream& operator>>(QDataStream& in, LanguageServerConfig& v);
+
+QDataStream& operator<<(QDataStream& out, const TextStyle& v);
+QDataStream& operator>>(QDataStream& in, TextStyle& v);
