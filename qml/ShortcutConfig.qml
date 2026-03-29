@@ -22,7 +22,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
         clip: true
-        model: config.shortcuts
+        model: nped.shortcuts
         spacing: 0
 
         delegate: ItemDelegate {
@@ -49,9 +49,9 @@ ColumnLayout {
                     placeholderText: "Shortcut..."
                     // font.pixelSize: 14
                     onEditingFinished: {
-                        var list = config.shortcuts
+                        var list = nped.shortcuts
                         list[index].sequence = text
-                        config.shortcuts = list // Trigger update
+                        nped.shortcuts = list // Trigger update
                         }
                     }
                 }

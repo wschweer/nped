@@ -51,7 +51,7 @@ ColumnLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    model: agent.models
+                    model: nped.models
 
                     Component.onCompleted: {
                         if (count > 0) currentIndex = 0
@@ -82,9 +82,9 @@ ColumnLayout {
                     flat: true
                     Material.foreground: Material.accent
                     onClicked: {
-                        var list = agent.models
+                        var list = nped.models
                         list.push({name: "New Model", modelIdentifier: "", api: "ollama", baseUrl: "http://localhost:11434", apiKey: "", isLocal: false, supportsThinking: false, temperature: -1.0, topP: -1.0, maxTokens: -1})
-                        agent.models = list
+                        nped.models = list
                         modelListView.currentIndex = list.length - 1
                         }
                     }
@@ -105,7 +105,7 @@ ColumnLayout {
                 spacing: 15
                 anchors.margins: 10
 
-                property var currentModel: modelListView.currentIndex >= 0 && modelListView.currentIndex < agent.models.length ? agent.models[modelListView.currentIndex] : null
+                property var currentModel: modelListView.currentIndex >= 0 && modelListView.currentIndex < nped.models.length ? nped.models[modelListView.currentIndex] : null
 
                 visible: currentModel !== null
 
@@ -129,9 +129,9 @@ ColumnLayout {
                         font.bold: true
                         onEditingFinished: {
                             if (modelListView.currentIndex >= 0) {
-                                var l = agent.models;
+                                var l = nped.models;
                                 l[modelListView.currentIndex].name = text;
-                                agent.models = l;
+                                nped.models = l;
                             }
                         }
                     }
@@ -150,9 +150,9 @@ ColumnLayout {
                         }
                         onActivated: {
                             if (modelListView.currentIndex >= 0) {
-                                var l = agent.models;
+                                var l = nped.models;
                                 l[modelListView.currentIndex].api = currentText;
-                                agent.models = l;
+                                nped.models = l;
                             }
                         }
                     }
@@ -165,9 +165,9 @@ ColumnLayout {
                         placeholderText: "e.g. gpt-4, llama3"
                         onEditingFinished: {
                             if (modelListView.currentIndex >= 0) {
-                                var l = agent.models;
+                                var l = nped.models;
                                 l[modelListView.currentIndex].modelIdentifier = text;
-                                agent.models = l;
+                                nped.models = l;
                             }
                         }
                     }
@@ -180,9 +180,9 @@ ColumnLayout {
                         placeholderText: "https://api.example.com"
                         onEditingFinished: {
                             if (modelListView.currentIndex >= 0) {
-                                var l = agent.models;
+                                var l = nped.models;
                                 l[modelListView.currentIndex].baseUrl = text;
-                                agent.models = l;
+                                nped.models = l;
                             }
                         }
                     }
@@ -196,9 +196,9 @@ ColumnLayout {
                         placeholderText: "sk-..."
                         onEditingFinished: {
                             if (modelListView.currentIndex >= 0) {
-                                var l = agent.models;
+                                var l = nped.models;
                                 l[modelListView.currentIndex].apiKey = text;
-                                agent.models = l;
+                                nped.models = l;
                             }
                         }
                     }
@@ -211,9 +211,9 @@ ColumnLayout {
                         placeholderText: "-1.0 for default"
                         onEditingFinished: {
                             if (modelListView.currentIndex >= 0) {
-                                var l = agent.models;
+                                var l = nped.models;
                                 l[modelListView.currentIndex].temperature = parseFloat(text);
-                                agent.models = l;
+                                nped.models = l;
                             }
                         }
                     }
@@ -226,9 +226,9 @@ ColumnLayout {
                         placeholderText: "-1.0 for default"
                         onEditingFinished: {
                             if (modelListView.currentIndex >= 0) {
-                                var l = agent.models;
+                                var l = nped.models;
                                 l[modelListView.currentIndex].topP = parseFloat(text);
-                                agent.models = l;
+                                nped.models = l;
                             }
                         }
                     }
@@ -241,9 +241,9 @@ ColumnLayout {
                         placeholderText: "-1 for default"
                         onEditingFinished: {
                             if (modelListView.currentIndex >= 0) {
-                                var l = agent.models;
+                                var l = nped.models;
                                 l[modelListView.currentIndex].maxTokens = parseInt(text);
-                                agent.models = l;
+                                nped.models = l;
                             }
                         }
                     }
@@ -257,9 +257,9 @@ ColumnLayout {
                             checked: parent.parent.parent.currentModel ? parent.parent.parent.currentModel.supportsThinking : false
                             onToggled: {
                                 if (modelListView.currentIndex >= 0) {
-                                    var l = agent.models;
+                                    var l = nped.models;
                                     l[modelListView.currentIndex].supportsThinking = checked;
-                                    agent.models = l;
+                                    nped.models = l;
                                 }
                             }
                         }
@@ -275,9 +275,9 @@ ColumnLayout {
                     visible: parent.currentModel && !parent.currentModel.isLocal
                     onClicked: {
                         if (modelListView.currentIndex >= 0) {
-                            var list = agent.models;
+                            var list = nped.models;
                             list.splice(modelListView.currentIndex, 1);
-                            agent.models = list;
+                            nped.models = list;
                             modelListView.currentIndex = Math.min(modelListView.currentIndex, list.length - 1);
                             }
                         }

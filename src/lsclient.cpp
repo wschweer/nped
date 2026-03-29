@@ -10,9 +10,9 @@
 //=============================================================================
 
 #include <unistd.h>
-#include <iostream>
+// #include <iostream>
 #include <sys/wait.h>
-#include <sstream>
+// #include <sstream>
 #include <fcntl.h>
 #include <sys/eventfd.h>
 #include <poll.h>
@@ -34,10 +34,14 @@ enum DiagnosticSeverity { Error = 1, Warning, Information, Hint };
 
 LSclient* LSclient::createClient(Editor* editor, const std::string& name) {
       for (const auto& s : editor->languageServersConfig()) {
-            Debug("<{}> -- <{}>", s.name, name);
+//            Debug("<{}> -- <{}>", s.name, name);
             if (s.name == name) {
                   auto* lc = new LSclient(editor, name);
-                  if (!lc->start(s.command.toStdString(), s.args.toStdString())) {
+                  QStringList sl = s.args.simplified().split(" ");
+                  std::vector<std::string> args;
+                  for (const auto& s : sl)
+                        args.push_back(s.toStdString());
+                  if (!lc->start(s.command.toStdString(), args)) {
                         Critical("cannot init language server <{}>", s.command);
                         delete lc;
                         lc = nullptr;
@@ -64,7 +68,7 @@ void PatchItem::setRange(const Range& r, File* f) {
 
 void LSclient::gotoRequest(const char* req, File* file, const Pos& cursor) {
       callbacks[id] = [this](const json& msg) {
-            Debug("<{}>", msg.dump(3));
+            // Debug("<{}>", msg.dump(3));
             if (!msg.contains("result") || msg["result"].is_null())
                   return;
             const json& result = msg["result"];
@@ -106,17 +110,14 @@ void LSclient::gotoRequest(const char* req, File* file, const Pos& cursor) {
 //---------------------------------------------------------
 
 void LSclient::gotoDefinition(File* file, const Pos& cursor) {
-      Debug("=====");
       gotoRequest("textDocument/definition", file, cursor);
       }
 
 void LSclient::gotoTypeDefinition(File* file, const Pos& cursor) {
-      Debug("=====");
       gotoRequest("textDocument/typeDefinition", file, cursor);
       }
 
 void LSclient::gotoImplementation(File* file, const Pos& cursor) {
-      Debug("=====");
       gotoRequest("textDocument/implementation", file, cursor);
       }
 
@@ -127,18 +128,17 @@ void LSclient::gotoImplementation(File* file, const Pos& cursor) {
 void LSclient::hover(File* file, const Pos& cursor) {
       callbacks[id] = [this](const json& msg) {
             const json& result = msg["result"];
-            Debug("{}", result.dump(4));
+//            Debug("{}", result.dump(4));
             if (result.contains("contents")) {
                   const json& contents = result["contents"];
                   std::string kind     = contents.value("kind", "");
                   std::string value    = contents.value("value", "");
-                  Debug("hover <{}> <{}>", kind, value);
+//                  Debug("hover <{}> <{}>", kind, value);
                   editor->setInfoText(QString::fromStdString(value));
                   }
             else
                   editor->setInfoText("");
             };
-      Debug("==");
       json textDocument;
       textDocument["uri"]     = "file://" + file->path().toStdString();
       textDocument["version"] = file->version();
@@ -159,7 +159,7 @@ void LSclient::completionRequest(Kontext* k) {
       File* file    = k->file();
       callbacks[id] = [k](const json& msg) {
             const json& result = msg["result"];
-            Debug("{}", result.dump(4));
+//            Debug("{}", result.dump(4));
             if (result.contains("items")) {
                   Completions list;
                   for (const json& item : result["items"]) {
@@ -196,7 +196,7 @@ void LSclient::completionRequest(Kontext* k) {
 void LSclient::prepareRenameRequest(Kontext* k) {
       callbacks[id] = [this, k](const json& msg) {
             const json& result = msg["result"];
-            Debug("{}", result.dump(4));
+//            Debug("{}", result.dump(4));
             QString placeholder = QString::fromStdString(result.value("placeholder", ""));
             Range range(result["range"]);
             editor->rename(k, placeholder, range.start.row, range.start.col, range.end.col);
@@ -237,7 +237,7 @@ void LSclient::renameRequest(Kontext* k, const QString& newName, int row, int co
                   auto patch    = new Patch(kontext->file(), c, c);
                   for (const auto& change : it.value()) {
                         QString newText = QString::fromStdString(change["newText"]);
-                        Debug("rename {} {}", kontext->file()->path(), newText);
+//                        Debug("rename {} {}", kontext->file()->path(), newText);
                         Range range(change["range"]);
                         PatchItem pi;
                         pi.setRange(range, kontext->file());
@@ -302,20 +302,23 @@ void LSclient::readerLoop() {
                   }
             if (fds[2].revents & POLLIN)
                   break;
-            else if (fds[1].revents & POLLIN) {
+            if (fds[1].revents & (POLLIN | POLLHUP | POLLERR)) {
                   char buffer2[4096];
                   for (;;) {
                         ssize_t n = read(stderrPipe[0], buffer2, sizeof(buffer2) - 1);
-                        if (n > 0) {
-                              buffer2[n] = '\0';
-                              QString s(buffer2);
-                              Log("{}: <{}>", _name, s.trimmed());
-                              }
-                        else
+                        if (n == 0) {
+                              fds[1].fd = -1; // Stop polling stderr if EOF
                               break;
+                              }
+                        else if (n < 0) {
+                              break;
+                              }
+                        buffer2[n] = '\0';
+                        QString s(buffer2);
+                        Log("{}: <{}>", _name, s.trimmed());
                         }
                   }
-            else if (fds[0].revents & POLLIN) {
+            if (fds[0].revents & (POLLIN | POLLHUP | POLLERR)) {
 
                   //*********************************************************************
                   //    wait until there is something to read
@@ -326,8 +329,12 @@ void LSclient::readerLoop() {
 
                   for (;;) {
                         bytesRead = read(stdoutPipe[0], buffer.data(), buffer.size() - 1);
-                        if (bytesRead <= 0) {
-                              if (bytesRead < 0 && errno != EAGAIN)
+                        if (bytesRead == 0) {
+                              running = false;
+                              break;
+                              }
+                        else if (bytesRead < 0) {
+                              if (errno != EAGAIN)
                                     Debug("error({}): {}", errno, strerror(errno));
                               break;
                               }
@@ -376,16 +383,16 @@ void LSclient::readerLoop() {
 //   start
 //---------------------------------------------------------
 
-bool LSclient::start(const std::string& path, const std::string& args) {
+bool LSclient::start(const std::string& path, const std::vector<string>& args) {
       // Erstellen der drei Pipes
       if (pipe(stdinPipe) == -1 || pipe(stdoutPipe) == -1 || pipe(stderrPipe) == -1) {
-            perror("pipe");
+            Critical("pipe failed: {}", strerror(errno));
             return false;
             }
 
       pid_t pid = fork();
       if (pid == -1) {
-            perror("fork");
+            Critical("fork failed: {}", strerror(errno));
             return false;
             }
 
@@ -400,7 +407,14 @@ bool LSclient::start(const std::string& path, const std::string& args) {
             close(stdoutPipe[0]);
             close(stderrPipe[0]);
 
-            execlp(path.c_str(), args.c_str());
+            // Argument-Vektor vorbereiten (execvp erwartet char* const*)
+            std::vector<char*> c_args;
+            c_args.push_back(const_cast<char*>(path.c_str()));
+            for (const auto& arg : args)
+                  c_args.push_back(const_cast<char*>(arg.c_str()));
+            c_args.push_back(nullptr);
+
+            execvp(path.c_str(), c_args.data());
 
             // Falls execvp fehlschlägt:
             perror("execvp");
@@ -423,12 +437,20 @@ bool LSclient::start(const std::string& path, const std::string& args) {
 //---------------------------------------------------------
 
 bool LSclient::write(const std::string& txt) {
+      if (!running)
+            return false;
       size_t total = 0;
       while (total < txt.size()) {
             ssize_t n = ::write(stdinPipe[1], txt.c_str() + total, txt.size() - total);
             if (n == -1) {
                   if (errno == EINTR)
                         continue;
+                  if (errno == EPIPE) {
+                        Warning("Language server <{}> write failed: broken pipe (EPIPE)", _name);
+                        running = false;
+                        _initialized = false;
+                        return false;
+                  }
                   Critical("write failed, errno: {} ({})", errno, strerror(errno));
                   return false;
                   }
@@ -480,7 +502,7 @@ bool LSclient::initializeRequest() {
       params["rootUri"]      = "file://" + editor->projectRoot().toStdString();
       params["trace"]        = "off";
 
-      Debug("rootUri <{}>", "file://" + editor->projectRoot().toStdString());
+//      Debug("rootUri <{}>", "file://" + editor->projectRoot().toStdString());
       return request("initialize", params);
       }
 
@@ -520,10 +542,9 @@ bool LSclient::didOpenNotification(File* file) {
       textDocument["uri"]        = "file://" + file->path().toStdString();
       textDocument["languageId"] = file->languageId().toStdString();
       textDocument["version"]    = file->version();
-      textDocument["text"]       = file->fileText().join('\n').toStdString();
+      textDocument["text"]       = file->plainText().toStdString();
       json params;
       params["textDocument"] = textDocument;
-      //      Debug("{}", textDocument["uri"].dump());
       return notification("textDocument/didOpen", params);
       }
 
@@ -588,7 +609,6 @@ void LSclient::stop() {
 
 void LSclient::formattingRequest(Kontext* kontext) {
       callbacks[id] = [this, kontext](const json& msg) {
-            //      Debug("{}", f->path());
             File* file         = kontext->file();
             auto patch         = new Patch(file, kontext->cursor(), kontext->cursor());
             const json& result = msg["result"];
@@ -597,6 +617,8 @@ void LSclient::formattingRequest(Kontext* kontext) {
                   PatchItem pi;
                   pi.insertText = QString::fromStdString(p["newText"]);
                   Range range(p["range"]);
+                  // hack for qmlls:
+                  range.end.row += 1;
                   pi.startPos = range.start;
                   pi.toRemove = file->distance(pi.startPos, range.end);
                   patch->add(pi);
@@ -839,7 +861,6 @@ bool LSclient::didChangeNotification(File* file, const Patches& patches) {
             changes.push_back(change);
             }
       params["contentChanges"] = changes;
-      //      Debug("{}", params.dump(4));
       return notification("textDocument/didChange", params);
       }
 
@@ -878,10 +899,8 @@ void LSclient::astResponse(File* f, const json& msg) {
 //---------------------------------------------------------
 
 void LSclient::symbolRequest(const QString& symbol) {
-      Debug("<{}>", symbol);
       callbacks[id] = [this](const json& msg) {
             QString res = "";
-            Debug("result <{}>", msg.dump(3));
             if (msg.contains("result") && msg["result"].is_array()) {
                   for (const auto& item : msg["result"]) {
                         if (item.contains("location")) {
@@ -896,7 +915,6 @@ void LSclient::symbolRequest(const QString& symbol) {
                   }
             if (res.isEmpty())
                   res = "Symbol not found.";
-            Debug("result <{}>", res);
             emit symbolSearchResult(res);
             };
       json params;

@@ -13,7 +13,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
-import Nped.Config
+// import Nped
 
 Rectangle {
     id: root
@@ -25,7 +25,7 @@ Rectangle {
     border.width: 2
     radius: 4
 
-    Material.theme: config.darkMode ? Material.Dark : Material.Light
+    Material.theme: nped.darkMode ? Material.Dark : Material.Light
     color: Material.background
 
     // Grip for visual indication
@@ -157,7 +157,7 @@ Rectangle {
                 Button {
                     text: "Reset Defaults"
                     flat: true
-                    onClicked: config.resetToDefaults()
+                    onClicked: nped.resetToDefaults()
                     }
 
                 Item { Layout.fillWidth: true } // Spacer
@@ -170,7 +170,7 @@ Rectangle {
                     text: "Save"
                     highlighted: true
                     onClicked: {
-                        config.apply()
+                        nped.apply()
                         dialog.accept()
                         }
                     }

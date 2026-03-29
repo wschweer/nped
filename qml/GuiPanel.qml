@@ -35,15 +35,15 @@ ColumnLayout {
             Layout.preferredWidth: 300 // Begrenzung, damit es nicht zu breit wird
 
             // 1. Daten aus C++ (Nur Monospace Fonts)
-            model: config.monospacedFonts
+            model: nped.monospacedFonts
 
             // 2. Aktuellen Font vorselektieren
-            currentIndex: model.indexOf(config.fontFamily)
+            currentIndex: model.indexOf(nped.fontFamily)
 
             // 3. Bei Auswahl speichern
             onActivated: {
-                config.fontFamily = currentText
-                config.update()
+                nped.fontFamily = currentText
+                nped.update()
                 }
 
             // Optional: Popup-Liste scrollbar machen bei vielen Fonts
@@ -52,9 +52,9 @@ ColumnLayout {
         }
     CheckBox {
         text: "DarkMode"
-        checked: config.darkMode
+        checked: nped.darkMode
         onToggled: {
-            config.darkMode = checked;
+            nped.darkMode = checked;
             }
         }
 

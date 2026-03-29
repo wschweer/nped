@@ -41,7 +41,7 @@ bool Editor::initProject() {
                   }
             }
       _projectRoot = cwd.absolutePath();
-      Debug("project mode: <{}>", _projectRoot);
+//      Debug("project mode: <{}>", _projectRoot);
       _projectMode = true;
 
       // Check for GIT repository
@@ -49,7 +49,7 @@ bool Editor::initProject() {
       _hasGit = _git.isInitialized();
       if (_hasGit) {
             _currentBranchName = _git.getCurrentBranch();
-            Debug("git branch: <{}>", _currentBranchName);
+//            Debug("git branch: <{}>", _currentBranchName);
             }
       return true;
       }

@@ -8,57 +8,46 @@
 //  as published by the Free Software Foundation and appearing in
 //  the file LICENCE.GPL
 //=============================================================================
-
 #pragma once
 
 #include <QWidget>
-#include <QPointF>
-#include "types.h"
+#include <QKeyEvent>
+#include <QMouseEvent>
+#include <QWheelEvent>
 
-class QEvent;
-class QPaintEvent;
-class QFocusEvent;
-class QWheelEvent;
-class QMouseEvent;
 class Editor;
-class Line;
-
-struct DrawingContext;
-
-//----------------------------------------------------------
-//   EditWin
-//----------------------------------------------------------
+struct Pos;
 
 class EditWidget : public QWidget
       {
       Q_OBJECT
 
       Editor* editor;
-
-      virtual void keyPressEvent(QKeyEvent* event) override;
-      virtual void paintEvent(QPaintEvent* e) override;
-      virtual void wheelEvent(QWheelEvent*) override;
-      Pos pixelToChar(const QPointF& e);
-      int leftMargin() const;
       int hoverMark{-1};
-      void paintLine(DrawingContext& dc, int row, int y);
+      static const int BORDER = 2;
+
+   protected:
+      void paintEvent(QPaintEvent*) override;
+      void keyPressEvent(QKeyEvent*) override;
+      void wheelEvent(QWheelEvent*) override;
+      void mousePressEvent(QMouseEvent*) override;
+      void mouseMoveEvent(QMouseEvent*) override;
+      void mouseReleaseEvent(QMouseEvent*) override;
+
+   public:
+      EditWidget(QWidget* parent, Editor* e);
+      QSize visibleSize() const;
+      int leftMargin() const;
+      int rows() const { return textSize().height(); }
+      int columns() const { return textSize().width(); }
+      QSize textSize() const;
+      bool darkMode() const;
+      void paintLine(struct DrawingContext& dc, int fileRow, int y);
+      QPointF charPosToPixel(const Pos& e);
+      Pos pixelToChar(const QPointF& e);
       Pos screenPosToFilePos(Pos screenPos);
       int screenRowToFileRow(int screenRow);
 
-    protected:
-      void mousePressEvent(QMouseEvent*) override;
-      void mouseMoveEvent(QMouseEvent*) override;
-
-    signals:
+   signals:
       void markerClicked(int row);
-
-    public:
-      static constexpr qreal BORDER{4.0};
-      EditWidget(QWidget* parent, Editor*);
-      QSize textSize() const;
-      int rows() const { return textSize().height(); }
-      int columns() const { return textSize().width(); }
-      QSize visibleSize() const;
-      QPointF charPosToPixel(const Pos&);
-      bool darkMode() const;
       };

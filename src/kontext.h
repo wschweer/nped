@@ -62,10 +62,6 @@ class Kontext : public QObject
 
       void switchToLineMap(const Lines& map);
       int screenLines() const;
-      Pos startSelect() const { return _selection.start; }
-      Pos& startSelect() { return _selection.start; }
-      Pos endSelect() const { return _selection.end; }
-      Pos& endSelect() { return _selection.end; }
       int screenRows() const;
       int screenColumns() const;
       void fixCursor();
@@ -100,14 +96,19 @@ class Kontext : public QObject
       void movePrevWord();
       void moveNextWord();
       const QString& currentLine() const;
+      void flipSelectionCursor();
 
-      QString selectionText() const;
-      SelectionMode selectionMode() const { return _selection.mode; }
+      Selection& selection() { return _selection; }
+      QString selectionText();
       const Cursor& selectionStartCursor() const { return _selection.cursor; }
-      QRect selection() const;
+      QRect selectionRect() const;
       void setSelection(const QRect& r);
       void setSelectionMode(SelectionMode sm);
       void updateSelection();
+      Pos startSelect() const { return _selection.start; }
+      Pos& startSelect() { return _selection.start; }
+      Pos endSelect() const { return _selection.end; }
+      Pos& endSelect() { return _selection.end; }
 
       int c_compound();
       void setViewMode(ViewMode mode);

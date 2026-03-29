@@ -1,7 +1,7 @@
 //=============================================================================
 //  nped Program Editor
 //
-//  Copyright (C) 2025-2026 Werner Schweer
+//  Copyright (C) 2026 Werner Schweer
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2
@@ -113,13 +113,13 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       connect(this, &Agent::modelsChanged, [this] {
             bool blocked = modelMenu->blockSignals(true);
             modelMenu->clear();
-            for (const auto& m : _models)
+            for (const auto& m : _editor->models())
                   modelMenu->addItem(m.name);
             if (!model.name.isEmpty())
                   modelMenu->setCurrentText(model.name);
             modelMenu->blockSignals(blocked);
             });
-      connect(modelMenu, &QComboBox::activated, [this](int index) { setCurrentModel(_models[index].name); });
+      connect(modelMenu, &QComboBox::activated, [this](int index) { setCurrentModel(_editor->models()[index].name); });
 
       sessionComboBox = new QComboBox(this);
       sessionComboBox->setMinimumWidth(230);
@@ -313,7 +313,6 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
 
       // Toolbar placed below the prompt input
       // mainLayout->addWidget(toolBar);
-      loadSettings();
 
       connect(_editor, &Editor::fontChanged, [this](QFont f) {
             chatDisplay->setFont(f);
@@ -367,7 +366,7 @@ QString Agent::configPath() {
 void Agent::setCurrentModel(const QString& s, bool clearChat) {
       if (model.name == s)
             return;
-      for (const auto& m : _models) {
+      for (const auto& m : _editor->models()) {
             if (m.name == s) {
                   pendingModelName.clear();
                   model = m;
@@ -451,7 +450,7 @@ void Agent::fetchModels() {
                         m.isLocal         = true;
                         m.api             = "ollama";
 
-                        _models.push_back(m);
+                        _editor->models().push_back(m);
                         }
                   // at this point we have a complete list of available LL models
                   // and we can select the last used model as saved in settings
@@ -754,75 +753,6 @@ void Agent::processData() {
                   break;
                   }
             }
-      }
-
-//---------------------------------------------------------
-//   saveSettings
-//---------------------------------------------------------
-
-void Agent::saveSettings() {
-      // Save as JSON
-      QJsonArray array;
-      for (const auto& m : _models) {
-            if (m.isLocal)
-                  continue;
-            QJsonObject obj;
-            obj["name"]               = m.name;
-            obj["url"]                = m.baseUrl;
-            obj["key"]                = m.apiKey;
-            obj["modelId"]            = m.modelIdentifier;
-            obj["api"]                = m.api;
-            obj["supportsThinking"]   = m.supportsThinking;
-            obj["temperature"]        = m.temperature;
-            obj["topP"]               = m.topP;
-            obj["maxTokens"]          = m.maxTokens;
-            array.append(obj);
-            }
-
-      QFile file(configPath());
-      if (file.open(QIODevice::WriteOnly)) {
-            file.write(QJsonDocument(array).toJson());
-            file.close();
-            }
-      }
-
-//---------------------------------------------------------
-//   loadSettings
-//---------------------------------------------------------
-
-void Agent::loadSettings() {
-      QFile file(configPath());
-      if (!file.open(QIODevice::ReadOnly)) {
-            Debug("config file <{}> not found", configPath());
-            return;
-            }
-
-      QByteArray s     = file.readAll();
-      QJsonArray array = QJsonDocument::fromJson(s).array();
-      _models.clear();
-
-      for (int i = 0; i < array.size(); ++i) {
-            QJsonObject obj = array[i].toObject();
-            Model m;
-            m.name            = obj["name"].toString();
-            m.baseUrl         = obj["url"].toString();
-            m.apiKey          = obj["key"].toString();
-            m.modelIdentifier = obj["modelId"].toString();
-            m.api             = obj["api"].toString();
-            m.isLocal         = false;
-            // Optional fields – graceful fallback to struct defaults if absent
-            if (obj.contains("supportsThinking"))
-                  m.supportsThinking = obj["supportsThinking"].toBool();
-            if (obj.contains("temperature"))
-                  m.temperature = obj["temperature"].toDouble(-1.0);
-            if (obj.contains("topP"))
-                  m.topP = obj["topP"].toDouble(-1.0);
-            if (obj.contains("maxTokens"))
-                  m.maxTokens = obj["maxTokens"].toInt(-1);
-
-            _models.push_back(m);
-            }
-      emit modelsChanged();
       }
 
 //---------------------------------------------------------

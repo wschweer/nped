@@ -28,6 +28,7 @@
 //---------------------------------------------------------
 
 EditWidget::EditWidget(QWidget* parent, Editor* e) : QWidget(parent) {
+      setAttribute(Qt::WA_OpaquePaintEvent);
       editor = e;
       setFocusPolicy(Qt::NoFocus);
       setMouseTracking(true);
@@ -195,16 +196,14 @@ int EditWidget::screenRowToFileRow(int screenRow) {
 //---------------------------------------------------------
 
 void EditWidget::mousePressEvent(QMouseEvent* e) {
-      QPoint pos = e->pos();
-      Kontext* k = editor->kontext();
-      //      const Cursor& c = k->cursor();
+      QPoint pos    = e->pos();
+      Kontext* k    = editor->kontext();
       Pos screenPos = pixelToChar(pos);
       Pos filePos   = screenPosToFilePos(screenPos);
       if (pos.x() >= 0 && pos.x() < leftMargin()) {
             emit markerClicked(filePos.row);
             return;
             }
-      //      Debug("{} {} -- {} {}", filePos.col, filePos.row, screenPos.col, screenPos.row);
 
       Cursor c;
       c.filePos   = filePos;
@@ -212,7 +211,12 @@ void EditWidget::mousePressEvent(QMouseEvent* e) {
       k->cursor() = c;
 
       auto mouseButton = e->button();
-      if (mouseButton == Qt::MiddleButton) {
+      if (mouseButton == Qt::LeftButton) {
+            k->setSelectionMode(SelectionMode::CharSelect);
+            k->startSelect() = filePos;
+            k->endSelect()   = filePos;
+            }
+      else if (mouseButton == Qt::MiddleButton) {
             editor->startCmd();
             QClipboard* cb = QApplication::clipboard();
             QString txt    = cb->text(QClipboard::Clipboard);
@@ -234,6 +238,19 @@ void EditWidget::mousePressEvent(QMouseEvent* e) {
 
 void EditWidget::mouseMoveEvent(QMouseEvent* e) {
       QPoint p = e->pos();
+      if (e->buttons() & Qt::LeftButton) {
+            Kontext* k = editor->kontext();
+            if (k->selection().mode == SelectionMode::CharSelect) {
+                  Pos screenPos         = pixelToChar(p);
+                  Pos filePos           = screenPosToFilePos(screenPos);
+                  k->cursor().filePos   = filePos;
+                  k->cursor().screenPos = screenPos;
+                  k->updateSelection();
+                  editor->update();
+                  return;
+                  }
+            }
+
       if (p.x() >= 0 && p.x() < leftMargin()) {
             Kontext* k = editor->kontext();
             int row    = screenRowToFileRow(int((p.y() - EditWidget::BORDER) / editor->fh()));
@@ -250,6 +267,19 @@ void EditWidget::mouseMoveEvent(QMouseEvent* e) {
       }
 
 //---------------------------------------------------------
+//   mouseReleaseEvent
+//---------------------------------------------------------
+
+void EditWidget::mouseReleaseEvent(QMouseEvent* e) {
+      if (e->button() == Qt::LeftButton) {
+            Kontext* k = editor->kontext();
+            if (k->startSelect() == k->endSelect())
+                  k->setSelectionMode(SelectionMode::NoSelect);
+            editor->update();
+            }
+      }
+
+//---------------------------------------------------------
 //   DrawingContext
 //---------------------------------------------------------
 
@@ -257,13 +287,8 @@ struct DrawingContext {
       double fh, fw, fa;
       int xo, yo;
       QPainter* painter;
-      QColor bgColor;
-      QColor fgColor;
-      QColor selectColor;
-      QColor labelBGColor;
       int lb;
       int visibleColumns;
-      QRect selection;
       };
 
 //---------------------------------------------------------
@@ -272,25 +297,62 @@ struct DrawingContext {
 
 void EditWidget::paintLine(DrawingContext& dc, int fileRow, int y) {
       const Line& l = editor->kontext()->file()->line(fileRow);
+      //*************************************************************
+      //    paint selection background
+      //*************************************************************
+
+      auto xToPixel = [&](int x) { return dc.lb + (x - dc.xo) * dc.fw; };
+
+      const Selection& s = editor->kontext()->selection();
+      Pos start          = s.start;
+      Pos end            = s.end;
+      if (start.row > end.row)
+            std::swap(start, end);
+      if (fileRow >= start.row && fileRow <= end.row) {
+            qreal yy = y - dc.fa;
+            QRect r;
+            switch (s.mode) {
+                  case SelectionMode::NoSelect: break;
+                  case SelectionMode::RowSelect:
+                        //
+                        r = QRect(xToPixel(0), yy, dc.visibleColumns * dc.fw, dc.fh + 2);
+                        break;
+                  case SelectionMode::ColSelect:
+                        //
+                        r = QRect(xToPixel(start.col), yy, s.width() * dc.fw, dc.fh + 2);
+                        break;
+                  case SelectionMode::CharSelect:
+                        if (fileRow == start.row && fileRow == end.row)
+                              r = QRect(xToPixel(s.start.col), yy, s.width() * dc.fw, dc.fh + 2);
+                        else if (fileRow > start.row && fileRow < end.row)
+                              r = QRect(xToPixel(0), yy, dc.visibleColumns * dc.fw, dc.fh + 2);
+                        else if (fileRow == start.row)
+                              r = QRect(xToPixel(start.col), yy, (dc.visibleColumns - start.col) * dc.fw, dc.fh + 2);
+                        else if (fileRow == end.row)
+                              r = QRect(xToPixel(0), yy, end.col * dc.fw, dc.fh + 2);
+                        break;
+                  }
+            dc.painter->fillRect(r, editor->textStyle(TextStyle::Selection).bg);
+            }
+
       if (l.label() != ' ') {
+            //*************************************************************
+            //    paint background of annotated line
+            //*************************************************************
+
             QRect s(leftMargin(), y - dc.fa, width() - leftMargin(), dc.fh);
-            dc.painter->fillRect(s, dc.labelBGColor);
+            dc.painter->fillRect(s, editor->textStyle(TextStyle::MarkedLine).bg);
             dc.painter->setPen(l.labelColor());
             dc.painter->setFont(editor->font());
             dc.painter->drawText(EditWidget::BORDER, y, l.label());
-            dc.painter->setPen(dc.fgColor);
+            dc.painter->setPen(editor->textStyle(TextStyle::Normal).fg);
             }
 
-      //=============================================
-      //    paint selection background
-      //=============================================
 
-      if (dc.selection.height() > 0 && fileRow >= dc.selection.top() && fileRow <= dc.selection.bottom()) {
-            qreal yy = y - dc.fa;
-//            QRect r(dc.selection.left()+leftMargin(), yy, dc.selection.width()-leftMargin(), dc.fh + 2);
-            QRect r(dc.selection.left(), yy, dc.selection.width(), dc.fh + 2);
-            dc.painter->fillRect(r, dc.selectColor);
-            }
+      //*************************************************************
+      //    paint text
+      //*************************************************************
+
       for (const auto& m : l.marks()) {
             if ((m.col2 - dc.xo) <= 0) // tag is left of visible area
                   continue;
@@ -305,15 +367,10 @@ void EditWidget::paintLine(DrawingContext& dc, int fileRow, int y) {
             if (col1 - dc.xo + n > dc.visibleColumns)
                   n -= dc.visibleColumns - (col1 - dc.xo + n);
 
-            QString ts                 = l.mid(col1, n);
-            auto md = editor->textStyle(m.type);
+            QString ts = l.mid(col1, n);
+            auto md    = editor->textStyle(m.type);
 
-            int x = dc.lb + (col1 - dc.xo) * dc.fw;
-            if (md.bg.isValid()) {
-                  qreal yy = y - dc.fa;
-                  QRect r(x, yy, ts.size() * dc.fw, dc.fh);
-                  dc.painter->fillRect(r, md.bg.isValid() ? md.bg : dc.bgColor);
-                  }
+            int x     = dc.lb + (col1 - dc.xo) * dc.fw;
             auto font = editor->font();
             font.setItalic(md.italic);
             font.setBold(md.bold);
@@ -331,53 +388,38 @@ void EditWidget::paintEvent(QPaintEvent* e) {
       Kontext* k = editor->kontext();
       if (!k)
             return;
+
       const File* file     = k->file();
       const Cursor& cursor = k->cursor();
-      const QRect r(e->rect());
+      QRect r(e->rect());
 
       int lm = leftMargin();
 
+      auto md = editor->textStyle(TextStyle::Normal);
       QPainter painter(this);
       painter.setRenderHint(QPainter::TextAntialiasing, true);
 
+      r.setLeft(std::max(lm, r.x()));
+      painter.fillRect(r, md.bg);
+
       DrawingContext dc;
-      dc.fh = editor->fh();
-      dc.fw = editor->fw();
-      dc.fa = editor->fa();
-      dc.xo = k->screenColumnOffset();
-      //      dc.yo             = k->screenRowOffset();
       dc.painter        = &painter;
-      dc.bgColor        = editor->textStyle(TextStyle::Normal).bg;
-      dc.fgColor        = editor->textStyle(TextStyle::Normal).fg;
+      dc.fh             = editor->fh();
+      dc.fw             = editor->fw();
+      dc.fa             = editor->fa();
+      dc.xo             = k->screenColumnOffset();
       dc.lb             = EditWidget::BORDER + lm; // left border in pixel
       dc.visibleColumns = visibleSize().width();
 
-      dc.selectColor                  = editor->textStyle(TextStyle::Selection).bg;
-      const QColor hoverMarkerBGColor = dc.bgColor.darker(darkMode() ? 120 : -120);
-      const QColor markerBGColor      = dc.bgColor.darker(darkMode() ? -120 : 120);
-      dc.labelBGColor                 = QColor(100, 150, 255).darker(darkMode() ? -70 : 70);
+      const QColor hoverMarkerBGColor = md.bg.darker(darkMode() ? 120 : -120);
+      const QColor nonTextColor       = editor->textStyle(TextStyle::NonText).bg;
 
-      //
-      // draw selection background
-      //
-      if (k->selectionMode() != SelectionMode::NoSelect) {
-            QRect s = k->selection();
-            dc.selection.setX((s.x() - dc.xo) * dc.fw + EditWidget::BORDER + lm);
-            dc.selection.setWidth(s.width() * dc.fw);
-            dc.selection.setY(s.y());
-            dc.selection.setHeight(s.height());
-            if (k->selectionMode() == SelectionMode::RowSelect) {
-                  dc.selection.setX(r.x());
-                  dc.selection.setWidth(r.width());
-                  }
-            }
-
-      //
+      //*************************************************************
       // draw marker background
-      //
-      QRect s(0, 0, lm, height());
-      QRect tr = s.intersected(r);
-      painter.fillRect(tr, markerBGColor);
+      //*************************************************************
+
+      QRect tr(0, 0, lm, height());
+      painter.fillRect(tr, editor->textStyle(TextStyle::Gutter).bg);
       if (hoverMark >= 0) {
             int cx = 0;
             int cy = (hoverMark - dc.yo) * dc.fh + EditWidget::BORDER;
@@ -385,35 +427,45 @@ void EditWidget::paintEvent(QPaintEvent* e) {
             painter.fillRect(r, hoverMarkerBGColor);
             }
 
+      //*************************************************************
+      //    draw text from cursor position to start of screen
+      //*************************************************************
+
       int fileRow = cursor.fileRow();
       for (int i = cursor.screenRow(); i >= 0; --i) {
             int y = EditWidget::BORDER + dc.fa + i * dc.fh;
             if (fileRow < 0)
-                  painter.fillRect(QRect(0, y - dc.fa - 1, width(), dc.fh + 2), markerBGColor);
+                  painter.fillRect(QRect(0, y - dc.fa - 1, width(), dc.fh + 2), nonTextColor);
             else {
                   paintLine(dc, fileRow, y);
                   fileRow = file->previousRow(fileRow);
                   }
             }
+
+      //*************************************************************
+      //    draw text from cursor position to end of screen
+      //*************************************************************
+
       fileRow = file->nextRow(cursor.fileRow());
       for (int i = cursor.screenRow() + 1; i < rows(); ++i) {
             int y = EditWidget::BORDER + dc.fa + i * dc.fh;
             if (fileRow < 0)
-                  painter.fillRect(QRect(0, y - dc.fa - 1, width(), dc.fh + 2), markerBGColor);
+                  painter.fillRect(QRect(0, y - dc.fa - 1, width(), dc.fh + 2), nonTextColor);
             else {
                   paintLine(dc, fileRow, y);
                   fileRow = file->nextRow(fileRow);
                   }
             }
 
-      //
+      //*************************************************************
       // draw cursor
-      //
+      //*************************************************************
+
       if (k->showCursor() && hasFocus()) {
             // draw cursor
             int cx = k->screenCol() * dc.fw + EditWidget::BORDER + lm;
             int cy = k->screenRow() * dc.fh + EditWidget::BORDER;
-            QRect rr(cx, cy, dc.fw+1, dc.fh+1);
+            QRect rr(cx, cy, dc.fw + 1, dc.fh + 1);
             painter.fillRect(rr, editor->textStyle(TextStyle::Cursor).bg);
             painter.setPen(editor->textStyle(TextStyle::Cursor).fg);
             painter.setFont(editor->font());

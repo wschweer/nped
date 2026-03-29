@@ -63,6 +63,28 @@ struct Selection {
       Cursor cursor;
       Pos start;
       Pos end;
+      void flip() { std::swap(start, end); }
+      int y() const { return start.row; }
+      int height() const { return end.row - start.row + 1; }
+      int x() const { return start.col; }
+      int width() const { return end.col - start.col + 1; }
+      };
+
+//---------------------------------------------------------
+//   PickText
+//---------------------------------------------------------
+
+struct PickText {
+      SelectionMode mode;
+      QString text;
+
+      void clear() {
+            text.clear();
+            mode = SelectionMode::NoSelect;
+            }
+      bool isEmpty() const {
+            return text.isEmpty();
+            }
       };
 
 //---------------------------------------------------------

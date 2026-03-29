@@ -17,6 +17,7 @@
 #include <QFileInfo>
 #include <QDir>
 #include <QUrl>
+#include <QWebEngineSettings>
 
 #include "webview.h"
 #include "kontext.h"
@@ -77,7 +78,9 @@ bool MarkdownWebPage::acceptNavigationRequest(const QUrl &url, NavigationType ty
 
 MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_parent), editor(e) {
       setPage(new MarkdownWebPage(e, this));
+      settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
       _darkMode   = e->darkMode();
+      settings()->setAttribute(QWebEngineSettings::ForceDarkMode, _darkMode);
       textActions = {
          Action(e->getSC(Cmd::CMD_QUIT), [this] { editor->quitCmd(); }),
          Action(e->getSC(Cmd::CMD_SAVE_QUIT), [this] { editor->saveQuitCmd(); }),
@@ -172,6 +175,7 @@ void MarkdownWebView::setDarkMode(bool enabled) {
             return;
 
       _darkMode = enabled;
+      settings()->setAttribute(QWebEngineSettings::ForceDarkMode, _darkMode);
 
       // Wenn wir schon Content haben, rendern wir ihn sofort neu mit dem neuen Style
       if (!_currentRawMarkdown.isEmpty())
@@ -215,6 +219,7 @@ void MarkdownWebView::setMarkdown(const QString& _markdown) {
         <html>
         <head>
             <meta charset="utf-8">
+            <meta name="color-scheme" content="{}">
             <style>{}</style>
             {}
         </head>
@@ -222,6 +227,7 @@ void MarkdownWebView::setMarkdown(const QString& _markdown) {
             {}
             {} {} </body>
         </html>)",
+          _darkMode ? "dark" : "light",
           _css.toStdString(), _highlightAssets.toStdString(), _convertedHtml.toStdString(), _anchorScript.toStdString(),
           _tocScript.toStdString() // Hier wird das Skript eingefügt
           ));
@@ -252,9 +258,7 @@ QString MarkdownWebView::getHighlightJsAssets(bool darkMode) const {
         <script>
             document.addEventListener('DOMContentLoaded', (event) => {
                 if (typeof hljs !== 'undefined') {
-                    document.querySelectorAll('pre code').forEach((el) => {
-                        hljs.highlightElement(el);
-                    });
+                    hljs.highlightAll();
                 }
             });
             function fallbackCopy(text) {
@@ -324,7 +328,7 @@ QString MarkdownWebView::renderMarkdownToHtml(const std::string& _stdMarkdown) {
       while ((match = re.match(_output, offset)).hasMatch()) {
           result += _output.mid(offset, match.capturedStart() - offset);
           QString lang = match.captured(2).isEmpty() ? "code" : match.captured(2);
-          QString codeClass = match.captured(1).isEmpty() ? "" : match.captured(1).mid(1);
+          QString codeClass = match.captured(2).isEmpty() ? "language-plaintext" : "language-" + match.captured(2);
           QString code = match.captured(3);
           result += QString(R"X(
               <div class="code-container">
@@ -350,6 +354,7 @@ QString MarkdownWebView::renderMarkdownToHtml(const std::string& _stdMarkdown) {
 QString MarkdownWebView::getGithubCss() const {
       return R"(
         body {
+            color-scheme: light;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
             line-height: 1.5; padding: 32px; max-width: 980px; margin: 0 auto; color: #1f2328; background-color: #ffffff;
             scroll-behavior: smooth;
@@ -457,6 +462,7 @@ h4:hover .anchor, h5:hover .anchor, h6:hover .anchor {
 QString MarkdownWebView::getGithubDarkCss() const {
       return R"(
         body {
+            color-scheme: dark;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
             line-height: 1.5; padding: 32px; max-width: 980px; margin: 0 auto;
             color: #c9d1d9;

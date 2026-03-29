@@ -50,7 +50,7 @@ ColumnLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    model: config.fileTypes
+                    model: nped.fileTypes
 
                     Component.onCompleted: {
                         if (count > 0) currentIndex = 0
@@ -72,7 +72,7 @@ ColumnLayout {
                     flat: true
                     Material.foreground: Material.accent
                     onClicked: {
-                        var list = config.fileTypes
+                        var list = nped.fileTypes
                         list.push({
                             extensions: "*.new",
                             languageId: "text",
@@ -80,7 +80,7 @@ ColumnLayout {
                             tabSize: 4,
                             parse: false
                         })
-                        config.fileTypes = list
+                        nped.fileTypes = list
                         fileTypeListView.currentIndex = list.length - 1
                     }
                 }
@@ -103,7 +103,7 @@ ColumnLayout {
                 spacing: 15
                 anchors.margins: 10
 
-                property var currentFileType: fileTypeListView.currentIndex >= 0 && fileTypeListView.currentIndex < config.fileTypes.length ? config.fileTypes[fileTypeListView.currentIndex] : null
+                property var currentFileType: fileTypeListView.currentIndex >= 0 && fileTypeListView.currentIndex < nped.fileTypes.length ? nped.fileTypes[fileTypeListView.currentIndex] : null
 
                 visible: currentFileType !== null
 
@@ -127,9 +127,9 @@ ColumnLayout {
                         placeholderText: "*.cpp;*.h"
                         onEditingFinished: {
                             if (fileTypeListView.currentIndex >= 0) {
-                                var l = config.fileTypes;
+                                var l = nped.fileTypes;
                                 l[fileTypeListView.currentIndex].extensions = text;
-                                config.fileTypes = l;
+                                nped.fileTypes = l;
                             }
                         }
                     }
@@ -142,9 +142,9 @@ ColumnLayout {
                         placeholderText: "cpp, python..."
                         onEditingFinished: {
                             if (fileTypeListView.currentIndex >= 0) {
-                                var l = config.fileTypes;
+                                var l = nped.fileTypes;
                                 l[fileTypeListView.currentIndex].languageId = text;
-                                config.fileTypes = l;
+                                nped.fileTypes = l;
                             }
                         }
                     }
@@ -157,9 +157,9 @@ ColumnLayout {
                         placeholderText: "clangd, pylsp..."
                         onEditingFinished: {
                             if (fileTypeListView.currentIndex >= 0) {
-                                var l = config.fileTypes;
+                                var l = nped.fileTypes;
                                 l[fileTypeListView.currentIndex].languageServer = text;
-                                config.fileTypes = l;
+                                nped.fileTypes = l;
                             }
                         }
                     }
@@ -173,9 +173,9 @@ ColumnLayout {
                         Layout.preferredWidth: 100
                         onValueModified: {
                             if (fileTypeListView.currentIndex >= 0) {
-                                var l = config.fileTypes;
+                                var l = nped.fileTypes;
                                 l[fileTypeListView.currentIndex].tabSize = value;
-                                config.fileTypes = l;
+                                nped.fileTypes = l;
                             }
                         }
                     }
@@ -186,9 +186,9 @@ ColumnLayout {
                         checked: parent.parent.currentFileType ? parent.parent.currentFileType.parse : false
                         onToggled: {
                             if (fileTypeListView.currentIndex >= 0) {
-                                var l = config.fileTypes;
+                                var l = nped.fileTypes;
                                 l[fileTypeListView.currentIndex].parse = checked;
-                                config.fileTypes = l;
+                                nped.fileTypes = l;
                             }
                         }
                     }
@@ -203,9 +203,9 @@ ColumnLayout {
                     Material.foreground: Material.Red
                     onClicked: {
                         if (fileTypeListView.currentIndex >= 0) {
-                            var list = config.fileTypes;
+                            var list = nped.fileTypes;
                             list.splice(fileTypeListView.currentIndex, 1);
-                            config.fileTypes = list;
+                            nped.fileTypes = list;
                             fileTypeListView.currentIndex = Math.min(fileTypeListView.currentIndex, list.length - 1);
                         }
                     }

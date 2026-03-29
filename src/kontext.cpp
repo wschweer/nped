@@ -114,10 +114,20 @@ void Kontext::updateSelection() {
       }
 
 //---------------------------------------------------------
-//   selection
+//   flipSelectionCursor
 //---------------------------------------------------------
 
-QRect Kontext::selection() const {
+void Kontext::flipSelectionCursor()
+      {
+      _selection.flip();
+      setCursorAbs(Cursor(_selection.end, Pos(_selection.end.col, _cursor.screenPos.row)));
+      }
+
+//---------------------------------------------------------
+//   selectionRect
+//---------------------------------------------------------
+
+QRect Kontext::selectionRect() const {
       int x = std::min(startSelect().col, endSelect().col);
       int y = std::min(startSelect().row, endSelect().row);
       int w = std::abs(startSelect().col - endSelect().col) + 1;
@@ -230,25 +240,48 @@ const QString& Kontext::currentLine() const {
 //   selectionText
 //---------------------------------------------------------
 
-QString Kontext::selectionText() const {
+QString Kontext::selectionText() {
       QString s;
 
-      if (_selection.mode == SelectionMode::RowSelect) {
-            QStringList sl;
-            for (int i = 0; i < selection().height(); ++i)
-                  sl << file()->line(selection().y() + i).qstring();
-            s  = sl.join('\n');
-            s += "\n";
-            }
-      else {
-            for (int i = selection().y(); i < selection().y() + selection().height(); ++i) {
-                  QString ss = file()->line(i).mid(selection().x(), selection().width());
-                  while (ss.size() < selection().width())
-                        ss += " ";
-                  s += (ss + "\n");
+      switch (_selection.mode) {
+            case SelectionMode::RowSelect: {
+                  QStringList sl;
+                  for (int i = 0; i < selection().height(); ++i)
+                        sl << file()->line(selection().y() + i).qstring();
+                  s  = sl.join('\n');
+                  s += "\n";
                   }
-            }
+                  break;
 
+            case SelectionMode::CharSelect: {
+                  Pos p1 = startSelect();
+                  Pos p2 = endSelect();
+                  if (p1.row > p2.row || (p1.row == p2.row && p1.col > p2.col))
+                        std::swap(p1, p2);
+
+                  if (p1.row == p2.row) {
+                        s = file()->line(p1.row).qstring().mid(p1.col, p2.col - p1.col + 1);
+                        }
+                  else {
+                        s = file()->line(p1.row).qstring().mid(p1.col) + "\n";
+                        for (int i = p1.row + 1; i < p2.row; ++i)
+                              s += file()->line(i).qstring() + "\n";
+                        s += file()->line(p2.row).qstring().left(p2.col+1);
+                        }
+                  }
+                  break;
+
+            case SelectionMode::ColSelect:
+                  for (int i = selection().y(); i < selection().y() + selection().height(); ++i) {
+                        QString ss = file()->line(i).mid(selection().x(), selection().width());
+                        while (ss.size() < selection().width())
+                              ss += " ";
+                        s += (ss + "\n");
+                        }
+                  break;
+            case SelectionMode::NoSelect:
+                  break;
+            }
       // Debug("<{}>", s);
       return s;
       }
@@ -466,9 +499,9 @@ void Kontext::moveCursorRel(int dx, int dy, MoveType type) {
             _cursor.filePos.col += dx;
 
             // increase context:
-            int kontext = 3;
-            if (screenRows() >= kontext * 2)
-                  _cursor.screenPos.row = std::clamp(_cursor.screenPos.row, kontext, screenRows() - kontext);
+            int k = 3;
+            if (screenRows() >= k * 2)
+                  _cursor.screenPos.row = std::clamp(_cursor.screenPos.row, k, screenRows() - k);
             }
       if (type == MoveType::Roll) {
             _cursor.screenPos.row += dy;
@@ -531,20 +564,6 @@ void Kontext::moveCursorAbs(int col, int row) {
 
             // We want to move the cursor without scrolling the screen
             // if possible.
-
-            int deltaRows    = row - _cursor.filePos.row;
-            int newScreenRow = _cursor.screenPos.row + deltaRows;
-            if (newScreenRow > ContextLines && newScreenRow < (screenRows() - ContextLines))
-                  _cursor.screenPos.row = newScreenRow;
-            else {
-                  // the screen must be scrolled to make the cursor visible
-                  if (row < screenRows() - ContextLines) // align top
-                        _cursor.screenPos.row = 0;
-                  else if (row == file()->rows() - 1) // align bottom
-                        _cursor.screenPos.row = screenRows() - 1;
-                  else
-                        _cursor.screenPos.row = screenRows() / 2; // aliggn center
-                  }
             }
       fixCursor();
       }

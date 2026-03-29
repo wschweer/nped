@@ -198,9 +198,12 @@ Lines::Lines(const QVector<Line> l) : QVector<Line>(l) {
 
 QString Lines::join(QChar c) const {
       QString s;
+      bool first = true;
       for (const auto& ss : *this) {
+            if (!first)
+                  s += c;
+            first = false;
             s += ss.qstring();
-            s += c;
             }
       return s;
       }

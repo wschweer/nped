@@ -89,7 +89,13 @@ qt_add_executable(nped
       src/screenshot.cpp
       src/dashboard.cpp
       src/dashboard.h
+      src/textstyle.cpp
       src/textstyle.h
+      src/model.cpp
+      src/filetype.cpp
+      src/filetype.h
+      src/ls.cpp
+      src/ls.h
       )
 
 qt_add_resources(nped "qmls"

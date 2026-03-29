@@ -10,9 +10,8 @@
 //=============================================================================
 
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtQuick.Layouts
-import QtQuick.Dialogs
 import Nped.Config
 
 ColumnLayout {
@@ -20,15 +19,20 @@ ColumnLayout {
     Layout.fillWidth: true
     Layout.fillHeight: true
 
-    required property string type;
-    property var textStyles: type == "Dark" ? config.textStylesDark : config.textStylesLight
+    required property string type
+    property var textStyles: type == "Dark" ? nped.textStylesDark : nped.textStylesLight
 
     Label {
-        text: type + " Text Styles"
-        font.pointSize: 18; font.bold: true
+        text: root.type + " Text Styles"
+        font.pointSize: 18
+        font.bold: true
         color: Material.foreground
         }
-    Rectangle { height: 1; Layout.fillWidth: true; color: Material.accent }
+    Rectangle {
+        // height: 1;
+        Layout.fillWidth: true
+        color: Material.accent
+        }
 
     RowLayout {
         Layout.fillWidth: true
@@ -55,13 +59,20 @@ ColumnLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    model: textStyles
+                    model: root.textStyles
 
                     Component.onCompleted: {
-                        if (count > 0) currentIndex = 0
+                        if (count > 0)
+                            currentIndex = 0;
                         }
 
+onCurrentIndexChanged: console.log("current index: "+currentIndex);
+onModelChanged: console.log("Model changed");
+
                     delegate: ItemDelegate {
+                        id: delegate
+                        required property var modelData
+                        required property var index
                         width: ListView.view.width
                         height: 40
                         text: modelData.name
@@ -83,7 +94,7 @@ ColumnLayout {
             ScrollBar.vertical.policy: ScrollBar.AsNeeded
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
-            property var textStyle:  root.textStyles[listView.currentIndex]
+            property var textStyle: listView.currentItem ? listView.currentItem.modelData : null
 
             ColumnLayout {
                 anchors.fill: parent
@@ -94,35 +105,38 @@ ColumnLayout {
 
                 ColorConfigItem {
                     name: "Text Color:"
-                    color: textItem.textStyle.fg
-                    onColorChangedByUser: {
-                        textItem.textStyle.fg = color
-                        console.log("===================="+listView.currentIndex);
-                        config.setTextStyle(textItem.textStyle, root.type == "Dark", listView.currentIndex);
+                    color: textItem.textStyle ? textItem.textStyle.fg : "#000000"
+                    onColorChangedByUser: newColor => {
+                        textItem.textStyle.fg = newColor;
+                        nped.setTextStyle(textItem.textStyle, root.type == "Dark", listView.currentIndex);
                         }
                     }
                 ColorConfigItem {
                     name: "Background Color:"
-                    color: textItem.textStyle.bg
-                    onColorChangedByUser: {
-                        textItem.textStyle.bg = color;
-                        config.setTextStyle(textItem.textStyle, root.type == "Dark", listView.currentIndex);
+                    color: textItem.textStyle ? textItem.textStyle.bg : "#000000"
+                    onColorChangedByUser: newColor => {
+                        textItem.textStyle.bg = newColor;
+                        nped.setTextStyle(textItem.textStyle, root.type == "Dark", listView.currentIndex);
                         }
                     }
                 CheckBox {
                     text: "italic"
-                    checked: textItem.textStyle.italic
+                    Binding on checked {
+                        value: textItem.textStyle ? textItem.textStyle.italic : false
+                        }
                     onToggled: {
                         textItem.textStyle.italic = checked;
-                        config.setTextStyle(textItem.textStyle, root.type == "Dark", listView.currentIndex);
+                        nped.setTextStyle(textItem.textStyle, root.type == "Dark", listView.currentIndex);
                         }
                     }
                 CheckBox {
                     text: "bold"
-                    checked: textItem.textStyle.bold
+                    Binding on checked {
+                        value: textItem.textStyle ? textItem.textStyle.bold : false
+                        }
                     onToggled: {
                         textItem.textStyle.bold = checked;
-                        config.setTextStyle(textItem.textStyle, root.type == "Dark", listView.currentIndex);
+                        nped.setTextStyle(textItem.textStyle, root.type == "Dark", listView.currentIndex);
                         }
                     }
                 }

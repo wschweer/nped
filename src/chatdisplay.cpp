@@ -12,6 +12,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QWebEngineSettings>
 
 #include "chatdisplay.h"
 
@@ -173,8 +174,11 @@ void ChatDisplay::setup() {
       QString chatCss = _darkMode ? getChatDarkCss() : getChatCss();
 
       auto html = QString(
-                      R"(<html>
+                      R"(<!DOCTYPE html>
+<html>
 <head>
+      <meta charset="utf-8">
+      <meta name="color-scheme" content="dark light">
       <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <style id="hljs-theme">
 %1
@@ -323,6 +327,7 @@ void ChatDisplay::setDarkMode(bool enabled) {
       if (_darkMode == enabled)
             return;
       _darkMode = enabled;
+      settings()->setAttribute(QWebEngineSettings::ForceDarkMode, _darkMode);
 
       QString js = "(function() { "
                    "  var el1 = document.getElementById('hljs-theme'); "

@@ -44,9 +44,8 @@ static void usage(const char* reason) {
       printf("options: -v   print version\n"
              "         -l   use iso latin1 codec\n"
              "         -u   use utf8 codec (default)\n"
-             "         -i   change file 'in place'\n"
              "         -t   do not remember settings\n"
-             "         -d   use dark mode\n");
+            );
       }
 
 //---------------------------------------------------------
@@ -59,14 +58,13 @@ int main(int argc, char** argv) {
 
       signal(SIGPIPE, SIG_IGN);
 
-      qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--log-level=3"); // show only critical bugs
       QQuickStyle::setStyle(QStringLiteral("Material"));
       QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
 
       QApplication app(argc, argv);
       app.setDesktopFileName("nped");
 
-      while ((c = getopt(argc, argv, "vluitd")) != EOF) {
+      while ((c = getopt(argc, argv, "vlLut")) != EOF) {
             switch (c) {
                   case 'v': printVersion(argv[0]); return 1;
                   case 'l':

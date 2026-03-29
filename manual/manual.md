@@ -190,10 +190,30 @@ LS alles weitere automatisch.
       [SHIFT+F7]                      rückwärts weitersuchen
       [Ctrl+O, Ctrl+R]                projektweites umbenennen über den Language Server
 
+### **Copy/Cut Paste**
+#### Selektions Modi
+
+NPed unterstützt drei Arten von Selektionen:
+
+      [F5]              CMD_SELECT_ROW    selektiert Zeilen
+      [F6]              CMD_SELECT_COL    selektiert Spalten
+      [Ctrl + F5]       CMD_SELECT_CHAR   selektiert alle Zeichen zwischen einer Start und Endmarke
+
+#### Selektions Funktionen
+
+      [F8]              CMD_PICK          Kopiert die Selektion (Copy) oder die aktuelle Zeile
+                                          bei leerer Selektion (Pick) in den Copy Buffer.
+      [Ctrl + Y]        CMD_DELETE_LINE   Kopiert die Selektion oder die aktuelle Zeile
+                                          bei leerer Selektion in den Copy Buffer und löscht sie dann.
+      [F9]              CMD_PUT           Insertiert den Copy Buffer (Paste/Put) an die aktuelle
+                                          Cursor Position.
+      [MMT]             Paste             Kopiert den Inhalt des System Clipboards an die
+                                          Cursor Position.
 
 ### **IDE Kommandos**
 
       [Ctrl+K,  Ctrl+M]             CMD_SHOW_LEVEL
+
 #### **``Ctrl+O,  Ctrl+F``** Formatiert eine Datei
 Das Format Kommando wird zum Language Server geschickt. Es muss ein LS für den aktuellen Filetyp
 konfiguriert und verfügbar sein und er muss das Format Kommando unterstützen. Für C/C++ funktioniert

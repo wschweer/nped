@@ -30,6 +30,7 @@
 #include "completer.h"
 #include "git.h"
 #include "agent.h"
+#include "ls.h"
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -98,8 +99,12 @@ enum class Cmd {
       CMD_CHAR_DELETE,
       CMD_INSERT_LINE,
       CMD_TAB,
+
       CMD_SELECT_ROW,
       CMD_SELECT_COL,
+      CMD_SELECT_CHAR,
+      CMD_FLIP_CURSOR,
+
       CMD_SEARCH_NEXT,
       CMD_RENAME,
       CMD_PICK,
@@ -140,54 +145,25 @@ struct ShortcutConfig {
       Q_GADGET
 
       Q_ENUM(Cmd)
-      Q_PROPERTY(Cmd cmd MEMBER cmd)
+//      Q_PROPERTY(Cmd cmd MEMBER cmd)
       Q_PROPERTY(QString id MEMBER id)
       Q_PROPERTY(QString description MEMBER description)
+      Q_PROPERTY(QString buildin MEMBER sequence)
       Q_PROPERTY(QString sequence MEMBER sequence)
 
     public:
-      Cmd cmd;
+      ShortcutConfig() { sequence = buildin; }
+      ShortcutConfig(QString b, QString c, QString d)
+         : id(b), description(c), buildin(d), sequence(d) {}
+//      Cmd cmd;
       QString id;
       QString description;
+      QString buildin;
       QString sequence;
       bool operator==(const ShortcutConfig& other) const = default;
       };
 
-//---------------------------------------------------------
-//   LanguageServerConfig
-//---------------------------------------------------------
-
-struct LanguageServerConfig {
-      Q_GADGET
-      Q_PROPERTY(QString name MEMBER name)
-      Q_PROPERTY(QString command MEMBER command)
-      Q_PROPERTY(QString args MEMBER args)
-
-    public:
-      QString name;
-      QString command;
-      QString args;
-      bool operator==(const LanguageServerConfig& other) const = default;
-      };
-
-//---------------------------------------------------------
-//   LanguageServer
-//---------------------------------------------------------
-
-struct LanguageServer {
-      QString name;
-      LSclient* client{nullptr};
-      };
-
-//---------------------------------------------------------
-//   LanguageServerList
-//---------------------------------------------------------
-
-struct LanguageServerList : public std::vector<LanguageServer> {
-      };
-
 Q_DECLARE_METATYPE(ShortcutConfig)
-Q_DECLARE_METATYPE(LanguageServerConfig)
 
 //---------------------------------------------------------
 //   Match
@@ -278,24 +254,27 @@ struct Action {
 class Editor : public QMainWindow
       {
       Q_OBJECT
-      QML_ELEMENT
       QML_UNCREATABLE("no")
+      QML_NAMED_ELEMENT(nped)
 
+      Q_PROPERTY(QList<Model> models READ models NOTIFY modelsChanged)
+      Q_PROPERTY(QList<Model> filteredModels READ filteredModels NOTIFY modelsChanged)
       Q_PROPERTY(QString fontFamily READ fontFamily WRITE setFontFamily NOTIFY fontFamilyChanged)
-      Q_PROPERTY(QList<ShortcutConfig> shortcuts READ shortcuts WRITE setShortcuts NOTIFY shortcutsChanged)
-      Q_PROPERTY(QList<FileType> fileTypes READ fileTypes WRITE setFileTypes NOTIFY fileTypesChanged)
-      Q_PROPERTY(QList<LanguageServerConfig> languageServersConfig READ languageServersConfig WRITE setLanguageServersConfig NOTIFY
-                     languageServersConfigChanged)
+      Q_PROPERTY(QList<ShortcutConfig> shortcuts READ shortcuts NOTIFY shortcutsChanged)
+      Q_PROPERTY(QList<FileType> fileTypes READ fileTypes NOTIFY fileTypesChanged)
+      Q_PROPERTY(QList<LanguageServerConfig> languageServersConfig READ languageServersConfig NOTIFY languageServersConfigChanged)
       Q_PROPERTY(QStringList monospacedFonts READ monospacedFonts CONSTANT)
       Q_PROPERTY(bool darkMode READ darkMode WRITE setDarkMode NOTIFY darkModeChanged)
-      Q_PROPERTY(QList<TextStyle> textStylesLight READ textStylesLight WRITE setTextStylesLight NOTIFY textStylesLightChanged)
-      Q_PROPERTY(QList<TextStyle> textStylesDark READ textStylesDark WRITE setTextStylesDark NOTIFY textStylesDarkChanged)
+      Q_PROPERTY(QList<TextStyle> textStylesLight READ textStylesLight NOTIFY textStylesLightChanged)
+      Q_PROPERTY(QList<TextStyle> textStylesDark READ textStylesDark NOTIFY textStylesDarkChanged)
 
-      QList<ShortcutConfig> _shortcuts;
-      QList<FileType> _fileTypes;
-      QList<TextStyle> _textStylesLight;
-      QList<TextStyle> _textStylesDark;
-      QList<LanguageServerConfig> _languageServersConfig;
+      static std::map<Cmd, ShortcutConfig> _shortcuts;
+      QList<ShortcutConfig> shortcuts() const;
+
+      FileTypes _fileTypes;
+      TextStyles _textStylesLight;
+      TextStyles _textStylesDark;
+      LanguageServersConfig _languageServersConfig;
 
       std::vector<File*> files;
       Vector<Kontext*> _kontextList;
@@ -321,11 +300,12 @@ class Editor : public QMainWindow
       QScrollBar* hScroll;
       QScrollBar* vScroll;
       Completer* enterLine;
-      QString pickText;
-      bool pickTextRows;
+
       QTimer* cursorTimer;
       QTimer* lsUpdateTimer;
       Agent* agent;
+      Models _models;
+
       static const int agentMinimumWidth{500};
       int agentWidth{agentMinimumWidth};
       static const int gitPanelMinimumWidth{300};
@@ -367,6 +347,8 @@ class Editor : public QMainWindow
       qreal _fa;
       qreal _fd;
 
+      PickText pickText;
+
       bool enterActive{false};
 
       void initFont();
@@ -390,6 +372,7 @@ class Editor : public QMainWindow
       void put();
       void rowSelect();
       void colSelect();
+      void charSelect();
       bool initSearch(const QString&);
       bool createMatchList();
       void getNextWord();
@@ -432,6 +415,7 @@ class Editor : public QMainWindow
       void darkModeChanged(bool);
       void textStylesLightChanged();
       void textStylesDarkChanged();
+      void modelsChanged();
 
     public:
       Editor(int argc, char** argv);
@@ -445,7 +429,7 @@ class Editor : public QMainWindow
       Kontext* kontext() {
             // _kontextList should never be empty
             if (_currentKontext >= _kontextList.size())
-                  _currentKontext = 0;
+                  return nullptr;
             return _kontextList[_currentKontext];
             }
       const Kontext* kontext() const { return _kontextList.at(_currentKontext); }
@@ -515,18 +499,13 @@ class Editor : public QMainWindow
                   emit fontFamilyChanged();
                   }
             }
-      QList<ShortcutConfig> shortcuts() const { return _shortcuts; }
-      QList<FileType> fileTypes() const { return _fileTypes; }
-      QList<TextStyle> textStylesLight() { return _textStylesLight; }
-      void setTextStylesLight(const QList<TextStyle>& v);
-      QList<TextStyle> textStylesDark() { return _textStylesDark; }
-      void setTextStylesDark(const QList<TextStyle>& v);
+      FileTypes fileTypes() const { return _fileTypes; }
+
+      TextStyles textStylesLight() { return _textStylesLight; }
+      TextStyles textStylesDark() { return _textStylesDark; }
       QList<LanguageServerConfig> languageServersConfig() const { return _languageServersConfig; }
-      void loadDefaults();
       void loadSettings();
       void saveSettings();
-      void setShortcuts(const QList<ShortcutConfig>& s);
-      void setFileTypes(const QList<FileType>& f);
       void setLanguageServersConfig(const QList<LanguageServerConfig>& l);
       Q_INVOKABLE void resetToDefaults();
       bool darkMode() const { return _darkMode; }
@@ -544,11 +523,24 @@ class Editor : public QMainWindow
       Q_INVOKABLE TextStyle textStyle(bool dark, int style) { return dark ? _textStylesDark[int(style)] : _textStylesLight[int(style)]; }
       Q_INVOKABLE void setTextStyle(const TextStyle& s, bool dark, int style) {
             Debug("dark {} style {}", dark, style);
-            if (dark)
+            if (dark) {
                   _textStylesDark[style] = s;
-            else
+                  // emit textStylesDarkChanged();
+                  }
+            else {
                   _textStylesLight[style] = s;
+                  // emit textStylesLightChanged();
+                  }
             update();
+            }
+      Models& models() { return _models; }
+      const Models& models() const { return _models; }
+      Models filteredModels() const {
+            Models result;
+            for (const auto& m : _models)
+                  if (!m.isLocal)
+                        result.append(m);
+            return result;
             }
       };
 
@@ -591,22 +583,10 @@ class ConfigDialogWrapper : public QWidget
       void resizeEvent(QResizeEvent* event) override;
 
     public slots:
-      void accept();
-      void reject();
+      void accept() { close(); }
+      void reject() { close(); }
 
     public:
       explicit ConfigDialogWrapper(Editor*, QWidget* parent = nullptr);
       ~ConfigDialogWrapper() override = default;
       };
-
-QDataStream& operator<<(QDataStream& out, const ShortcutConfig& v);
-QDataStream& operator>>(QDataStream& in, ShortcutConfig& v);
-
-QDataStream& operator<<(QDataStream& out, const FileType& v);
-QDataStream& operator>>(QDataStream& in, FileType& v);
-
-QDataStream& operator<<(QDataStream& out, const LanguageServerConfig& v);
-QDataStream& operator>>(QDataStream& in, LanguageServerConfig& v);
-
-QDataStream& operator<<(QDataStream& out, const TextStyle& v);
-QDataStream& operator>>(QDataStream& in, TextStyle& v);

@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include <array>
+// #include <array>
 #include <QStringList>
 #include <QPoint>
 #include <QColor>
@@ -112,7 +112,7 @@ class Line : QString
       QString mid(int idx, int len) const { return QString::mid(idx, len); }
       QString left(int len) const { return QString::left(len); }
       const QString& qstring() const { return static_cast<const QString&>(*this); }
-      QChar operator[](int idx) const { return idx >= size() ? QChar(' ') : QString::at(idx); }
+      QChar operator[](int idx) const { return (idx < 0 || idx >= size()) ? QChar(' ') : QString::at(idx); }
       bool empty() const { return QString::isEmpty(); }
       void insert(int idx, QChar c) {
             QString::insert(idx, c);

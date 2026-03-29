@@ -1,11 +1,16 @@
 ## TODO
 
+### SelectionMode CharSelect
+- [x] implement the mising SelectionMode "CharSelect". Its the most common selection
+   mode and has a start line/column and an end line/column. All characters in between are
+   selected.
+
 ### Clean Git
 - [x] Die Editor() Klasse enthält den String "currentBranchName" wenn in initProjekt() festgestellt
-wurde, das wir ein Projekt gefunden haben welches von GIT verwaltet wird. Versuche in dem
-Fall festzustellen, ob der aktuelle Git Branch "clean" ist, dh. keine veränd Dateien
-enthält. Wenn der Branch clean ist, dann zeige das current branch label in der Statuszeile unter
-dem Edit-Window in hellgrün, ansonsten in einem hellen gelb.
+      wurde, das wir ein Projekt gefunden haben welches von GIT verwaltet wird. Versuche in dem
+      Fall festzustellen, ob der aktuelle Git Branch "clean" ist, dh. keine veränd Dateien
+      enthält. Wenn der Branch clean ist, dann zeige das current branch label in der Statuszeile unter
+      dem Edit-Window in hellgrün, ansonsten in einem hellen gelb.
 
 ### Feature: Ai Dashboard
 - [x] Extend the Toolbar at the bottom of the AI Panel into a Dashboard so that
@@ -17,7 +22,7 @@ dem Edit-Window in hellgrün, ansonsten in einem hellen gelb.
       wie folgt:
       - die Language Server werden auf der linken Seite als Liste dargestellt.
       - Auf der rechten Seite wird ein Language Server im Detail dargestellt.
-      - Wird links einServer ausgewählt, dann werden Details rechts
+      - Wird links ein Server ausgewählt, dann werden Details rechts
         aktualisiert
 
 ### Feature: Dateityp Konfiguration

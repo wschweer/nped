@@ -22,6 +22,7 @@
 #include "git.h"
 #include "line.h"
 #include "types.h"
+#include "filetype.h"
 
 class Editor;
 class Kontext;
@@ -30,39 +31,6 @@ class UndoStack;
 class LSclient;
 class File;
 
-//---------------------------------------------------------
-//   FileType
-//---------------------------------------------------------
-
-struct FileType {
-      Q_GADGET
-      Q_PROPERTY(QString extensions MEMBER extensions)
-      Q_PROPERTY(QString languageId MEMBER languageId)
-      Q_PROPERTY(QString languageServer MEMBER languageServer)
-      Q_PROPERTY(int tabSize MEMBER tabSize)
-      Q_PROPERTY(bool parse MEMBER parse)
-
-   public:
-      QString extensions;
-      QString languageId; // language id to select the right language server
-      QString languageServer;
-      int tabSize{6};    // tab expansion
-      bool parse{false}; // connect to language server
-
-      bool header{false};     // special handling of header files
-      bool createTabs{false}; // spaces are converted to tabs when writing the file
-                              // on reading tabs are converted to spaces
-      bool pymacros{false};   // handle internal macro expansion
-      bool operator==(const FileType& other) const = default;
-
-      FileType() {}
-      FileType(const QString& a, const QString& b, const QString& c,  int d, bool e, bool f, bool g, bool h)
-         : extensions(a), languageId(b), languageServer(c), tabSize(d), parse(e), header(f), createTabs(g), pymacros(h) {}
-      };
-
-Q_DECLARE_METATYPE(FileType)
-
-static const FileType defaultFileType = FileType(QString(), QString(), QString("none"), 6, false, false, false, false);
 
 enum class Codec { ISO_LATIN, UTF8 };
 
@@ -155,11 +123,10 @@ class File : public QObject
       void setLabel(int y, QChar c, QColor color = QColorConstants::Black);
       void clearLabel();
 
-      int distance(const Pos&, const Pos&) const;
+      int distance(Pos start, Pos end) const;
       int columns(int y) const { return (y < rows()) ? line(y).size() : 0; }
       int rows() const;
       int maxLineLength() const;
-      bool parse() const { return fileType.parse; }
       LSclient* languageClient() { return client; }
       void setLSclient(LSclient* c) { client = c; }
       // editing:

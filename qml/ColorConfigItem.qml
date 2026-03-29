@@ -1,4 +1,4 @@
-  import QtQuick
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
@@ -20,10 +20,9 @@ RowLayout {
         options: ColorDialog.ShowAlphaChannel | ColorDialog.DontUseNativeDialog
 
         onAccepted: {
-            root.color = selectedColor
             root.colorChangedByUser(selectedColor)
+            }
         }
-    }
 
     Label {
         text: root.name

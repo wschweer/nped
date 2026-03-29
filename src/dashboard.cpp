@@ -47,7 +47,7 @@ Dashboard::Dashboard(QWidget* parent) : QWidget(parent) {
       hLayout2->insertWidget(-1, tokenLabel, 0, Qt::AlignRight);
       }
 
-void Dashboard::paintEvent(QPaintEvent* ev) {
+void Dashboard::paintEvent(QPaintEvent*) {
       QStyleOption opt;
       opt.initFrom(this);
       QPainter p(this);

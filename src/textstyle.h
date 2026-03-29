@@ -1,7 +1,7 @@
 //=============================================================================
 //  nped Program Editor
 //
-//  Copyright (C) 2025-2026 Werner Schweer
+//  Copyright (C) 2026 Werner Schweer
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2
@@ -34,7 +34,20 @@ struct TextStyle {
       bool bold;
       bool italic;
       bool operator==(const TextStyle& other) const = default;
-      enum Style { Normal, Selection, Cursor, Flow, Type, Comment, String, Search, SearchHit };
+      enum Style { Normal, Selection, Cursor, Flow, Type, Comment, String,
+            Search, SearchHit, Gutter, MarkedLine, NonText};
+      };
+
+//---------------------------------------------------------
+//   TextStyles
+//---------------------------------------------------------
+
+class TextStyles : public QList<TextStyle> {
+   public:
+      using QList<TextStyle>::QList;
+      QJsonArray toJson() const;
+      void fromJson(const QJsonArray& array);
       };
 
 Q_DECLARE_METATYPE(TextStyle)
+Q_DECLARE_METATYPE(TextStyles)

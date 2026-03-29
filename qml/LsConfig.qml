@@ -47,7 +47,7 @@ ColumnLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    model: config.languageServersConfig
+                    model: nped.languageServersConfig
 
                     Component.onCompleted: {
                         if (count > 0) currentIndex = 0
@@ -69,9 +69,9 @@ ColumnLayout {
                     flat: true
                     Material.foreground: Material.accent
                     onClicked: {
-                        var list = config.languageServersConfig
+                        var list = nped.languageServersConfig
                         list.push({name: "New Server", command: "/usr/bin/...", args: ""})
-                        config.languageServersConfig = list
+                        nped.languageServersConfig = list
                         serverListView.currentIndex = list.length - 1
                         }
                     }
@@ -94,7 +94,7 @@ ColumnLayout {
                 spacing: 15
                 anchors.margins: 10
 
-                property var currentServer: serverListView.currentIndex >= 0 && serverListView.currentIndex < config.languageServersConfig.length ? config.languageServersConfig[serverListView.currentIndex] : null
+                property var currentServer: serverListView.currentIndex >= 0 && serverListView.currentIndex < nped.languageServersConfig.length ? nped.languageServersConfig[serverListView.currentIndex] : null
 
                 visible: currentServer !== null
 
@@ -118,9 +118,9 @@ ColumnLayout {
                         placeholderText: "e.g. clangd"
                         onEditingFinished: {
                             if (serverListView.currentIndex >= 0) {
-                                var l = config.languageServersConfig;
+                                var l = nped.languageServersConfig;
                                 l[serverListView.currentIndex].name = text;
-                                config.languageServersConfig = l;
+                                nped.languageServersConfig = l;
                             }
                         }
                     }
@@ -133,9 +133,9 @@ ColumnLayout {
                         placeholderText: "/path/to/executable"
                         onEditingFinished: {
                             if (serverListView.currentIndex >= 0) {
-                                var l = config.languageServersConfig;
+                                var l = nped.languageServersConfig;
                                 l[serverListView.currentIndex].command = text;
-                                config.languageServersConfig = l;
+                                nped.languageServersConfig = l;
                             }
                         }
                     }
@@ -148,9 +148,9 @@ ColumnLayout {
                         placeholderText: "--stdio --log=verbose"
                         onEditingFinished: {
                             if (serverListView.currentIndex >= 0) {
-                                var l = config.languageServersConfig;
+                                var l = nped.languageServersConfig;
                                 l[serverListView.currentIndex].args = text;
-                                config.languageServersConfig = l;
+                                nped.languageServersConfig = l;
                             }
                         }
                     }
@@ -165,9 +165,9 @@ ColumnLayout {
                     Material.foreground: Material.Red
                     onClicked: {
                         if (serverListView.currentIndex >= 0) {
-                            var list = config.languageServersConfig;
+                            var list = nped.languageServersConfig;
                             list.splice(serverListView.currentIndex, 1);
-                            config.languageServersConfig = list;
+                            nped.languageServersConfig = list;
                             serverListView.currentIndex = Math.min(serverListView.currentIndex, list.length - 1);
                         }
                     }

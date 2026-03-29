@@ -1,7 +1,7 @@
 //=============================================================================
 //  nped Program Editor
 //
-//  Copyright (C) 2025-2026 Werner Schweer
+//  Copyright (C) 2026 Werner Schweer
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2
@@ -12,7 +12,6 @@
 #pragma once
 
 #include <QWidget>
-#include <QDebug>
 #include <QList>
 #include <QPlainTextEdit>
 #include <QDragEnterEvent>
@@ -26,14 +25,16 @@
 #include <QQuickWidget>
 #include <QVBoxLayout>
 
+#include "logger.h"
 #include "types.h"
 #include "llm.h"
 #include "dashboard.h"
+#include "model.h"
 
 class Editor;
 class QTextEdit;
 class MarkdownWebView;
-// DropAwarePlainTextEdit is defined above – no forward declaration needed
+
 class QComboBox;
 class QToolButton;
 class QMenu;
@@ -81,41 +82,6 @@ class MCPToolBuilder
             }
       json build() { return tool; }
       };
-
-//---------------------------------------------------------
-//   Model
-//---------------------------------------------------------
-
-struct Model {
-      Q_GADGET
-      Q_PROPERTY(QString name MEMBER name)
-      Q_PROPERTY(QString modelIdentifier MEMBER modelIdentifier)
-      Q_PROPERTY(QString baseUrl MEMBER baseUrl)
-      Q_PROPERTY(QString apiKey MEMBER apiKey)
-      Q_PROPERTY(QString api MEMBER api)
-      Q_PROPERTY(bool isLocal MEMBER isLocal)
-      // --- Advanced parameters (fully exposed to QML) ---
-      Q_PROPERTY(bool supportsThinking MEMBER supportsThinking)
-      Q_PROPERTY(double temperature MEMBER temperature)
-      Q_PROPERTY(double topP MEMBER topP)
-      Q_PROPERTY(int maxTokens MEMBER maxTokens)
-
-    public:
-      QString name;
-      QString modelIdentifier;
-      QString baseUrl;
-      QString apiKey;
-      QString api;                                       // "ollama", "gemini", "anthropic", "openai"
-      bool isLocal                              = false; ///< true für Ollama
-      bool supportsThinking                     = false; ///< true: model supports Extended Thinking (e.g. claude-3-7-sonnet)
-      double temperature                        = -1.0;  ///< <0: use API default
-      double topP                               = -1.0;  ///< <0: use API default
-      int maxTokens                             = -1;    ///< <0: use per-client default
-      bool operator==(const Model& other) const = default;
-      };
-
-using Models = QList<Model>;
-Q_DECLARE_METATYPE(Model)
 
 //---------------------------------------------------------
 //   SessionInfo
@@ -223,8 +189,6 @@ class Agent : public QWidget
       QML_ELEMENT
       QML_UNCREATABLE("no")
 
-      Q_PROPERTY(Models models READ models WRITE setModels NOTIFY modelsChanged)
-      Q_PROPERTY(Models filteredModels READ filteredModels NOTIFY modelsChanged)
       Q_PROPERTY(bool filterToolMessages MEMBER filterToolMessages)
       Q_PROPERTY(bool filterThoughts MEMBER filterThoughts)
 
@@ -274,7 +238,9 @@ class Agent : public QWidget
       const int maxRetries{5};
       QDateTime rateLimitResetTime;
 
-      Models _models;
+      bool _manifestsLoaded = false;
+      std::string _manifestPlan;
+      std::string _manifestBuild;
 
       // Hilfsfunktionen
       void processData();
@@ -363,39 +329,14 @@ class Agent : public QWidget
 
       bool filterToolMessages = false;
       bool filterThoughts = false;
-
-    private:
-      bool _manifestsLoaded = false;
-      std::string _manifestPlan;
-      std::string _manifestBuild;
-
-    public:
       std::string getManifest();
 
       static QString configPath();
-      Models& models() { return _models; }
-      const Models& models() const { return _models; }
-      Models filteredModels() const {
-            Models result;
-            for (const auto& m : _models)
-                  if (!m.isLocal)
-                        result.append(m);
-            return result;
-            }
-      void setModels(const Models& m) {
-            if (_models == m)
-                  return;
-            _models = m;
-            saveSettings();
-            emit modelsChanged();
-            }
       QString currentModel() const { return model.name; }
       void setCurrentModel(const QString& s, bool clearChat = true);
       bool isExecuteMode() const { return _isExecuteMode; }
       void setExecuteMode(bool);
 
-      void saveSettings();
-      void loadSettings();
       void saveStatus();
       void loadStatus(const QString& sessionPath = QString());
       bool isWorking() const;

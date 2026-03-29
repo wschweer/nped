@@ -321,7 +321,7 @@ File::File(Editor* e, const QFileInfo& fi) : _fi(fi), editor(e) {
             QRegularExpression wildcard(ft.extensions);
             auto match = wildcard.match(filename);
             if (match.hasMatch()) {
-                  Debug("found filetype <{}> for <{}>", ft.languageId, filename);
+//                  Debug("found filetype <{}> for <{}>", ft.languageId, filename);
                   fileType = ft;
                   break;
                   }
@@ -460,8 +460,10 @@ bool File::load() {
 //---------------------------------------------------------
 
 void File::lcOpen() {
-      if (!client)
+      if (!client) {
+//            Debug("no ls client");
             return;
+            }
       if (client->initialized()) {
             client->didOpenNotification(this);
             updateAST();
@@ -777,7 +779,7 @@ bool File::levelcount(const Pos& p, int* level, const ASTNode& node) const {
 
 int File::indent(const Pos& cursor) const {
       int level = 0;
-      if (parse()) {
+      if (client) {
             levelcount(cursor, &level, astTopNode);
             return level * tab();
             }
@@ -882,22 +884,26 @@ int File::toOffset(const Pos& p) {
 //    Notice: unicode surrogates are not handled
 //-----------------------------------------------------------------------------
 
-int File::distance(const Pos& p1, const Pos& p2) const {
+int File::distance(Pos p1, Pos p2) const {
       Pos c(p1);
 
       // sanity checks:
       int n = _fileText.size();
       if (n == 0) {
             Critical("file is empty");
-            return 0;
+            return -1;
             }
       if (p1.row < 0 || p1.row >= n) {
             Critical("{}: bad line {} max {}", path(), p1.row, n);
-            return 0;
+            return -1;
             }
-      if (p2.row < 0 || p2.row > n) {
-            Critical("{}: bad line {} max {}", path(), p2.row, n);
-            return 0;
+      if (p2.row < 0) {
+            Critical("{}: bad line {}", path(), p2.row);
+            return -1;
+            }
+      if (p2.row > n) {
+            Critical("{}: bad line {} of lines {}", path(), p2.row, n);
+            p2.row = n;
             }
       const Line& l1 = _fileText[p1.row];
 
@@ -918,7 +924,7 @@ int File::distance(const Pos& p1, const Pos& p2) const {
             return p2.col - p1.col;
       n = 0;
       for (;;) {
-            if (c.row == p2.row) { // on last line
+            if (c.row == (p2.row-1)) { // on last line
                   n += p2.col;
                   break;
                   }
@@ -1067,12 +1073,12 @@ void File::postprocessFormat() {
             if (!l.isString()) {
                   auto s = l.qstring().trimmed();
                   if (!s.isEmpty() && (s[0] == '}' || s[0] == '{'))
-                        undo()->push(new Patch(this, {0, i}, 0, "      ", cursor, cursor));
+                        undo()->push(new Patch(this, {0, i}, 0, QString(tab(), QChar(' ')), cursor, cursor));
                   }
             //
             // add an empty line after every top level closing "}" or "};"
             //
-            if ((l.qstring() == "      }" || l.qstring() == "      };") && !_fileText.nextLineIsEmpty(i)) {
+            if ((l.qstring() == QString("      }") || l.qstring() == QString("      };")) && !_fileText.nextLineIsEmpty(i)) {
                   undo()->push(new Patch(this, {0, i + 1}, 0, "\n", cursor, cursor));
                   ++i;
                   }

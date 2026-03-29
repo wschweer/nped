@@ -47,12 +47,83 @@
 #include "agent.h"
 #include "webview.h"
 #include "completion.h"
-#include "screenshot.h"
+// #include "screenshot.h"
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
 extern bool persistent;
+
+std::map<Cmd, ShortcutConfig> Editor::_shortcuts = {
+         {                 Cmd::CMD_QUIT,                    {"CMD_QUIT", "Quit", "Ctrl + K, Ctrl + Q; Shift+F1"}},
+         {            Cmd::CMD_SAVE_QUIT,                                    {"CMD_SAVE_QUIT", "Save+Quit", "F1"}},
+         {                 Cmd::CMD_SAVE,                             {"CMD_SAVE", "Save", "Ctrl + K,  Ctrl + S"}},
+         {           Cmd::CMD_CHAR_RIGHT,                          {"CMD_CHAR_RIGHT", "Right", "Right; Ctrl + D"}},
+         {            Cmd::CMD_CHAR_LEFT,                            {"CMD_CHAR_LEFT", "Left", "Left;  Ctrl + S"}},
+         {              Cmd::CMD_LINE_UP,                                 {"CMD_LINE_UP", "Up", "Up;   Ctrl + E"}},
+         {            Cmd::CMD_LINE_DOWN,                         {"CMD_LINE_DOWN", "Down", "Down;     Ctrl + X"}},
+         {           Cmd::CMD_LINE_START, {"CMD_LINE_START", "Line Start", "Ctrl + Q,    Ctrl + S; Shift + Left"}},
+         {             Cmd::CMD_LINE_END,      {"CMD_LINE_END", "Line End", "Ctrl + Q,  Ctrl + D; Shift + Right"}},
+         {             Cmd::CMD_LINE_TOP,                     {"CMD_LINE_TOP", "Line Top", "Ctrl + Q,  Ctrl + E"}},
+         {          Cmd::CMD_LINE_BOTTOM,               {"CMD_LINE_BOTTOM", "Line Bottom", "Ctrl + Q,  Ctrl + X"}},
+         {              Cmd::CMD_PAGE_UP,                           {"CMD_PAGE_UP", "Page Up", "Ctrl + R;  PgUp"}},
+         {            Cmd::CMD_PAGE_DOWN,                     {"CMD_PAGE_DOWN", "Page Down", "Ctrl + C;  PgDown"}},
+         {           Cmd::CMD_FILE_BEGIN,         {"CMD_FILE_BEGIN", "Start", "Ctrl + Q,  Ctrl + R; Ctrl + PgUp"}},
+         {             Cmd::CMD_FILE_END,           {"CMD_FILE_END", "End", "Ctrl + Q,  Ctrl + C; Ctrl + PgDown"}},
+         {            Cmd::CMD_WORD_LEFT,                 {"CMD_WORD_LEFT", "Word Left", "Ctrl + A; Ctrl + Left"}},
+         {           Cmd::CMD_WORD_RIGHT,              {"CMD_WORD_RIGHT", "Word Right", "Ctrl + F; Ctrl + Right"}},
+         {                Cmd::CMD_ENTER,                                        {"CMD_ENTER", "Enter", "Escape"}},
+         {         Cmd::CMD_KONTEXT_COPY,         {"CMD_KONTEXT_COPY", "Copy Kontext", "Ctrl + K,  Ctrl + K; F4"}},
+         {         Cmd::CMD_KONTEXT_PREV, {"CMD_KONTEXT_PREV", "Kontext Left", "Ctrl + K,  Ctrl + J; Shift + F3"}},
+         {         Cmd::CMD_KONTEXT_NEXT,        {"CMD_KONTEXT_NEXT", "Kontext Right", "Ctrl + K,  Ctrl + L; F3"}},
+         {        Cmd::CMD_SHOW_BRACKETS,           {"CMD_SHOW_BRACKETS", "Show Brackets", "Ctrl + K,  Ctrl + I"}},
+         {           Cmd::CMD_SHOW_LEVEL,                 {"CMD_SHOW_LEVEL", "Show Level", "Ctrl + K,  Ctrl + M"}},
+         {           Cmd::CMD_KONTEXT_UP,                           {"CMD_KONTEXT_UP", "Kontext Up", "Ctrl + Up"}},
+         {         Cmd::CMD_KONTEXT_DOWN,                     {"CMD_KONTEXT_DOWN", "Kontext Down", "Ctrl + Down"}},
+         {    Cmd::CMD_DELETE_LINE_RIGHT,   {"CMD_DELETE_LINE_RIGHT", "Delete Line Right", "Ctrl + Q,  Ctrl + Y"}},
+         {                 Cmd::CMD_UNDO,                                        {"CMD_UNDO", "Undo", "Ctrl + Z"}},
+         {                 Cmd::CMD_REDO,                                {"CMD_REDO", "Redo", "Shift + Ctrl + Z"}},
+         {               Cmd::CMD_RUBOUT,                           {"CMD_RUBOUT", "Rubout", "Delete; Backspace"}},
+         {          Cmd::CMD_CHAR_DELETE,                               {"CMD_CHAR_DELETE", "Delete", "Ctrl + G"}},
+         {          Cmd::CMD_INSERT_LINE,                          {"CMD_INSERT_LINE", "Insert Line", "Ctrl + N"}},
+         {                  Cmd::CMD_TAB,                                         {"CMD_TAB", "Tabulator", "Tab"}},
+
+         {           Cmd::CMD_SELECT_ROW,                                  {"CMD_SELECT_ROW", "Row Select", "F5"}},
+         {           Cmd::CMD_SELECT_COL,                                  {"CMD_SELECT_COL", "Col Select", "F6"}},
+         {          Cmd::CMD_SELECT_CHAR,                      {"CMD_SELECT_CHAR", "Row/Col Select", "Ctrl + F5"}},
+         {                 Cmd::CMD_PICK,                                  {"CMD_PICK", "Copy (Pick)", "F8"}},
+         {                  Cmd::CMD_PUT,                                   {"CMD_PUT", "Paste (Put)", "F9"}},
+         {          Cmd::CMD_DELETE_LINE,                          {"CMD_DELETE_LINE", "Cut", "Ctrl + Y"}},
+
+         {          Cmd::CMD_FLIP_CURSOR,      {"CMD_FLIP_CURSOR", "Flip Selection Cursor", "Ctrl + Q, Ctrl + F"}},
+         {          Cmd::CMD_SEARCH_NEXT,                                {"CMD_SEARCH_NEXT", "Search Next", "F7"}},
+         {               Cmd::CMD_RENAME,                   {"CMD_RENAME", "Global Rename", "Ctrl + O, Ctrl + R"}},
+         {          Cmd::CMD_SEARCH_PREV,                        {"CMD_SEARCH_PREV", "Search Prev", "SHIFT + F7"}},
+         {          Cmd::CMD_DELETE_WORD,                          {"CMD_DELETE_WORD", "Delete Word", "Ctrl + T"}},
+         {           Cmd::CMD_ENTER_WORD,                 {"CMD_ENTER_WORD", "Enter Word", "Ctrl + O,  Ctrl + W"}},
+         {            Cmd::CMD_GOTO_BACK,                         {"CMD_GOTO_BACK", "History Back", "Ctrl + F12"}},
+         {            Cmd::CMD_SHOW_INFO,                          {"CMD_SHOW_INFO", "Show AI Panel", "Ctrl + H"}},
+         {               Cmd::CMD_FORMAT,                         {"CMD_FORMAT", "Format", "Ctrl + O,  Ctrl + F"}},
+         {       Cmd::CMD_VIEW_FUNCTIONS,                       {"CMD_VIEW_FUNCTIONS", "Toggle View", "Ctrl + V"}},
+         {            Cmd::CMD_VIEW_BUGS,                     {"CMD_VIEW_BUGS", "View LS Annotation", "Ctrl + B"}},
+         { Cmd::CMD_GOTO_TYPE_DEFINITION,             {"CMD_GOTO_TYPE_DEFINITION", "Goto Type Definition", "F10"}},
+         {  Cmd::CMD_GOTO_IMPLEMENTATION,               {"CMD_GOTO_IMPLEMENTATION", "Goto Implementation", "F11"}},
+         {      Cmd::CMD_GOTO_DEFINITION,                       {"CMD_GOTO_DEFINITION", "Goto Definition", "F12"}},
+         {        Cmd::CMD_EXPAND_MACROS,            {"CMD_EXPAND_MACROS", "Expand Macros", "Ctrl + O, Ctrl + E"}},
+         {          Cmd::CMD_COMPLETIONS,      {"CMD_COMPLETIONS", "Show Completions", "Ctrl + Tab; Shift + Tab"}},
+         {             Cmd::CMD_FOLD_ALL,                                {"CMD_FOLD_ALL", "Fold All", "Ctrl + M"}},
+         {           Cmd::CMD_UNFOLD_ALL,                    {"CMD_UNFOLD_ALL", "Unfold All", "Ctrl + Shift + M"}},
+         {          Cmd::CMD_FOLD_TOGGLE,                          {"CMD_FOLD_TOGGLE", "Fold Toggle", "Ctrl + <"}},
+         {      Cmd::CMD_FUNCTION_HEADER,          {"CMD_FUNCTION_HEADER", "Create Header", "Ctrl + O, Ctrl + H"}},
+         {           Cmd::CMD_GIT_TOGGLE,              {"CMD_GIT_TOGGLE", "Show Git Panel", "Ctrl + O, Ctrl + G"}},
+         {       Cmd::CMD_ENTER_ADD_FILE,                                {"CMD_ENTER_ADD_FILE", "Add File", "F3"}},
+         {         Cmd::CMD_ENTER_SEARCH,                            {"CMD_ENTER_SEARCH", "Search/Replace", "F7"}},
+         {Cmd::CMD_ENTER_CREATE_FUNCTION,              {"CMD_ENTER_CREATE_FUNCTION", "Create Function", "Ctrl+F"}},
+         {      Cmd::CMD_ENTER_GOTO_LINE,                          {"CMD_ENTER_GOTO_LINE", "Goto Line", "Ctrl+G"}},
+         {           Cmd::CMD_SCREENSHOT,       {"CMD_SCREENSHOT", "Screen Shot", "Ctrl + O, Ctrl + O, Ctrl + P"}},
+         {            Cmd::CMD_LINK_BACK,                           {"CMD_LINK_BACK", "Link Back", "Ctrl + PgUp"}},
+         {         Cmd::CMD_LINK_FORWARD,                   {"CMD_LINK_FORWARD", "Link Forward", "Ctrl + PgDown"}},
+      };
 
 //---------------------------------------------------------
 //   screenshot
@@ -136,11 +207,17 @@ bool KeyLogger::eventFilter(QObject* obj, QEvent* event) {
 //---------------------------------------------------------
 
 const ShortcutConfig& Editor::getSC(Cmd cmd) {
-      for (const auto& sc : _shortcuts)
-            if (sc.cmd == cmd)
-                  return sc;
-      Fatal("no command <{}>", int(cmd));
-      };
+      return _shortcuts[cmd];
+      }
+
+QList<ShortcutConfig> Editor::shortcuts() const
+      {
+      QList<ShortcutConfig> l;
+      for (const auto& [key, val] : _shortcuts) {
+            l.push_back(val);
+            }
+      return l;
+      }
 
 //---------------------------------------------------------
 //   updateStyle
@@ -165,7 +242,10 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       qRegisterMetaType<LanguageServerConfig>("LanguageServerConfig");
       qRegisterMetaType<Model>("Model");
       qRegisterMetaType<TextStyle>("TextStyle");
+      qRegisterMetaType<TextStyles>("TextStyles");
 
+//      connect(this, &Editor::textStylesLightChanged, [] { Debug("=======textStylesChanged"); });
+//      connect(this, &Editor::textStylesDarkChanged, [] { Debug("=======textStyles dark Changed"); });
 #if 0 // experimental
       fileWatcher = new QFileSystemWatcher(this);
       connect(fileWatcher, &QFileSystemWatcher::fileChanged, [](const QString& path) {
@@ -177,13 +257,13 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
                         Critical("file <{}> changed on disk", path);
                   else
                         Critical("file <{}> deleted from disk", path);
-                                                }
-                                          });
+                                                                                                      }
+                                                                                                });
 #endif
 
       if (!initProject())
             Critical("init project failed");
-      loadDefaults();
+      resetToDefaults();
       loadSettings();
       loadProjectStatus();
 
@@ -256,8 +336,12 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
          Action(getSC(Cmd::CMD_TAB), [this] { insertTab(); }),
          Action(getSC(Cmd::CMD_PICK), [this] { pick(); }),
          Action(getSC(Cmd::CMD_PUT), [this] { put(); }),
+
          Action(getSC(Cmd::CMD_SELECT_ROW), [this] { rowSelect(); }),
          Action(getSC(Cmd::CMD_SELECT_COL), [this] { colSelect(); }),
+         Action(getSC(Cmd::CMD_SELECT_CHAR), [this] { charSelect(); }),
+         Action(getSC(Cmd::CMD_FLIP_CURSOR), [this] { kontext()->flipSelectionCursor(); }),
+
          Action(getSC(Cmd::CMD_FORMAT), [this] { formatting(); }),
          Action(getSC(Cmd::CMD_VIEW_FUNCTIONS),
                 [this] {
@@ -324,7 +408,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       aiButton = new QToolButton();
       aiButton->setText("Ai");
       aiButton->setCheckable(true);
-//      aiButton->setChecked(false);
+      //      aiButton->setChecked(false);
       aiButton->setToolTip("toggle AI panel");
       hbox->addWidget(aiButton, 0, Qt::AlignRight);
       connect(aiButton, &QToolButton::toggled, [this] {
@@ -349,12 +433,12 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       _mdWidget   = new MarkdownWebView(this, this);
       _mdWidget->setZoomFactor(1.5);
 
-      QWidget* mdContainer = new QWidget(this);
+      QWidget* mdContainer  = new QWidget(this);
       QVBoxLayout* mdLayout = new QVBoxLayout(mdContainer);
       mdLayout->setContentsMargins(0, 0, 0, 0);
       mdLayout->setSpacing(0);
 
-      QWidget* navBar = new QWidget(mdContainer);
+      QWidget* navBar        = new QWidget(mdContainer);
       QHBoxLayout* navLayout = new QHBoxLayout(navBar);
       navLayout->setContentsMargins(4, 4, 4, 4);
       navLayout->setSpacing(4);
@@ -379,8 +463,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
                         _mdWidget->setMarkdown(kontext()->file()->plainText());
                   else
                         _mdWidget->setHtml(kontext()->file()->plainText());
-            }
-      });
+                  }
+            });
 
       navLayout->addWidget(btnBack);
       navLayout->addWidget(btnForward);
@@ -399,6 +483,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             btnForward->setIcon(QIcon(dark ? ":/images/forward_white.svg" : ":/images/forward.svg"));
             btnReload->setIcon(QIcon(dark ? ":/images/reload_white.svg" : ":/images/reload.svg"));
             btnHome->setIcon(QIcon(dark ? ":/images/home_white.svg" : ":/images/home.svg"));
+            _mdWidget->setDarkMode(dark);
             updateStyle();
             update();
             });
@@ -442,7 +527,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       _gitButton->setIcon(QIcon(":images/Git-Icon-1788C.svg"));
       _gitButton->setToolTip("toggle GIT panel");
       _gitButton->setCheckable(true);
-//      _gitButton->setChecked(false);
+      //      _gitButton->setChecked(false);
       hbox->addWidget(_gitButton, 0);
 
       connect(_gitButton, &QToolButton::toggled, [this] {
@@ -513,18 +598,18 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
 
       branchLabel = new QLabel();
       branchLabel->setObjectName("branchLabel");
-      branchLabel->setToolTip("current git branch");
-      branchLabel->setStatusTip("current git branch");
+      branchLabel->setToolTip("git branch");
+      branchLabel->setStatusTip("git branch");
       branchLabel->setVisible(_projectMode);
       if (_hasGit) {
             branchLabel->setText(_currentBranchName);
             if (_git.isClean()) {
-                  Debug("git clean");
+//                  Debug("git clean");
                   branchLabel->setStyleSheet("background-color: lightgreen;");
                   }
             else {
                   branchLabel->setStyleSheet("background-color: lightyellow;");
-                  Debug("git dirty");
+//                  Debug("git dirty");
                   }
             }
 
@@ -532,7 +617,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
 
       urlLabel = new QLabel();
       urlLabel->setText("url");
-      urlLabel->setToolTip("url current document");
+      urlLabel->setToolTip("document path");
       sb->addWidget(urlLabel, 2);
 
       auto spacer = new QWidget();
@@ -543,15 +628,15 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       progressBar->setVisible(false);
 
       _keyLabel = new QLabel;
-      _keyLabel->setToolTip("current shortcut sequence");
+      _keyLabel->setToolTip("shortcut sequence");
       sb->addWidget(_keyLabel, 2);
 
       lineLabel = new QLabel;
-      lineLabel->setToolTip("current line");
+      lineLabel->setToolTip("line");
       sb->addWidget(lineLabel, 0);
 
       colLabel = new QLabel;
-      colLabel->setToolTip("current column");
+      colLabel->setToolTip("column");
       sb->addWidget(colLabel, 0);
 
       connect(tabBar, &QTabBar::tabBarClicked, [this](int index) { setCurrentKontext(index); });
@@ -590,6 +675,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       _editWidget->installEventFilter(kl);
       initFont();
       updateGitHistory();
+      connect(this, &Editor::fontFamilyChanged, [this] { initFont(); });
       }
 
 Editor::~Editor() {
@@ -699,9 +785,8 @@ void Editor::updateViewMode() {
                         _mdWidget->setMarkdown(kontext()->file()->plainText());
                   else if (lid == "html")
                         _mdWidget->setHtml(kontext()->file()->plainText());
-                  else if (lid == "image") {
+                  else if (lid == "image")
                         _mdWidget->load(QUrl::fromLocalFile(kontext()->file()->path()));
-                  }
                   } break;
 
                   //            case ViewMode::Functions:
@@ -726,7 +811,7 @@ void Kontext::toggleViewMode() {
                   case ViewMode::File:
                         _viewMode = ViewMode::Functions;
                         break;
-                                                                              }
+                                                                                                                                    }
 #endif
             setViewMode(ViewMode::Functions);
             }
@@ -753,7 +838,7 @@ LSclient* Editor::getLSclient(const QString& serverName) {
       auto* client = LSclient::createClient(this, serverName.toStdString());
       if (client) {
             languageServers.push_back(LanguageServer(serverName, client));
-            Debug("new language server started: <{}>", serverName);
+//            Debug("new language server started: <{}>", serverName);
             }
       else
             Debug("could not start language server: <{}>", serverName);
@@ -997,8 +1082,7 @@ void Editor::vScrollTo(int ypos) {
 //---------------------------------------------------------
 
 void Editor::formatting() {
-      File* f = kontext()->file();
-      if (f->parse())
+      if (lclient())
             lclient()->formattingRequest(kontext());
       }
 
@@ -1136,9 +1220,6 @@ void Editor::saveStatus() {
       QByteArray state = saveState();
       j["state"]       = state.toHex().toStdString();
 
-      j["fontSize"]   = fontSize();
-      j["fontFamily"] = _fontFamily.toStdString();
-
       QByteArray splitterState = splitter->saveState();
       j["splitter"]            = splitterState.toHex().toStdString();
 
@@ -1212,7 +1293,6 @@ void Editor::loadProjectStatus() {
 //---------------------------------------------------------
 
 bool Editor::loadStatus(int argc, char** argv) {
-//      loadSettings(); // TODO: inline here
       // do not load history if there are filenames on the command line
       bool loadFiles = (argc == 0);
 
@@ -1220,6 +1300,8 @@ bool Editor::loadStatus(int argc, char** argv) {
       int h              = screen->geometry().height();
       int w              = (h * 8) / 10;
       bool stateRestored = false;
+
+      int idx = 0;
 
       std::ifstream fs(".nped.json");
       if (fs.is_open()) {
@@ -1231,21 +1313,16 @@ bool Editor::loadStatus(int argc, char** argv) {
                         w = j["width"].get<int>();
                   if (j.contains("height"))
                         h = j["height"].get<int>();
-                  if (j.contains("fontSize"))
-                        setFontSize(j["fontSize"].get<double>());
-                  if (j.contains("fontFamily"))
-                        _fontFamily = QString::fromStdString(j["fontFamily"].get<std::string>());
                   if (j.contains("search"))
                         searchPattern.setPattern(QString::fromStdString(j["search"].get<std::string>()));
                   if (j.contains("replace"))
                         replace = QString::fromStdString(j["replace"].get<std::string>());
                   if (j.contains("currentKontext") && loadFiles)
-                        _currentKontext = j["currentKontext"].get<int>();
-
+                        idx = j["currentKontext"].get<int>();
                   if (j.contains("splitter")) {
                         QByteArray splitterState = QByteArray::fromHex(QByteArray::fromStdString(j["splitter"].get<std::string>()));
                         splitter->restoreState(splitterState);
-                        agentWidth =    agent->sizeHint().width(); // agent->size().width();
+                        agentWidth    = agent->sizeHint().width();    // agent->size().width();
                         gitPanelWidth = gitPanel->sizeHint().width(); // gitPanel->size().width();
                         }
 
@@ -1254,9 +1331,8 @@ bool Editor::loadStatus(int argc, char** argv) {
                         agent->setExecuteMode(v);
                         }
 
-                  if (j.contains("aiModel")) {
+                  if (j.contains("aiModel"))
                         _settingsLLModel = QString::fromStdString(j["aiModel"].get<std::string>());
-                        }
 
                   if (j.contains("aiVisible")) {
                         bool v = j["aiVisible"].get<bool>();
@@ -1333,6 +1409,7 @@ bool Editor::loadStatus(int argc, char** argv) {
             Critical("no file to edit");
             exit(0);
             }
+      _currentKontext = std::clamp(idx, 0, int(_kontextList.size()-1));
       tabBar->setCurrentIndex(_currentKontext);
       urlLabel->setText(kontext()->file()->path());
       update();
@@ -1348,7 +1425,7 @@ File* Editor::createNewFile(const QFileInfo& fi) {
       File* file = new File(this, fi);
       connect(file, &File::modifiedChanged, [this]() { tabBar->modifiedChanged(); });
       tabBar->modifiedChanged();
-      if (file->parse())
+      if (lclient())
             connect(file, &File::fileChanged, [this] { lsUpdateTimer->start(400); });
       file->load();
       files.push_back(file);
@@ -1576,43 +1653,44 @@ void Editor::deleteChar() {
 
 void Editor::deleteLine() {
       const auto& cursor = kontext()->cursor();
-      switch (kontext()->selectionMode()) {
+      Selection& s       = kontext()->selection();
+      pickText.mode = s.mode;
+      switch (s.mode) {
             case SelectionMode::NoSelect: {
-                  pickText     = kontext()->currentLine() + "\n";
-                  pickTextRows = true;
-                  Pos p        = cursor.filePos;
-                  p.col        = 0;
-                  undoPatch(p, pickText.size(), "", cursor, cursor);
+                  pickText.text = kontext()->currentLine() + "\n";
+                  Pos p         = cursor.filePos;
+                  p.col         = 0;
+                  undoPatch(p, pickText.text.size(), "", cursor, cursor);
+                  pickText.mode = SelectionMode::RowSelect;
                   } break;
             case SelectionMode::RowSelect:
-                  pickText     = kontext()->selectionText();
-                  pickTextRows = true;
-                  undoPatch({0, kontext()->selection().y()}, pickText.size(), "", cursor, cursor);
+                  pickText.text = kontext()->selectionText();
+                  undoPatch({0, kontext()->selection().y()}, pickText.text.size(), "", cursor, cursor);
                   break;
             case SelectionMode::ColSelect: {
-                  pickText     = kontext()->selectionText();
-                  pickTextRows = false;
-                  QPoint pt    = kontext()->selection().topLeft();
+                  pickText.text = kontext()->selectionText();
+                  Pos pt        = kontext()->selection().start;
                   //                  kontext()->setCursor(pt);
-                  QStringList sl = pickText.split('\n');
+                  QStringList sl = pickText.text.split('\n');
                   sl.pop_back();
-                  int y          = pt.y();
+                  int y          = pt.row;
                   auto file      = kontext()->file();
                   auto upatch    = new Patch(file, cursor, cursor);
                   const Lines& t = file->fileText();
                   for (const auto& s : sl) {
-                        int n = std::min(int(s.size()), std::max(0, t[y].size() - pt.x()));
-                        upatch->add(PatchItem({pt.x(), y}, n, ""));
+                        int n = std::min(int(s.size()), std::max(0, t[y].size() - pt.col));
+                        upatch->add(PatchItem({pt.col, y}, n, ""));
                         ++y;
                         }
                   file->undo()->push(upatch);
                   } break;
             case SelectionMode::CharSelect:
-                  // not implemented
+                  pickText.text = kontext()->selectionText();
+                  undoPatch(cursor.filePos, pickText.text.size(), "", cursor, cursor);
                   break;
             }
       QClipboard* cb = QApplication::clipboard();
-      cb->setText(pickText, QClipboard::Clipboard);
+      cb->setText(pickText.text, QClipboard::Clipboard);
       endSelectionMode();
       }
 
@@ -1665,25 +1743,18 @@ void Editor::insertTab() {
 
 void Editor::pick() {
       pickText.clear();
-      switch (kontext()->selectionMode()) {
+      pickText.mode = kontext()->selection().mode;
+      switch (kontext()->selection().mode) {
             case SelectionMode::NoSelect:
-                  pickText     += kontext()->currentLine() + "\n";
-                  pickTextRows  = true;
+                  pickText.text += kontext()->currentLine() + "\n";
+                  pickText.mode  = SelectionMode::RowSelect;
                   break;
             case SelectionMode::RowSelect:
-                  pickText     = kontext()->selectionText();
-                  pickTextRows = true;
-                  break;
             case SelectionMode::ColSelect:
-                  pickText     = kontext()->selectionText();
-                  pickTextRows = false;
-                  break;
-            case SelectionMode::CharSelect:
-                  // not implemented
-                  break;
+            case SelectionMode::CharSelect: pickText.text = kontext()->selectionText(); break;
             }
       QClipboard* cb = QApplication::clipboard();
-      cb->setText(pickText, QClipboard::Clipboard);
+      cb->setText(pickText.text, QClipboard::Clipboard);
       endSelectionMode();
       }
 
@@ -1692,39 +1763,59 @@ void Editor::pick() {
 //---------------------------------------------------------
 
 void Editor::put() {
-      if (pickText.isEmpty())
+      if (pickText.isEmpty()) {
+            Debug("empty");
             return;
-      auto cursor = kontext()->cursor();
-      if (pickTextRows) {
-            undoPatch(Pos(0, cursor.fileRow()), 0, pickText, cursor, cursor);
             }
-      else {
-            QStringList sl = pickText.split('\n');
-            File* file     = kontext()->file();
-            int y          = cursor.fileRow();
-            int x          = cursor.fileCol();
-            for (const auto& s : sl) {
-                  int fill;
-                  int n = x;
-                  if (y >= file->rows()) // at text end?
-                        fill = x;
-                  else {
-                        n = file->line(y).size();
-                        if (n < x)
-                              fill = x - n;
-                        else
-                              fill = 0;
+      auto cursor = kontext()->cursor();
+      switch (pickText.mode) {
+            case SelectionMode::CharSelect: {
+                  // if cursor column is behind current text then we must extend
+                  // the text line with spaces upto the cursor position
+
+                  QString s;                // real text to insert
+                  Pos pos = cursor.filePos; // real insert position
+                  int n   = kontext()->fileCol() - kontext()->columns();
+                  if (n > 0) {
+                        s        = QString(n, QChar(' '));
+                        pos.col -= n;
                         }
-                  QString is = QString(fill, QChar(' ')) + s;
-                  if ((y < file->rows()) && (x >= file->line(y).size())) { // TODO: check
-                        // remove trailing spaces
-                        int n = is.size();
-                        while (n && is[n - 1].isSpace())
-                              n--;
-                        is = is.left(n);
-                        }
-                  undoPatch(Pos(std::min(n, x), y++), 0, is, cursor, cursor);
+                  s += pickText.text;
+                  undoPatch(pos, 0, s, cursor, cursor);
+                  } break;
+            case SelectionMode::RowSelect: {
+                  undoPatch(Pos(0, cursor.fileRow()), 0, pickText.text, cursor, cursor);
+                  break;
                   }
+            case SelectionMode::ColSelect: {
+                  QStringList sl = pickText.text.split('\n');
+                  File* file     = kontext()->file();
+                  int y          = cursor.fileRow();
+                  int x          = cursor.fileCol();
+                  for (const auto& s : sl) {
+                        int fill;
+                        int n = x;
+                        if (y >= file->rows()) // at text end?
+                              fill = x;
+                        else {
+                              n = file->line(y).size();
+                              if (n < x)
+                                    fill = x - n;
+                              else
+                                    fill = 0;
+                              }
+                        QString is = QString(fill, QChar(' ')) + s;
+                        if ((y < file->rows()) && (x >= file->line(y).size())) { // TODO: check
+                              // remove trailing spaces
+                              int n = is.size();
+                              while (n && is[n - 1].isSpace())
+                                    n--;
+                              is = is.left(n);
+                              }
+                        undoPatch(Pos(std::min(n, x), y++), 0, is, cursor, cursor);
+                        }
+                  } break;
+            case SelectionMode::NoSelect: break;
             }
       }
 
@@ -1757,13 +1848,27 @@ void Editor::colSelect() {
       }
 
 //---------------------------------------------------------
+//   charSelect
+//---------------------------------------------------------
+
+void Editor::charSelect() {
+      if (endSelectionMode())
+            return;
+      kontext()->setSelectionMode(SelectionMode::CharSelect);
+      Pos pos          = kontext()->filePos();
+      QRect selectRect = {pos.col, pos.row, 1, 1};
+      kontext()->setSelection(selectRect);
+      update();
+      }
+
+//---------------------------------------------------------
 //   endSelectionMode
 //    if in SelectionMode: end mode and return true
 //    else return false
 //---------------------------------------------------------
 
 bool Editor::endSelectionMode() {
-      if (kontext()->selectionMode() != SelectionMode::NoSelect) {
+      if (kontext()->selection().mode != SelectionMode::NoSelect) {
             kontext()->setSelectionMode(SelectionMode::NoSelect);
             kontext()->setCursorAbs(kontext()->selectionStartCursor());
             return true;
@@ -1933,7 +2038,7 @@ void Editor::undoPatch(const Pos& pos, int len, const QString& s, const Cursor& 
 //---------------------------------------------------------
 
 LSclient* Editor::lclient() {
-      return kontext()->file()->languageClient();
+      return _kontextList.empty() ? nullptr : kontext()->file()->languageClient();
       }
 
 //---------------------------------------------------------
