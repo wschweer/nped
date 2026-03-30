@@ -258,10 +258,8 @@ void OpenAiClient::dataFinished() {
       size_t totalTokens = 0;
 
       if (_currentToolCalls.empty()) {
-            if (agent->historyManager->addResult(responseContent, totalTokens))
-                  agent->sendMessage2();
-            else
-                  agent->enableInput(true);
+            agent->historyManager->addResult(responseContent, totalTokens);
+            agent->enableInput(true);
             }
       else {
             agent->historyManager->addRequest(responseContent, totalTokens);

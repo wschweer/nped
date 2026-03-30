@@ -22,15 +22,13 @@ bool HistoryManager::trim() {
             size_t n = 0;
             for (auto it = _data.rbegin(); it != _data.rend(); ++it) {
                   n++;
-                  if (it->content.value("role", "") == "user") {
+                  if (it->content.value("role", "") == "user")
                         break;
                   }
-            }
             activeEntries = n;
-            totalTokens = 0;
-            for (size_t i = _data.size() - activeEntries; i < _data.size(); ++i) {
+            totalTokens   = 0;
+            for (size_t i = _data.size() - activeEntries; i < _data.size(); ++i)
                   totalTokens += _data[i].tokens;
-            }
             summaryRequested = false;
             emit tokensChanged(totalTokens);
             return false;
@@ -116,16 +114,14 @@ void HistoryManager::setActiveEntries(size_t a) {
 json HistoryManager::getActiveEntries() const {
       json arr        = json::array();
       size_t startIdx = _data.size() > activeEntries ? _data.size() - activeEntries : 0;
-      
-      // Always include the very first user request if history is truncated
-      if (startIdx > 0 && !_data.empty()) {
-            arr.push_back(_data[0].content);
-            }
 
-      for (size_t i = startIdx; i < _data.size(); ++i) {
+      // Always include the very first user request if history is truncated
+      if (startIdx > 0 && !_data.empty())
+            arr.push_back(_data[0].content);
+
+      for (size_t i = startIdx; i < _data.size(); ++i)
             arr.push_back(_data[i].content);
-            }
-            
+
       return arr;
       }
 

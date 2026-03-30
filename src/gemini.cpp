@@ -246,25 +246,8 @@ void GeminiClient::dataFinished() {
 
       if (_currentToolCalls.empty()) {
             // No tools: this is a final turn or a summary request
-            if (agent->historyManager->addResult(responseContent, totalTokens)) {
-                  std::string text = "Please provide a concise technical summary of our conversation so far. "
-                                     "Focus specifically on the results obtained from the tool calls and the final "
-                                     "conclusions reached. Discard the raw, voluminous data output from the tools, "
-                                     "but retain the key facts, parameters used, and the current state of the task. "
-                                     "This summary will serve as the new starting point for our context, "
-                                     "so ensure no critical logical step is lost.";
-                  json msg;
-                  msg["role"]  = "user";
-                  msg["parts"] = json::array({{{"text", text}}});
-                  // Approximate token count: 4 chars per token
-                  agent->historyManager->addRequest(msg, text.length() / 4);
-
-                  agent->sendMessage2();
-                  }
-            else {
-                  // Standard end of conversation turn
-                  agent->enableInput(true);
-                  }
+            agent->historyManager->addResult(responseContent, totalTokens);
+            agent->enableInput(true);
             }
       else {
             // Tool calls detected: Add the assistant's call to history first
