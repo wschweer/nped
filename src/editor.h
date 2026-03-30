@@ -369,7 +369,9 @@ class Editor : public QMainWindow
       void deleteRestOfLine();
       void insertTab();
       void pick();
+    public:
       void put();
+    private:
       void rowSelect();
       void colSelect();
       void charSelect();

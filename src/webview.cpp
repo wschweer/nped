@@ -106,6 +106,7 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
          Action(e->getSC(Cmd::CMD_KONTEXT_UP), [this] { editor->kontext()->moveCursorRel(0, -1, MoveType::Roll); }),
          Action(e->getSC(Cmd::CMD_KONTEXT_DOWN), [this] { editor->kontext()->moveCursorRel(0, 1, MoveType::Roll); }),
          Action(e->getSC(Cmd::CMD_PICK), [] {}),
+         Action(e->getSC(Cmd::CMD_PUT), [this] { editor->put(); }),
          Action(e->getSC(Cmd::CMD_SELECT_ROW), [] {}),
          Action(e->getSC(Cmd::CMD_SELECT_COL), [] {}),
          Action(e->getSC(Cmd::CMD_VIEW_FUNCTIONS),
