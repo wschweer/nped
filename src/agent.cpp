@@ -181,11 +181,11 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             });
 
       // Filter toggle buttons (icon-only, no pulldown menu needed)
-      showToolMessageAction = new QAction("🔧", this);
+      showToolMessageAction = new QAction(this);
       showToolMessageAction->setCheckable(true);
       showToolMessageAction->setChecked(!filterToolMessages);
       showToolMessageAction->setToolTip("Show Tool Messages");
-      showToolMessageAction->setIcon(QIcon(_editor->darkMode() ? "images/tool-dark.svg" : ":images/tool.svg"));
+      showToolMessageAction->setIcon(QIcon(_editor->darkMode() ? ":images/tool-dark.svg" : ":images/tool.svg"));
       connect(showToolMessageAction, &QAction::toggled, [this](bool checked) {
             filterToolMessages = !checked;
             saveStatus();
@@ -195,7 +195,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       dashboard->addAction(showToolMessageAction, 1);
 
       showThoughtsAction = new QAction(this);
-      showThoughtsAction->setIcon(QIcon(_editor->darkMode() ? "images/thinking-dark.svg" : ":images/thinking.svg"));
+      showThoughtsAction->setIcon(QIcon(_editor->darkMode() ? ":images/thinking-dark.svg" : ":images/thinking.svg"));
       showThoughtsAction->setCheckable(true);
       showThoughtsAction->setChecked(!filterThoughts);
       showThoughtsAction->setToolTip("Show Thoughts");
@@ -209,12 +209,11 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
 
       // Screenshot button
       screenshotButton = new QToolButton(this);
-      screenshotButton->setText("📷");
       connect(_editor, &Editor::fontChanged, [this] (QFont f) { screenshotButton->setFont(f); });
       screenshotButton->setToolTip("Take Screenshot and attach to next prompt");
       screenshotButton->setCheckable(true);
       screenshotButton->setChecked(false);
-            screenshotButton->setIcon(QIcon(_editor->darkMode() ? "images/camera-dark.svg" : ":images/camera.svg"));
+      screenshotButton->setIcon(QIcon(_editor->darkMode() ? ":images/camera-dark.svg" : ":images/camera.svg"));
       dashboard->addWidget(screenshotButton, 1);
 
       screenshotHelper = new ScreenshotHelper(this);
@@ -242,9 +241,9 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       });
 
       connect(_editor, &Editor::darkModeChanged, [this]() {
-            showThoughtsAction->setIcon(QIcon(_editor->darkMode() ? "images/thinking-dark.svg" : ":images/thinking.svg"));
-            showToolMessageAction->setIcon(QIcon(_editor->darkMode() ? "images/tool-dark.svg" : ":images/tool.svg"));
-            screenshotButton->setIcon(QIcon(_editor->darkMode() ? "images/camera-dark.svg" : ":images/camera.svg"));
+            showThoughtsAction->setIcon(QIcon(_editor->darkMode() ? ":images/thinking-dark.svg" : ":images/thinking.svg"));
+            showToolMessageAction->setIcon(QIcon(_editor->darkMode() ? ":images/tool-dark.svg" : ":images/tool.svg"));
+            screenshotButton->setIcon(QIcon(_editor->darkMode() ? ":images/camera-dark.svg" : ":images/camera.svg"));
             });
 
       // --- 2. Chat Display ---

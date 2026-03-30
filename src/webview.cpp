@@ -172,7 +172,6 @@ void MarkdownWebView::setHtml(const QString& _html, const QUrl& _baseUrl) {
 //---------------------------------------------------------
 
 void MarkdownWebView::setDarkMode(bool enabled) {
-      Debug("darkMode {} -> {}", _darkMode, enabled);
       if (_darkMode == enabled)
             return;
 
