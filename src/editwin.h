@@ -18,6 +18,10 @@
 class Editor;
 struct Pos;
 
+//---------------------------------------------------------
+//   EditWidget
+//---------------------------------------------------------
+
 class EditWidget : public QWidget
       {
       Q_OBJECT

@@ -2,14 +2,20 @@
 
 ---
 ## LaTeX Integration
-- [x] Markdown soll LaTeX rendern:
+- [x] Markdown should render LaTeX:
 
 Inline: $E = mc^2$.
-Der Satz des Pythagoras lautet $ a^2 + b^2 = c^2 $.
+The Pythagorean theorem is $ a^2 + b^2 = c^2 $.
 
 Block:
-$$ x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a} $$
-$$ \int_{0}^{\infty} e^{-x^2} dx = \frac{\sqrt{\pi}}{2} $$
+
+$$
+x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+$$
+
+$$
+\int_{0}^{\infty} e^{-x^2} dx = \frac{\sqrt{\pi}}{2}
+$$
 
 $$
 \begin{pmatrix}
@@ -22,7 +28,7 @@ $$
 ---
 ## Mermaid Integration
 
-- [x] Markdown soll Mermaid Diagramme rendern:
+- [x] Markdown should render Mermaid diagrams:
 
 ```mermaid
 graph TD;
@@ -33,12 +39,12 @@ graph TD;
 ```
 ---
 ### Check System Prompt
-- [ ] system prompt aus Datei lesen
+- [ ] read system prompt from file
 
 ### Prompt message buttons
-- [ ] text für buttons aus Datei lesen
-- [ ] Popup Menu für Buttons
-- [ ] Texte in den editor holen und konfigurierbar machen
+- [ ] read text for buttons from file
+- [ ] Popup Menu for buttons
+- [ ] Get texts into the editor and make them configurable
 
 ### SelectionMode CharSelect
 - [x] implement the mising SelectionMode "CharSelect". Its the most common selection
@@ -46,32 +52,24 @@ graph TD;
    selected.
 
 ### Clean Git
-- [x] Die Editor() Klasse enthält den String "currentBranchName" wenn in initProjekt() festgestellt
-      wurde, das wir ein Projekt gefunden haben welches von GIT verwaltet wird. Versuche in dem
-      Fall festzustellen, ob der aktuelle Git Branch "clean" ist, dh. keine veränd Dateien
-      enthält. Wenn der Branch clean ist, dann zeige das current branch label in der Statuszeile unter
-      dem Edit-Window in hellgrün, ansonsten in einem hellen gelb.
+- [x] The Editor() class contains the string "currentBranchName" when it is detected in initProjekt() that we have found a project managed by GIT. In that case, try to determine if the current Git branch is "clean", i.e., contains no modified files. If the branch is clean, display the current branch label in the status bar below the edit window in light green, otherwise in light yellow.
 
-### Feature: Ai Dashboard
+### Feature: AI Dashboard
 - [x] Extend the Toolbar at the bottom of the AI Panel into a Dashboard so that
       it is possible to add more functionality. Move the current content of the
       toolbar into the new dashboard and organize them in two rows.
 
-### Feature: Language Server Konfiguration
-- [x] Ändere den Panel-Basierten Ansatz zur Konfiguration der Language Server
-      wie folgt:
-      - die Language Server werden auf der linken Seite als Liste dargestellt.
-      - Auf der rechten Seite wird ein Language Server im Detail dargestellt.
-      - Wird links ein Server ausgewählt, dann werden Details rechts
-        aktualisiert
+### Feature: Language Server Configuration
+- [x] Change the panel-based approach for configuring Language Servers as follows:
+      - the Language Servers are displayed as a list on the left side.
+      - A Language Server is displayed in detail on the right side.
+      - If a server is selected on the left, the details on the right are updated.
 
-### Feature: Dateityp Konfiguration
-- [x] Ändere den Panel-Basierten Ansatz zur Konfiguration der File Types
-      wie folgt:
-      - die Dateitypen werden auf der linken Seite als Liste dargestellt.
-      - Auf der rechten Seite wird ein Dateityp im Detail dargestellt.
-      - Wird links ein Dateityp ausgewählt, dann werden Details rechts
-        aktualisiert
+### Feature: File Type Configuration
+- [x] Change the panel-based approach for configuring File Types as follows:
+      - the file types are displayed as a list on the left side.
+      - A file type is displayed in detail on the right side.
+      - If a file type is selected on the left, the details on the right are updated.
 
 ### Feature: move filter
 - [x] the flags "filterToolMessages" and "filterThoughts" are not
@@ -82,51 +80,38 @@ graph TD;
 - [x] adapt configuration for this flags
 - [x] adapt buttons in toolbar below the chat log
 
-### Feature: Model Konfiguration
-- [x] Ändere den Panel-Basierten Ansatz zur Konfiguration der Ai-Modell
-      wie folgt:
-      - die Modellnamen werden auf der linken Seite als Liste dargestellt.
-      - Auf der rechten Seite wird ein Modell im Detail dargestellt.
-      - Wird links ein Modell ausgewählt, dann werden Details rechts
-        aktualisiert
+### Feature: Model Configuration
+- [x] Change the panel-based approach for configuring AI models as follows:
+      - the model names are displayed as a list on the left side.
+      - A model is displayed in detail on the right side.
+      - If a model is selected on the left, the details on the right are updated.
 
 ### Feature: Navigation Buttons for WebView
 - [x] Implement four buttons on top of the WebView widget in the main view.
       Back, Forward, Reload, Home
 - [x] Implement the necessary functions and connect them to the buttons
-- [x] Createor or Search and Download svg icon images for the buttons and
+- [x] Create or Search and Download svg icon images for the buttons and
       style them for dark and light theme
 
-### Bug: Links in gerenderten Markdown Seiten
-- [x] Wenn sich eine Seite im View Mode Render-View befindet und ich auf einen
-      Link clicke, dann wird die neue Seite im Text Mode dargestellt statt im
-      WebView als html angezeigt zu werden
+### Bug: Links in rendered Markdown pages
+- [x] When a page is in Render-View mode and I click on a link, the new page is displayed in text mode instead of being displayed as HTML in the WebView.
 
-### Bug Kontext Umschalten
-- [x] Wenn sich eine Seite im View Mode Render-View befindet, d.h. z.B. ein
-      Markdown Text gerendert in einem WebView dargestellt wird, dann kann
-      der Kontext im Tab-Bar umgeschaltet werden, aber der dargestellte Inhalt
-      verändert sich nicht.
+### Bug: Context Switching
+- [x] When a page is in Render-View mode, i.e., for example, rendered Markdown text is displayed in a WebView, the context in the tab bar can be switched, but the displayed content does not change.
 
-### Check Prompt Verkürzung
+### Check Prompt Truncation
 
-- [x] Checke, ob beim Zusammenbau des Prompts bei einer verkürzten Historie diese immer auch
-      die erste Benutzeranfrage enthält (Wobei wir hoffen, das die nicht nur ein einfaches "Hallo"
-      enthält sondern die Aufgaben/Problembeschreibung). Checke dies für alle Modell API's.
+- [x] Check whether, when assembling the prompt for a truncated history, it always includes the first user request (we hope it contains more than just a simple "Hello", but the task/problem description). Check this for all model APIs.
 
 ### System Prompt
 
-- [x] Erzeuge separate System Prompts (Manifest) für Build/Plan Mode.
-- [x] Versuche im Plan Modus den System Prompt aud der Datei agents-plan.md und
-      im "Build" Modus aus der Datei agents-build.md zu lesen. Sind die Dateien nicht
-      vorhanden, dann nimm die eingebauten Prompts.
-- [x] Merke dir, wenn du den System Prompt aus einer Datei gelesen hast, so dass
-      nur einmal gelesen wird.
+- [x] Create separate system prompts (manifest) for Build/Plan mode.
+- [x] Try to read the system prompt from the file agents-plan.md in Plan mode and from the file agents-build.md in "Build" mode. If the files do not exist, use the built-in prompts.
+- [x] Remember when you have read the system prompt from a file so that it is only read once.
 
 ### Tool-Sets
 
-- [x] Erzeuge separate Tool-Sets für Build/Plan Mode. Übergib im Prompt nur die Tools
-      des jeweiligen Modes.
+- [x] Create separate tool sets for Build/Plan mode. Only pass the tools for the respective mode in the prompt.
 
 ### Image drop
 - [x] intercept the image drop event of the prompt input widget, if necessary create an
@@ -136,102 +121,75 @@ graph TD;
 
 ### Screen Shot
 
-- [x] Erstelle eine neue Editor Funktion "CMD_SCREENSHOT" mit dem default Key Binding "Ctrl+O, Ctrl+O, Ctrl+P"
-- [x] Erstelle eine Editor() Methode screenshot(), die ein Image des aktuellen Editor-Bildschirm Inhalts
-  erstellt und als Datei "screenshot-nn.jpg" im jpeg format im Projekt Rootverzeichnis ablegt. "nn" ist
-  dabei eine fortlaufende Nummer die hochgezählt wird um keine vorhandenen shots zu überschreiben.
-  Benutze die Qt Klasse QScreen
+- [x] Create a new editor function "CMD_SCREENSHOT" with the default key binding "Ctrl+O, Ctrl+O, Ctrl+P"
+- [x] Create an Editor() method screenshot() that takes an image of the current editor screen content and saves it as a file "screenshot-nn.jpg" in JPEG format in the project root directory. "nn" is a continuous number that is incremented to avoid overwriting existing shots. Use the Qt class QScreen.
 
-### Datenanzeige
+### Data Display
 
-- [x] Erstelle eine schmales vertikales Fenster zur Aufname von Icons links neben der Prompt Eingabe im Ai-Window.
-  Immer wenn ein Image (z.B. ein screenshot) für den nächsten Prompt zur verfügung steht,
-  soll hier ein "Picture" Icon erscheinen.
+- [x] Create a narrow vertical window for holding icons to the left of the prompt input in the AI window.
+  Whenever an image (e.g., a screenshot) is available for the next prompt, a "Picture" icon should appear here.
 
 ### screen shot
 
-- [x] Ergänze die Tool Leiste unter dem Ai panel um einen button, der einen screen shot auslösen soll und
-  der ein kamera icon zeigt.
+- [x] Add a button to the toolbar below the AI panel that triggers a screen shot and shows a camera icon.
 
-- [x] implementiere eine screen shot funktionalität für linux und wayland. Benutze dazu d-bus und das
-  xdg desktop portal
+- [x] Implement screen shot functionality for Linux and Wayland. Use d-bus and the xdg desktop portal for this.
 
-- [x] Füge das bild dem aktuellen promt an das ai-modell hinzu. Implementiere dazu die umwandlung in ein
-  passendes format sowie die erstellung eines prompts für gemini anthropic und ollama
+- [x] Add the image to the current prompt for the AI model. For this, implement the conversion into a suitable format as well as the creation of a prompt for Gemini, Anthropic, and Ollama.
 
 
 ### ask_user tool
-- Implementiere für die Interaktion von Ai-Modell und User das tool "ask_user" mit einem Parameter
-  "question", um dem
-  Modell eine Möglichkeit zu geben, Rückfragen zu stellen.
+- Implement the tool "ask_user" with a parameter "question" for the interaction between AI model and user, to give the model a possibility to ask follow-up questions.
 
-### Umbau Ai Panel
-- [x] Verschiebe die tool bar im Titel nach unten unter die promt Eingabe.
-- [x] Implementiere die beiden flags im pulldownmenü "Filter Tool Messages" und "Filter Thoughts" als zwei
-  Buttons in der Tool Bar die jeweils nur ein Icon zeigen: ein "Tool" icon sowie ein "Brain" icon.
-  Das Pulldown Menu ist dann leer und kann entfernt werden.
-- [x] verschiebe den "Run" Button links neben der Prompt Eingabe auch in die tool bar und plaziere ihn ganz
-  links
+### AI Panel Redesign
+- [x] Move the toolbar in the title down below the prompt input.
+- [x] Implement the two flags in the pulldown menu "Filter Tool Messages" and "Filter Thoughts" as two buttons in the toolbar, each showing only an icon: a "Tool" icon and a "Brain" icon. The pulldown menu will then be empty and can be removed.
+- [x] Move the "Run" button, which is to the left of the prompt input, into the toolbar and place it on the far left.
 
 ### GIT current branch label
-- [x] Erweitere die Editor() Klasse um das Status-Flag "hasGit". Dieses Flag wird in initProjekt
-gesetzt um anzuzeigen, das das aktuelle Project von GIT verwaltet wird.
-Der Check auf vorhandensein von GIT wird nur durchgeführt, wenn ein Projekt gefunden wurde, d.h. wenn
-Editor->projectMode true ist.
+- [x] Extend the Editor() class with the status flag "hasGit". This flag is set in initProjekt to indicate that the current project is managed by GIT. The check for the existence of GIT is only performed if a project has been found, i.e., if Editor->projectMode is true.
 
-- [x] Erweitere die Editor() Klasse um den string "currentBranchName". Wenn in initProjekt() festgestellt wurde,
-das wir ein Projekt gefunden haben welches von GIT verwaltet wird, dann initialisiere den string
-mit dem aktuelle git branch.
+- [x] Extend the Editor() class with the string "currentBranchName". If it was determined in initProjekt() that we have found a project managed by GIT, initialize the string with the current git branch.
 
-- [x] Füge in die Statuszeile des Editor Hauptfensters links neben dem Pfad der aktuellen Datei ein
-Label ein welches "currentBranchName" zeigt.
-Das Label wird nur angezeigt, wenn Editor->projectMode true ist.
+- [x] Add a label to the status bar of the editor main window, to the left of the path of the current file, that shows "currentBranchName". The label is only displayed if Editor->projectMode is true.
 
-### Configuration erweitern
+### Expand Configuration
 
-Erweitere das Konfigurationspanel in qml/ConfigDialog.qml um alle noch nicht behandelten Felder in Model
-configurieren zu können.
-Erstelle auch die Verbindung zu Model im c++ Teil des editors.
+- Expand the configuration panel in qml/ConfigDialog.qml to be able to configure all not yet covered fields in Model.
+- Also, create the connection to Model in the C++ part of the editor.
 
 ### Check Anthropic Implementation
 
-Analysiere im Detail die Implementation der Anthropic Model Integration in
-der Datei src/anthropic.cpp. Suche Fehler und mache Verbesserungsvorschläge.
-Checke auch, ob die Funktionalität der Anthropic API voll abedeckt wird.
+- Analyze the implementation of the Anthropic model integration in the file src/anthropic.cpp in detail. Search for errors and make suggestions for improvement.
+- Also check whether the functionality of the Anthropic API is fully covered.
 
-### Option Pulldown Menü
+### Option Pulldown Menu
 
-Füge rechts neben dem "Build"/"Plan" mode button einen weiteren Button für ein
-Option-Menü ein. Der Button soll drei vertikale punkte oder kurze horizontale
-Striche zeigen.
+- Add another button for an option menu to the right of the "Build"/"Plan" mode button. The button should show three vertical dots or short horizontal dashes.
 
 ### Filter Tool Messages
-Füge in das neue Options-Menü einen Toggle Switch ein, der mit einer neuen Variablen
-bool Model::filterToolMessages verbunden ist. Die Variable soll persistent sein
-und mit Agent::saveStatus() gespeichert und mit Agent::loadStatus() geladen werden.
-D.h. sie ist Teil des Chat Log Files.
+- Add a toggle switch to the new option menu that is connected to a new variable bool Model::filterToolMessages. The variable should be persistent and saved with Agent::saveStatus() and loaded with Agent::loadStatus(). That means it is part of the chat log file.
 
-Wenn filterToolMessages true ist, dann sollen Model Tool Requests sowie die Antwort
-des Agenten an das Model nicht mehr im ChatDisplay angezeigt werden.
+- If filterToolMessages is true, then model tool requests and the agent's response to the model should no longer be displayed in the ChatDisplay.
 
 
 ### Do not truncate chat history:
 
-Currently, the entire history is always transmitted to the AI model.
-To prevent the context from becoming too large, the list is implemented as a "sliding window",
-where old entries are removed after exceeding a limit.
-However, I would like to keep the complete list, save it in the session file,
-and only transmit a maximum of `HistoryManager::maxEntries` entries when preparing the AI context.
+- Currently, the entire history is always transmitted to the AI model.
+- To prevent the context from becoming too large, the list is implemented as a "sliding window",
+  where old entries are removed after exceeding a limit.
+- However, I would like to keep the complete list, save it in the session file,
+  and only transmit a maximum of `HistoryManager::maxEntries` entries when preparing the AI context.
 
-Procedure:
-- Extend `HistoryManager` with an `activeEntries` variable.
-- Write the `activeEntries` variable into the session file.
-- `HistoryManager::trim()` should no longer delete entries but adjust `activeEntries`.
-- Increment `activeEntries` after every `HistoryManager::addRequest(...)` and `History::addResult(...)`.
-- Add a method `getActiveEntries()` to `HistoryManager` that returns the list of active entries (activeEntries) as JSON.
-- In `LLMClient::prompt()` (in all derived classes), replace the call to `historyManager->data()` with the call to `getActiveEntries()`.
+- Procedure:
+  - Extend `HistoryManager` with an `activeEntries` variable.
+  - Write the `activeEntries` variable into the session file.
+  - `HistoryManager::trim()` should no longer delete entries but adjust `activeEntries`.
+  - Increment `activeEntries` after every `HistoryManager::addRequest(...)` and `History::addResult(...)`.
+  - Add a method `getActiveEntries()` to `HistoryManager` that returns the list of active entries (activeEntries) as JSON.
+  - In `LLMClient::prompt()` (in all derived classes), replace the call to `historyManager->data()` with the call to `getActiveEntries()`.
 
 
 ### Optimize session log writing:
 
-Currently, the session log is always completely rewritten. Change the logic so that whenever the session log in `HistoryManager` grows, the new data is only appended to the file.
+- Currently, the session log is always completely rewritten. Change the logic so that whenever the session log in `HistoryManager` grows, the new data is only appended to the file.

@@ -2,159 +2,150 @@
 
 [TOC]
 
-## Übersicht
+## Overview
 
-NPed (Program Editor) ist ein moderner C++23 und Qt6-basierter Texteditor bzw. eine leichtgewichtige IDE.
+NPed (Program Editor) is a modern C++23 and Qt6-based text editor or a lightweight IDE.
 
-Hier ist eine Übersicht der zentralen Funktionen und Architekturmerkmale des Projekts:
+Here is an overview of the project's central functions and architectural features:
 
-#### Kernfunktionen des Editors
-  * Multifile-Verwaltung: Öffnen und Bearbeiten mehrerer Dateien in Tabs (TabBar). Tabs visualisieren den Dateistatus farblich (z. B. rot für modifiziert, blau für schreibgeschützt).
-  * Kontext-Management: Jeder Tab und jede geöffnete Datei wird in einem Kontext verwaltet, der u.a. die Cursor-Position und den Verlauf (History) speichert. Dies ermöglicht einfaches Navigieren (Vor/Zurück) im Code.
-  * Standard-Editing: Undo/Redo-Stack (undo.cpp), Suche & Ersetzen mit Regulären Ausdrücken (search.cpp), Code Folding, sowie zeilen- und spaltenweises Auswählen (Pick/Put).
-  * Syntax-Highlighting & Formatting: Automatisiertes Formatieren und Pretty-Printing des Codes (pretty.cpp).
+#### Core Editor Functions
+  * Multifile Management: Open and edit multiple files in tabs (TabBar). Tabs visualize the file status with colors (e.g., red for modified, blue for read-only).
+  * Context Management: Each tab and open file is managed within a context that saves, among other things, the cursor position and history. This enables easy navigation (forward/backward) in the code.
+  * Standard Editing: Undo/Redo stack (undo.cpp), search & replace with regular expressions (search.cpp), code folding, as well as line- and column-wise selection (Pick/Put).
+  * Syntax Highlighting & Formatting: Automated code formatting and pretty-printing (pretty.cpp).
 
 ### Language Server Protocol (LSP) Integration
 
-Über den eingebauten LSclient kann der Editor mit Sprachservern kommunizieren (z.B. clangd für C/C++). Daraus resultieren fortgeschrittene IDE-Funktionen:
+Via the built-in LSclient, the editor can communicate with language servers (e.g., clangd for C/C++). This results in advanced IDE features:
 
   * Code Navigation: Go to Definition, Go to Type Definition, Go to Implementation.
-  * Autovervollständigung: Request Completions via LSP mit einem grafischen Popup (completion.cpp).
-  * Hover-Informationen: Anzeigen von Typen- oder Dokumentationshinweisen beim Verweilen mit dem Cursor.
-  * Refactoring: Kontextweites Umbenennen von Symbolen (Rename).
+  * Autocompletion: Request completions via LSP with a graphical popup (completion.cpp).
+  * Hover Information: Display type or documentation hints when lingering with the cursor.
+  * Refactoring: Context-wide renaming of symbols (Rename).
 
-### Integrierter KI-Agent
+### Integrated AI Agent
 
-Das wohl herausstechendste Merkmal ist die enge Integration eines KI-Agenten, der aktiv in die Entwicklung eingreifen kann:
+Arguably the most striking feature is the tight integration of an AI agent that can actively intervene in development:
 
-  * Modell-Unterstützung: Kompatibel mit lokalen Modellen (via Ollama) sowie Cloud-Modellen (Gemini, Anthropic).
-  * Werkzeuge (Tool-Calling): Der Agent hat direkten Lese- und Schreibzugriff auf das Projekt. Er kann Dateien lesen, ändern und erstellen (handleReadFile, handleModifyFile), Verzeichnisse auflisten, oder das Projekt nach Texten und Symbolen durchsuchen (handleSearchProject, handleFindSymbol).
-  * Projekt-Builds: Der Agent kann Build-Kommandos im Projekt ausführen (runBuildCommand), um z. B. CMake oder Make anzustoßen.
-  * Web-Recherche: Der Agent kann gezielt Web-Dokumentationen abrufen (fetchWebDocumentation).
+  * Model Support: Compatible with local models (via Ollama) as well as cloud models (Gemini, Anthropic).
+  * Tools (Tool-Calling): The agent has direct read and write access to the project. It can read, modify, and create files (handleReadFile, handleModifyFile), list directories, or search the project for texts and symbols (handleSearchProject, handleFindSymbol).
+  * Project Builds: The agent can execute build commands in the project (runBuildCommand) to trigger CMake or Make, for example.
+  * Web Research: The agent can retrieve web documentation (fetchWebDocumentation).
 
-### Git-Integration
-Der Editor hat native Git-Unterstützung integriert (basierend auf libgit2 in git.cpp):
+### Git Integration
+The editor has native Git support integrated (based on libgit2 in git.cpp):
 
-  * Abrufen von Git-Status, Diffs und Logs.
-  * Grafisches Git-Panel und Git-History-Ansicht im Editorfenster.
-  * Der KI-Agent selbst kann automatisiert Commits erstellen (createGitCommit), sobald er Aufgaben erledigt hat.
+  * Retrieving Git status, diffs, and logs.
+  * Graphical Git panel and Git history view in the editor window.
+  * The AI agent itself can automatically create commits (createGitCommit) once it has completed tasks.
 
-### Architektur und Technik
-  * C++23 & CMake: Modernes C++ gepaart mit einem CMake-Buildsystem.
-  * Qt6: Verwendet für die grafische Benutzeroberfläche (Widgets, Splitter, Menüs). Styling erfolgt auch über Qt Stylesheets (style.qss).
-  * Bibliotheken: Nutzt nlohmann::json stark für das Parsen und Erzeugen von LSP-Nachrichten, LLM-Prompts/Tool-Calls und das Speichern von Settings/Sitzungen.
+### Architecture and Technology
+  * C++23 & CMake: Modern C++ paired with a CMake build system.
+  * Qt6: Used for the graphical user interface (widgets, splitters, menus). Styling is also done via Qt Stylesheets (style.qss).
+  * Libraries: Heavily uses nlohmann::json for parsing and creating LSP messages, LLM prompts/tool calls, and saving settings/sessions.
 
-Zusammenfassend ist nped also ein intelligenter Code-Editor, der LSP für präzise statische Code-Analyse mit LLM-basierten KI-Agenten kombiniert, um Entwicklungsaufgaben zu automatisieren.
-NPed ist ein Source-Code Editor mit speziellen Features für C und C++.
-Wer bevorzugt auf der Kommandozeile arbeitet, für den ist Ped so eine Art Mini-IDE.
+In summary, nped is an intelligent code editor that combines LSP for precise static code analysis with LLM-based AI agents to automate development tasks.
+NPed is a source code editor with special features for C and C++.
+For those who prefer working on the command line, Ped is a kind of mini-IDE.
 
-### Bedien-Konzept
+### Operation Concept
 
-Das Bedienkonzept von **nped** orientiert sich stark an der Effizienz für Vielschreiber
-und Entwickler, die bevorzugt ohne Mauseinsatz programmieren. Es ist als eine
-Art "Mini-IDE für die Kommandozeile, aber mit GUI" konzipiert.
+The operation concept of **nped** is strongly oriented towards efficiency for prolific writers and developers who prefer to program without using a mouse. It is designed as a kind of "mini-IDE for the command line, but with a GUI".
 
-Hier sind die wesentlichen Aspekte des Bedienkonzepts:
+Here are the essential aspects of the operation concept:
 
-#### Tastaturzentriert ("Blindes Editieren")
-* **Kein Mauszwang:** Nahezu alle Funktionen werden über Tastaturkürzel aufgerufen. Du sollst deine Hände nicht von der Tastatur nehmen müssen.
-* **Zehnfingersystem empfohlen:** Das Konzept ist nicht optimal für das \"Zwei-Finger-Suchsystem\", da die Befehle blind und schnell ausgeführt werden sollen.
-* **Keine überladenen Menüs:** Die verfügbaren Befehle sind im Programm nicht prominent als Schaltflächen sichtbar. Das Erlernen der Shortcuts über eine Referenzkarte oder das Manual ist notwendig.
+#### Keyboard-centric ("Blind Editing")
+* **No mouse dependency:** Almost all functions are called via keyboard shortcuts. You shouldn't have to take your hands off the keyboard.
+* **Ten-finger system recommended:** The concept is not optimal for the "two-finger hunt-and-peck system," as the commands are meant to be executed blindly and quickly.
+* **No cluttered menus:** The available commands are not prominently visible as buttons in the program. Learning the shortcuts via a reference card or the manual is necessary.
 
-#### Das Befehlssystem (Command Entry)
-Funktionen, die Parameter benötigen (wie das Öffnen einer Datei oder Suchen/Ersetzen), folgen einem speziellen Workflow:
+#### The Command System (Command Entry)
+Functions that require parameters (such as opening a file or search/replace) follow a special workflow:
 
-1. **`<Escape>`** drücken: Dadurch öffnet sich am unteren Bildschirmrand (in der Statuszeile) ein Eingabefeld.
-2. **Text eingeben:** Du tippst das Argument ein (z. B. den Suchbegriff oder den Dateinamen).
-3. **Kommando-Taste drücken:** Anstatt Enter zu drücken, beendest du die Eingabe mit dem Shortcut der gewünschten Funktion. Wenn du z. B. nach dem eingegebenen Text suchen willst, drückst du `<F7>`.
+1. **Press `<Escape>`:** This opens an input field at the bottom of the screen (in the status bar).
+2. **Enter text:** You type the argument (e.g., the search term or file name).
+3. **Press command key:** Instead of pressing Enter, you finish the input with the shortcut for the desired function. If you want to search for the entered text, for example, press `<F7>`.
 
-#### Cursor-Steuerung (WordStar/Turbo-Pascal-Stil)
-Die Cursor-Bewegungen orientieren sich an einem klassischen Block-Konzept um die Tasten `S, E, D, X`
-(der "Cursor-Block"), wobei `Ctrl` als Modifikator und `Ctrl+Q` als Verstärker (Prefix) genutzt wird.
-Dieses Layout ist stark an Editoren wie *WordStar* oder dem alten *Turbo Pascal / Borland* Editor angelehnt.
+#### Cursor Control (WordStar/Turbo-Pascal style)
+Cursor movements are based on a classic block concept around the keys `S, E, D, X`
+(the "cursor block"), using `Ctrl` as a modifier and `Ctrl+Q` as an enhancer (prefix).
+This layout is strongly based on editors like *WordStar* or the old *Turbo Pascal / Borland* editor.
 
-* **Einzelne Schritte:**
-  * <kbd>Ctrl+S</kbd>: Zeichen links
-  * `Ctrl+D`: Zeichen rechts
-  * `Ctrl+E`: Zeile hoch
-  * `Ctrl+X`: Zeile tief
-* **Wort-/Seitenweise:**
-  * `Ctrl+A`: Wort links
-  * `Ctrl+F`: Wort rechts
-  * `Ctrl+R`: Seite hoch
-  * `Ctrl+C`: Seite tief
+* **Single steps:**
+  * <kbd>Ctrl+S</kbd>: Char left
+  * `Ctrl+D`: Char right
+  * `Ctrl+E`: Line up
+  * `Ctrl+X`: Line down
+* **Word/Page based:**
+  * `Ctrl+A`: Word left
+  * `Ctrl+F`: Word right
+  * `Ctrl+R`: Page up
+  * `Ctrl+C`: Page down
 
-* **Sprünge (mit `Ctrl+Q` als Prefix):**
-  * `Ctrl+Q, Ctrl+S`: Zeilenanfang
-  * `Ctrl+Q, Ctrl+D`: Zeilenende
-  * `Ctrl+Q, Ctrl+E`: Seitenanfang
-  * `Ctrl+Q, Ctrl+X`: Seitenende
-  * `Ctrl+Q, Ctrl+R`: Textanfang
-  * `Ctrl+Q, Ctrl+C`: Textende
+* **Jumps (with `Ctrl+Q` as prefix):**
+  * `Ctrl+Q, Ctrl+S`: Line start
+  * `Ctrl+Q, Ctrl+D`: Line end
+  * `Ctrl+Q, Ctrl+E`: Page start
+  * `Ctrl+Q, Ctrl+X`: Page end
+  * `Ctrl+Q, Ctrl+R`: Text start
+  * `Ctrl+Q, Ctrl+C`: Text end
 
-#### Code-spezifische Formatierungsregeln (Auto-Clean)
-Der Editor erzwingt bestimmte Formatierungen automatisch, um sauberen Code zu gewährleisten:
+#### Code-specific formatting rules (Auto-Clean)
+The editor automatically enforces certain formatting to ensure clean code:
 
-* Leerzeichen (Trailing Spaces) am Ende einer Zeile werden automatisch entfernt.
-* Leerzeilen am Ende einer Datei werden gelöscht.
-* Die letzte Zeile wird **immer** mit einem Zeilenumbruch (`\\n`) abgeschlossen.
-* Es können keine komplett leeren Dateien gespeichert werden; sie werden beim Sichern ignoriert.
+* Trailing spaces at the end of a line are automatically removed.
+* Empty lines at the end of a file are deleted.
+* The last line is **always** terminated with a line break (`\n`).
+* Completely empty files cannot be saved; they are ignored during saving.
 
-#### IDE-Features über Shortcuts
-Da nped als Mini-IDE fungiert, sind LSP-Funktionen ebenfalls auf Tasten gelegt (oft im Zusammenspiel mit
-dem Command Entry).
-Zum Beispiel das Formatieren der aktuellen Datei geschieht über die Kombination `Ctrl+O, Ctrl+F`.
+#### IDE Features via Shortcuts
+Since nped functions as a mini-IDE, LSP features are also mapped to keys (often in conjunction with the Command Entry).
+For example, formatting the current file is done via the combination `Ctrl+O, Ctrl+F`.
 
-Zusammenfassend richtet sich nped an Entwickler, die eine puristische, hochgradig tastaturgesteuerte
-Umgebung suchen, die klassischen Editor-Flow mit modernen C++ Language Server-Funktionen verbindet.
+In summary, nped is aimed at developers looking for a purist, highly keyboard-driven environment that combines classic editor flow with modern C++ Language Server functions.
 
 ## IDE - Features
 
-Ein "Projekt" ist ein Verzeichnis, welches eine CMakeLists.txt Datei enthält. Der Editor
-kann auch in einem Projekt Unterverzeichnis gestartet werden.
+A "project" is a directory containing a CMakeLists.txt file. The editor can also be started in a project subdirectory.
 
-Für Informationen über das gesamte Projekt kontaktiert Ped einen Languageserver. Für c++ wird dazu der clangd
-Languageserver gestartet.
-Der LS parst den aktuellen Quellcode und benötigt dazu die gleiche Umgebung wie beim späteren Compilerlauf damit
-er z.B. alle Headerdateien findet. Dazu muss man CMake anweisen, eine Datei ``compile_commands.json`` zu erzeugen die
-genau diese Informationen enthält.
+For information about the entire project, Ped contacts a language server. For C++, the clangd language server is started.
+The LS parses the current source code and requires the same environment as the later compiler run so that it, for example, finds all header files. To do this, one must instruct CMake to generate a `compile_commands.json` file that contains exactly this information.
 
-CMake wird dazu wie folgt aufgerufen:
+CMake is called for this as follows:
 
     cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -G Ninja
 
-Cmake schreibt dann die "compile_commands.json" ins build-Verzeichnis "build".
-Wird Ped innerhalb des Projektverzeichnisses oder eines Projekt Unterverzeichnis gestartet, findet der clangd
-LS alles weitere automatisch.
+CMake then writes the "compile_commands.json" to the build directory "build".
+If Ped is started within the project directory or a project subdirectory, the clangd LS automatically finds everything else.
 
-### **Globale Kommandos**
+### **Global Commands**
 
-      [F1]                Sichert geänderte Dateien und Beendet den Editor.
-      [Shift+F1]          Sichert
-      [Ctrl+K, Ctrl+Q]    Beendet den Editor **ohne** geänderte Dateien zurückzuschreiben.
-      [Escape]            "Enter" Kommando: öffnet Eingabefenster auf der Statuszeile zur Eingabe von Parmetern
-      [Enter <name> F3]   öffnet Datei `name` in neuem Kontextfenster
+      [F1]                Saves modified files and exits the editor.
+      [Shift+F1]          Saves
+      [Ctrl+K, Ctrl+Q]    Exits the editor **without** saving modified files.
+      [Escape]            "Enter" command: opens input window on the status bar to enter parameters
+      [Enter <name> F3]   opens file `name` in a new context window
 
 
-### **Cursor Kommandos**
+### **Cursor Commands**
 
-      [Ctrl+D oder Cursor-Rechts]  CMD_CHAR_RIGHT
-      [Ctrl+S oder `Cursor-Links]  CMD_CHAR_LEFT
-      [Up;    Ctrl+E]              CMD_LINE_UP
-      [Down;  Ctrl+X]              CMD_LINE_DOWN
-      [Ctrl+Q,  Ctrl+S]            CMD_LINE_START
-      [Ctrl+Q,  Ctrl+D]            CMD_LINE_END
-      [Ctrl+Q,  Ctrl+E]            CMD_LINE_TOP
-      [Ctrl+Q,  Ctrl+X]            CMD_LINE_BOTTOM
-      [Ctrl+R;  PageUp]            CMD_PAGE_UP
-      [Ctrl+C;  PageDown]          CMD_PAGE_DOWN
-      [Ctrl+Q,  Ctrl+R]            CMD_FILE_BEGIN
-      [Ctrl+Q,  Ctrl+C]            CMD_FILE_END
-      [Ctrl+A]                     CMD_WORD_LEFT
-      [Ctrl+F]                     CMD_WORD_RIGHT
-      [Enter <nn> Ctrl+G]          gehe nach Zeile nn
+      [Ctrl+D or Cursor-Right]  CMD_CHAR_RIGHT
+      [Ctrl+S or Cursor-Left]   CMD_CHAR_LEFT
+      [Up;    Ctrl+E]           CMD_LINE_UP
+      [Down;  Ctrl+X]           CMD_LINE_DOWN
+      [Ctrl+Q,  Ctrl+S]         CMD_LINE_START
+      [Ctrl+Q,  Ctrl+D]         CMD_LINE_END
+      [Ctrl+Q,  Ctrl+E]         CMD_LINE_TOP
+      [Ctrl+Q,  Ctrl+X]         CMD_LINE_BOTTOM
+      [Ctrl+R;  PageUp]         CMD_PAGE_UP
+      [Ctrl+C;  PageDown]       CMD_PAGE_DOWN
+      [Ctrl+Q,  Ctrl+R]         CMD_FILE_BEGIN
+      [Ctrl+Q,  Ctrl+C]         CMD_FILE_END
+      [Ctrl+A]                  CMD_WORD_LEFT
+      [Ctrl+F]                  CMD_WORD_RIGHT
+      [Enter <nn> Ctrl+G]       go to line nn
 
-### **Text verändern**
+### **Modify Text**
 
       [Ctrl+Z]                     CMD_UNDO
       [Shift+Ctrl+Z]               CMD_REDO
@@ -168,7 +159,7 @@ LS alles weitere automatisch.
       [Ctrl+T]                     CMD_DELETE_WORD
 
 
-### **Datei Kommandos**
+### **File Commands**
 
       [Ctrl+K,  Ctrl+S]            CMD_SAVE
       [Ctrl+K,  Ctrl+K; F4]        CMD_KONTEXT_COPY
@@ -182,49 +173,42 @@ LS alles weitere automatisch.
       [Ctrl+O,  Ctrl+W]            CMD_ENTER_WORD
 
 
-### **Suchen/Ersetzen**
+### **Search/Replace**
 
-      [Enter <text> F7]               suche nach `text`
-      [Enter <suchen>/<ersetzen> F7]  suche `suchen` und ersetze durch `ersetzen`
-      [F7]                            vorwärts weitersuchen
-      [SHIFT+F7]                      rückwärts weitersuchen
-      [Ctrl+O, Ctrl+R]                projektweites umbenennen über den Language Server
+      [Enter <text> F7]               search for `text`
+      [Enter <search>/<replace> F7]   search `search` and replace with `replace`
+      [F7]                            search forward
+      [SHIFT+F7]                      search backward
+      [Ctrl+O, Ctrl+R]                project-wide rename via the language server
 
 ### **Copy/Cut Paste**
-#### Selektions Modi
+#### Selection Modes
 
-NPed unterstützt drei Arten von Selektionen:
+      [F5]              CMD_SELECT_ROW    selects rows
+      [F6]              CMD_SELECT_COL    selects columns
+      [Ctrl + F5]       CMD_SELECT_CHAR   selects all characters between a start and end marker
 
-      [F5]              CMD_SELECT_ROW    selektiert Zeilen
-      [F6]              CMD_SELECT_COL    selektiert Spalten
-      [Ctrl + F5]       CMD_SELECT_CHAR   selektiert alle Zeichen zwischen einer Start und Endmarke
+#### Selection Functions
 
-#### Selektions Funktionen
+      [F8]              CMD_PICK          Copies the selection (Copy) or the current line
+                                          if the selection is empty (Pick) into the Copy Buffer.
+      [Ctrl + Y]        CMD_DELETE_LINE   Copies the selection or the current line
+                                          if the selection is empty into the Copy Buffer and then deletes it.
+      [F9]              CMD_PUT           Inserts the Copy Buffer (Paste/Put) at the current
+                                          cursor position.
+      [MMT]             Paste             Copies the content of the system clipboard to the
+                                          cursor position.
 
-      [F8]              CMD_PICK          Kopiert die Selektion (Copy) oder die aktuelle Zeile
-                                          bei leerer Selektion (Pick) in den Copy Buffer.
-      [Ctrl + Y]        CMD_DELETE_LINE   Kopiert die Selektion oder die aktuelle Zeile
-                                          bei leerer Selektion in den Copy Buffer und löscht sie dann.
-      [F9]              CMD_PUT           Insertiert den Copy Buffer (Paste/Put) an die aktuelle
-                                          Cursor Position.
-      [MMT]             Paste             Kopiert den Inhalt des System Clipboards an die
-                                          Cursor Position.
-
-### **IDE Kommandos**
+### **IDE Commands**
 
       [Ctrl+K,  Ctrl+M]             CMD_SHOW_LEVEL
 
-#### **``Ctrl+O,  Ctrl+F``** Formatiert eine Datei
-Das Format Kommando wird zum Language Server geschickt. Es muss ein LS für den aktuellen Filetyp
-konfiguriert und verfügbar sein und er muss das Format Kommando unterstützen. Für C/C++ funktioniert
-das mit dem clangd LanguageServer prima.
+#### **``Ctrl+O,  Ctrl+F``** Formats a file
+The format command is sent to the language server. An LS must be configured and available for the current file type and it must support the format command. For C/C++, this works great with the clangd LanguageServer.
 
-#### **``Ctrl+V``** Schaltet auf eine andere Ansicht der aktuellen Datei.
-Für Markdown- sowie Html-Dateien
-wird von der editierbaren Textdarstellung auf eine gerenderte 'nur lesen' Darstellung umgeschaltet.
-<p>Für C/C++ Dateien wird
-eine Liste von Funktions- bzw. Methodennamen gezeigt. Du kannst den Cursor auf eine Funktion positionieren und wieder in
-die Textdarstellung zurückschalten um blitzschnell zu dieser Funktion zu navigieren.
+#### **``Ctrl+V``** Switches to another view of the current file.
+For Markdown and HTML files, it switches from the editable text representation to a rendered 'read-only' representation.
+For C/C++ files, a list of function or method names is shown. You can position the cursor on a function and switch back to the text representation to navigate to this function in a flash.
 
       [Ctrl+B]                      CMD_VIEW_BUGS
       [F10]                         CMD_GOTO_TYPE_DEFINITION
@@ -239,77 +223,66 @@ die Textdarstellung zurückschalten um blitzschnell zu dieser Funktion zu navigi
       [Ctrl+O, Ctrl+G]              CMD_GIT_TOGGLE
       [Ctrl+F12]                    CMD_GOTO_BACK
       [Ctrl+H]                      CMD_SHOW_INFO
-      [Enter <name> Ctrl+F]         Erzeugt leere c++ Funktion mit Namen `name`
+      [Enter <name> Ctrl+F]         Creates empty C++ function named `name`
 
 
 ## Code Expander
 
-Der Code Expander ist ein experimentelles Feature in NPed, um C++ Code via Python script zu erzeugen.
-Die Python Scripte sind als C Kommentare getarnt und werden beim Schreiben der Sourcedatei ausgeführt.
-Python Output wird dabei hinter dem Script in die Datei eingefügt.
+The Code Expander is an experimental feature in NPed to generate C++ code via Python script.
+The Python scripts are disguised as C comments and are executed when writing the source file.
+Python output is then inserted into the file after the script.
 
-Dies bedeutet:
+This means:
 
-* Es ist kein separater Präprozessor notwendig, der Quellcode wird "in place" geändert
-* Keine Anpassung für das Build-System
-* Leicht zu debuggen, da sowohl die Python Scripte als auch deren Output direkt sichtbar sind
-* die expandierten Dateien sind normaler c++ code und das projekt kann auch ohne diese Ped-Features
-weiter bearbeitet werden
+* No separate preprocessor is necessary; source code is changed "in place"
+* No adaptation for the build system
+* Easy to debug, as both the Python scripts and their output are directly visible
+* The expanded files are normal C++ code and the project can be edited without these Ped features as well.
 
-Nachteile:
+Disadvantages:
 
-* Werden ausserhalb der Ped-Umgebung die generierten Code-Teile verändert, sollten auch die
-  Scripte angepasst werden. Ansonsten gehen Änderungen verloren, wenn Code neu vom Script generiert wird.
+* If the generated code parts are changed outside the Ped environment, the scripts should also be adapted. Otherwise, changes will be lost when code is re-generated by the script.
 
-Normalerweise zeigt Ped den generierten Teil auch an, was für Debug-Zwecke nützlich ist.
-Für eine bessere Übersichtlichkeit kann der generierte Text auch einfach beim Lesen der Datei
-übersprungen werden. Ein Kommentar in der ersten Zeile der Datei mit dem Text "//##H" schaltet
-dieses Verhalten ein.
+Normally, Ped also shows the generated part, which is useful for debugging purposes.
+For better clarity, the generated text can also simply be skipped when reading the file. A comment in the first line of the file with the text "//##H" turns on this behavior.
 
 ## AI Agent
 ### Model
 
-LLM Modelle müssen konfiguriert werden und erscheinen dann im AI Panel Pulldown Menü "Models".
-Läuft auf dem Rechner ein Ollama-Server dann werden die verfügbaren Ollama-Modelle
-automatisch ermittelt und dem Pulldown Menü hinzugefügt.
+LLM models must be configured and then appear in the AI Panel pulldown menu "Models".
+If an Ollama server is running on the computer, the available Ollama models are determined automatically and added to the pulldown menu.
 
-Unterstützt werden Modell von Google (Gemini), Anthropic (Claude) und Ollama.
-Ollama ist besonders interessant, da darüber lokale Modelle genutzt werden können.
-Ollama wird z.B. festverdrahtet über die Url http://localhost:11434 angesprochen.
+Models from Google (Gemini), Anthropic (Claude), and Ollama are supported.
+Ollama is particularly interesting as local models can be used through it.
+Ollama, for example, is hard-wired via the URL http://localhost:11434.
 
-Reasoning wird bei geeigneten Modellen unterstützt.
+Reasoning is supported for suitable models.
 
 ### Session
 
-Sessions werden automatisch auf Platte gespeichert. Es können neue Sessions angelegt und
-bestehende Sessions gelöscht werden. Über das Session Pulldown Menü im AI Panel kann
-zwischen Sessions umgeschaltet werden.
-Eine Session ist immer mit einem AI-Modell verbunden. Beim Umschalten eines Modells wird
-immer das zugehörige Modell ausgewählt. Wird das Modell gewechselt, wird die aktuelle
-Session gesichert und eine neue Session für dieses Modell angelegt.
+Sessions are automatically saved to disk. New sessions can be created and existing sessions deleted. You can switch between sessions via the Session pulldown menu in the AI Panel.
+A session is always connected to an AI model. When switching a model, the corresponding model is always selected. If the model is changed, the current session is saved and a new session for this model is created.
 
 ### Build/Plan Mode
 
-Im "Plan" Modus hat das AI-Modell nur Leserechte im System. Im "Build" Modus kann das AI-Modell
-im und unterhalb des Projektverzeichnisses auch Dateien erstellen/löschen und verändern.
+In "Plan" mode, the AI model only has read access to the system. In "Build" mode, the AI model can also create/delete and modify files in and below the project directory.
 
-Wenn NPed nicht in einem Projekt gestartet wurde, dann kann der "Build" Modus nicht eingeschaltet
-werden.
+If NPed was not started in a project, the "Build" mode cannot be switched on.
 
 ## Installation
 ### Font
-      Es gibt verschiedene Fonts, die sich speziell zum Programmieren eignen:
+      There are various fonts that are particularly suitable for programming:
 
 - Fira Code
-Das Konzept hinter Fira Code ist einfach: Die monospaced Schriftart wurde entwickelt, um häufig verwendete Zeichenfolgen zu einer einzigen zusammenzufassen und so die Zeit zu verkürzen, die du brauchst, um deinen Code zu überfliegen und das Gesuchte zu finden.
+The concept behind Fira Code is simple: the monospaced font was developed to combine frequently used character sequences into a single one, thus reducing the time you need to skim your code and find what you're looking for.
 
-So wird z. B. aus dem Gleichheitszeichen (!=) ein Gleichheitszeichen mit einem Schrägstrich, die öffnenden und schließenden Symbole in HTML (</) sind enger beieinander und so weiter. Diese Ligaturen gibt es für viele Programmiersprachen.
+For example, the equals sign (!=) becomes an equals sign with a slash, the opening and closing symbols in HTML (</) are closer together, and so on. These ligatures exist for many programming languages.
 
-Dabei werden die zugrunde liegenden Zeichen selbst nicht verändert, so dass es keine Auswirkungen auf deinen Code hat. Es macht ihn nur einfacher zu lesen! Es gibt auch einige Zeichenvarianten, damit du die Schriftart nach deinen Wünschen anpassen kannst.
+The underlying characters themselves are not changed, so it has no effect on your code. It just makes it easier to read! There are also some character variants so that you can customize the font to your liking.
 
-Fira Code wird von den meisten Browsern unterstützt und du kannst dir in den Code-Beispielen ansehen, wie er in der Praxis aussieht.
+Fira Code is supported by most browsers and you can take a look at the code examples to see how it looks in practice.
 
-- Proggy-Schriften
+- Proggy fonts
 - DejaVu Sans Mono
 - Source code Pro
 - Dina
@@ -322,28 +295,27 @@ Fira Code wird von den meisten Browsern unterstützt und du kannst dir in den Co
 - Ubuntu Mono
 - Consolas
 
-Nped kann nur Schriften verwenden, die nichtproportional (Monospace) sind.
+Nped can only use fonts that are non-proportional (Monospace).
 
 ### Language Server
 
-Für die "C" Sprachfamilie: c, c++
+For the "C" language family: c, c++
 
       sudo apt install clangd
 
 ### Core Dumps
 
-Ein normales Kubuntu Linux erzeugt keine Core-Dumps. Core Dumps sind für das Testen und Debuggen
-von Programmen essentiell.
+A normal Kubuntu Linux does not generate core dumps. Core dumps are essential for testing and debugging programs.
 
-Um auf Ubuntu/Kubuntu Core-Dumps zu ermöglichen sind musst du:
+To enable core dumps on Ubuntu/Kubuntu you must:
 
-- Apport abschalten
+- Turn off Apport
 
       sudo nano /etc/default/apport
 
-ändere "enabled=1" nach "enabled=0"
+change "enabled=1" to "enabled=0"
 
-dann:
+then:
 
       sudo systemctl stop apport.service
       sudo systemctl disable apport.service

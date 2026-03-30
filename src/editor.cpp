@@ -772,6 +772,7 @@ void Editor::updateViewMode() {
                   if (_stack->currentIndex() != 0)
                         _stack->setCurrentIndex(0);
                   _editWidget->setFocus();
+                  vScroll->setVisible(true);
                   break;
 
             case ViewMode::WebView: {
@@ -785,6 +786,7 @@ void Editor::updateViewMode() {
                         _mdWidget->setHtml(kontext()->file()->plainText());
                   else if (lid == "image")
                         _mdWidget->load(QUrl::fromLocalFile(kontext()->file()->path()));
+                  vScroll->setVisible(false);   // mdWidget has its own scroll bar
                   } break;
 
                   //            case ViewMode::Functions:
