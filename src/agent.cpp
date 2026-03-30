@@ -62,23 +62,21 @@
 using json = nlohmann::json;
 
 // Default manifests
-static const std::string manifestBuildDefault =
-    "You are an experienced C++ developer. "
-    "Your task is to analyze and write code in the project and to fix build errors.\n\n"
-    "Use modern c++. Prefer object oriented design and use modern design patterns.\n"
-    "Answer exclusively in JSON format when you call a tool:\n"
-    "Never add files to git.\n"
-    "PROJECT STRUCTURE:\n"
-    "Standard Qt6 layout. The build directory is './build'. Use CMake with ninja.\n"
-    "Use the run_build_command tool to compile the project and check if errors occur. ";
+static const std::string manifestBuildDefault = "You are an experienced C++ developer. "
+                                                "Your task is to analyze and write code in the project and to fix build errors.\n\n"
+                                                "Use modern c++. Prefer object oriented design and use modern design patterns.\n"
+                                                "Answer exclusively in JSON format when you call a tool:\n"
+                                                "Never add files to git.\n"
+                                                "PROJECT STRUCTURE:\n"
+                                                "Standard Qt6 layout. The build directory is './build'. Use CMake with ninja.\n"
+                                                "Use the run_build_command tool to compile the project and check if errors occur. ";
 
-static const std::string manifestPlanDefault =
-    "You are an experienced C++ developer acting as a system architect. "
-    "Your task is to analyze the project, read code, and create an implementation plan.\n\n"
-    "You are currently in PLAN MODE. This means you have read-only access. "
-    "You can search and read files, but you cannot write files or execute build commands.\n"
-    "Answer exclusively in JSON format when you call a tool.\n"
-    "Focus on deeply understanding the problem and propose a detailed step-by-step solution. ";
+static const std::string manifestPlanDefault = "You are an experienced C++ developer acting as a system architect. "
+                                               "Your task is to analyze the project, read code, and create an implementation plan.\n\n"
+                                               "You are currently in PLAN MODE. This means you have read-only access. "
+                                               "You can search and read files, but you cannot write files or execute build commands.\n"
+                                               "Answer exclusively in JSON format when you call a tool.\n"
+                                               "Focus on deeply understanding the problem and propose a detailed step-by-step solution. ";
 
 //---------------------------------------------------------
 //   Agent (Constructor)
@@ -123,7 +121,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       connect(modelMenu, &QComboBox::activated, [this](int index) { setCurrentModel(_editor->models()[index].name); });
 
       sessionComboBox = new QComboBox(this);
-      sessionComboBox->setMinimumWidth(230);
+      sessionComboBox->setMinimumWidth(250);
       connect(sessionComboBox, &QComboBox::activated, this, &Agent::onSessionSelected);
 
       newSessionButton = new QToolButton(this);
@@ -141,6 +139,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       renameSessionButton->setToolTip("Rename Session");
       connect(renameSessionButton, &QToolButton::clicked, this, &Agent::renameCurrentSession);
 
+
       modeButton = new QToolButton(this);
       modeButton->setCheckable(true);
       if (!_editor->projectMode()) {
@@ -152,9 +151,9 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       modeButton->setText(_isExecuteMode ? "Build" : "Plan");
       modeButton->setProperty("class", _isExecuteMode ? "errorButton" : "actionButton");
 
-
       dashboard->addWidget(statusLabel);
       dashboard->addWidget(modeButton, 0);
+      dashboard->addStretch(0);
       dashboard->addWidget(renameSessionButton, 0);
       dashboard->addWidget(deleteSessionButton, 0);
       dashboard->addWidget(newSessionButton, 0);
@@ -209,7 +208,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
 
       // Screenshot button
       screenshotButton = new QToolButton(this);
-      connect(_editor, &Editor::fontChanged, [this] (QFont f) { screenshotButton->setFont(f); });
+      connect(_editor, &Editor::fontChanged, [this](QFont f) { screenshotButton->setFont(f); });
       screenshotButton->setToolTip("Take Screenshot and attach to next prompt");
       screenshotButton->setCheckable(true);
       screenshotButton->setChecked(false);
@@ -236,9 +235,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       // Initialize token count
       dashboard->setTokenCount(historyManager->totalTokens);
       // Connect token updates
-      connect(historyManager, &HistoryManager::tokensChanged, [this](size_t tokens) {
-            dashboard->setTokenCount(tokens);
-      });
+      connect(historyManager, &HistoryManager::tokensChanged, [this](size_t tokens) { dashboard->setTokenCount(tokens); });
 
       connect(_editor, &Editor::darkModeChanged, [this]() {
             showThoughtsAction->setIcon(QIcon(_editor->darkMode() ? ":images/thinking-dark.svg" : ":images/thinking.svg"));
@@ -251,7 +248,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       chatDisplay->setZoomFactor(1.2);
       chatDisplay->setDarkMode(_editor->darkMode());
       chatDisplay->setup();
-      mainLayout->addWidget(chatDisplay->widget(), 1);   // stretch=1: nimmt den gesamten verbleibenden Platz
+      mainLayout->addWidget(chatDisplay->widget(), 1); // stretch=1: nimmt den gesamten verbleibenden Platz
       connect(_editor, &Editor::darkModeChanged, chatDisplay, &ChatDisplay::setDarkMode);
 
       // 3b. Prompt input field (zuerst anlegen, damit die Höhe bekannt ist)
@@ -269,7 +266,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       // 3a. Schmales vertikales Icon-Panel rechts neben dem Prompt-Eingabefeld
       dataPanel = new QWidget(this);
       dataPanel->setFixedWidth(48);
-      dataPanel->setFixedHeight(inputHeight);            // exakt so hoch wie das Eingabefeld
+      dataPanel->setFixedHeight(inputHeight); // exakt so hoch wie das Eingabefeld
       QVBoxLayout* dataPanelLayout = new QVBoxLayout(dataPanel);
       dataPanelLayout->setContentsMargins(2, 2, 2, 2);
       dataPanelLayout->setSpacing(4);
@@ -277,8 +274,8 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
 
       // 3a. Schmales vertikales Icon-Panel links neben dem Prompt-Eingabefeld
       buttonPanel = new QWidget(this);
-//      buttonPanel->setFixedWidth(28);
-      buttonPanel->setFixedHeight(inputHeight);            // exakt so hoch wie das Eingabefeld
+      //      buttonPanel->setFixedWidth(28);
+      buttonPanel->setFixedHeight(inputHeight); // exakt so hoch wie das Eingabefeld
       QVBoxLayout* buttonPanelLayout = new QVBoxLayout(buttonPanel);
       buttonPanelLayout->setContentsMargins(2, 2, 2, 2);
       buttonPanelLayout->setSpacing(4);
@@ -290,7 +287,10 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       summaryButton->setToolTip("Summarize conversation");
       connect(summaryButton, &QToolButton::clicked, [this] {
             historyManager->summaryRequested = true;
-            QString prompt = "Please provide a concise technical summary of our conversation so far. Focus specifically on the results obtained from the tool calls and the final conclusions reached. Discard the raw, voluminous data output from the tools, but retain the key facts, parameters used, and the current state of the task. This summary will serve as the new starting point for our context, so ensure no critical logical step is lost.";
+            QString prompt = "Please provide a concise technical summary of our conversation so far. Focus specifically on the results "
+                             "obtained from the tool calls and the final conclusions reached. Discard the raw, voluminous data output from "
+                             "the tools, but retain the key facts, parameters used, and the current state of the task. This summary will "
+                             "serve as the new starting point for our context, so ensure no critical logical step is lost.";
             sendMessage(prompt);
             });
       buttonPanelLayout->addWidget(summaryButton);
@@ -309,7 +309,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
 
       // 3c. Widgets in einer horizontalen Zeile kombinieren
       QWidget* inputRow = new QWidget(this);
-      inputRow->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);  // kein vertikales Wachstum
+      inputRow->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed); // kein vertikales Wachstum
       QHBoxLayout* inputRowLayout = new QHBoxLayout(inputRow);
       inputRowLayout->setContentsMargins(0, 0, 0, 0);
       inputRowLayout->setSpacing(2);
@@ -317,7 +317,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       inputRowLayout->addWidget(userInput);
       inputRowLayout->addWidget(dataPanel);
 
-      mainLayout->addWidget(inputRow);                   // kein Stretch: nimmt nur den nötigen Platz
+      mainLayout->addWidget(inputRow); // kein Stretch: nimmt nur den nötigen Platz
 
       // Toolbar placed below the prompt input
       // mainLayout->addWidget(toolBar);
@@ -381,7 +381,7 @@ void Agent::setCurrentModel(const QString& s, bool clearChat) {
             if (m.name == s) {
                   pendingModelName.clear();
                   model = m;
-                  llm = llmFactory(this, &model, mcpTools);
+                  llm   = llmFactory(this, &model, mcpTools);
                   connect(llm, &LLMClient::incomingChunk, this, [this](const std::string& thoughtChunk, const std::string& textChunk) {
                         if (filterThoughts)
                               chatDisplay->handleIncomingChunk("", textChunk);
@@ -418,9 +418,10 @@ std::string Agent::getManifest() {
             if (buildFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
                   QTextStream in(&buildFile);
                   _manifestBuild = in.readAll().toStdString();
-            } else {
+                  }
+            else {
                   _manifestBuild = manifestBuildDefault;
-            }
+                  }
 
             // Load Plan Manifest
             QString planPath = _editor->projectRoot() + "/agents-plan.md";
@@ -428,13 +429,14 @@ std::string Agent::getManifest() {
             if (planFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
                   QTextStream in(&planFile);
                   _manifestPlan = in.readAll().toStdString();
-            } else {
+                  }
+            else {
                   _manifestPlan = manifestPlanDefault;
+                  }
             }
-      }
 
       return isExecuteMode() ? _manifestBuild : _manifestPlan;
-}
+      }
 
 //---------------------------------------------------------
 //   fetchModels
@@ -637,24 +639,24 @@ void Agent::handleChatFinished() {
                                     waitMs = retryAfterRaw.toInt() * 1000;
                                     }
 
-                               // Fallback: Standard Exponential if no headers are there
-                               if (waitMs <= 0)
-                                     waitMs = 1000 * std::pow(2, currentRetryCount);
+                              // Fallback: Standard Exponential if no headers are there
+                              if (waitMs <= 0)
+                                    waitMs = 1000 * std::pow(2, currentRetryCount);
 
-                               // Safety margin (jitter)
-                               waitMs += (rand() % 500);
+                              // Safety margin (jitter)
+                              waitMs += (rand() % 500);
 
-                               chatDisplay->addMessage(
-                                   "system", format("<br><font color='orange'><b>[Rate Limit]:</b> Pause for {} seconds...</font><br>",
-                                                    waitMs / 1000.0));
-                               }
-                         // B: Server Error (5xx) -> Exponential Backoff
-                         else {
-                               waitMs = 2000 * std::pow(2, currentRetryCount);
-                               chatDisplay->addMessage(
-                                   "system", format("<br><font color='orange'><b>[Server Error {}]:</b> Retry {}/{} in {}s...</font><br>",
-                                                    statusCode, currentRetryCount + 1, maxRetries, waitMs / 1000.0));
-                               }
+                              chatDisplay->addMessage(
+                                  "system", format("<br><font color='orange'><b>[Rate Limit]:</b> Pause for {} seconds...</font><br>",
+                                                   waitMs / 1000.0));
+                              }
+                        // B: Server Error (5xx) -> Exponential Backoff
+                        else {
+                              waitMs = 2000 * std::pow(2, currentRetryCount);
+                              chatDisplay->addMessage(
+                                  "system", format("<br><font color='orange'><b>[Server Error {}]:</b> Retry {}/{} in {}s...</font><br>",
+                                                   statusCode, currentRetryCount + 1, maxRetries, waitMs / 1000.0));
+                              }
 
                         currentReply->deleteLater();
                         currentReply = nullptr;
@@ -890,16 +892,10 @@ void Agent::renameCurrentSession() {
             return;
 
       QFileInfo currentInfo(currentSessionFileName);
-      QString   currentBase = currentInfo.completeBaseName(); // ohne ".json"
+      QString currentBase = currentInfo.completeBaseName(); // ohne ".json"
 
-      bool    ok      = false;
-      QString newName = QInputDialog::getText(
-            this,
-            tr("Rename Session"),
-            tr("New session name:"),
-            QLineEdit::Normal,
-            currentBase,
-            &ok);
+      bool ok         = false;
+      QString newName = QInputDialog::getText(this, tr("Rename Session"), tr("New session name:"), QLineEdit::Normal, currentBase, &ok);
 
       if (!ok || newName.trimmed().isEmpty())
             return;
@@ -926,8 +922,7 @@ void Agent::renameCurrentSession() {
 
       // Umbenennen
       if (!QFile::rename(currentSessionFileName, targetPath)) {
-            QMessageBox::warning(this, tr("Rename failed"),
-                                 tr("Could not rename session file."));
+            QMessageBox::warning(this, tr("Rename failed"), tr("Could not rename session file."));
             return;
             }
 
@@ -1062,82 +1057,82 @@ void Agent::loadStatus(const QString& sessionPath) {
                                     QString m             = QString::fromStdString(modelName);
                                     setCurrentModel(m, false);
                                     }
-                               if (root.contains("filterToolMessages")) {
-                                     filterToolMessages = root["filterToolMessages"];
-                                     if (showToolMessageAction)
-                                           showToolMessageAction->setChecked(!filterToolMessages);
-                                     }
-                               if (root.contains("filterThoughts")) {
-                                     filterThoughts = root["filterThoughts"];
-                                     if (showThoughtsAction)
-                                           showThoughtsAction->setChecked(!filterThoughts);
-                                     }
-                               const json& history = root["history"];
-                               historyManager->setHistory(history);
-                               if (root.contains("activeEntries"))
-                                     historyManager->setActiveEntries(root["activeEntries"]);
-                               }
-                         else if (root.is_array()) {
-                               historyManager->setHistory(root);
-                               }
-                         savedEntries           = historyManager->data().size();
-                         currentSessionFileName = fileToLoad;
-                         updateSessionList();
-                         updateChatDisplay();
-                         chatDisplay->scrollToBottom();
-                         return;
-                         }
-                   catch (const json::parse_error& e) {
-                         // Not a valid full JSON object? Try JSON Lines fallback
-                         std::istringstream iss(content);
-                         std::string line;
-                         json h            = json::array();
-                         size_t actEntries = 0;
-                         while (std::getline(iss, line)) {
-                               if (line.empty())
-                                     continue;
-                               try {
-                                     json obj = json::parse(line);
-                                     if (obj.contains("model")) {
-                                           std::string modelName = obj["model"];
-                                           setCurrentModel(QString::fromStdString(modelName), false);
-                                           }
-                                     if (obj.contains("activeEntries"))
-                                           actEntries = obj["activeEntries"];
-                                     if (obj.contains("filterToolMessages")) {
-                                           filterToolMessages = obj["filterToolMessages"];
-                                           if (showToolMessageAction)
-                                                 showToolMessageAction->setChecked(!filterToolMessages);
-                                           }
-                                     if (obj.contains("filterThoughts")) {
-                                           filterThoughts = obj["filterThoughts"];
-                                           if (showThoughtsAction)
-                                                 showThoughtsAction->setChecked(!filterThoughts);
-                                           }
-                                     if (obj.contains("role") || obj.contains("parts") || obj.contains("content"))
-                                           h.push_back(obj);
-                                     }
-                               catch (...) {
-                                     }
-                               }
-                         historyManager->setHistory(h);
-                         // Only override activeEntries when an explicit value was found in the file.
-                         // If actEntries == 0 (old session format without activeEntries metadata),
-                         // setHistory() has already set activeEntries = data.size(), which is correct.
-                         if (actEntries > 0)
-                               historyManager->setActiveEntries(actEntries);
-                         savedEntries           = historyManager->data().size();
-                         currentSessionFileName = fileToLoad;
-                         updateSessionList();
-                         updateChatDisplay();
-                         chatDisplay->scrollToBottom();
-                         return;
-                         }
-                   }
-             else {
-                   Debug("no session file found <{}>", fileToLoad);
-                   }
-             }
+                              if (root.contains("filterToolMessages")) {
+                                    filterToolMessages = root["filterToolMessages"];
+                                    if (showToolMessageAction)
+                                          showToolMessageAction->setChecked(!filterToolMessages);
+                                    }
+                              if (root.contains("filterThoughts")) {
+                                    filterThoughts = root["filterThoughts"];
+                                    if (showThoughtsAction)
+                                          showThoughtsAction->setChecked(!filterThoughts);
+                                    }
+                              const json& history = root["history"];
+                              historyManager->setHistory(history);
+                              if (root.contains("activeEntries"))
+                                    historyManager->setActiveEntries(root["activeEntries"]);
+                              }
+                        else if (root.is_array()) {
+                              historyManager->setHistory(root);
+                              }
+                        savedEntries           = historyManager->data().size();
+                        currentSessionFileName = fileToLoad;
+                        updateSessionList();
+                        updateChatDisplay();
+                        chatDisplay->scrollToBottom();
+                        return;
+                        }
+                  catch (const json::parse_error& e) {
+                        // Not a valid full JSON object? Try JSON Lines fallback
+                        std::istringstream iss(content);
+                        std::string line;
+                        json h            = json::array();
+                        size_t actEntries = 0;
+                        while (std::getline(iss, line)) {
+                              if (line.empty())
+                                    continue;
+                              try {
+                                    json obj = json::parse(line);
+                                    if (obj.contains("model")) {
+                                          std::string modelName = obj["model"];
+                                          setCurrentModel(QString::fromStdString(modelName), false);
+                                          }
+                                    if (obj.contains("activeEntries"))
+                                          actEntries = obj["activeEntries"];
+                                    if (obj.contains("filterToolMessages")) {
+                                          filterToolMessages = obj["filterToolMessages"];
+                                          if (showToolMessageAction)
+                                                showToolMessageAction->setChecked(!filterToolMessages);
+                                          }
+                                    if (obj.contains("filterThoughts")) {
+                                          filterThoughts = obj["filterThoughts"];
+                                          if (showThoughtsAction)
+                                                showThoughtsAction->setChecked(!filterThoughts);
+                                          }
+                                    if (obj.contains("role") || obj.contains("parts") || obj.contains("content"))
+                                          h.push_back(obj);
+                                    }
+                              catch (...) {
+                                    }
+                              }
+                        historyManager->setHistory(h);
+                        // Only override activeEntries when an explicit value was found in the file.
+                        // If actEntries == 0 (old session format without activeEntries metadata),
+                        // setHistory() has already set activeEntries = data.size(), which is correct.
+                        if (actEntries > 0)
+                              historyManager->setActiveEntries(actEntries);
+                        savedEntries           = historyManager->data().size();
+                        currentSessionFileName = fileToLoad;
+                        updateSessionList();
+                        updateChatDisplay();
+                        chatDisplay->scrollToBottom();
+                        return;
+                        }
+                  }
+            else {
+                  Debug("no session file found <{}>", fileToLoad);
+                  }
+            }
 
       // No last session found -> Start new session
       currentSessionFileName = sessionName(true);
@@ -1199,14 +1194,14 @@ bool Agent::eventFilter(QObject* obj, QEvent* event) {
                               sendMessage(userInput->toPlainText());
                               userInput->clear();
                               return true;
-                        }
+                              }
                         // Just insert a newline for normal Return
                         return false;
+                        }
                   }
             }
-      }
       return QWidget::eventFilter(obj, event);
-}
+      }
 
 //---------------------------------------------------------
 //   formatToolCall
@@ -1300,7 +1295,7 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                                     thought += part["text"];
                               else
                                     msg += part["text"];
-                               }
+                              }
                         if (part.contains("functionResponse")) {
                               if (!filterToolMessages) {
                                     json fr = part["functionResponse"];
@@ -1338,12 +1333,12 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
 void Agent::updateChatDisplay() {
       chatDisplay->clear();
 
-      size_t totalEntries = historyManager->data().size();
-      size_t activeCount = historyManager->getActiveEntriesCount();
+      size_t totalEntries   = historyManager->data().size();
+      size_t activeCount    = historyManager->getActiveEntriesCount();
       size_t startActiveIdx = totalEntries > activeCount ? totalEntries - activeCount : 0;
 
       for (size_t i = 0; i < totalEntries; ++i) {
-            const auto& item = historyManager->data()[i];
+            const auto& item    = historyManager->data()[i];
             const auto& content = item.content;
             std::string role;
             if (!content.contains("role")) {
@@ -1364,8 +1359,8 @@ void Agent::updateChatDisplay() {
             if (msg.empty() && thought.empty())
                   continue;
 
-            QString s  = chatDisplay->renderMarkdownToHtml(msg);
-            QString th = chatDisplay->renderMarkdownToHtml(thought);
+            QString s     = chatDisplay->renderMarkdownToHtml(msg);
+            QString th    = chatDisplay->renderMarkdownToHtml(thought);
             bool isActive = (i == 0 || i >= startActiveIdx);
             chatDisplay->appendStaticHtml(QString::fromStdString(role), s, th, isActive);
             }
@@ -1399,17 +1394,14 @@ void Agent::onScreenshotReady(const QImage& image) {
 
       const int count = _pendingImages.size();
       screenshotButton->setChecked(true);
-      screenshotButton->setToolTip(
-          QString("%1 image(s) attached. Click 📷 to discard all.").arg(count));
+      screenshotButton->setToolTip(QString("%1 image(s) attached. Click 📷 to discard all.").arg(count));
 
-      chatDisplay->addMessage(
-          "system",
-          QString("<i>[Image #%1 attached (%2×%3 px) – will be sent with next prompt. "
-                  "Click 📷 to discard all.]</i><br>")
-              .arg(count)
-              .arg(image.width())
-              .arg(image.height())
-              .toStdString());
+      chatDisplay->addMessage("system", QString("<i>[Image #%1 attached (%2×%3 px) – will be sent with next prompt. "
+                                                "Click 📷 to discard all.]</i><br>")
+                                            .arg(count)
+                                            .arg(image.width())
+                                            .arg(image.height())
+                                            .toStdString());
       updateDataPanel();
       }
 
@@ -1420,10 +1412,8 @@ void Agent::onScreenshotReady(const QImage& image) {
 
 void Agent::onScreenshotFailed(const QString& reason) {
       screenshotButton->setChecked(false);
-      chatDisplay->addMessage(
-          "system",
-          std::string("<font color='orange'><i>[Screenshot failed: ") +
-              reason.toStdString() + "]</i></font><br>");
+      chatDisplay->addMessage("system",
+                              std::string("<font color='orange'><i>[Screenshot failed: ") + reason.toStdString() + "]</i></font><br>");
       updateDataPanel();
       }
 

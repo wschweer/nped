@@ -17,6 +17,11 @@
 #include <QAction>
 #include <QLabel>
 #include <QVBoxLayout>
+
+//---------------------------------------------------------
+//   Dashboard
+//---------------------------------------------------------
+
 class Dashboard : public QWidget
       {
       Q_OBJECT
@@ -31,4 +36,5 @@ class Dashboard : public QWidget
       void addWidget(QWidget* widget, int row = 0);
       void addAction(QAction* action, int row = 0);
       void setTokenCount(size_t tokens);
+      void addStretch(int row = 0);
       };
