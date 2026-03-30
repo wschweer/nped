@@ -96,8 +96,8 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
 #if 0
          Action(e->getSC(Cmd::CMD_LINE_TOP), [] { }),
          Action(e->getSC(Cmd::CMD_LINE_BOTTOM), [] {}),
-         Action(e->getSC(Cmd::CMD_ENTER), [] {}),
 #endif
+         Action(e->getSC(Cmd::CMD_ENTER), [this] { editor->enterCmd(); }),
          Action(e->getSC(Cmd::CMD_SAVE), [this] { editor->kontext()->file()->save(); }),
          Action(e->getSC(Cmd::CMD_KONTEXT_COPY), [this] { editor->copyKontext(); }),
          Action(e->getSC(Cmd::CMD_KONTEXT_PREV), [this] { editor->prevKontext(); }),
