@@ -67,6 +67,7 @@ static const std::string manifestBuildDefault =
     "Your task is to analyze and write code in the project and to fix build errors.\n\n"
     "Use modern c++. Prefer object oriented design and use modern design patterns.\n"
     "Answer exclusively in JSON format when you call a tool:\n"
+    "Never add files to git.\n"
     "PROJECT STRUCTURE:\n"
     "Standard Qt6 layout. The build directory is './build'. Use CMake with ninja.\n"
     "Use the run_build_command tool to compile the project and check if errors occur. ";
@@ -258,7 +259,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       userInput = new DropAwarePlainTextEdit(this);
       userInput->setAcceptDrops(true);
       userInput->setCursorWidth(8);
-      userInput->setPlaceholderText("enter message to LLM...");
+      userInput->setPlaceholderText("enter message to LLM... Ctrl+Enter for send");
       userInput->setStyleSheet("QPlainTextEdit { padding: 5px; }");
       QFontMetrics fm(userInput->font());
       const int inputHeight = (fm.lineSpacing() * 4) + 20;

@@ -1,8 +1,0 @@
-- Prüfe, ob das das git projekt "clean" ist. Wenn nicht, committe alle
-  Änderungen
-- Wenn wir nicht im main branch sind, dann merge den aktuellen branch
-  nach main. Führe alle commits im aktuelle branch zusammen und merge
-  sie als ein Commit im "main" branch zusammen mit einer kurzen Zusammenfassung
-  der commit logs.
-- Wenn wir im main branch sind, dann führe alle commits seit dem letzten
-  push mit einer kurzen Zusammenfassug der commit logs zusammen (squash).
