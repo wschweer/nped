@@ -29,6 +29,7 @@ class KeyLogger;
 //---------------------------------------------------------
 //   MarkdownWebPage
 //---------------------------------------------------------
+
 class MarkdownWebPage : public QWebEnginePage
       {
       Q_OBJECT
@@ -50,11 +51,10 @@ class MarkdownWebView : public QWebEngineView
       Q_OBJECT
 
       QString getHighlightJsAssets(bool darkMode) const;
-      QString getAnchorJs() const;
-      QString getTocJs() const;
+      const std::string& getAnchorJs() const;
+      const std::string& getTocJs() const;
 
       QString _currentRawMarkdown;
-      QString _currentRawHtml;
 
       std::vector<Action> textActions;
       Editor* editor;
@@ -68,10 +68,10 @@ class MarkdownWebView : public QWebEngineView
       // Hilft uns, das interne Chromium-Widget zu finden
       void childEvent(QChildEvent* event) override;
       void installFilterOnProxy();
-      QString getGithubCss() const;
+      const std::string& getGithubCss() const;
+      const std::string& getGithubDarkCss() const;
 
     public slots:
-      QString getGithubDarkCss() const;
       virtual void setDarkMode(bool);
 
     public:
@@ -84,7 +84,6 @@ class MarkdownWebView : public QWebEngineView
       QString renderMarkdownToHtml(const std::string& markdown);
       QString getMermaidJs(bool darkMode) const;
       QString getKaTexJs() const;
-
 
       // Scrolling Interface
       void scrollLineUp();

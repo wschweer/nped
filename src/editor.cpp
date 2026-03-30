@@ -780,10 +780,11 @@ void Editor::updateViewMode() {
                         _stack->setCurrentIndex(1);
                   _mdWidget->setFocus();
                   auto lid = kontext()->file()->languageId();
+                  const auto& text = kontext()->file()->plainText();
                   if (lid == "markdown")
-                        _mdWidget->setMarkdown(kontext()->file()->plainText());
+                        _mdWidget->setMarkdown(text);
                   else if (lid == "html")
-                        _mdWidget->setHtml(kontext()->file()->plainText());
+                        _mdWidget->setHtml(text);
                   else if (lid == "image")
                         _mdWidget->load(QUrl::fromLocalFile(kontext()->file()->path()));
                   vScroll->setVisible(false);   // mdWidget has its own scroll bar

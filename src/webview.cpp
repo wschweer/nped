@@ -33,6 +33,10 @@
 MarkdownWebPage::MarkdownWebPage(Editor* e, QObject* parent) : QWebEnginePage(parent), editor(e) {
       }
 
+//---------------------------------------------------------
+//   acceptNavigationRequest
+//---------------------------------------------------------
+
 bool MarkdownWebPage::acceptNavigationRequest(const QUrl& url, NavigationType type, bool isMainFrame) {
       if (type == QWebEnginePage::NavigationTypeLinkClicked) {
             if (url.scheme() == "file") {
@@ -162,8 +166,7 @@ void MarkdownWebView::installFilterOnProxy() {
 //---------------------------------------------------------
 
 void MarkdownWebView::setHtml(const QString& _html, const QUrl& _baseUrl) {
-      _currentRawHtml = _html;
-      isLoaded        = false;
+      isLoaded = false;
       QWebEngineView::setHtml(_html, _baseUrl);
       }
 
@@ -174,9 +177,7 @@ void MarkdownWebView::setHtml(const QString& _html, const QUrl& _baseUrl) {
 void MarkdownWebView::setDarkMode(bool enabled) {
       if (_darkMode == enabled)
             return;
-
       _darkMode = enabled;
-      // settings()->setAttribute(QWebEngineSettings::ForceDarkMode, _darkMode);
 
       // Wenn wir schon Content haben, rendern wir ihn sofort neu mit dem neuen Style
       if (!_currentRawMarkdown.isEmpty())
@@ -188,8 +189,9 @@ void MarkdownWebView::setDarkMode(bool enabled) {
 //---------------------------------------------------------
 
 void MarkdownWebView::setMarkdown(const QString& _markdown) {
+      if (_markdown == _currentRawMarkdown)
+            return;
       _currentRawMarkdown = _markdown;
-
       if (_markdown.isEmpty()) {
             setHtml("");
             return;
@@ -208,12 +210,12 @@ void MarkdownWebView::setMarkdown(const QString& _markdown) {
       QString _convertedHtml = renderMarkdownToHtml(_processedMarkdown.toStdString());
 
       // ... CSS und Assets holen ...
-      QString _css             = _darkMode ? getGithubDarkCss() : getGithubCss();
+      auto _css             = _darkMode ? getGithubDarkCss() : getGithubCss();
       QString _highlightAssets = getHighlightJsAssets(_darkMode);
-      QString _anchorScript    = getAnchorJs();
+      auto _anchorScript    = getAnchorJs();
 
       // 3. Das neue ToC-Script holen
-      QString _tocScript = getTocJs();
+      auto _tocScript = getTocJs();
 
       // 4. Mermaid-Script holen
       QString _mermaidScript = getMermaidJs(_darkMode);
@@ -234,17 +236,14 @@ void MarkdownWebView::setMarkdown(const QString& _markdown) {
             {}
             {} {} {} {} </body>
         </html>)",
-          _darkMode ? "dark" : "light", _css.toStdString(), _highlightAssets.toStdString(), _convertedHtml.toStdString(),
-          _anchorScript.toStdString(), _tocScript.toStdString(), _mermaidScript.toStdString(), _katexScript.toStdString()));
-
+          _darkMode ? "dark" : "light", _css, _highlightAssets.toStdString(), _convertedHtml.toStdString(),
+          _anchorScript, _tocScript, _mermaidScript.toStdString(), _katexScript.toStdString()));
 
       QUrl baseUrl;
       if (editor && editor->kontext() && editor->kontext()->file()) {
             QFileInfo fi(editor->kontext()->file()->path());
-
             baseUrl = QUrl::fromLocalFile(fi.absoluteDir().absolutePath() + "/");
             }
-
       setHtml(_fullHtml, baseUrl);
       }
 
@@ -445,8 +444,8 @@ QString MarkdownWebView::renderMarkdownToHtml(const std::string& _stdMarkdown) {
 //   getGithubCss
 //---------------------------------------------------------
 
-QString MarkdownWebView::getGithubCss() const {
-      return R"(
+const std::string& MarkdownWebView::getGithubCss() const {
+      static const std::string s = R"(
         body {
             color-scheme: light;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
@@ -547,14 +546,15 @@ h4:hover .anchor, h5:hover .anchor, h6:hover .anchor {
 .toc-h5 { padding-left: 60px; font-size: 0.9em; font-style: italic; }
 .toc-h6 { padding-left: 75px; }
     )";
+      return s;
       }
 
 //---------------------------------------------------------
 //   getGithubDarkCss
 //---------------------------------------------------------
 
-QString MarkdownWebView::getGithubDarkCss() const {
-      return R"(
+const std::string& MarkdownWebView::getGithubDarkCss() const {
+      static const std::string s = R"(
         body {
             color-scheme: dark;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
@@ -638,6 +638,7 @@ QString MarkdownWebView::getGithubDarkCss() const {
         .toc-item a { color: #58a6ff; text-decoration: none; }
         .toc-item a:hover { text-decoration: underline; }
     )";
+      return s;
       }
 
 // Konstante Annäherung an eine Zeilenhöhe (Base Font 16px * 1.5 Line-Height = 24px)
@@ -708,8 +709,8 @@ void MarkdownWebView::scrollToBottom() {
 //   getAnchorJs
 //---------------------------------------------------------
 
-QString MarkdownWebView::getAnchorJs() const {
-      return R"(
+const std::string& MarkdownWebView::getAnchorJs() const {
+      static const std::string s = R"(
         <script>
         document.addEventListener("DOMContentLoaded", function() {
             const headers = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
@@ -754,14 +755,15 @@ QString MarkdownWebView::getAnchorJs() const {
         });
         </script>
     )";
+      return s;
       }
 
 //---------------------------------------------------------
 //   getTocJs
 //---------------------------------------------------------
 
-QString MarkdownWebView::getTocJs() const {
-      return R"(
+const std::string& MarkdownWebView::getTocJs() const {
+      static const std::string s = R"(
         <script>
         document.addEventListener("DOMContentLoaded", function() {
             // Container suchen
@@ -800,6 +802,7 @@ QString MarkdownWebView::getTocJs() const {
         });
         </script>
     )";
+      return s;
       }
 
 //---------------------------------------------------------
