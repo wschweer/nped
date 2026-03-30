@@ -617,8 +617,6 @@ void LSclient::formattingRequest(Kontext* kontext) {
                   PatchItem pi;
                   pi.insertText = QString::fromStdString(p["newText"]);
                   Range range(p["range"]);
-                  // hack for qmlls:
-                  range.end.row += 1;
                   pi.startPos = range.start;
                   pi.toRemove = file->distance(pi.startPos, range.end);
                   patch->add(pi);

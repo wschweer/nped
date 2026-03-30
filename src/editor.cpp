@@ -91,9 +91,9 @@ std::map<Cmd, ShortcutConfig> Editor::_shortcuts = {
          {           Cmd::CMD_SELECT_ROW,                                  {"CMD_SELECT_ROW", "Row Select", "F5"}},
          {           Cmd::CMD_SELECT_COL,                                  {"CMD_SELECT_COL", "Col Select", "F6"}},
          {          Cmd::CMD_SELECT_CHAR,                      {"CMD_SELECT_CHAR", "Row/Col Select", "Ctrl + F5"}},
-         {                 Cmd::CMD_PICK,                                  {"CMD_PICK", "Copy (Pick)", "F8"}},
-         {                  Cmd::CMD_PUT,                                   {"CMD_PUT", "Paste (Put)", "F9"}},
-         {          Cmd::CMD_DELETE_LINE,                          {"CMD_DELETE_LINE", "Cut", "Ctrl + Y"}},
+         {                 Cmd::CMD_PICK,                                       {"CMD_PICK", "Copy (Pick)", "F8"}},
+         {                  Cmd::CMD_PUT,                                        {"CMD_PUT", "Paste (Put)", "F9"}},
+         {          Cmd::CMD_DELETE_LINE,                                  {"CMD_DELETE_LINE", "Cut", "Ctrl + Y"}},
 
          {          Cmd::CMD_FLIP_CURSOR,      {"CMD_FLIP_CURSOR", "Flip Selection Cursor", "Ctrl + Q, Ctrl + F"}},
          {          Cmd::CMD_SEARCH_NEXT,                                {"CMD_SEARCH_NEXT", "Search Next", "F7"}},
@@ -210,12 +210,10 @@ const ShortcutConfig& Editor::getSC(Cmd cmd) {
       return _shortcuts[cmd];
       }
 
-QList<ShortcutConfig> Editor::shortcuts() const
-      {
+QList<ShortcutConfig> Editor::shortcuts() const {
       QList<ShortcutConfig> l;
-      for (const auto& [key, val] : _shortcuts) {
+      for (const auto& [key, val] : _shortcuts)
             l.push_back(val);
-            }
       return l;
       }
 
@@ -257,8 +255,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
                         Critical("file <{}> changed on disk", path);
                   else
                         Critical("file <{}> deleted from disk", path);
-                                                                                                      }
-                                                                                                });
+                                                                                                                        }
+                                                                                                                  });
 #endif
 
       if (!initProject())
@@ -604,12 +602,12 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       if (_hasGit) {
             branchLabel->setText(_currentBranchName);
             if (_git.isClean()) {
-//                  Debug("git clean");
+                  //                  Debug("git clean");
                   branchLabel->setStyleSheet("background-color: lightgreen;");
                   }
             else {
                   branchLabel->setStyleSheet("background-color: lightyellow;");
-//                  Debug("git dirty");
+                  //                  Debug("git dirty");
                   }
             }
 
@@ -811,7 +809,7 @@ void Kontext::toggleViewMode() {
                   case ViewMode::File:
                         _viewMode = ViewMode::Functions;
                         break;
-                                                                                                                                    }
+                                                                                                                                                      }
 #endif
             setViewMode(ViewMode::Functions);
             }
@@ -838,7 +836,7 @@ LSclient* Editor::getLSclient(const QString& serverName) {
       auto* client = LSclient::createClient(this, serverName.toStdString());
       if (client) {
             languageServers.push_back(LanguageServer(serverName, client));
-//            Debug("new language server started: <{}>", serverName);
+            //            Debug("new language server started: <{}>", serverName);
             }
       else
             Debug("could not start language server: <{}>", serverName);
@@ -1409,7 +1407,7 @@ bool Editor::loadStatus(int argc, char** argv) {
             Critical("no file to edit");
             exit(0);
             }
-      _currentKontext = std::clamp(idx, 0, int(_kontextList.size()-1));
+      _currentKontext = std::clamp(idx, 0, int(_kontextList.size() - 1));
       tabBar->setCurrentIndex(_currentKontext);
       urlLabel->setText(kontext()->file()->path());
       update();
@@ -1654,7 +1652,7 @@ void Editor::deleteChar() {
 void Editor::deleteLine() {
       const auto& cursor = kontext()->cursor();
       Selection& s       = kontext()->selection();
-      pickText.mode = s.mode;
+      pickText.mode      = s.mode;
       switch (s.mode) {
             case SelectionMode::NoSelect: {
                   pickText.text = kontext()->currentLine() + "\n";

@@ -53,7 +53,7 @@ class ChatDisplay : public MarkdownWebView
       void startMessage();
       void appendStaticHtml(const QString& role, const QString& html, const QString& thoughtHtml = "", bool isActive = true);
 
-      void setDarkMode(bool enabled) override;
+      void setDarkMode(bool enabled);
       void setMarkdown(const QString&) { Fatal("not impl."); };
       void addMessage(const std::string& role, const std::string& text) {
             startNewStreamingMessage(role);

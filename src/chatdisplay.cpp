@@ -189,6 +189,8 @@ void ChatDisplay::setup() {
 </head>
 <body>
       <div id="chat-container"></div>
+      %3
+      %4
       <script>
       function fallbackCopy(text) {
             const ta = document.createElement('textarea');
@@ -276,6 +278,22 @@ void ChatDisplay::setup() {
             if (htmlContent.includes('</code>')) {
                   window.hljs.highlightAll();
                   }
+            if (typeof renderMathInElement === 'function') {
+                  renderMathInElement(document.body, {
+                        delimiters: [
+                              {left: '$$', right: '$$', display: true},
+                              {left: '$', right: '$', display: false},
+                              {left: '\\(', right: '\\)', display: false},
+                              {left: '\\[', right: '\\]', display: true}
+                        ],
+                        throwOnError: false
+                  });
+            }
+            if (htmlContent.includes('class="mermaid"')) {
+                  if (typeof window.runMermaid === 'function') {
+                        window.runMermaid();
+                  }
+            }
             if (isScrolledToBottom) {
                   window.scrollTo(0, document.body.scrollHeight);
             }
@@ -306,6 +324,22 @@ void ChatDisplay::setup() {
                 `;
             container.appendChild(wrapper);
             window.hljs.highlightAll();
+            if (typeof renderMathInElement === 'function') {
+                  renderMathInElement(document.body, {
+                        delimiters: [
+                              {left: '$$', right: '$$', display: true},
+                              {left: '$', right: '$', display: false},
+                              {left: '\\(', right: '\\)', display: false},
+                              {left: '\\[', right: '\\]', display: true}
+                        ],
+                        throwOnError: false
+                  });
+            }
+            if (htmlContent.includes('class="mermaid"')) {
+                  if (typeof window.runMermaid === 'function') {
+                        window.runMermaid();
+                  }
+            }
             if (isScrolledToBottom) {
                   window.scrollTo(0, document.body.scrollHeight);
             }
@@ -315,7 +349,7 @@ void ChatDisplay::setup() {
       </body>
 </html>
 )")
-                      .arg(hljsCss, chatCss);
+                      .arg(hljsCss, chatCss, getMermaidJs(_darkMode), getKaTexJs());
       setHtml(html);
       }
 
@@ -327,7 +361,7 @@ void ChatDisplay::setDarkMode(bool enabled) {
       if (_darkMode == enabled)
             return;
       _darkMode = enabled;
-      settings()->setAttribute(QWebEngineSettings::ForceDarkMode, _darkMode);
+      // settings()->setAttribute(QWebEngineSettings::ForceDarkMode, _darkMode);
 
       QString js = "(function() { "
                    "  var el1 = document.getElementById('hljs-theme'); "
@@ -338,6 +372,10 @@ void ChatDisplay::setDarkMode(bool enabled) {
                    "  if (el2) el2.textContent = " +
                    quoteForJs(_darkMode ? getChatDarkCss() : getChatCss()) +
                    "; "
+                   "  var mermaidStyles = document.querySelectorAll('.mermaid'); "
+                   "  mermaidStyles.forEach(function(el) { "
+                   "      el.style.backgroundColor = '" + (_darkMode ? "#161b22" : "#f6f8fa") + "'; "
+                   "  }); "
                    "})();";
 
       page()->runJavaScript(js, [](const QVariant& res) { (void)res; });

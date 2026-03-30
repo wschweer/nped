@@ -29,14 +29,17 @@ class KeyLogger;
 //---------------------------------------------------------
 //   MarkdownWebPage
 //---------------------------------------------------------
-class MarkdownWebPage : public QWebEnginePage {
-    Q_OBJECT
-    Editor* editor;
-public:
-    explicit MarkdownWebPage(Editor* e, QObject* parent = nullptr);
-protected:
-    bool acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame) override;
-};
+class MarkdownWebPage : public QWebEnginePage
+      {
+      Q_OBJECT
+      Editor* editor;
+
+    public:
+      explicit MarkdownWebPage(Editor* e, QObject* parent = nullptr);
+
+    protected:
+      bool acceptNavigationRequest(const QUrl& url, NavigationType type, bool isMainFrame) override;
+      };
 
 //---------------------------------------------------------
 //   MarkdownWebView
@@ -79,6 +82,9 @@ class MarkdownWebView : public QWebEngineView
       void append(const QString&);
       void clear() { setMarkdown(""); }
       QString renderMarkdownToHtml(const std::string& markdown);
+      QString getMermaidJs(bool darkMode) const;
+      QString getKaTexJs() const;
+
 
       // Scrolling Interface
       void scrollLineUp();

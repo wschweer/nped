@@ -254,8 +254,6 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       mainLayout->addWidget(chatDisplay->widget(), 1);   // stretch=1: nimmt den gesamten verbleibenden Platz
       connect(_editor, &Editor::darkModeChanged, chatDisplay, &ChatDisplay::setDarkMode);
 
-      // --- 3. Input Row: [DataPanel | UserInput] ---
-
       // 3b. Prompt input field (zuerst anlegen, damit die Höhe bekannt ist)
       userInput = new DropAwarePlainTextEdit(this);
       userInput->setAcceptDrops(true);
@@ -268,14 +266,23 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       userInput->installEventFilter(this);
       connect(userInput, &DropAwarePlainTextEdit::imageDropped, this, &Agent::onScreenshotReady);
 
-      // 3a. Schmales vertikales Icon-Panel links neben dem Prompt-Eingabefeld
+      // 3a. Schmales vertikales Icon-Panel rechts neben dem Prompt-Eingabefeld
       dataPanel = new QWidget(this);
-      dataPanel->setFixedWidth(28);
+      dataPanel->setFixedWidth(48);
       dataPanel->setFixedHeight(inputHeight);            // exakt so hoch wie das Eingabefeld
       QVBoxLayout* dataPanelLayout = new QVBoxLayout(dataPanel);
       dataPanelLayout->setContentsMargins(2, 2, 2, 2);
       dataPanelLayout->setSpacing(4);
       dataPanelLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+
+      // 3a. Schmales vertikales Icon-Panel links neben dem Prompt-Eingabefeld
+      buttonPanel = new QWidget(this);
+//      buttonPanel->setFixedWidth(28);
+      buttonPanel->setFixedHeight(inputHeight);            // exakt so hoch wie das Eingabefeld
+      QVBoxLayout* buttonPanelLayout = new QVBoxLayout(buttonPanel);
+      buttonPanelLayout->setContentsMargins(2, 2, 2, 2);
+      buttonPanelLayout->setSpacing(4);
+      buttonPanelLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
 
       // New summary buttons (vertical bar)
       summaryButton = new QToolButton(this);
@@ -286,28 +293,29 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             QString prompt = "Please provide a concise technical summary of our conversation so far. Focus specifically on the results obtained from the tool calls and the final conclusions reached. Discard the raw, voluminous data output from the tools, but retain the key facts, parameters used, and the current state of the task. This summary will serve as the new starting point for our context, so ensure no critical logical step is lost.";
             sendMessage(prompt);
             });
-      dataPanelLayout->addWidget(summaryButton);
+      buttonPanelLayout->addWidget(summaryButton);
 
       button2 = new QToolButton(this);
-      button2->setText(" ");
-      dataPanelLayout->addWidget(button2);
+      button2->setText("F2");
+      buttonPanelLayout->addWidget(button2);
 
       button3 = new QToolButton(this);
-      button3->setText(" ");
-      dataPanelLayout->addWidget(button3);
+      button3->setText("F3");
+      buttonPanelLayout->addWidget(button3);
 
       // Save layout pointer so updateDataPanel() can add/remove thumbnail labels dynamically
       _dataPanelLayout = dataPanelLayout;
       _dataPanelLayout->addStretch(1);
 
-      // 3c. Beide Widgets in einer horizontalen Zeile kombinieren
+      // 3c. Widgets in einer horizontalen Zeile kombinieren
       QWidget* inputRow = new QWidget(this);
       inputRow->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);  // kein vertikales Wachstum
       QHBoxLayout* inputRowLayout = new QHBoxLayout(inputRow);
       inputRowLayout->setContentsMargins(0, 0, 0, 0);
       inputRowLayout->setSpacing(2);
-      inputRowLayout->addWidget(dataPanel);
+      inputRowLayout->addWidget(buttonPanel);
       inputRowLayout->addWidget(userInput);
+      inputRowLayout->addWidget(dataPanel);
 
       mainLayout->addWidget(inputRow);                   // kein Stretch: nimmt nur den nötigen Platz
 
@@ -323,6 +331,9 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             deleteSessionButton->setFont(f);
             sessionComboBox->setFont(f);
             modeButton->setFont(f);
+            summaryButton->setFont(f);
+            button2->setFont(f);
+            button3->setFont(f);
             });
 
       connect(chatDisplay, &QWebEngineView::loadFinished, this, [this] { loadStatus(); }, Qt::QueuedConnection | Qt::SingleShotConnection);

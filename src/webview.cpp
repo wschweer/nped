@@ -31,21 +31,19 @@
 //---------------------------------------------------------
 
 MarkdownWebPage::MarkdownWebPage(Editor* e, QObject* parent) : QWebEnginePage(parent), editor(e) {
-}
+      }
 
-bool MarkdownWebPage::acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame) {
+bool MarkdownWebPage::acceptNavigationRequest(const QUrl& url, NavigationType type, bool isMainFrame) {
       if (type == QWebEnginePage::NavigationTypeLinkClicked) {
             if (url.scheme() == "file") {
                   QString path = url.toLocalFile();
                   // Check if it's an anchor link within the same page
                   if (!url.fragment().isEmpty()) {
                         // Let the view handle anchor links if they are for the same file
-                        if (editor && editor->kontext() && editor->kontext()->file() && 
-                            path == editor->kontext()->file()->path()) {
+                        if (editor && editor->kontext() && editor->kontext()->file() && path == editor->kontext()->file()->path())
                               return true;
                         }
-                  }
-                  
+
                   // For local files, open in Editor instead
                   if (editor) {
                         QTimer::singleShot(0, editor, [e = editor, path]() {
@@ -54,23 +52,25 @@ bool MarkdownWebPage::acceptNavigationRequest(const QUrl &url, NavigationType ty
                                     e->setCurrentKontext(k);
                                     QFileInfo fi(path);
                                     QString ext = fi.suffix().toLower();
-                                    if (ext == "md" || ext == "markdown" || ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "gif" || ext == "svg" || ext == "webp" || ext == "html" || ext == "htm") {
+                                    if (ext == "md" || ext == "markdown" || ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "gif" ||
+                                        ext == "svg" || ext == "webp" || ext == "html" || ext == "htm") {
                                           if (k->viewMode() != ViewMode::WebView) {
                                                 k->toggleViewMode();
                                                 e->updateViewMode();
+                                                }
                                           }
                                     }
-                              }
-                        });
+                              });
+                        }
+                  return false;
                   }
-                  return false;
-            } else if (url.scheme() == "http" || url.scheme() == "https") {
-                  QDesktopServices::openUrl(url);
-                  return false;
             }
-      }
+      else if (url.scheme() == "http" || url.scheme() == "https") {
+            QDesktopServices::openUrl(url);
+            return false;
+            }
       return QWebEnginePage::acceptNavigationRequest(url, type, isMainFrame);
-}
+      }
 
 //---------------------------------------------------------
 //   MarkdownWebView
@@ -79,8 +79,8 @@ bool MarkdownWebPage::acceptNavigationRequest(const QUrl &url, NavigationType ty
 MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_parent), editor(e) {
       setPage(new MarkdownWebPage(e, this));
       settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
-      _darkMode   = e->darkMode();
-      settings()->setAttribute(QWebEngineSettings::ForceDarkMode, _darkMode);
+      _darkMode = e->darkMode();
+      // settings()->setAttribute(QWebEngineSettings::ForceDarkMode, _darkMode);
       textActions = {
          Action(e->getSC(Cmd::CMD_QUIT), [this] { editor->quitCmd(); }),
          Action(e->getSC(Cmd::CMD_SAVE_QUIT), [this] { editor->saveQuitCmd(); }),
@@ -116,6 +116,7 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
          Action(e->getSC(Cmd::CMD_SEARCH_NEXT), [] {}),
          Action(e->getSC(Cmd::CMD_SEARCH_PREV), [] {}),
          Action(e->getSC(Cmd::CMD_GIT_TOGGLE), [this] { editor->gitButton()->setChecked(!editor->gitButton()->isChecked()); }),
+         Action(e->getSC(Cmd::CMD_SCREENSHOT), [this] { editor->screenshot(); }),
             };
 
       kl = new KeyLogger(&textActions, this);
@@ -175,7 +176,7 @@ void MarkdownWebView::setDarkMode(bool enabled) {
             return;
 
       _darkMode = enabled;
-      settings()->setAttribute(QWebEngineSettings::ForceDarkMode, _darkMode);
+      // settings()->setAttribute(QWebEngineSettings::ForceDarkMode, _darkMode);
 
       // Wenn wir schon Content haben, rendern wir ihn sofort neu mit dem neuen Style
       if (!_currentRawMarkdown.isEmpty())
@@ -214,6 +215,12 @@ void MarkdownWebView::setMarkdown(const QString& _markdown) {
       // 3. Das neue ToC-Script holen
       QString _tocScript = getTocJs();
 
+      // 4. Mermaid-Script holen
+      QString _mermaidScript = getMermaidJs(_darkMode);
+
+      // 5. KaTeX-Script holen (für Mathe/LaTeX-Rendering)
+      QString _katexScript = getKaTexJs();
+
       QString _fullHtml = QString::fromStdString(std::format(
           R"(<!DOCTYPE html>
         <html>
@@ -225,18 +232,18 @@ void MarkdownWebView::setMarkdown(const QString& _markdown) {
         </head>
         <body class="markdown-body">
             {}
-            {} {} </body>
+            {} {} {} {} </body>
         </html>)",
-          _darkMode ? "dark" : "light",
-          _css.toStdString(), _highlightAssets.toStdString(), _convertedHtml.toStdString(), _anchorScript.toStdString(),
-          _tocScript.toStdString() // Hier wird das Skript eingefügt
-          ));
+          _darkMode ? "dark" : "light", _css.toStdString(), _highlightAssets.toStdString(), _convertedHtml.toStdString(),
+          _anchorScript.toStdString(), _tocScript.toStdString(), _mermaidScript.toStdString(), _katexScript.toStdString()));
+
 
       QUrl baseUrl;
       if (editor && editor->kontext() && editor->kontext()->file()) {
-          QFileInfo fi(editor->kontext()->file()->path());
-          baseUrl = QUrl::fromLocalFile(fi.absoluteDir().absolutePath() + "/");
-      }
+            QFileInfo fi(editor->kontext()->file()->path());
+
+            baseUrl = QUrl::fromLocalFile(fi.absoluteDir().absolutePath() + "/");
+            }
 
       setHtml(_fullHtml, baseUrl);
       }
@@ -250,17 +257,19 @@ QString MarkdownWebView::getHighlightJsAssets(bool darkMode) const {
       QString theme = darkMode ? "github-dark.min.css" : "github.min.css";
 
       // Nutze eine einfache Verkettung statt std::format wegen der vielen {} und Zeichenkollisionen in JS
-      QString js = R"(
+
+      QString js  = R"(
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/)";
-      js += theme;
-      js += R"(">
+      js         += theme;
+      js         += R"(">
+
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
         <script>
             document.addEventListener('DOMContentLoaded', (event) => {
                 if (typeof hljs !== 'undefined') {
                     hljs.highlightAll();
-                }
-            });
+                      }
+                  });
             function fallbackCopy(text) {
                 const ta = document.createElement('textarea');
                 ta.value = text;
@@ -271,7 +280,7 @@ QString MarkdownWebView::getHighlightJsAssets(bool darkMode) const {
                 ta.select();
                 try { document.execCommand('copy'); } catch(e) {}
                 document.body.removeChild(ta);
-            }
+                  }
             function copyCode(btn) {
                 const codeBlock = btn.parentElement.nextElementSibling.querySelector('code');
                 const text = codeBlock.innerText;
@@ -279,13 +288,86 @@ QString MarkdownWebView::getHighlightJsAssets(bool darkMode) const {
                 const ok = () => { btn.innerHTML = '&#10003;'; setTimeout(() => btn.innerHTML = originalHTML, 2000); };
                 if (navigator.clipboard) {
                     navigator.clipboard.writeText(text).then(ok).catch(() => { fallbackCopy(text); ok(); });
-                } else {
+                      } else {
                     fallbackCopy(text);
                     ok();
-                }
-            }
+                      }
+                  }
         </script>
     )";
+      return js;
+      }
+
+//---------------------------------------------------------
+//   getKaTexJs
+//---------------------------------------------------------
+
+QString MarkdownWebView::getKaTexJs() const {
+      // Wir injizieren die KaTeX CSS- und JS-Dateien aus einem CDN,
+      // inklusive der 'auto-render'-Erweiterung, die den Text nach Formeln scannt.
+      return QString::fromStdString(R"HTML(
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+    onload="renderMathInElement(document.body, {
+        delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false},
+            {left: '\\(', right: '\\)', display: false},
+            {left: '\\[', right: '\\]', display: true}
+        ],
+        throwOnError: false
+    });"></script>
+)HTML");
+}
+
+//---------------------------------------------------------
+//   getMermaidJs
+//---------------------------------------------------------
+
+QString MarkdownWebView::getMermaidJs(bool darkMode) const {
+      QString theme = darkMode ? "dark" : "default";
+
+      QString js  = R"(
+        <script type="module">
+          import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+          mermaid.initialize({
+              startOnLoad: false,
+              theme: ')";
+      js         += theme;
+      js         += R"(',
+              themeVariables: {
+                  fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                  background: 'transparent'
+              }
+          });
+
+          window.runMermaid = async () => {
+              try {
+                  await mermaid.run({ querySelector: '.mermaid', suppressErrors: true });
+              } catch (e) {
+                  console.warn('Mermaid rendering failed', e);
+              }
+          };
+
+          document.addEventListener('DOMContentLoaded', async () => {
+              await window.runMermaid();
+          });
+        </script>
+        <style>
+          .mermaid {
+            background-color: )";
+
+      js += darkMode ? "#161b22" : "#f6f8fa";
+      js += R"(;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            text-align: center;
+          }
+        </style>
+      )";
       return js;
       }
 
@@ -322,27 +404,39 @@ QString MarkdownWebView::renderMarkdownToHtml(const std::string& _stdMarkdown) {
 
       // Code-Block Wrapping (mit weniger strengem Regex)
       QRegularExpression re("<pre><code( class=\"language-(.*?)\")?>(.*?)</code></pre>", QRegularExpression::DotMatchesEverythingOption);
+
       int offset = 0;
       QString result;
       QRegularExpressionMatch match;
       while ((match = re.match(_output, offset)).hasMatch()) {
-          result += _output.mid(offset, match.capturedStart() - offset);
-          QString lang = match.captured(2).isEmpty() ? "code" : match.captured(2);
-          QString codeClass = match.captured(2).isEmpty() ? "language-plaintext" : "language-" + match.captured(2);
-          QString code = match.captured(3);
-          result += QString(R"X(
-              <div class="code-container">
-                  <div class="code-header">
-                      <span>%1</span>
-                      <button class="copy-btn" onclick="copyCode(this)" title="Copy"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/></svg></button>
-                  </div>
-                  <div class="code-body">
-                      <pre><code class="%2">%3</code></pre>
-                  </div>
-              </div>
-          )X").arg(lang, codeClass, code);
-          offset = match.capturedEnd();
-      }
+            result            += _output.mid(offset, match.capturedStart() - offset);
+            QString lang       = match.captured(2).isEmpty() ? "code" : match.captured(2);
+            QString codeClass  = match.captured(2).isEmpty() ? "language-plaintext" : "language-" + match.captured(2);
+            QString code       = match.captured(3);
+
+            if (lang.toLower() == "mermaid") {
+                  // Gib Mermaid-Blöcke unverändert (aber als div class="mermaid") aus, damit sie gerendert werden können.
+                  // Wir dekorieren sie nicht mit Copy-Button oder Code-Header.
+
+                  result += QString(R"X(<div class="mermaid">%1</div>)X").arg(code);
+                  }
+            else {
+                  result += QString(R"X(
+<div class="code-container">
+   <div class="code-header">
+     <span>%1</span>
+     <button class="copy-btn" onclick="copyCode(this)" title="Copy"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/></svg></button>
+     </div>
+   <div class="code-body">
+      <pre><code class="%2">%3</code></pre>
+      </div>
+   </div>
+)X")
+                                .arg(lang, codeClass, code);
+                  }
+
+            offset = match.capturedEnd();
+            }
       result += _output.mid(offset);
       return result;
       }

@@ -911,20 +911,21 @@ int File::distance(Pos p1, Pos p2) const {
       // which will add the (implicit) newline to the char count
 
       if (p1.col < 0 || p1.col > l1.size()) {
-            Critical("bad position");
+            Critical("bad column position {} columns {}", p1.col, l1.size());
             return 0;
             }
       // const Line& l2 = _fileText[p2.y()];
       int n2 = columns(p2.row);
       if (p2.col < 0 || p2.col > n2) {
-            Critical("bad position");
+            Critical("bad column position {} columns {}", p2.col, n2);
             return 0;
             }
       if (p1.row == p2.row) // only one line
             return p2.col - p1.col;
       n = 0;
       for (;;) {
-            if (c.row == (p2.row-1)) { // on last line
+//            if (c.row == (p2.row-1)) { // on last line
+            if (c.row == (p2.row)) { // on last line
                   n += p2.col;
                   break;
                   }

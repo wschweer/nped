@@ -1,4 +1,44 @@
-## TODO
+# TODO
+
+---
+## LaTeX Integration
+- [x] Markdown soll LaTeX rendern:
+
+Inline: $E = mc^2$.
+Der Satz des Pythagoras lautet $ a^2 + b^2 = c^2 $.
+
+Block:
+$$ x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a} $$
+$$ \int_{0}^{\infty} e^{-x^2} dx = \frac{\sqrt{\pi}}{2} $$
+
+$$
+\begin{pmatrix}
+1 & a & a^2 \\
+1 & b & b^2 \\
+1 & c & c^2
+\end{pmatrix}
+$$
+
+---
+## Mermaid Integration
+
+- [x] Markdown soll Mermaid Diagramme rendern:
+
+```mermaid
+graph TD;
+    A-->B;
+    A-->C;
+    B-->D;
+    C-->D;
+```
+---
+### Check System Prompt
+- [ ] system prompt aus Datei lesen
+
+### Prompt message buttons
+- [ ] text für buttons aus Datei lesen
+- [ ] Popup Menu für Buttons
+- [ ] Texte in den editor holen und konfigurierbar machen
 
 ### SelectionMode CharSelect
 - [x] implement the mising SelectionMode "CharSelect". Its the most common selection
