@@ -1,5 +1,31 @@
 # TODO
 
+## Extend Canned prompts
+
+- [x] Restructure the configuration file .nped/agent.json: F1 F2 and F3 are changed
+      from text to object. Every object has a "name" element which is used to label
+      the corresponding "canned prompt" button. It also has a "description" elements used
+      for the button context help text. The element "text" is the text used for the
+      prompt input.
+
+## Canned prompts
+
+- [x] Locate the "Canned prompts" buttons on the left of the prompt entry widget,
+      currently named "F2" "F3" and "<mathematic sum>"
+- [x] Install an Action for every button.
+      The action should trigger on left mouse click.
+      The action reads a json file "agent.json"
+      which is located in a subdirectory ".nped" of the project home directory.
+      The text is read from the json text element "F1" "F2" and "F3" for the corresponding
+      buttons.
+- [x] If the json text file agent.json does not exist then create one with empty entries
+      for the three text elements.
+- [x] If the subdirectory ".nped" does not exist then create one.
+- [x] add another action on the three "Canned prompts" buttons. The action should
+      trigger on Ctrl + left mouse click.
+- [x] The action shall open the .nped/agent.json as an editable file in the editor so
+      that the user can configure the "canned prompts" by editing this file
+
 ---
 ## LaTeX Integration
 - [x] Markdown should render LaTeX:

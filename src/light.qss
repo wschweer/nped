@@ -11,12 +11,13 @@
     border: 1px solid #888;
 }
 
-#dashboardWidget {
+/* #dashboardWidget {
     background-color: #aaa;
     border: 1px solid #ccc;
     border-radius: 10px;
     margin: 7px;
 }
+*/
 
 QPlainTextEdit {
     background-color: #fff;

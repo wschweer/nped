@@ -54,7 +54,8 @@ void Logger::write(std::ostream& f, MsgType t, const MsgLogContext& c, const std
 
 void Logger::open(const char* appName) {
       // lets create lots of tracefiles:
-      std::string s = std::format(".{}-log-{}", appName, getpid());
+      // std::string s = std::format(".{}-log-{}", appName, getpid());
+      std::string s = std::format(".{}.log", appName);
       f.open(s.c_str(), std::ios_base::out);
 
       if (!f.is_open()) {

@@ -293,16 +293,23 @@ bool Agent::isPathSafe(const QString& path) {
       }
 
 //---------------------------------------------------------
+//   normalizePath
+//    makes sure path is always relative to projectRoot
+//---------------------------------------------------------
+
+QString Agent::normalizePath(const QString& path) const {
+      if (path.startsWith("/"))
+            return path;
+      return _editor->projectRoot() + "/" + path;
+      }
+
+//---------------------------------------------------------
 //   readFile
 //    on error returns false
 //---------------------------------------------------------
 
 bool Agent::readFile(const QString& ipath, QString& result) {
-      QString path;
-      if (!ipath.startsWith("/"))
-            path = _editor->projectRoot() + "/" + ipath;
-      else
-            path = ipath;
+      QString path = normalizePath(ipath);
       File* f = _editor->findFile(path);
       if (f) {
             result = f->plainText();
@@ -338,16 +345,14 @@ QString Agent::readFileLines(const QString& path, int startLine, int endLine) {
 //---------------------------------------------------------
 
 QString Agent::searchProject(const QString& query, const QString& filePattern) {
-      Debug("<{}> <{}>", query, filePattern);
       QString result;
-      QString projRoot = QDir::cleanPath(_editor->projectRoot());
-      QDir dir(projRoot);
+      QDir dir(_editor->projectRoot());
       QStringList filters;
       if (!filePattern.isEmpty())
             filters << filePattern;
       else
             filters << "*.cpp" << "*.h" << "*.c" << "*.hpp" << "CMakeLists.txt";
-      QDirIterator it(projRoot, filters, QDir::Files, QDirIterator::Subdirectories);
+      QDirIterator it(_editor->projectRoot(), filters, QDir::Files, QDirIterator::Subdirectories);
       while (it.hasNext()) {
             QString path = it.next();
             if (path.startsWith(".") || path.contains("/build/"))
@@ -411,7 +416,8 @@ QString Agent::findSymbol(const QString& symbol) {
 //   createFile
 //---------------------------------------------------------
 
-QString Agent::createFile(const QString& path, const QString& content) {
+QString Agent::createFile(const QString& ipath, const QString& content) {
+      auto path = normalizePath(ipath);
       if (QFile::exists(path))
             return "Error: File already exists. Use modify_file.";
 
@@ -429,13 +435,9 @@ QString Agent::createFile(const QString& path, const QString& content) {
 //---------------------------------------------------------
 
 QString Agent::modifyFile(const QString& ipath, const QString& content) {
-      if (!QFile::exists(ipath))
+      QString path = normalizePath(ipath);
+      if (!QFile::exists(path))
             return "Error: File does not exist. Use create_file.";
-      QString path;
-      if (!ipath.startsWith("/"))
-            path = _editor->projectRoot() + "/" + ipath;
-      else
-            path = ipath;
 
       File* f = _editor->findFile(path);
       if (f) {
@@ -462,7 +464,9 @@ QString Agent::modifyFile(const QString& ipath, const QString& content) {
 // Tool 4: list_directory
 //---------------------------------------------------------
 
-QString Agent::listDirectory(const QString& path) {
+QString Agent::listDirectory(const QString& ipath) {
+      auto path = normalizePath(ipath);
+
       QDir dir(path);
       if (!dir.exists())
             return "Error: The directory does not exist on disk.";
@@ -533,18 +537,15 @@ QString Agent::fetchWebDocumentation(const QString& urlString) {
 QString Agent::replaceInFile(const QString& ipath, const QString& searchStr, const QString& replaceStr) {
       static constexpr const char notFound[] = "Error: The searched text (search) was not found in the file. "
                                                "Make sure that indentations, spaces, and line breaks match exactly.";
-      if (!QFile::exists(ipath))
-            return "Error: File does not exist. Use create_file instead.";
-
-      QString path;
-      if (!ipath.startsWith("/"))
-            path = _editor->projectRoot() + "/" + ipath;
-      else
-            path = ipath;
+      QString path = normalizePath(ipath);
+      if (!QFile::exists(path)) {
+            Debug("File <{}> does not exist", path);
+            return "Error: File does not exist.";
+            }
 
       File* f = _editor->findFile(path);
       if (f) {
-            Debug("local search/replace in <{}>: <{}> -- <{}>", path, searchStr, replaceStr);
+//            Debug("local search/replace in <{}>: <{}> -- <{}>", path, searchStr, replaceStr);
             f->undo()->beginMacro();
             auto rv = f->searchReplace(searchStr, replaceStr);
             f->undo()->endMacro();

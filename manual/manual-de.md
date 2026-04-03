@@ -241,31 +241,6 @@ die Textdarstellung zurückschalten um blitzschnell zu dieser Funktion zu navigi
       [Ctrl+H]                      CMD_SHOW_INFO
       [Enter <name> Ctrl+F]         Erzeugt leere c++ Funktion mit Namen `name`
 
-
-## Code Expander
-
-Der Code Expander ist ein experimentelles Feature in NPed, um C++ Code via Python script zu erzeugen.
-Die Python Scripte sind als C Kommentare getarnt und werden beim Schreiben der Sourcedatei ausgeführt.
-Python Output wird dabei hinter dem Script in die Datei eingefügt.
-
-Dies bedeutet:
-
-* Es ist kein separater Präprozessor notwendig, der Quellcode wird "in place" geändert
-* Keine Anpassung für das Build-System
-* Leicht zu debuggen, da sowohl die Python Scripte als auch deren Output direkt sichtbar sind
-* die expandierten Dateien sind normaler c++ code und das projekt kann auch ohne diese Ped-Features
-weiter bearbeitet werden
-
-Nachteile:
-
-* Werden ausserhalb der Ped-Umgebung die generierten Code-Teile verändert, sollten auch die
-  Scripte angepasst werden. Ansonsten gehen Änderungen verloren, wenn Code neu vom Script generiert wird.
-
-Normalerweise zeigt Ped den generierten Teil auch an, was für Debug-Zwecke nützlich ist.
-Für eine bessere Übersichtlichkeit kann der generierte Text auch einfach beim Lesen der Datei
-übersprungen werden. Ein Kommentar in der ersten Zeile der Datei mit dem Text "//##H" schaltet
-dieses Verhalten ein.
-
 ## AI Agent
 ### Model
 

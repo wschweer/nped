@@ -78,7 +78,7 @@ class MarkdownWebView : public QWebEngineView
       explicit MarkdownWebView(Editor*, QWidget* parent = nullptr);
 
       void setHtml(const QString& html, const QUrl& baseUrl = QUrl());
-      void setMarkdown(const QString& markdown);
+      void setMarkdown(const QString& markdown, int cursorLine = -1);
       void append(const QString&);
       void clear() { setMarkdown(""); }
       QString renderMarkdownToHtml(const std::string& markdown);

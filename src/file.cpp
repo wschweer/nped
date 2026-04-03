@@ -497,7 +497,6 @@ void File::updateAST() {
 bool File::save() {
       if (!modified())
             return true;
-      expandMacros();
 
       // remove trailing spaces
       int lines = _fileText.size();
@@ -968,39 +967,6 @@ Pos File::advance(const Pos& p, int dist) const {
       }
 
 //---------------------------------------------------------
-//   lookupExpansion
-//---------------------------------------------------------
-
-static int lookupExpansion(const Lines& text, int idx) {
-      int removeLen = 0;
-      int lines     = text.size();
-      if (idx >= lines)
-            return 0;
-      Line string = text[idx];
-      if (string.qstring().trimmed() != startReplaceSignature)
-            return 0;
-      ++idx;
-      removeLen += string.size() + 1;
-      for (; idx < lines; ++idx) {
-            string     = text[idx];
-            removeLen += string.size() + 1;
-            if (string.qstring().trimmed() == endReplaceSignature)
-                  break;
-            }
-      return removeLen;
-      }
-
-//---------------------------------------------------------
-//   startsWithMacro
-//---------------------------------------------------------
-
-static bool startsWithMacro(const Line& ss) {
-      auto s = ss.qstring().trimmed();
-      return s.startsWith(macroProperty0) || s.startsWith(macroProperty1) || s.startsWith(macroProperty2) || s.startsWith(macroProperty3) ||
-             s.startsWith(macroProperty4);
-      }
-
-//---------------------------------------------------------
 //   markExpansion
 //---------------------------------------------------------
 
@@ -1024,38 +990,6 @@ void File::markExpansion() {
             else
                   string.setFold(FoldMark::No);
             }
-      }
-
-//---------------------------------------------------------
-//   expandMacros
-//---------------------------------------------------------
-
-void File::expandMacros() {
-      if (!pyMacros())
-            return;
-      int lines = _fileText.size();
-      for (int i = 0; i < lines; ++i) {
-            Line string = _fileText[i];
-            if (startsWithMacro(string)) {
-                  QString pdata = string.qstring().trimmed().mid(4);
-                  for (++i; i < lines; ++i) {
-                        string = _fileText[i];
-                        if (!startsWithMacro(string))
-                              break;
-                        if (!pdata.isEmpty())
-                              pdata += "\n";
-                        pdata += string.qstring().trimmed().mid(4);
-                        }
-                  QString ss = editor->evalPP(pdata);
-                  // look if there is already an expansion
-                  //                  ++i;
-                  int removeLen = lookupExpansion(_fileText, i);
-                  auto pos      = editor->kontext()->cursor();
-                  undo()->push(new Patch(this, Pos(0, i), removeLen, ss, pos, pos));
-                  lines = _fileText.size();
-                  }
-            }
-      markExpansion();
       }
 
 //---------------------------------------------------------

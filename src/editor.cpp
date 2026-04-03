@@ -356,7 +356,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
          Action(getSC(Cmd::CMD_GOTO_DEFINITION), [this] { gotoDefinition(); }),
          Action(getSC(Cmd::CMD_GOTO_BACK), [this] { backKontext(); }),
          Action(getSC(Cmd::CMD_SHOW_INFO), [this] { hover(); }),
-         Action(getSC(Cmd::CMD_EXPAND_MACROS), [this] { kontext()->file()->expandMacros(); }),
+         Action(getSC(Cmd::CMD_EXPAND_MACROS), [] {}),  // dummy
          Action(getSC(Cmd::CMD_COMPLETIONS), [this] { requestCompletions(); }),
          Action(getSC(Cmd::CMD_FUNCTION_HEADER), [this] { kontext()->createFunctionHeader(); }),
          Action(getSC(Cmd::CMD_GIT_TOGGLE), [this] { _gitButton->setChecked(!_gitButton->isChecked()); }),
@@ -458,7 +458,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       connect(btnHome, &QToolButton::clicked, [this]() {
             if (kontext() && kontext()->file()) {
                   if (kontext()->file()->languageId() == "markdown")
-                        _mdWidget->setMarkdown(kontext()->file()->plainText());
+                        _mdWidget->setMarkdown(kontext()->file()->plainText(), kontext()->fileRow());
                   else
                         _mdWidget->setHtml(kontext()->file()->plainText());
                   }
@@ -782,7 +782,7 @@ void Editor::updateViewMode() {
                   auto lid = kontext()->file()->languageId();
                   const auto& text = kontext()->file()->plainText();
                   if (lid == "markdown")
-                        _mdWidget->setMarkdown(text);
+                        _mdWidget->setMarkdown(text, kontext()->fileRow());
                   else if (lid == "html")
                         _mdWidget->setHtml(text);
                   else if (lid == "image")

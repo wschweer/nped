@@ -100,7 +100,6 @@ class File : public QObject
       void setViewMode(ViewMode, const Pos& pt = Pos());
       QString languageId() const { return fileType.languageId; }
       int tab() const { return fileType.tabSize; }
-      bool pyMacros() const { return fileType.pymacros; }
       QString plainText() const { return _fileText.join('\n'); }
       int indent(const Pos& pos) const;
 
@@ -134,7 +133,6 @@ class File : public QObject
       Pos advance(const Pos& p, int dist) const;
 
       bool readOnly() const;
-      void expandMacros();
       void postprocessFormat();
       void updateAST();
 

@@ -1,0 +1,4447 @@
+Debug(/home/ws/nped/src/ollama.cpp:62, prompt): ===
+Debug(/home/ws/nped/src/agent.cpp:586, sendMessage2): send <4>
+send <{
+   "messages": [
+      {
+         "content": "You are an experienced C++ developer. Your task is to analyze and write code in the project and to fix build errors.\n\nUse modern c++. Prefer object oriented design and use modern design patterns.\nAnswer exclusively in JSON format when you call a tool:\nNever add files to git.\nPROJECT STRUCTURE:\nStandard Qt6 layout. The build directory is './build'. Use CMake with ninja.\nUse the run_build_command tool to compile the project and check if errors occur. ",
+         "role": "system"
+      },
+      {
+         "content": "hi",
+         "role": "user"
+      }
+   ],
+   "model": "deepseek-r1:1.5b",
+   "stream": true,
+   "tools": [
+      {
+         "function": {
+            "description": "Creates a new file at the specified path with the provided content.",
+            "name": "create_file",
+            "parameters": {
+               "properties": {
+                  "content": {
+                     "description": "The initial content of the file.",
+                     "type": "string"
+                  },
+                  "path": {
+                     "description": "The path where the file should be created.",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "path",
+                  "content"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Completely overwrites an existing file with new content.",
+            "name": "modify_file",
+            "parameters": {
+               "properties": {
+                  "content": {
+                     "description": "The new content for the file.",
+                     "type": "string"
+                  },
+                  "path": {
+                     "description": "The path to the file.",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "path",
+                  "content"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Replaces a specific text block with new content. Use this for targeted edits to avoid overwriting the whole file.",
+            "name": "replace_in_file",
+            "parameters": {
+               "properties": {
+                  "path": {
+                     "description": "The path to the file.",
+                     "type": "string"
+                  },
+                  "replace": {
+                     "description": "The new text to insert.",
+                     "type": "string"
+                  },
+                  "search": {
+                     "description": "The exact text string to be replaced.",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "path",
+                  "search",
+                  "replace"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Reads a file or a specific range of lines from a file.",
+            "name": "read_file",
+            "parameters": {
+               "properties": {
+                  "end_line": {
+                     "description": "The last line to read.",
+                     "type": "integer"
+                  },
+                  "path": {
+                     "description": "The path to the file.",
+                     "type": "string"
+                  },
+                  "start_line": {
+                     "description": "The first line to read (1-indexed).",
+                     "type": "integer"
+                  }
+               },
+               "required": [
+                  "path"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Lists all files and subdirectories within a given path.",
+            "name": "list_directory",
+            "parameters": {
+               "properties": {
+                  "path": {
+                     "description": "The directory path to inspect.",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "path"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Searches for a text query across all files in the project, including unsaved editor buffers.",
+            "name": "search_project",
+            "parameters": {
+               "properties": {
+                  "file_pattern": {
+                     "description": "Optional glob pattern to filter files (e.g., '*.cpp').",
+                     "type": "string"
+                  },
+                  "query": {
+                     "description": "The text to search for.",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "query"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Uses the Language Server (LSP) to find the definition of a symbol like a class or function.",
+            "name": "find_symbol",
+            "parameters": {
+               "properties": {
+                  "symbol": {
+                     "description": "The name of the symbol to locate (e.g., 'MyClass').",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "symbol"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Downloads content from a URL via HTTP GET. Use this to read external API docs or technical references.",
+            "name": "fetch_web_documentation",
+            "parameters": {
+               "properties": {
+                  "url": {
+                     "description": "The full URL starting with http or https.",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "url"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Executes a shell command (like 'make' or 'cmake') within the project's build directory.",
+            "name": "run_build_command",
+            "parameters": {
+               "properties": {
+                  "command": {
+                     "description": "The build command to execute.",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "command"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Returns the current git status of the repository. No parameters needed.",
+            "name": "get_git_status",
+            "parameters": {
+               "properties": {},
+               "required": [],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Shows uncommitted changes as a diff. Helps review edits before committing.",
+            "name": "get_git_diff",
+            "parameters": {
+               "properties": {
+                  "path": {
+                     "description": "Optional: path to a specific file to diff.",
+                     "type": "string"
+                  }
+               },
+               "required": [],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Displays the recent git commit history.",
+            "name": "get_git_log",
+            "parameters": {
+               "properties": {
+                  "limit": {
+                     "description": "Number of commits to retrieve (default: 5).",
+                     "type": "integer"
+                  }
+               },
+               "required": [],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Stages all current changes (git add .) and creates a new commit.",
+            "name": "create_git_commit",
+            "parameters": {
+               "properties": {
+                  "message": {
+                     "description": "A clear and concise commit message.",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "message"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      }
+   ]
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <1>
+received <{
+   "error": "registry.ollama.ai/library/deepseek-r1:1.5b does not support tools"
+}>
+Debug(/home/ws/nped/src/agent.cpp:691, handleChatFinished): Network/API error 302: Error transferring http://localhost:11434/api/chat - server replied: Bad Request
+Debug(/home/ws/nped/src/ollama.cpp:62, prompt): ===
+Debug(/home/ws/nped/src/agent.cpp:586, sendMessage2): send <4>
+send <{
+   "messages": [
+      {
+         "content": "You are an experienced C++ developer. Your task is to analyze and write code in the project and to fix build errors.\n\nUse modern c++. Prefer object oriented design and use modern design patterns.\nAnswer exclusively in JSON format when you call a tool:\nNever add files to git.\nPROJECT STRUCTURE:\nStandard Qt6 layout. The build directory is './build'. Use CMake with ninja.\nUse the run_build_command tool to compile the project and check if errors occur. ",
+         "role": "system"
+      },
+      {
+         "content": "for testing purposes produce some output with \"thinking\" eg <think> tags",
+         "role": "user"
+      }
+   ],
+   "model": "gemma4:31b",
+   "stream": true,
+   "tools": [
+      {
+         "function": {
+            "description": "Creates a new file at the specified path with the provided content.",
+            "name": "create_file",
+            "parameters": {
+               "properties": {
+                  "content": {
+                     "description": "The initial content of the file.",
+                     "type": "string"
+                  },
+                  "path": {
+                     "description": "The path where the file should be created.",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "path",
+                  "content"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Completely overwrites an existing file with new content.",
+            "name": "modify_file",
+            "parameters": {
+               "properties": {
+                  "content": {
+                     "description": "The new content for the file.",
+                     "type": "string"
+                  },
+                  "path": {
+                     "description": "The path to the file.",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "path",
+                  "content"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Replaces a specific text block with new content. Use this for targeted edits to avoid overwriting the whole file.",
+            "name": "replace_in_file",
+            "parameters": {
+               "properties": {
+                  "path": {
+                     "description": "The path to the file.",
+                     "type": "string"
+                  },
+                  "replace": {
+                     "description": "The new text to insert.",
+                     "type": "string"
+                  },
+                  "search": {
+                     "description": "The exact text string to be replaced.",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "path",
+                  "search",
+                  "replace"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Reads a file or a specific range of lines from a file.",
+            "name": "read_file",
+            "parameters": {
+               "properties": {
+                  "end_line": {
+                     "description": "The last line to read.",
+                     "type": "integer"
+                  },
+                  "path": {
+                     "description": "The path to the file.",
+                     "type": "string"
+                  },
+                  "start_line": {
+                     "description": "The first line to read (1-indexed).",
+                     "type": "integer"
+                  }
+               },
+               "required": [
+                  "path"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Lists all files and subdirectories within a given path.",
+            "name": "list_directory",
+            "parameters": {
+               "properties": {
+                  "path": {
+                     "description": "The directory path to inspect.",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "path"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Searches for a text query across all files in the project, including unsaved editor buffers.",
+            "name": "search_project",
+            "parameters": {
+               "properties": {
+                  "file_pattern": {
+                     "description": "Optional glob pattern to filter files (e.g., '*.cpp').",
+                     "type": "string"
+                  },
+                  "query": {
+                     "description": "The text to search for.",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "query"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Uses the Language Server (LSP) to find the definition of a symbol like a class or function.",
+            "name": "find_symbol",
+            "parameters": {
+               "properties": {
+                  "symbol": {
+                     "description": "The name of the symbol to locate (e.g., 'MyClass').",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "symbol"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Downloads content from a URL via HTTP GET. Use this to read external API docs or technical references.",
+            "name": "fetch_web_documentation",
+            "parameters": {
+               "properties": {
+                  "url": {
+                     "description": "The full URL starting with http or https.",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "url"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Executes a shell command (like 'make' or 'cmake') within the project's build directory.",
+            "name": "run_build_command",
+            "parameters": {
+               "properties": {
+                  "command": {
+                     "description": "The build command to execute.",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "command"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Returns the current git status of the repository. No parameters needed.",
+            "name": "get_git_status",
+            "parameters": {
+               "properties": {},
+               "required": [],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Shows uncommitted changes as a diff. Helps review edits before committing.",
+            "name": "get_git_diff",
+            "parameters": {
+               "properties": {
+                  "path": {
+                     "description": "Optional: path to a specific file to diff.",
+                     "type": "string"
+                  }
+               },
+               "required": [],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Displays the recent git commit history.",
+            "name": "get_git_log",
+            "parameters": {
+               "properties": {
+                  "limit": {
+                     "description": "Number of commits to retrieve (default: 5).",
+                     "type": "integer"
+                  }
+               },
+               "required": [],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      },
+      {
+         "function": {
+            "description": "Stages all current changes (git add .) and creates a new commit.",
+            "name": "create_git_commit",
+            "parameters": {
+               "properties": {
+                  "message": {
+                     "description": "A clear and concise commit message.",
+                     "type": "string"
+                  }
+               },
+               "required": [
+                  "message"
+               ],
+               "type": "object"
+            }
+         },
+         "type": "function"
+      }
+   ]
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:48.660403269Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "The"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:48.680936133Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " user"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:48.701468336Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " wants"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:48.720533611Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " me"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:48.739877179Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " to"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:48.761410273Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " produce"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:48.780958235Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " output"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:48.801981872Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " that"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:48.821478548Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " includes"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:48.844436451Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " `"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:48.863746506Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "<think"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:48.882578242Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": ">`"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:48.902180647Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " tags"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:48.921316334Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " for"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:48.94008435Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " testing"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:48.961462783Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " purposes"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:48.980958247Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "."
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.000513423Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " This"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.020255821Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " is"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.040108145Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " a"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.061402771Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " meta"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.081293588Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "-"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.101306034Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "request"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.121216147Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " about"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.143072048Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " my"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.163178481Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " own"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.185092111Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " internal"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.2063196Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " thought"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.227324251Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " process"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.246819605Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " representation"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.266090206Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "."
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.306761853Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "\n\nAs"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.327965818Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " an"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.346642803Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " AI"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.365698179Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": ","
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.386625615Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " I"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.405078248Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " typically"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.424200881Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " generate"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.443791393Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " thoughts"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.463301825Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " internally"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.482976265Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " and"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.502436923Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " then"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.521940942Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " provide"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.541816481Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " the"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.562014956Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " final"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.583258326Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " response"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.604895546Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "."
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.625882444Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " However"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.647002672Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": ","
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.665860867Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " some"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.686770349Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " interfaces"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.704928128Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " allow"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.72364114Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " the"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.744029413Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " \""
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.762945056Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "thinking"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.781346012Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "\""
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.801943978Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " process"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.820255125Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " to"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.838797877Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " be"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.857852532Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " visible"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.878873614Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "."
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.897401348Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " The"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.91570431Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " user"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.93469801Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " is"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.955566285Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " explicitly"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.974823109Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " asking"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:49.996027266Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " for"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.015341138Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " this"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.034758294Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "."
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.077372894Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "\n\nSince"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.096641661Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " I"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.116072023Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " am"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.136822496Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " currently"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.156579741Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " in"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.17776945Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " a"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.196364Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " \""
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.214987875Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "developer"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.234352893Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "\""
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.255214365Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " persona"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.273892592Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " with"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.294821421Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " access"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.313535756Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " to"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.332167495Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " tools"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.352570305Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": ","
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.371108769Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " I"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.389267119Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " should"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.407911161Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " probably"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.427129674Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " just"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.44805182Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " provide"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.468006898Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " a"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.488660028Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " sample"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.509641135Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " response"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.528847565Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " that"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.547381631Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " demonstrates"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.56756619Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " this"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.588380864Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "."
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.62770636Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "\n\nPlan"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.648179442Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": ":"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.687779554Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "\n1"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.708364496Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "."
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.749718837Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "  Provide"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.769162593Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " a"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.78913867Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " response"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.807810555Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " that"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.828352166Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " starts"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.846941125Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " with"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.866161211Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " a"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.887060363Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " `"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.905545638Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "<think"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.924350663Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": ">`"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.943787506Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " block"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:50.965887507Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "."
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.008047813Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "\n2"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.027610102Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "."
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.067662725Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "  Follow"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.088989923Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " it"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.109280822Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " with"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.127705492Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " a"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.14643719Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " standard"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.165561706Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " response"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.185949798Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "."
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.225096708Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "\n\nWait"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.246243025Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": ","
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.265043943Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " the"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.285499391Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " instructions"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.304205862Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " say"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.323066772Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " \""
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.343593455Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "Answer"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.36265371Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " exclusively"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.381416085Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " in"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.401960631Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " JSON"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.420665679Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " format"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.439378611Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " when"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.458131208Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " you"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.478911036Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " call"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.49776845Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " a"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.518255428Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " tool"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.537086993Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "\"."
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.556617583Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " I"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.577729415Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "'"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.595787477Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "m"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.614099124Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " not"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.632428686Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " calling"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.65575951Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " a"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.676285712Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " tool"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.694795642Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " here"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.713238647Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": ","
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.731817047Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " I"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.752573451Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "'"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.771409675Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "m"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.790032007Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " just"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.81071331Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " replying"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.829275339Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "."
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.867085897Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "\n\nLet"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.887647575Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "'"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.906247976Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "s"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.926917406Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " create"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.945496627Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " a"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.964480679Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " dummy"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:51.983264515Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " scenario"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.004676502Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " where"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.023292852Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " I"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.043941133Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " \""
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.062408574Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "think"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.081074378Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "\""
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.100072376Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " about"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.121162869Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " a"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.139913642Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " C"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.160625272Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "++"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.179334748Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " problem"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.197831594Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " and"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.216306288Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " then"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.236932067Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " solve"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.255803307Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " it"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.274619754Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": ","
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.295663268Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " since"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.314309174Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " that"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.332896941Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "'"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.353927331Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "s"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.372784154Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " my"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.391447573Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " assigned"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.412448477Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": " persona"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.431073193Z",
+   "done": false,
+   "message": {
+      "content": "",
+      "role": "assistant",
+      "thinking": "."
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.488756965Z",
+   "done": false,
+   "message": {
+      "content": "<think",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.50980639Z",
+   "done": false,
+   "message": {
+      "content": ">",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.530750167Z",
+   "done": false,
+   "message": {
+      "content": "\n",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.550318868Z",
+   "done": false,
+   "message": {
+      "content": "The",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.572328639Z",
+   "done": false,
+   "message": {
+      "content": " user",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.590996246Z",
+   "done": false,
+   "message": {
+      "content": " wants",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.611942267Z",
+   "done": false,
+   "message": {
+      "content": " to",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.63235231Z",
+   "done": false,
+   "message": {
+      "content": " see",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.653148158Z",
+   "done": false,
+   "message": {
+      "content": " how",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.671708914Z",
+   "done": false,
+   "message": {
+      "content": " I",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.690054877Z",
+   "done": false,
+   "message": {
+      "content": " produce",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.708975279Z",
+   "done": false,
+   "message": {
+      "content": " output",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.729567454Z",
+   "done": false,
+   "message": {
+      "content": " with",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.748193704Z",
+   "done": false,
+   "message": {
+      "content": " thinking",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.767583028Z",
+   "done": false,
+   "message": {
+      "content": " tags",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.788330535Z",
+   "done": false,
+   "message": {
+      "content": ".",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.806744015Z",
+   "done": false,
+   "message": {
+      "content": " ",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.827377768Z",
+   "done": false,
+   "message": {
+      "content": "\n",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.846205917Z",
+   "done": false,
+   "message": {
+      "content": "Since",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.86516384Z",
+   "done": false,
+   "message": {
+      "content": " I",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.884340074Z",
+   "done": false,
+   "message": {
+      "content": "'",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.905583484Z",
+   "done": false,
+   "message": {
+      "content": "m",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.924374012Z",
+   "done": false,
+   "message": {
+      "content": " acting",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.944994861Z",
+   "done": false,
+   "message": {
+      "content": " as",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.963678939Z",
+   "done": false,
+   "message": {
+      "content": " an",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:52.982321098Z",
+   "done": false,
+   "message": {
+      "content": " experienced",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.002786606Z",
+   "done": false,
+   "message": {
+      "content": " C",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.021988267Z",
+   "done": false,
+   "message": {
+      "content": "++",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.041197212Z",
+   "done": false,
+   "message": {
+      "content": " developer",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.062132903Z",
+   "done": false,
+   "message": {
+      "content": ",",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.08076301Z",
+   "done": false,
+   "message": {
+      "content": " I",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.099340848Z",
+   "done": false,
+   "message": {
+      "content": "'",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.120062236Z",
+   "done": false,
+   "message": {
+      "content": "ll",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.138523135Z",
+   "done": false,
+   "message": {
+      "content": " simulate",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.157467993Z",
+   "done": false,
+   "message": {
+      "content": " a",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.178367376Z",
+   "done": false,
+   "message": {
+      "content": " small",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.197120504Z",
+   "done": false,
+   "message": {
+      "content": " technical",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.215940268Z",
+   "done": false,
+   "message": {
+      "content": " decision",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.237042803Z",
+   "done": false,
+   "message": {
+      "content": " process",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.256065137Z",
+   "done": false,
+   "message": {
+      "content": ".",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.27463473Z",
+   "done": false,
+   "message": {
+      "content": "\n",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.295420679Z",
+   "done": false,
+   "message": {
+      "content": "I",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.314150533Z",
+   "done": false,
+   "message": {
+      "content": " need",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.33253573Z",
+   "done": false,
+   "message": {
+      "content": " to",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.353520273Z",
+   "done": false,
+   "message": {
+      "content": " decide",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.372117938Z",
+   "done": false,
+   "message": {
+      "content": " between",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.390560723Z",
+   "done": false,
+   "message": {
+      "content": " using",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.411298201Z",
+   "done": false,
+   "message": {
+      "content": " a",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.42990814Z",
+   "done": false,
+   "message": {
+      "content": " `",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.448543797Z",
+   "done": false,
+   "message": {
+      "content": "std",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.468037437Z",
+   "done": false,
+   "message": {
+      "content": "::",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.488948472Z",
+   "done": false,
+   "message": {
+      "content": "vector",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.507944827Z",
+   "done": false,
+   "message": {
+      "content": "`",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.527209497Z",
+   "done": false,
+   "message": {
+      "content": " or",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.545745026Z",
+   "done": false,
+   "message": {
+      "content": " a",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.568611127Z",
+   "done": false,
+   "message": {
+      "content": " `",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.589502735Z",
+   "done": false,
+   "message": {
+      "content": "std",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.607959626Z",
+   "done": false,
+   "message": {
+      "content": "::",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.628852216Z",
+   "done": false,
+   "message": {
+      "content": "deque",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.649939743Z",
+   "done": false,
+   "message": {
+      "content": "`",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.670199013Z",
+   "done": false,
+   "message": {
+      "content": " for",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.690983349Z",
+   "done": false,
+   "message": {
+      "content": " a",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.711823361Z",
+   "done": false,
+   "message": {
+      "content": " specific",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.73047087Z",
+   "done": false,
+   "message": {
+      "content": " use",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.749627737Z",
+   "done": false,
+   "message": {
+      "content": " case",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.769714452Z",
+   "done": false,
+   "message": {
+      "content": " (",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.790257816Z",
+   "done": false,
+   "message": {
+      "content": "f",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.811087959Z",
+   "done": false,
+   "message": {
+      "content": "requent",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.830207295Z",
+   "done": false,
+   "message": {
+      "content": " insertions",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.848919376Z",
+   "done": false,
+   "message": {
+      "content": " at",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.868344848Z",
+   "done": false,
+   "message": {
+      "content": " both",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.888762095Z",
+   "done": false,
+   "message": {
+      "content": " ends",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.907339532Z",
+   "done": false,
+   "message": {
+      "content": ").",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.927693961Z",
+   "done": false,
+   "message": {
+      "content": "\n",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.946398337Z",
+   "done": false,
+   "message": {
+      "content": "-",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.965429388Z",
+   "done": false,
+   "message": {
+      "content": " `",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:53.986165303Z",
+   "done": false,
+   "message": {
+      "content": "std",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.004698888Z",
+   "done": false,
+   "message": {
+      "content": "::",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.023197688Z",
+   "done": false,
+   "message": {
+      "content": "vector",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.042871126Z",
+   "done": false,
+   "message": {
+      "content": "`:",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.064264799Z",
+   "done": false,
+   "message": {
+      "content": " Great",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.084662759Z",
+   "done": false,
+   "message": {
+      "content": " for",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.103300089Z",
+   "done": false,
+   "message": {
+      "content": " random",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.122359363Z",
+   "done": false,
+   "message": {
+      "content": " access",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.140821413Z",
+   "done": false,
+   "message": {
+      "content": " and",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.161373584Z",
+   "done": false,
+   "message": {
+      "content": " back",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.180172658Z",
+   "done": false,
+   "message": {
+      "content": " insertions",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.198696375Z",
+   "done": false,
+   "message": {
+      "content": ",",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.219115715Z",
+   "done": false,
+   "message": {
+      "content": " but",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.237703843Z",
+   "done": false,
+   "message": {
+      "content": " expensive",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.256542562Z",
+   "done": false,
+   "message": {
+      "content": " for",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.275059906Z",
+   "done": false,
+   "message": {
+      "content": " front",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.295820298Z",
+   "done": false,
+   "message": {
+      "content": " insertions",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.314037188Z",
+   "done": false,
+   "message": {
+      "content": " (",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.332487105Z",
+   "done": false,
+   "message": {
+      "content": "O",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.353152709Z",
+   "done": false,
+   "message": {
+      "content": "(",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.371909864Z",
+   "done": false,
+   "message": {
+      "content": "n",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.390254424Z",
+   "done": false,
+   "message": {
+      "content": ")).",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.410900651Z",
+   "done": false,
+   "message": {
+      "content": "\n",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.429242576Z",
+   "done": false,
+   "message": {
+      "content": "-",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.447721809Z",
+   "done": false,
+   "message": {
+      "content": " `",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.466136411Z",
+   "done": false,
+   "message": {
+      "content": "std",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.486704Z",
+   "done": false,
+   "message": {
+      "content": "::",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.505145151Z",
+   "done": false,
+   "message": {
+      "content": "deque",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.523638801Z",
+   "done": false,
+   "message": {
+      "content": "`:",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.544150916Z",
+   "done": false,
+   "message": {
+      "content": " Supports",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.563196053Z",
+   "done": false,
+   "message": {
+      "content": " O",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.582332502Z",
+   "done": false,
+   "message": {
+      "content": "(",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.60351133Z",
+   "done": false,
+   "message": {
+      "content": "1",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.623962641Z",
+   "done": false,
+   "message": {
+      "content": ")",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.644944248Z",
+   "done": false,
+   "message": {
+      "content": " insertions",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.664430084Z",
+   "done": false,
+   "message": {
+      "content": " at",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.685248565Z",
+   "done": false,
+   "message": {
+      "content": " both",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.705836733Z",
+   "done": false,
+   "message": {
+      "content": " ends",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.724468563Z",
+   "done": false,
+   "message": {
+      "content": ",",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.744796341Z",
+   "done": false,
+   "message": {
+      "content": " but",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.763766297Z",
+   "done": false,
+   "message": {
+      "content": " has",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.782263413Z",
+   "done": false,
+   "message": {
+      "content": " slightly",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.802781189Z",
+   "done": false,
+   "message": {
+      "content": " more",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.821118214Z",
+   "done": false,
+   "message": {
+      "content": " overhead",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.839595784Z",
+   "done": false,
+   "message": {
+      "content": " for",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.860038348Z",
+   "done": false,
+   "message": {
+      "content": " random",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.878699684Z",
+   "done": false,
+   "message": {
+      "content": " access",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.897118233Z",
+   "done": false,
+   "message": {
+      "content": " than",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.915342135Z",
+   "done": false,
+   "message": {
+      "content": " vector",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.93422654Z",
+   "done": false,
+   "message": {
+      "content": ".",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.954736721Z",
+   "done": false,
+   "message": {
+      "content": "\n",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.973253285Z",
+   "done": false,
+   "message": {
+      "content": "Conclusion",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:54.993656625Z",
+   "done": false,
+   "message": {
+      "content": ":",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.012086836Z",
+   "done": false,
+   "message": {
+      "content": " `",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.030419854Z",
+   "done": false,
+   "message": {
+      "content": "std",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.048908004Z",
+   "done": false,
+   "message": {
+      "content": "::",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.068127749Z",
+   "done": false,
+   "message": {
+      "content": "deque",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.088587054Z",
+   "done": false,
+   "message": {
+      "content": "`",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.107223032Z",
+   "done": false,
+   "message": {
+      "content": " is",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.128139828Z",
+   "done": false,
+   "message": {
+      "content": " the",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.146433753Z",
+   "done": false,
+   "message": {
+      "content": " better",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.165446989Z",
+   "done": false,
+   "message": {
+      "content": " choice",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.1864513Z",
+   "done": false,
+   "message": {
+      "content": " for",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.204976108Z",
+   "done": false,
+   "message": {
+      "content": " this",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.223547725Z",
+   "done": false,
+   "message": {
+      "content": " specific",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.243940135Z",
+   "done": false,
+   "message": {
+      "content": " requirement",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.262940287Z",
+   "done": false,
+   "message": {
+      "content": ".",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.281365268Z",
+   "done": false,
+   "message": {
+      "content": "\n",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.30184884Z",
+   "done": false,
+   "message": {
+      "content": "</",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.320264643Z",
+   "done": false,
+   "message": {
+      "content": "think",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.33872449Z",
+   "done": false,
+   "message": {
+      "content": ">",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.357695908Z",
+   "done": false,
+   "message": {
+      "content": "\n\n",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.378124947Z",
+   "done": false,
+   "message": {
+      "content": "Here",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.397620911Z",
+   "done": false,
+   "message": {
+      "content": " is",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.416439272Z",
+   "done": false,
+   "message": {
+      "content": " an",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.436051204Z",
+   "done": false,
+   "message": {
+      "content": " example",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.456916784Z",
+   "done": false,
+   "message": {
+      "content": " of",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.476794386Z",
+   "done": false,
+   "message": {
+      "content": " output",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.497975068Z",
+   "done": false,
+   "message": {
+      "content": " containing",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.516937429Z",
+   "done": false,
+   "message": {
+      "content": " thinking",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.53796883Z",
+   "done": false,
+   "message": {
+      "content": " tags",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.557451821Z",
+   "done": false,
+   "message": {
+      "content": ".",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.576749072Z",
+   "done": false,
+   "message": {
+      "content": " I",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.597980339Z",
+   "done": false,
+   "message": {
+      "content": " have",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.617282789Z",
+   "done": false,
+   "message": {
+      "content": " simulated",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.636929126Z",
+   "done": false,
+   "message": {
+      "content": " a",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.656931754Z",
+   "done": false,
+   "message": {
+      "content": " brief",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.677729015Z",
+   "done": false,
+   "message": {
+      "content": " architectural",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.699140731Z",
+   "done": false,
+   "message": {
+      "content": " decision",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.72028814Z",
+   "done": false,
+   "message": {
+      "content": " process",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.739719744Z",
+   "done": false,
+   "message": {
+      "content": " regarding",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.759521774Z",
+   "done": false,
+   "message": {
+      "content": " C",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.780865492Z",
+   "done": false,
+   "message": {
+      "content": "++",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.799664256Z",
+   "done": false,
+   "message": {
+      "content": " container",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.819530617Z",
+   "done": false,
+   "message": {
+      "content": " selection",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.839381248Z",
+   "done": false,
+   "message": {
+      "content": " within",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.860205831Z",
+   "done": false,
+   "message": {
+      "content": " the",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.879714058Z",
+   "done": false,
+   "message": {
+      "content": " `",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.90125093Z",
+   "done": false,
+   "message": {
+      "content": "<think",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.921865087Z",
+   "done": false,
+   "message": {
+      "content": ">`",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.940705048Z",
+   "done": false,
+   "message": {
+      "content": " block",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.96156129Z",
+   "done": false,
+   "message": {
+      "content": ",",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.980258192Z",
+   "done": false,
+   "message": {
+      "content": " followed",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:55.998887537Z",
+   "done": false,
+   "message": {
+      "content": " by",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:56.019701981Z",
+   "done": false,
+   "message": {
+      "content": " the",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:56.038092897Z",
+   "done": false,
+   "message": {
+      "content": " final",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:56.056711011Z",
+   "done": false,
+   "message": {
+      "content": " conclusion",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <4>
+received <{
+   "created_at": "2026-04-03T11:16:56.077505888Z",
+   "done": false,
+   "message": {
+      "content": ".",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b"
+}>
+Debug(/home/ws/nped/src/agent.cpp:747, processData): received <11>
+received <{
+   "created_at": "2026-04-03T11:16:56.094337303Z",
+   "done": true,
+   "done_reason": "stop",
+   "eval_count": 382,
+   "eval_duration": 7373224208,
+   "load_duration": 3415535023,
+   "message": {
+      "content": "",
+      "role": "assistant"
+   },
+   "model": "gemma4:31b",
+   "prompt_eval_count": 1127,
+   "prompt_eval_duration": 411201503,
+   "total_duration": 11422816712
+}>

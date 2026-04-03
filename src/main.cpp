@@ -56,6 +56,11 @@ int main(int argc, char** argv) {
       Logger::logger.open(appName);
       int c;
 
+//    qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-gpu-memory-buffer-video-frames");
+    // oder falls Vulkan das Problem ist:
+//    qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-vulkan");
+
+
       signal(SIGPIPE, SIG_IGN);
 
       QQuickStyle::setStyle(QStringLiteral("Material"));

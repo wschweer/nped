@@ -21,6 +21,9 @@ class OllamaClient : public LLMClient
       {
       Q_OBJECT
       std::string currentContent;
+      std::string currentThinking;
+      std::string _buffer;
+      bool _isThinking{false};
       json _currentToolCalls;
       json tools;
       int currentRetryCount{0};

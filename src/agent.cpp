@@ -48,6 +48,8 @@
 #include <iostream>
 #include <fstream>
 
+#include <QApplication>
+#include <QGuiApplication>
 #include "agent.h"
 #include "logger.h"
 #include "editor.h"
@@ -274,7 +276,6 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
 
       // 3a. Schmales vertikales Icon-Panel links neben dem Prompt-Eingabefeld
       buttonPanel = new QWidget(this);
-      //      buttonPanel->setFixedWidth(28);
       buttonPanel->setFixedHeight(inputHeight); // exakt so hoch wie das Eingabefeld
       QVBoxLayout* buttonPanelLayout = new QVBoxLayout(buttonPanel);
       buttonPanelLayout->setContentsMargins(2, 2, 2, 2);
@@ -282,25 +283,25 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       buttonPanelLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
 
       // New summary buttons (vertical bar)
-      summaryButton = new QToolButton(this);
-      summaryButton->setText("∑");
-      summaryButton->setToolTip("Summarize conversation");
-      connect(summaryButton, &QToolButton::clicked, [this] {
-            historyManager->summaryRequested = true;
-            QString prompt = "Please provide a concise technical summary of our conversation so far. Focus specifically on the results "
-                             "obtained from the tool calls and the final conclusions reached. Discard the raw, voluminous data output from "
-                             "the tools, but retain the key facts, parameters used, and the current state of the task. This summary will "
-                             "serve as the new starting point for our context, so ensure no critical logical step is lost.";
-            sendMessage(prompt);
-            });
-      buttonPanelLayout->addWidget(summaryButton);
+      button1 = new QToolButton(this);
+      button1->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed); // kein vertikales Wachstum
+      button1->setText("F1");
+      button1->setToolTip("Canned prompt F1");
+      connect(button1, &QToolButton::clicked, [this] { handleCannedPrompt("F1"); });
+      buttonPanelLayout->addWidget(button1);
 
       button2 = new QToolButton(this);
+      button2->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed); // kein vertikales Wachstum
       button2->setText("F2");
+      button2->setToolTip("Canned prompt F2");
+      connect(button2, &QToolButton::clicked, [this] { handleCannedPrompt("F2"); });
       buttonPanelLayout->addWidget(button2);
 
       button3 = new QToolButton(this);
+      button3->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed); // kein vertikales Wachstum
       button3->setText("F3");
+      button3->setToolTip("Canned prompt F3");
+      connect(button3, &QToolButton::clicked, [this] { handleCannedPrompt("F3"); });
       buttonPanelLayout->addWidget(button3);
 
       // Save layout pointer so updateDataPanel() can add/remove thumbnail labels dynamically
@@ -331,7 +332,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             deleteSessionButton->setFont(f);
             sessionComboBox->setFont(f);
             modeButton->setFont(f);
-            summaryButton->setFont(f);
+            button1->setFont(f);
             button2->setFont(f);
             button3->setFont(f);
             });
@@ -340,6 +341,8 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       fetchModels();
       spinnerTimer = new QTimer(this);
       connect(spinnerTimer, &QTimer::timeout, this, &Agent::updateSpinner);
+
+      updateCannedPrompts();
       }
 
 //---------------------------------------------------------
@@ -743,7 +746,13 @@ void Agent::processData() {
                               auto j = json::parse(potentialJson);
                               Debug("received <{}>", j.size());
                               Log("received <{}>", j.dump(3));
-                              llm->processJsonItem(j);
+                              try {
+                                    llm->processJsonItem(j);
+                              } catch (const std::exception& e) {
+                                    Critical("Exception in processJsonItem: {}", e.what());
+                              } catch (...) {
+                                    Critical("Unknown exception in processJsonItem");
+                              }
 
                               // Puffer aktualisieren
                               size_t consumed = startPos + len;
@@ -1265,6 +1274,25 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                                     s += e.get<std::string>();
                         else
                               s = truncateOutput(c.get<std::string>(), kChatResultMaxChars);
+
+                        // Parse out <think> and <thought> blocks for models that inline them in content (e.g. Ollama deepseek-r1, gemma4)
+                        auto extractTag = [&](const std::string& startTag, const std::string& endTag) {
+                              size_t thinkStart = 0;
+                              while ((thinkStart = s.find(startTag)) != std::string::npos) {
+                                    size_t thinkEnd = s.find(endTag, thinkStart);
+                                    if (thinkEnd != std::string::npos) {
+                                          thought += s.substr(thinkStart + startTag.length(), thinkEnd - (thinkStart + startTag.length()));
+                                          s.erase(thinkStart, thinkEnd + endTag.length() - thinkStart);
+                                    } else {
+                                          thought += s.substr(thinkStart + startTag.length());
+                                          s.erase(thinkStart);
+                                    }
+                              }
+                        };
+
+                        extractTag("<think>", "</think>");
+                        extractTag("<thought>", "</thought>");
+
                         if (content.contains("role") && (content["role"] == "function" || content["role"] == "tool")) {
                               if (!filterToolMessages) {
                                     if (content.contains("function")) {
@@ -1464,4 +1492,137 @@ void Agent::updateDataPanel() {
             }
 
       _dataPanelLayout->addStretch(1);
+      }
+
+//---------------------------------------------------------
+//   updateCannedPrompts
+//---------------------------------------------------------
+
+void Agent::updateCannedPrompts() {
+      QString root = _editor->projectRoot();
+      if (root.isEmpty())
+            return;
+      QString npedDir = root + "/.nped";
+      QString filePath = npedDir + "/agent.json";
+      QFile file(filePath);
+      if (!file.exists()) {
+            QDir dir;
+            if (!dir.exists(npedDir)) {
+                  dir.mkpath(npedDir);
+                  }
+            if (file.open(QIODevice::WriteOnly)) {
+                  json j;
+                  j["F1"] = {{"name", "F1"}, {"description", "Canned prompt F1"}, {"text", ""}};
+                  j["F2"] = {{"name", "F2"}, {"description", "Canned prompt F2"}, {"text", ""}};
+                  j["F3"] = {{"name", "F3"}, {"description", "Canned prompt F3"}, {"text", ""}};
+                  std::string s = j.dump(4);
+                  file.write(s.c_str(), s.length());
+                  file.close();
+                  } else {
+                  Debug("Failed to create agent.json");
+                  }
+            }
+
+      if (file.open(QIODevice::ReadOnly)) {
+            QByteArray data = file.readAll();
+            try {
+                  json j = json::parse(data.toStdString());
+                  if (j.contains("F1") && j["F1"].is_object()) {
+                        button1->setText(QString::fromStdString(j["F1"].value("name", "F1")));
+                        button1->setToolTip(QString::fromStdString(j["F1"].value("description", "Canned prompt F1")));
+                        }
+                  if (j.contains("F2") && j["F2"].is_object()) {
+                        button2->setText(QString::fromStdString(j["F2"].value("name", "F2")));
+                        button2->setToolTip(QString::fromStdString(j["F2"].value("description", "Canned prompt F2")));
+                        }
+                  if (j.contains("F3") && j["F3"].is_object()) {
+                        button3->setText(QString::fromStdString(j["F3"].value("name", "F3")));
+                        button3->setToolTip(QString::fromStdString(j["F3"].value("description", "Canned prompt F3")));
+                        }
+                  }
+            catch (const std::exception& e) {
+                  Debug("Exception while parsing agent.json: {}", e.what());
+                  }
+            catch (...) {
+                  Debug("Error parsing agent.json");
+                  }
+            } else {
+            Debug("Failed to open agent.json for reading");
+            }
+      }
+
+//---------------------------------------------------------
+//   handleCannedPrompt
+//---------------------------------------------------------
+
+void Agent::handleCannedPrompt(const QString& buttonId) {
+      QString root = _editor->projectRoot();
+      if (root.isEmpty())
+            return;
+      QString npedDir = root + "/.nped";
+      QString filePath = npedDir + "/agent.json";
+
+      if (QApplication::keyboardModifiers() & Qt::ControlModifier) {
+            QDir dir;
+            if (!dir.exists(npedDir)) {
+                  dir.mkpath(npedDir);
+                  }
+            QFile file(filePath);
+            if (!file.exists()) {
+                  if (file.open(QIODevice::WriteOnly)) {
+                        json j;
+                        j["F1"] = {{"name", "F1"}, {"description", "Canned prompt F1"}, {"text", ""}};
+                        j["F2"] = {{"name", "F2"}, {"description", "Canned prompt F2"}, {"text", ""}};
+                        j["F3"] = {{"name", "F3"}, {"description", "Canned prompt F3"}, {"text", ""}};
+                        std::string s = j.dump(4);
+                        file.write(s.c_str(), s.length());
+                        file.close();
+                        }
+                  }
+            _editor->addFile(filePath);
+            }
+      else {
+            QFile file(filePath);
+            if (!file.exists()) {
+                  QDir dir;
+                  if (!dir.exists(npedDir)) {
+                        dir.mkpath(npedDir);
+                        }
+                  if (file.open(QIODevice::WriteOnly)) {
+                        json j;
+                        j["F1"] = {{"name", "F1"}, {"description", "Canned prompt F1"}, {"text", ""}};
+                        j["F2"] = {{"name", "F2"}, {"description", "Canned prompt F2"}, {"text", ""}};
+                        j["F3"] = {{"name", "F3"}, {"description", "Canned prompt F3"}, {"text", ""}};
+                        std::string s = j.dump(4);
+                        file.write(s.c_str(), s.length());
+                        file.close();
+                        }
+                  }
+            if (file.open(QIODevice::ReadOnly)) {
+                  QByteArray data = file.readAll();
+                  try {
+                        json j = json::parse(data.toStdString());
+                        std::string key = buttonId.toStdString();
+                        if (j.contains(key) && j[key].is_object()) {
+                              QString text = QString::fromStdString(j[key].value("text", ""));
+                              if (!text.isEmpty()) {
+                                    userInput->insertPlainText(text);
+                                    userInput->setFocus();
+                                    }
+                              }
+                        else if (j.contains(key) && j[key].is_string()) {
+                              QString text = QString::fromStdString(j[key].get<std::string>());
+                              if (!text.isEmpty()) {
+                                    userInput->insertPlainText(text);
+                                    userInput->setFocus();
+                                    }
+                              }
+                        }
+                  catch (...) {
+                        chatDisplay->addMessage("system", "<i>[System: Error parsing .nped/agent.json]</i><br>");
+                        updateChatDisplay();
+                        chatDisplay->scrollToBottom();
+                        }
+                  }
+            }
       }

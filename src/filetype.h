@@ -33,17 +33,16 @@ struct FileType {
       bool header{false};     // special handling of header files
       bool createTabs{false}; // spaces are converted to tabs when writing the file
                               // on reading tabs are converted to spaces
-      bool pymacros{false};   // handle internal macro expansion (experimental)
 
       bool operator==(const FileType& other) const = default;
 
       FileType() {}
-      FileType(const QString& a, const QString& b, const QString& c,  int d, bool f, bool g, bool h)
-         : extensions(a), languageId(b), languageServer(c), tabSize(d), header(f), createTabs(g), pymacros(h) {}
+      FileType(const QString& a, const QString& b, const QString& c,  int d, bool f, bool g)
+         : extensions(a), languageId(b), languageServer(c), tabSize(d), header(f), createTabs(g) {}
 
       };
 
-static const FileType defaultFileType = FileType(QString(), QString(), QString("none"), 6, false, false, false);
+static const FileType defaultFileType = FileType(QString(), QString(), QString("none"), 6, false, false);
 
 //---------------------------------------------------------
 //   FileTypes

@@ -103,7 +103,10 @@ json OllamaClient::prompt(QNetworkRequest* request) {
             }
       requestJson["messages"] = history;
       currentContent.clear();
+      currentThinking.clear();
+      _buffer.clear();
       _currentToolCalls.clear();
+      _isThinking = false;
       return requestJson;
       };
 
@@ -113,17 +116,64 @@ json OllamaClient::prompt(QNetworkRequest* request) {
 //---------------------------------------------------------
 
 void OllamaClient::processJsonItem(const json& item) {
+      if (item.contains("error")) {
+            std::string err = item["error"].is_string() ? item["error"].get<std::string>() : item["error"].dump();
+            agent->chatDisplay->handleIncomingChunk("", "\n**Error:** " + err + "\n");
+            currentContent += "\nError: " + err + "\n";
+            return;
+            }
       if (!item.contains("message"))
             return;
       const auto& message = item["message"];
-      if (message.contains("content")) {
-            std::string s = message["content"];
+      if (!message.is_object())
+            return;
+
+      if (message.contains("content") && message["content"].is_string()) {
+            std::string s = message["content"].get<std::string>();
             if (!s.empty()) {
-                  agent->chatDisplay->handleIncomingChunk("", s);
-                  currentContent += s;
+                  std::string textChunk;
+                  std::string thinkChunk;
+
+                  for (char c : s) {
+                        _buffer += c;
+                        if (!_isThinking) {
+                              if ("<think>" == _buffer || "<thought>" == _buffer) {
+                                    _isThinking = true;
+                                    currentContent += _buffer;
+                                    _buffer.clear();
+                              } else if (std::string("<think>").find(_buffer) != 0 && std::string("<thought>").find(_buffer) != 0) {
+                                    textChunk += _buffer;
+                                    currentContent += _buffer;
+                                    _buffer.clear();
+                              }
+                        } else {
+                              if ("</think>" == _buffer || "</thought>" == _buffer) {
+                                    _isThinking = false;
+                                    currentContent += _buffer;
+                                    _buffer.clear();
+                              } else if (std::string("</think>").find(_buffer) != 0 && std::string("</thought>").find(_buffer) != 0) {
+                                    thinkChunk += _buffer;
+                                    currentContent += _buffer;
+                                    _buffer.clear();
+                              }
+                        }
+                  }
+
+                  if (!thinkChunk.empty() || !textChunk.empty()) {
+                        agent->chatDisplay->handleIncomingChunk(thinkChunk, textChunk);
                   }
             }
-      if (message.contains("tool_calls"))
+      }
+
+      if (message.contains("thinking") && message["thinking"].is_string()) {
+            std::string thinkingStr = message["thinking"].get<std::string>();
+            if (!thinkingStr.empty()) {
+                  currentThinking += thinkingStr;
+                  agent->chatDisplay->handleIncomingChunk(thinkingStr, "");
+            }
+      }
+
+      if (message.contains("tool_calls") && message["tool_calls"].is_array())
             for (const auto& toolCall : message["tool_calls"])
                   _currentToolCalls.push_back(toolCall);
       }
@@ -188,9 +238,22 @@ void OllamaClient::processTools() {
 //---------------------------------------------------------
 
 void OllamaClient::dataFinished() {
+      if (!_buffer.empty()) {
+            if (_isThinking)
+                  agent->chatDisplay->handleIncomingChunk(_buffer, "");
+            else
+                  agent->chatDisplay->handleIncomingChunk("", _buffer);
+            currentContent += _buffer;
+            _buffer.clear();
+      }
+
       json responseContent;
       responseContent["role"]    = "assistant";
       responseContent["content"] = currentContent;
+      if (!currentThinking.empty()) {
+            responseContent["thinking"] = currentThinking;
+            currentThinking.clear();
+      }
       if (!_currentToolCalls.empty())
             responseContent["tool_calls"] = _currentToolCalls;
 

@@ -188,8 +188,9 @@ void MarkdownWebView::setDarkMode(bool enabled) {
 //   setMarkdown
 //---------------------------------------------------------
 
-void MarkdownWebView::setMarkdown(const QString& _markdown) {
-      if (_markdown == _currentRawMarkdown)
+void MarkdownWebView::setMarkdown(const QString& _markdown, int cursorLine) {
+      // Always re-render if cursorLine is provided to ensure it scrolls
+      if (cursorLine < 0 && _markdown == _currentRawMarkdown)
             return;
       _currentRawMarkdown = _markdown;
       if (_markdown.isEmpty()) {
@@ -205,6 +206,14 @@ void MarkdownWebView::setMarkdown(const QString& _markdown) {
             // Wir ersetzen es durch einen div-Container
             _processedMarkdown.replace("[TOC]", "\n<div id='table-of-contents'></div>\n");
             }
+
+      if (cursorLine >= 0) {
+            QStringList lines = _processedMarkdown.split('\n');
+            if (cursorLine < lines.size()) {
+                  lines[cursorLine].prepend("<span id=\"nped-cursor-pos\"></span>");
+                  _processedMarkdown = lines.join('\n');
+            }
+      }
 
       // 2. Konvertierung (nutzt jetzt processedMarkdown)
       QString _convertedHtml = renderMarkdownToHtml(_processedMarkdown.toStdString());
@@ -223,6 +232,20 @@ void MarkdownWebView::setMarkdown(const QString& _markdown) {
       // 5. KaTeX-Script holen (für Mathe/LaTeX-Rendering)
       QString _katexScript = getKaTexJs();
 
+      QString _scrollScript;
+      if (cursorLine >= 0) {
+            _scrollScript = R"(
+                <script>
+                window.addEventListener('load', function() {
+                    var el = document.getElementById('nped-cursor-pos');
+                    if (el) {
+                        el.scrollIntoView({behavior: 'instant', block: 'center'});
+                    }
+                });
+                </script>
+            )";
+      }
+
       QString _fullHtml = QString::fromStdString(std::format(
           R"(<!DOCTYPE html>
         <html>
@@ -234,10 +257,10 @@ void MarkdownWebView::setMarkdown(const QString& _markdown) {
         </head>
         <body class="markdown-body">
             {}
-            {} {} {} {} </body>
+            {} {} {} {} {} </body>
         </html>)",
           _darkMode ? "dark" : "light", _css, _highlightAssets.toStdString(), _convertedHtml.toStdString(),
-          _anchorScript, _tocScript, _mermaidScript.toStdString(), _katexScript.toStdString()));
+          _anchorScript, _tocScript, _mermaidScript.toStdString(), _katexScript.toStdString(), _scrollScript.toStdString()));
 
       QUrl baseUrl;
       if (editor && editor->kontext() && editor->kontext()->file()) {

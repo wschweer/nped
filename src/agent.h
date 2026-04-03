@@ -209,7 +209,7 @@ class Agent : public QWidget
       QToolButton* modeButton;
       QToolButton* configButton;
       QToolButton* screenshotButton;
-      QToolButton* summaryButton;
+      QToolButton* button1;
       QToolButton* button2;
       QToolButton* button3;
       QWidget* buttonPanel{nullptr};          ///< narrow vertical icon panel left of prompt input
@@ -287,6 +287,7 @@ class Agent : public QWidget
       QString getGitDiff(const QString& path = "");
       QString getGitLog(int limit = 5);
       QString createGitCommit(const QString& message);
+      QString normalizePath(const QString& path) const;
 
       void setInputEnabled(bool enabled);
       DropAwarePlainTextEdit* userInput;
@@ -310,6 +311,8 @@ class Agent : public QWidget
       void onSessionSelected(int index);
       void onScreenshotReady(const QImage& image);
       void onScreenshotFailed(const QString& reason);
+      void handleCannedPrompt(const QString& buttonId);
+      void updateCannedPrompts();
 
     public slots:
       void sendMessage(QString);
