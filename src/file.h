@@ -57,7 +57,6 @@ class File : public QObject
       std::vector<GitHistory*> _gitHistory;
       int _currentGitHistory{0};
 
-//      QString _languageId{"c++"};
       int _version{1};
       FileType fileType = defaultFileType;
 

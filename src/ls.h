@@ -1,17 +1,9 @@
-//=============================================================================
-//  nped Program Editor
-//
-//  Copyright (C) 2026 Werner Schweer
-//
-//  This program is free software; you can redistribute it and/or modify
-//  it under the terms of the GNU General Public License version 2
-//  as published by the Free Software Foundation and appearing in
-//  the file LICENCE.GPL
-//=============================================================================
-
 #pragma once
-
-#include <QObject>
+#include <QString>
+#include <vector>
+#include <QList>
+#include <QJsonArray>
+#include <QMetaType>
 
 class LSclient;
 
@@ -44,14 +36,23 @@ class LanguageServersConfig : public QList<LanguageServerConfig> {
       void reset();
       };
 
+Q_DECLARE_METATYPE(LanguageServerConfig)
+
 //---------------------------------------------------------
 //   LanguageServer
 //---------------------------------------------------------
 
 struct LanguageServer {
+      LanguageServer() = default;
+      LanguageServer(const QString& n, LSclient* c) : name(n), client(c) {}
+      
+      bool operator==(const LanguageServer& other) const { return name == other.name; }
+
       QString name;
       LSclient* client{nullptr};
       };
+
+Q_DECLARE_METATYPE(LanguageServer)
 
 //---------------------------------------------------------
 //   LanguageServerList
@@ -59,5 +60,3 @@ struct LanguageServer {
 
 struct LanguageServerList : public std::vector<LanguageServer> {
       };
-
-Q_DECLARE_METATYPE(LanguageServerConfig)

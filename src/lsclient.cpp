@@ -26,6 +26,9 @@
 #include "ast.h"
 #include "completion.h"
 //
+
+// Conditional Trace:
+#define IO false
 enum DiagnosticSeverity { Error = 1, Warning, Information, Hint };
 //
 //---------------------------------------------------------
@@ -34,9 +37,9 @@ enum DiagnosticSeverity { Error = 1, Warning, Information, Hint };
 
 LSclient* LSclient::createClient(Editor* editor, const std::string& name) {
       for (const auto& s : editor->languageServersConfig()) {
-//            Debug("<{}> -- <{}>", s.name, name);
+            //            Debug("<{}> -- <{}>", s.name, name);
             if (s.name == name) {
-                  auto* lc = new LSclient(editor, name);
+                  auto* lc       = new LSclient(editor, name);
                   QStringList sl = s.args.simplified().split(" ");
                   std::vector<std::string> args;
                   for (const auto& s : sl)
@@ -128,12 +131,12 @@ void LSclient::gotoImplementation(File* file, const Pos& cursor) {
 void LSclient::hover(File* file, const Pos& cursor) {
       callbacks[id] = [this](const json& msg) {
             const json& result = msg["result"];
-//            Debug("{}", result.dump(4));
+            //            Debug("{}", result.dump(4));
             if (result.contains("contents")) {
                   const json& contents = result["contents"];
                   std::string kind     = contents.value("kind", "");
                   std::string value    = contents.value("value", "");
-//                  Debug("hover <{}> <{}>", kind, value);
+                  //                  Debug("hover <{}> <{}>", kind, value);
                   editor->setInfoText(QString::fromStdString(value));
                   }
             else
@@ -159,7 +162,7 @@ void LSclient::completionRequest(Kontext* k) {
       File* file    = k->file();
       callbacks[id] = [k](const json& msg) {
             const json& result = msg["result"];
-//            Debug("{}", result.dump(4));
+            //            Debug("{}", result.dump(4));
             if (result.contains("items")) {
                   Completions list;
                   for (const json& item : result["items"]) {
@@ -196,7 +199,7 @@ void LSclient::completionRequest(Kontext* k) {
 void LSclient::prepareRenameRequest(Kontext* k) {
       callbacks[id] = [this, k](const json& msg) {
             const json& result = msg["result"];
-//            Debug("{}", result.dump(4));
+            //            Debug("{}", result.dump(4));
             QString placeholder = QString::fromStdString(result.value("placeholder", ""));
             Range range(result["range"]);
             editor->rename(k, placeholder, range.start.row, range.start.col, range.end.col);
@@ -237,7 +240,7 @@ void LSclient::renameRequest(Kontext* k, const QString& newName, int row, int co
                   auto patch    = new Patch(kontext->file(), c, c);
                   for (const auto& change : it.value()) {
                         QString newText = QString::fromStdString(change["newText"]);
-//                        Debug("rename {} {}", kontext->file()->path(), newText);
+                        //                        Debug("rename {} {}", kontext->file()->path(), newText);
                         Range range(change["range"]);
                         PatchItem pi;
                         pi.setRange(range, kontext->file());
@@ -447,10 +450,10 @@ bool LSclient::write(const std::string& txt) {
                         continue;
                   if (errno == EPIPE) {
                         Warning("Language server <{}> write failed: broken pipe (EPIPE)", _name);
-                        running = false;
+                        running      = false;
                         _initialized = false;
                         return false;
-                  }
+                        }
                   Critical("write failed, errno: {} ({})", errno, strerror(errno));
                   return false;
                   }
@@ -463,12 +466,10 @@ bool LSclient::write(const std::string& txt) {
 //   writeMessage
 //---------------------------------------------------------
 
-bool LSclient::writeMessage(const std::string& jsonPayload) {
-      return write(std::format("Content-Length: {}\r\n"
-                               "Content-Type: application/vscode-jsonrpc; charset=utf-8\r\n"
-                               "\r\n"
-                               "{}",
-                               jsonPayload.length(), jsonPayload));
+//                               "Content-Type: application/vscode-jsonrpc; charset=utf-8"
+
+bool LSclient::writeMessage(const std::string& json) {
+      return write(std::format("Content-Length: {}\r\n\r\n{}", json.length(), json));
       }
 
 //---------------------------------------------------------
@@ -502,7 +503,7 @@ bool LSclient::initializeRequest() {
       params["rootUri"]      = "file://" + editor->projectRoot().toStdString();
       params["trace"]        = "off";
 
-//      Debug("rootUri <{}>", "file://" + editor->projectRoot().toStdString());
+      //      Debug("rootUri <{}>", "file://" + editor->projectRoot().toStdString());
       return request("initialize", params);
       }
 
@@ -516,6 +517,7 @@ bool LSclient::notification(const char* method, const json& params) {
       msg["method"]  = method;
       msg["params"]  = params;
       //      Debug("<{}>", method);
+      CDebug(IO, "write: <{}>", msg.dump(3));
       return writeMessage(msg.dump());
       }
 
@@ -529,6 +531,7 @@ bool LSclient::request(const char* method, const json& params) {
       msg["method"]  = method;
       msg["params"]  = params;
       msg["id"]      = id++;
+      CDebug(IO, "write: <{}>", msg.dump(3));
       return writeMessage(msg.dump());
       }
 
@@ -608,6 +611,10 @@ void LSclient::stop() {
 //---------------------------------------------------------
 
 void LSclient::formattingRequest(Kontext* kontext) {
+      if (!_initialized) {
+            Warning("Request on non initialized Language Server <{}>", _name);
+            return;
+            }
       callbacks[id] = [this, kontext](const json& msg) {
             File* file         = kontext->file();
             auto patch         = new Patch(file, kontext->cursor(), kontext->cursor());
@@ -635,6 +642,7 @@ void LSclient::formattingRequest(Kontext* kontext) {
       textDocument["version"] = file->version();
       json options;
       options["tabSize"]                = file->tab();
+      options["insertSpaces"]           = true;
       options["trimTrailingWhitespace"] = true;
       options["insertFinalNewline"]     = false;
       options["trimFinalNewlines"]      = true;
@@ -739,6 +747,7 @@ bool LSclient::processMessage(const std::string& message) {
       json response;
       try {
             response = json::parse(message);
+            CDebug(IO, "read: <{}>", response.dump(3));
             }
       catch (json::parse_error& e) {
             Critical("json::parse failed: {}", e.what());
@@ -820,6 +829,7 @@ void LSclient::handleResponse(int id, json response) {
                   json msg;
                   msg["id"]      = id;
                   msg["jsonrpc"] = "2.0";
+                  Debug("write: <{}>", msg.dump(3));
                   writeMessage(msg.dump());
                   editor->showProgress(true);
                   }

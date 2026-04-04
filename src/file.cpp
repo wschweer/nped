@@ -469,12 +469,12 @@ void File::lcOpen() {
             updateAST();
             }
       else {
-            connect(client, &LSclient::initializedChanged, [this] {
+            connect(client, &LSclient::initializedChanged, this, [this] {
                   if (client->initialized()) {
                         client->didOpenNotification(this);
                         updateAST();
                         }
-                  });
+                  }, Qt::SingleShotConnection);
             }
       }
 
@@ -900,9 +900,10 @@ int File::distance(Pos p1, Pos p2) const {
             Critical("{}: bad line {}", path(), p2.row);
             return -1;
             }
-      if (p2.row > n) {
+      if (p2.row >= n) {
             Critical("{}: bad line {} of lines {}", path(), p2.row, n);
-            p2.row = n;
+            p2.row = n-1;
+            p2.col = _fileText[p2.row].size();
             }
       const Line& l1 = _fileText[p1.row];
 
