@@ -83,7 +83,16 @@ ColumnLayout {
                     Material.foreground: Material.accent
                     onClicked: {
                         var list = nped.models
-                        list.push({name: "New Model", modelIdentifier: "", api: "ollama", baseUrl: "http://localhost:11434", apiKey: "", isLocal: false, supportsThinking: false, temperature: -1.0, topP: -1.0, maxTokens: -1})
+                        list.push({name: "New Model", modelIdentifier: "",
+                            api: "ollama",
+                            baseUrl: "http://localhost:11434",
+                            apiKey: "",
+                            ollama: false,
+                            supportsThinking: false,
+                            temperature: -1.0,
+                            topP: -1.0,
+                            topK: -1.0,
+                            maxTokens: -1})
                         nped.models = list
                         modelListView.currentIndex = list.length - 1
                         }
@@ -104,13 +113,13 @@ ColumnLayout {
                 anchors.fill: parent
                 spacing: 15
                 anchors.margins: 10
+                id: cl
 
-                property var currentModel: modelListView.currentIndex >= 0 && modelListView.currentIndex < nped.models.length ? nped.models[modelListView.currentIndex] : null
-
-                visible: currentModel !== null
+                property var model: modelListView.currentIndex >= 0 && modelListView.currentIndex < nped.models.length ? nped.models[modelListView.currentIndex] : null
+                visible: model !== null
 
                 Label {
-                    text: "Edit Model: " + (parent.currentModel ? parent.currentModel.name : "")
+                    text: "Edit Model: " + (cl.model ? cl.model.name : "")
                     font.bold: true
                     font.pointSize: 14
                     }
@@ -121,17 +130,17 @@ ColumnLayout {
                     columnSpacing: 15
                     rowSpacing: 10
 
+
                     // Name
                     Label { text: "Name:"; Layout.alignment: Qt.AlignRight }
                     TextField {
-                        text: parent.parent.currentModel ? parent.parent.currentModel.name : ""
+                        text: cl.model ? cl.model.name : ""
                         Layout.fillWidth: true
                         font.bold: true
                         onEditingFinished: {
                             if (modelListView.currentIndex >= 0) {
-                                var l = nped.models;
-                                l[modelListView.currentIndex].name = text;
-                                nped.models = l;
+                                cl.model.name = text;
+                                nped.setModel(modelListView.currentIndex, cl.model)
                             }
                         }
                     }
@@ -142,17 +151,16 @@ ColumnLayout {
                         Layout.fillWidth: true
                         model: ["ollama", "gemini", "anthropic", "openai"]
                         currentIndex: {
-                            if (parent.parent.currentModel) {
-                                var idx = find(parent.parent.currentModel.api);
+                            if (cl.model) {
+                                var idx = find(cl.model.api);
                                 return idx >= 0 ? idx : 0;
                             }
                             return 0;
                         }
                         onActivated: {
                             if (modelListView.currentIndex >= 0) {
-                                var l = nped.models;
-                                l[modelListView.currentIndex].api = currentText;
-                                nped.models = l;
+                                cl.model.api = currentText;
+                                nped.setModel(modelListView.currentIndex, cl.model)
                             }
                         }
                     }
@@ -160,14 +168,13 @@ ColumnLayout {
                     // Model ID
                     Label { text: "Model ID:"; Layout.alignment: Qt.AlignRight }
                     TextField {
-                        text: parent.parent.currentModel ? parent.parent.currentModel.modelIdentifier : ""
+                        text: cl.model ? cl.model.modelIdentifier : ""
                         Layout.fillWidth: true
                         placeholderText: "e.g. gpt-4, llama3"
                         onEditingFinished: {
                             if (modelListView.currentIndex >= 0) {
-                                var l = nped.models;
-                                l[modelListView.currentIndex].modelIdentifier = text;
-                                nped.models = l;
+                                cl.model.modelIdentifier = text;
+                                nped.setModel(modelListView.currentIndex, cl.model)
                             }
                         }
                     }
@@ -175,14 +182,13 @@ ColumnLayout {
                     // URL
                     Label { text: "URL:"; Layout.alignment: Qt.AlignRight }
                     TextField {
-                        text: parent.parent.currentModel ? parent.parent.currentModel.baseUrl : ""
+                        text: cl.model ? cl.model.baseUrl : ""
                         Layout.fillWidth: true
                         placeholderText: "https://api.example.com"
                         onEditingFinished: {
                             if (modelListView.currentIndex >= 0) {
-                                var l = nped.models;
-                                l[modelListView.currentIndex].baseUrl = text;
-                                nped.models = l;
+                                cl.model.baseUrl = text;
+                                nped.setModel(modelListView.currentIndex, cl.model)
                             }
                         }
                     }
@@ -190,15 +196,14 @@ ColumnLayout {
                     // API Key
                     Label { text: "API Key:"; Layout.alignment: Qt.AlignRight }
                     TextField {
-                        text: parent.parent.currentModel ? parent.parent.currentModel.apiKey : ""
+                        text: cl.model ? cl.model.apiKey : ""
                         Layout.fillWidth: true
                         echoMode: TextInput.Password
                         placeholderText: "sk-..."
                         onEditingFinished: {
                             if (modelListView.currentIndex >= 0) {
-                                var l = nped.models;
-                                l[modelListView.currentIndex].apiKey = text;
-                                nped.models = l;
+                                cl.model.apiKey = text;
+                                nped.setModel(modelListView.currentIndex, cl.model)
                             }
                         }
                     }
@@ -206,14 +211,13 @@ ColumnLayout {
                     // Temperature
                     Label { text: "Temperature:"; Layout.alignment: Qt.AlignRight }
                     TextField {
-                        text: parent.parent.currentModel ? parent.parent.currentModel.temperature.toString() : ""
+                        text: cl.model ? cl.model.temperature.toString() : ""
                         Layout.fillWidth: true
                         placeholderText: "-1.0 for default"
                         onEditingFinished: {
                             if (modelListView.currentIndex >= 0) {
-                                var l = nped.models;
-                                l[modelListView.currentIndex].temperature = parseFloat(text);
-                                nped.models = l;
+                                cl.model.temperature = parseFloat(text);
+                                nped.setModel(modelListView.currentIndex, cl.model)
                             }
                         }
                     }
@@ -221,14 +225,27 @@ ColumnLayout {
                     // Top P
                     Label { text: "Top P:"; Layout.alignment: Qt.AlignRight }
                     TextField {
-                        text: parent.parent.currentModel ? parent.parent.currentModel.topP.toString() : ""
+                        text: cl.model ? cl.model.topP.toString() : ""
                         Layout.fillWidth: true
                         placeholderText: "-1.0 for default"
                         onEditingFinished: {
                             if (modelListView.currentIndex >= 0) {
-                                var l = nped.models;
-                                l[modelListView.currentIndex].topP = parseFloat(text);
-                                nped.models = l;
+                                cl.model.topP = parseFloat(text);
+                                nped.setModel(modelListView.currentIndex, cl.model)
+                            }
+                        }
+                    }
+
+                    // Top K
+                    Label { text: "Top K:"; Layout.alignment: Qt.AlignRight }
+                    TextField {
+                        text: cl.model ? cl.model.topK.toString() : ""
+                        Layout.fillWidth: true
+                        placeholderText: "-1.0 for default"
+                        onEditingFinished: {
+                            if (modelListView.currentIndex >= 0) {
+                                cl.model.topK = parseFloat(text);
+                                nped.setModel(modelListView.currentIndex, cl.model)
                             }
                         }
                     }
@@ -236,14 +253,44 @@ ColumnLayout {
                     // Max Tokens
                     Label { text: "Max Tokens:"; Layout.alignment: Qt.AlignRight }
                     TextField {
-                        text: parent.parent.currentModel ? parent.parent.currentModel.maxTokens.toString() : ""
+                        text: {
+                            console.log("***"+cl.model);
+                            cl.model ? cl.model.maxTokens.toString() : ""
+                            }
                         Layout.fillWidth: true
                         placeholderText: "-1 for default"
                         onEditingFinished: {
                             if (modelListView.currentIndex >= 0) {
-                                var l = nped.models;
-                                l[modelListView.currentIndex].maxTokens = parseInt(text);
-                                nped.models = l;
+                                cl.model.maxTokens = parseInt(text);
+                                nped.setModel(modelListView.currentIndex, cl.model)
+                            }
+                        }
+                    }
+
+                    // num_ctx
+                    Label { text: "num_ctx:"; Layout.alignment: Qt.AlignRight }
+                    TextField {
+                        text: cl.model ? cl.model.num_ctx.toString() : ""
+                        Layout.fillWidth: true
+                        placeholderText: "-1 for default"
+                        onEditingFinished: {
+                            if (modelListView.currentIndex >= 0) {
+                                cl.model.num_ctx = parseInt(text);
+                                nped.setModel(modelListView.currentIndex, cl.model)
+                            }
+                        }
+                    }
+
+                    // Max Tokens
+                    Label { text: "num_predict:"; Layout.alignment: Qt.AlignRight }
+                    TextField {
+                        text: cl.model ? cl.model.num_predict.toString() : ""
+                        Layout.fillWidth: true
+                        placeholderText: "-1 for default"
+                        onEditingFinished: {
+                            if (modelListView.currentIndex >= 0) {
+                                cl.model.num_predict = parseInt(text);
+                                nped.setModel(modelListView.currentIndex, cl.model)
                             }
                         }
                     }
@@ -254,12 +301,11 @@ ColumnLayout {
                         Layout.fillWidth: true
                         CheckBox {
                             text: "Supports Thinking"
-                            checked: parent.parent.parent.currentModel ? parent.parent.parent.currentModel.supportsThinking : false
+                            checked: cl.model ? cl.model.supportsThinking : false
                             onToggled: {
                                 if (modelListView.currentIndex >= 0) {
-                                    var l = nped.models;
-                                    l[modelListView.currentIndex].supportsThinking = checked;
-                                    nped.models = l;
+                                    cl.model.supportsThinking = checked;
+                                nped.setModel(modelListView.currentIndex, cl.model)
                                 }
                             }
                         }
@@ -272,9 +318,10 @@ ColumnLayout {
                     text: "Delete Model"
                     flat: true
                     Material.foreground: Material.Red
-                    visible: parent.currentModel && !parent.currentModel.isLocal
+                    visible: cl.model && !cl.model.ollama
                     onClicked: {
                         if (modelListView.currentIndex >= 0) {
+                            // TODO
                             var list = nped.models;
                             list.splice(modelListView.currentIndex, 1);
                             nped.models = list;

@@ -258,7 +258,6 @@ class Editor : public QMainWindow
       QML_NAMED_ELEMENT(nped)
 
       Q_PROPERTY(QList<Model> models READ models NOTIFY modelsChanged)
-      Q_PROPERTY(QList<Model> filteredModels READ filteredModels NOTIFY modelsChanged)
       Q_PROPERTY(QString fontFamily READ fontFamily WRITE setFontFamily NOTIFY fontFamilyChanged)
       Q_PROPERTY(QList<ShortcutConfig> shortcuts READ shortcuts NOTIFY shortcutsChanged)
       Q_PROPERTY(QList<FileType> fileTypes READ fileTypes NOTIFY fileTypesChanged)
@@ -537,13 +536,8 @@ class Editor : public QMainWindow
             }
       Models& models() { return _models; }
       const Models& models() const { return _models; }
-      Models filteredModels() const {
-            Models result;
-            for (const auto& m : _models)
-                  if (!m.isLocal)
-                        result.append(m);
-            return result;
-            }
+      Q_INVOKABLE Model model(int idx) { return _models[idx]; }
+      Q_INVOKABLE void setModel(int idx, const Model& m) { _models[idx] = m; }
       };
 
 //---------------------------------------------------------

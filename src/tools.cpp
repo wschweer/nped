@@ -241,8 +241,12 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             if (!readFile(path, content))
                   return content.toStdString();
             QStringList lines = content.split('\n');
+
+            // [startLine, endLine] is a closed interval
+            // we must transform it to a half closed interval: [startLine, endLine)
+
             int startLine     = arguments.contains("start_line") ? arguments["start_line"].get<int>() - 1 : 0;
-            int endLine       = arguments.contains("end_line") ? arguments["end_line"].get<int>() - 1 : lines.size();
+            int endLine       = arguments.contains("end_line") ? arguments["end_line"].get<int>(): lines.size();
             int n             = lines.size();
             startLine         = std::clamp(startLine, 0, n);
             endLine           = std::clamp(endLine, 0, n);

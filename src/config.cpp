@@ -36,18 +36,18 @@ void Editor::resetToDefaults() {
       _languageServersConfig.reset();
 
       static const TextStyles tsLight = {
-         TextStyle("normal", QColor(0, 0, 0), QColor(0xe8, 0xe8, 0xe8), false, false),
-         TextStyle("selected", QColor(), QColor(0xb9, 0xb9, 0xb9), false, false),
-         TextStyle("cursor", QColor(255, 255, 255), QColor(50, 50, 50), false, false),
-         TextStyle("flow", QColor(0, 0, 150), QColor(), true, false),
-         TextStyle("type", QColor(0, 0, 150), QColor(), false, false),
-         TextStyle("comment", QColor(0, 100, 0), QColor(), false, true),
-         TextStyle("string", QColor(150, 0, 0), QColor(), false, false),
-         TextStyle("search", QColor(255, 255, 255), QColor(120, 120, 120), false, false),
-         TextStyle("searchHit", QColor(0, 0, 0), QColor(0xc9, 0xc9, 0xc9), false, false),
-         TextStyle("gutter", QColor(0, 0, 0, 0), QColor(100, 100, 100, 255), false, false),
-         TextStyle("marked Line", QColor(0, 0, 0, 0), QColor(100, 100, 100, 255), false, false),
-         TextStyle("nontext BG", QColor(), QColor(0xd0, 0xd0, 0xd0), false, false),
+         TextStyle("normal",        QColor("#ff000000"), QColor("#ffdcdcdc"), false, false),
+         TextStyle("selected",      QColor("#00000000"), QColor("#ffb9b9b9"), false, false),
+         TextStyle("cursor",        QColor("#ffffffff"), QColor("#ff323232"), false, false),
+         TextStyle("flow",          QColor("#ff0404fe"), QColor("#00000000"), true, false),
+         TextStyle("type",          QColor("#ff000096"), QColor("#00000000"), false, false),
+         TextStyle("comment",       QColor("#ff006400"), QColor("#00000000"), false, true),
+         TextStyle("string",        QColor("#ff960000"), QColor("#00000000"), false, false),
+         TextStyle("search",        QColor("#ff000000"), QColor("#ff000000"), false, false),
+         TextStyle("searchHit",     QColor("#ff000000"), QColor("#ffeef81b"), false, false),
+         TextStyle("gutter",        QColor("#ff000000"), QColor("#ffb2b2b2"), false, false),
+         TextStyle("marked Line",   QColor("#00000000"), QColor("#ffdde71f"), false, false),
+         TextStyle("nontext BG",    QColor("#00000000"), QColor("#ffe8e8e8"), false, false),
             };
       if (_textStylesLight != tsLight) {
             _textStylesLight = tsLight;
@@ -55,18 +55,18 @@ void Editor::resetToDefaults() {
             }
 
       static const TextStyles tsDark = {
-         TextStyle("normal", QColor(255, 255, 255), QColor(), false, false),
-         TextStyle("selected", QColor(255, 255, 255), QColor(150, 150, 150), false, false),
-         TextStyle("cursor", QColor(0, 0, 0), QColor(), false, false),
-         TextStyle("flow", QColor(100, 150, 255), QColor(), true, false),
-         TextStyle("type", QColor(200, 200, 100), QColor(), false, false),
-         TextStyle("comment", QColor(100, 200, 100), QColor(), false, true),
-         TextStyle("string", QColor(200, 100, 100), QColor(), false, false),
-         TextStyle("search", QColor(0, 0, 0), QColor(150, 150, 150), false, false),
-         TextStyle("searchHit", QColor(0, 0, 0), QColor(150, 150, 220), false, false),
-         TextStyle("gutter", QColor(0, 0, 0, 0), QColor(100, 100, 100, 255), false, false),
-         TextStyle("markedLine", QColor(), QColor(), false, false),
-         TextStyle("nontextBG", QColor(), QColor(), false, false),
+         TextStyle("normal",        QColor("#ffd3d3d3"), QColor("#ff333333"), false, false),
+         TextStyle("selected",      QColor("#05ff1d1d"), QColor("#ff575757"), false, false),
+         TextStyle("cursor",        QColor("#ff000000"), QColor("#ffffffff"), false, false),
+         TextStyle("flow",          QColor("#ff91b0f0"), QColor("#00000000"), true, false),
+         TextStyle("type",          QColor("#ff9ac864"), QColor("#00000000"), false, false),
+         TextStyle("comment",       QColor("#ff64c864"), QColor("#00000000"), false, true),
+         TextStyle("string",        QColor("#ffc86464"), QColor("#00000000"), false, false),
+         TextStyle("search",        QColor("#ffffffff"), QColor("#ff814d4d"), false, false),
+         TextStyle("searchHit",     QColor("#fff11515"), QColor("#ff9696dc"), false, false),
+         TextStyle("gutter",        QColor("#003fdcdd"), QColor("#ff7c8e8d"), false, false),
+         TextStyle("markedLine",    QColor("#ff000000"), QColor("#6ca8b201"), false, false),
+         TextStyle("nontextBG",     QColor("#ff000000"), QColor("#ff262626"), false, false),
             };
       if (_textStylesDark != tsDark) {
             _textStylesDark = tsDark;
@@ -162,7 +162,7 @@ void Editor::loadSettings() {
             emit textStylesLightChanged();
             }
       if (config.contains("fontSize")) {
-            double n     = config["fontSize"].toDouble();
+            double n  = config["fontSize"].toDouble();
             _fontSize = std::clamp(n, 5.0, 40.0); // sanitize value
             }
       if (config.contains("fontFamily"))

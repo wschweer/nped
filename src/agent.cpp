@@ -64,20 +64,20 @@
 using json = nlohmann::json;
 
 // Default manifests
-static const std::string manifestBuildDefault = "You are an experienced C++ developer. "
+static const std::string manifestBuildDefault = "You are an experienced C++ developer.\n"
                                                 "Your task is to analyze and write code in the project and to fix build errors.\n\n"
                                                 "Use modern c++. Prefer object oriented design and use modern design patterns.\n"
-                                                "Answer exclusively in JSON format when you call a tool:\n"
                                                 "Never add files to git.\n"
+                                                "Use the provided tools to explore the file system.\n"
                                                 "PROJECT STRUCTURE:\n"
                                                 "Standard Qt6 layout. The build directory is './build'. Use CMake with ninja.\n"
                                                 "Use the run_build_command tool to compile the project and check if errors occur. ";
 
-static const std::string manifestPlanDefault = "You are an experienced C++ developer acting as a system architect. "
+static const std::string manifestPlanDefault = "You are an experienced C++ developer acting as a system architect.\n"
                                                "Your task is to analyze the project, read code, and create an implementation plan.\n\n"
+                                                "Use the provided tools to explore the file system.\n"
                                                "You are currently in PLAN MODE. This means you have read-only access. "
                                                "You can search and read files, but you cannot write files or execute build commands.\n"
-                                               "Answer exclusively in JSON format when you call a tool.\n"
                                                "Focus on deeply understanding the problem and propose a detailed step-by-step solution. ";
 
 //---------------------------------------------------------
@@ -459,17 +459,44 @@ void Agent::fetchModels() {
             try {
                   auto j = json::parse(reply->readAll().toStdString());
                   for (const auto& model : j["models"]) {
+                        std::string name = model["name"];
+                        bool found = false;
+                        for (auto& model : _editor->models()) {
+                              if (model.name == name) {
+                                    model.ollamaFound = true;
+                                    found = true;
+                                    break;
+                                    }
+                              }
+                        if (found)
+                              continue;
+
+                        // ollama knows a new model!
                         Model m;
-                        m.name            = QString::fromStdString(model["name"].get<std::string>());
+                        m.name            = QString::fromStdString(name);
                         m.modelIdentifier = m.name;
                         m.baseUrl         = "http://localhost:11434";
-                        m.isLocal         = true;
                         m.api             = "ollama";
-
+                        m.temperature     = 0.1;
+                        m.num_predict     = 4096*2;   // max output
+                        m.num_ctx         = 8192*2;   // max input
+                        m.topP            = 0.95;
+                        m.topK            = 64;
+                        m.supportsThinking = false;
+                        m.ollama          = true;
+                        m.ollamaFound     = true;
                         _editor->models().push_back(m);
                         }
                   // at this point we have a complete list of available LL models
-                  // and we can select the last used model as saved in settings
+                  // look if an ollama model disappeared:
+                  _editor->models().removeIf([] (const Model& m) {
+                        if (m.ollama && !m.ollamaFound)
+                              Debug("delete Model <{}>", m.name);
+                        return m.ollama && !m.ollamaFound;
+                        });
+
+                  // Now we can select the last used model as saved in settings
+
                   if (!pendingModelName.isEmpty()) {
                         QString pending = pendingModelName;
                         pendingModelName.clear();
@@ -1292,6 +1319,8 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
 
                         extractTag("<think>", "</think>");
                         extractTag("<thought>", "</thought>");
+                        extractTag("<|channel>thought\n", "<channel|>");
+                        extractTag("<|channel>thought", "<channel|>");
 
                         if (content.contains("role") && (content["role"] == "function" || content["role"] == "tool")) {
                               if (!filterToolMessages) {
