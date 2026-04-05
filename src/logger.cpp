@@ -24,16 +24,12 @@ bool verbose = true;
 void Logger::write(std::ostream& f, MsgType t, const MsgLogContext& c, const std::string& msg) {
       string type;
 
-      switch (t) {
-            case MsgType::Log:
-            case MsgType::Printf: f << format("{}\n", msg); return;
-            case MsgType::Debug: type = "Debug"; break;
-            case MsgType::Info: type = "Info"; break;
-            case MsgType::Warning: type = "Warning"; break;
-            case MsgType::Critical: type = "Critical"; break;
-            case MsgType::Fatal: type = "Fatal"; break;
+      if (t == MsgType::Printf) {
+            f << format("{}\n", msg);
+            return;
             }
       if (&f == &std::cerr) {
+            // color messages
             if (t == MsgType::Critical)
                   f << std::format("\033[31m{}({}:{}, {}): {}\033[0m\n", type, c.file, c.line, c.function, msg);
             else if (t == MsgType::Warning)
@@ -77,14 +73,17 @@ void Logger::write(MsgType t, const MsgLogContext& c, const std::string& msg) {
             case MsgType::Info:
                   if (!verbose)
                         break;
-                  [[fallthrough]];
+                  [[fallthrough]]; // always show
             case MsgType::Critical:
             case MsgType::Fatal:
-            case MsgType::Printf: write(std::cerr, t, c, msg); break;
+            case MsgType::Printf:
+                  //
+                  write(std::cerr, t, c, msg);
+                  break;
             }
       if (f.is_open()) {
             write(f, t, c, msg);
-            flush(f);               // this slows down things a bit
+            flush(f); // this slows down things a bit
             }
       if (t == MsgType::Fatal)
             abort();

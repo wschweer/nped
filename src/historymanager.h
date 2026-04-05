@@ -30,7 +30,7 @@ class HistoryManager : public QObject
             size_t tokens{0};
             };
       std::vector<HistoryItem> _data;
-      static constexpr size_t maxEntries         = 40;     // Rolling window: keep at most 40 messages
+      static constexpr size_t maxEntries         = 40*2;     // Rolling window: keep at most 40 messages
       static constexpr size_t criticalTokenCount = 30000; // Trigger summary/trim if context exceeds ~30k tokens
       size_t totalTokens{0};
       size_t activeEntries{0};

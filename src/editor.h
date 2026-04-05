@@ -257,7 +257,8 @@ class Editor : public QMainWindow
       QML_UNCREATABLE("no")
       QML_NAMED_ELEMENT(nped)
 
-      Q_PROPERTY(QList<Model> models READ models NOTIFY modelsChanged)
+      Q_PROPERTY(QStringList  modelsModel READ modelsModel NOTIFY modelsChanged)
+//      Q_PROPERTY(Models models READ models WRITE setModels NOTIFY modelsChanged)
       Q_PROPERTY(QString fontFamily READ fontFamily WRITE setFontFamily NOTIFY fontFamilyChanged)
       Q_PROPERTY(QList<ShortcutConfig> shortcuts READ shortcuts NOTIFY shortcutsChanged)
       Q_PROPERTY(QList<FileType> fileTypes READ fileTypes NOTIFY fileTypesChanged)
@@ -534,10 +535,17 @@ class Editor : public QMainWindow
                   }
             update();
             }
-      Models& models() { return _models; }
-      const Models& models() const { return _models; }
+      Models models() { return _models; }
       Q_INVOKABLE Model model(int idx) { return _models[idx]; }
       Q_INVOKABLE void setModel(int idx, const Model& m) { _models[idx] = m; }
+      Q_INVOKABLE void addModel() { _models.push_back(Model()); emit modelsChanged(); }
+      Q_INVOKABLE void removeModel(const Model m) { _models.removeIf([m](const Model& mm) { return mm == m;}); emit modelsChanged(); }
+      QStringList modelsModel() {
+            QStringList sl;
+            for (const auto& model : _models)
+                  sl.push_back(model.name);
+            return sl;
+            }
       };
 
 //---------------------------------------------------------

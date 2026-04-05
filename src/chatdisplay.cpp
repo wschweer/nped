@@ -1,18 +1,8 @@
-//=============================================================================
-//  nped Program Editor
-//
-//  Copyright (C) 2025-2026 Werner Schweer
-//
-//  This program is free software; you can redistribute it and/or modify
-//  it under the terms of the GNU General Public License version 2
-//  as published by the Free Software Foundation and appearing in
-//  the file LICENCE.GPL
-//=============================================================================
-
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QWebEngineSettings>
+#include <QApplication>
 
 #include "chatdisplay.h"
 
@@ -397,13 +387,8 @@ void ChatDisplay::startMessage() {
 //---------------------------------------------------------
 
 void ChatDisplay::handleIncomingChunk(const std::string& thoughtChunk, const std::string& textChunk) {
-      if (thoughtChunk.empty() && textChunk.empty())
-            return;
-
-      // startMessage was delayed until some date arrived
-      // this avoids display of empty messages
-
-      if (mustStartMessage) {
+      // Logic fix: Only start message if there is actual content
+      if (mustStartMessage && (!thoughtChunk.empty() || !textChunk.empty())) {
             mustStartMessage = false;
             startMessage();
             }
@@ -446,6 +431,6 @@ void ChatDisplay::appendStaticHtml(const QString& role, const QString& html, con
                            "  setTimeout(function() { if(typeof appendStaticMessage === 'function') { appendStaticMessage(%1, %2, %3, %4); } "
                            "else { console.error('appendStaticMessage not found!'); } }, 100);"
                            "}")
-                       .arg(quoteForJs(role), quoteForJs(html), quoteForJs(thoughtHtml), isActive ? "true" : "false");
+                        .arg(quoteForJs(role), quoteForJs(html), quoteForJs(thoughtHtml), isActive ? "true" : "false");
       page()->runJavaScript(js, [](const QVariant& res) { (void)res; });
       }

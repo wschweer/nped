@@ -235,15 +235,6 @@ void Editor::updateStyle() {
 //---------------------------------------------------------
 
 Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
-      qRegisterMetaType<ShortcutConfig>("ShortcutConfig");
-      qRegisterMetaType<FileType>("FileType");
-      qRegisterMetaType<LanguageServerConfig>("LanguageServerConfig");
-      qRegisterMetaType<Model>("Model");
-      qRegisterMetaType<TextStyle>("TextStyle");
-      qRegisterMetaType<TextStyles>("TextStyles");
-
-//      connect(this, &Editor::textStylesLightChanged, [] { Debug("=======textStylesChanged"); });
-//      connect(this, &Editor::textStylesDarkChanged, [] { Debug("=======textStyles dark Changed"); });
 #if 0 // experimental
       fileWatcher = new QFileSystemWatcher(this);
       connect(fileWatcher, &QFileSystemWatcher::fileChanged, [](const QString& path) {

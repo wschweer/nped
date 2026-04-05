@@ -5,6 +5,7 @@ project (nped VERSION 0.0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD    23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(QT_QML_GENERATE_QMLLS_INI ON)
 
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 
@@ -62,7 +63,6 @@ qt_add_executable(nped
       src/logger.cpp
       src/main.cpp
       src/line.cpp
-      src/editor.cpp
       src/file.cpp
       src/editwin.cpp
       src/kontext.cpp
@@ -129,6 +129,8 @@ qt_add_qml_module(nped
     URI "Nped.Config"
     VERSION 1.0
     SOURCES
+      src/editor.cpp
+      src/editor.h
 
     QML_FILES
         qml/ConfigDialog.qml

@@ -35,6 +35,7 @@ bool HistoryManager::trim() {
             }
 
       // 2. Klassisches Rolling Window (nur activeEntries reduzieren statt Löschen)
+      size_t n = activeEntries;
       while (activeEntries > maxEntries) {
             if (activeEntries == 0)
                   break;
@@ -50,10 +51,12 @@ bool HistoryManager::trim() {
                   activeEntries--;
                   }
             }
-      if (hitLimit()) {
-            // request summary
-            summaryRequested = true;
-            }
+      if (n != activeEntries)
+            Debug("****Reduced History from {} to {} entries", n, activeEntries);
+//      if (hitLimit()) {
+//          request summary
+//            summaryRequested = true;
+//            }
       emit tokensChanged(totalTokens);
       return summaryRequested;
       }

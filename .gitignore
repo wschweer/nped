@@ -14,3 +14,5 @@ core.*
 .qt
 TODO
 .idea
+.qmlls.ini
+*.bu

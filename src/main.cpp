@@ -14,6 +14,7 @@
 #include <signal.h>
 #include <QApplication>
 #include <QQuickStyle>
+#include <QMessageBox>
 
 #include "editor.h"
 #include "file.h"
@@ -56,11 +57,6 @@ int main(int argc, char** argv) {
       Logger::logger.open(appName);
       int c;
 
-//    qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-gpu-memory-buffer-video-frames");
-    // oder falls Vulkan das Problem ist:
-//    qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-vulkan");
-
-
       signal(SIGPIPE, SIG_IGN);
 
       QQuickStyle::setStyle(QStringLiteral("Material"));
@@ -90,8 +86,14 @@ int main(int argc, char** argv) {
             }
       int fileArgc    = (optind < argc) ? (argc - optind) : 0;
       char** fileArgv = (optind < argc) ? (argv + optind) : nullptr;
+
       Editor e(fileArgc, fileArgv);
+
+      if (e.getFiles().empty()) {
+            QMessageBox::critical(nullptr, "nped", "Keine Dateien zum Öffnen gefunden.");
+            return 1;
+      }
+
       e.show();
-      app.exec();
-      return 0;
+      return app.exec();
       }

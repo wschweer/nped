@@ -321,7 +321,7 @@ File::File(Editor* e, const QFileInfo& fi) : _fi(fi), editor(e) {
             QRegularExpression wildcard(ft.extensions);
             auto match = wildcard.match(filename);
             if (match.hasMatch()) {
-//                  Debug("found filetype <{}> for <{}>", ft.languageId, filename);
+                  //                  Debug("found filetype <{}> for <{}>", ft.languageId, filename);
                   fileType = ft;
                   break;
                   }
@@ -461,7 +461,7 @@ bool File::load() {
 
 void File::lcOpen() {
       if (!client) {
-//            Debug("no ls client");
+            //            Debug("no ls client");
             return;
             }
       if (client->initialized()) {
@@ -469,12 +469,15 @@ void File::lcOpen() {
             updateAST();
             }
       else {
-            connect(client, &LSclient::initializedChanged, this, [this] {
-                  if (client->initialized()) {
-                        client->didOpenNotification(this);
-                        updateAST();
-                        }
-                  }, Qt::SingleShotConnection);
+            connect(
+                client, &LSclient::initializedChanged, this,
+                [this] {
+                      if (client->initialized()) {
+                            client->didOpenNotification(this);
+                            updateAST();
+                            }
+                      },
+                Qt::SingleShotConnection);
             }
       }
 
@@ -876,68 +879,49 @@ int File::toOffset(const Pos& p) {
 //    A range in a text document expressed as (zero-based) start and end
 //    positions.
 //    A range is comparable to a selection. Therefore, the end position
-//    is exclusive. If you want to specify a range that contains a line
+//    is exclusive (its an half open interval "[xxx)").
+//    If you want to specify a range that contains a line
 //    including the line ending character(s) then use an end position
 //    denoting the start of the next line.
 //    Returns the distance (p2-p1) as number of QChars().
 //    Notice: unicode surrogates are not handled
 //-----------------------------------------------------------------------------
 
-int File::distance(Pos p1, Pos p2) const {
-      Pos c(p1);
-
-      // sanity checks:
-      int n = _fileText.size();
-      if (n == 0) {
-            Critical("file is empty");
-            return -1;
-            }
-      if (p1.row < 0 || p1.row >= n) {
-            Critical("{}: bad line {} max {}", path(), p1.row, n);
-            return -1;
-            }
-      if (p2.row < 0) {
-            Critical("{}: bad line {}", path(), p2.row);
-            return -1;
-            }
-      if (p2.row >= n) {
-            Critical("{}: bad line {} of lines {}", path(), p2.row, n);
-            p2.row = n-1;
-            p2.col = _fileText[p2.row].size();
-            }
-      const Line& l1 = _fileText[p1.row];
-
-      // the x position can point behind the end of the string
-      // which will add the (implicit) newline to the char count
-
-      if (p1.col < 0 || p1.col > l1.size()) {
-            Critical("bad column position {} columns {}", p1.col, l1.size());
+int File::distance(Pos begin, Pos end) const {
+      if (begin.row < 0 || begin.row > rows()) {
+            Critical("bad start row {} rows {}", begin.row, rows());
             return 0;
             }
-      // const Line& l2 = _fileText[p2.y()];
-      int n2 = columns(p2.row);
-      if (p2.col < 0 || p2.col > n2) {
-            Critical("bad column position {} columns {}", p2.col, n2);
+      if (end.row < 0 || end.row > rows()) {
+            Critical("bad end row {} rows {}", end.row, rows());
             return 0;
             }
-      if (p1.row == p2.row) // only one line
-            return p2.col - p1.col;
-      n = 0;
-      for (;;) {
-//            if (c.row == (p2.row-1)) { // on last line
-            if (c.row == (p2.row)) { // on last line
-                  n += p2.col;
-                  break;
-                  }
-            if (c.row == p1.row) // on first line
-                  n += columns(c.row) - c.col;
-            else
-                  n += columns(c.row); // a complete line
-            c.col = 0;
-            ++c.row;
-            n++; // count implicit newline
+      if (end.row == rows() && columns(end.row-1)) {
+            Critical("last line has no newline");
+            end.row -= 1;
+            end.col = columns(end.row);
             }
-      return n;
+      // Falls Start nach Ende liegt oder im selben Punkt:
+      if (begin.row > end.row || (begin.row == end.row && begin.col >= end.col))
+            return 0;
+
+      int dist = 0;
+
+      // Fall 1: Alles findet in der gleichen Zeile statt
+      if (begin.row == end.row)
+            return end.col - begin.col;
+
+      // Fall 2: Mehrere Zeilen
+      // 1. Zeichen in der ersten Zeile (vom Start bis zum Zeilenende + Newline)
+      dist += (columns(begin.row) - begin.col) + 1;
+
+      // 2. Volle Zeilen dazwischen (Länge der Zeile + Newline)
+      for (int r = begin.row + 1; r < end.row; ++r)
+            dist += columns(r) + 1;
+
+      // 3. Zeichen in der letzten Zeile (vom Zeilenanfang bis zur End-Spalte)
+      dist += end.col;
+      return dist;
       }
 
 //---------------------------------------------------------
@@ -1003,6 +987,9 @@ void File::markExpansion() {
 void File::postprocessFormat() {
       //      int lines   = _fileText.size();
       auto cursor = editor->kontext()->cursor();
+
+      // TODO: scan from end to beginning, as we may insert new lines ?
+      //       collect all patches and apply in one batch
       for (int i = 0; i < _fileText.size(); ++i) {
             const Line& l = _fileText[i];
             // dont reformat anything in a string

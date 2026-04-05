@@ -154,7 +154,8 @@ extern Logger logger;
             } while (0)
 #define Printf(msg, ...)                                                                                                                   \
       do {                                                                                                                                 \
-            Logger::logger.write(Logger::MsgType::Printf, {}, std::format(msg __VA_OPT__(, ) __VA_ARGS__));                                \
+            Logger::logger.write(Logger::MsgType::Printf, {__FILE__, __LINE__, __FUNCTION__},                                            \
+                                 std::format(msg __VA_OPT__(, ) __VA_ARGS__));                                                             \
             } while (0)
 #endif
 

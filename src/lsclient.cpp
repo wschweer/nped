@@ -625,6 +625,8 @@ void LSclient::formattingRequest(Kontext* kontext) {
                   pi.insertText = QString::fromStdString(p["newText"]);
                   Range range(p["range"]);
                   pi.startPos = range.start;
+                  if (_name == "qmlls")
+                        range.end.row -= 1;     // HACK
                   pi.toRemove = file->distance(pi.startPos, range.end);
                   patch->add(pi);
                   }
@@ -645,7 +647,7 @@ void LSclient::formattingRequest(Kontext* kontext) {
       options["insertSpaces"]           = true;
       options["trimTrailingWhitespace"] = true;
       options["insertFinalNewline"]     = false;
-      options["trimFinalNewlines"]      = true;
+      options["trimFinalNewlines"]      = false;
       json params;
       params["textDocument"] = textDocument;
       params["options"]      = options;
@@ -829,7 +831,6 @@ void LSclient::handleResponse(int id, json response) {
                   json msg;
                   msg["id"]      = id;
                   msg["jsonrpc"] = "2.0";
-                  Debug("write: <{}>", msg.dump(3));
                   writeMessage(msg.dump());
                   editor->showProgress(true);
                   }

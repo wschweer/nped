@@ -191,8 +191,8 @@ ConfigDialogWrapper::ConfigDialogWrapper(Editor* editor, QWidget* parent) : QWid
       // Zugriff auf diesen Dialog für QML ermöglichen (für close/accept/reject)
       _quickWidget->rootContext()->setContextProperty("dialog", this);
       _quickWidget->rootContext()->setContextProperty("nped", editor);
-      _quickWidget->rootContext()->setContextProperty("Editor", editor);
-      _quickWidget->rootContext()->setContextProperty("agent", editor->getAgent());
+//      _quickWidget->rootContext()->setContextProperty("Editor", editor);
+//      _quickWidget->rootContext()->setContextProperty("agent", editor->getAgent());
 
       // Lade die QML Datei aus dem Modul "Nped.Config"
       // Hinweis: Durch die CMake Policy QTP0001 ist der Pfad standardisiert:

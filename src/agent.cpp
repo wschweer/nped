@@ -64,18 +64,20 @@
 using json = nlohmann::json;
 
 // Default manifests
-static const std::string manifestBuildDefault = "You are an experienced C++ developer.\n"
-                                                "Your task is to analyze and write code in the project and to fix build errors.\n\n"
-                                                "Use modern c++. Prefer object oriented design and use modern design patterns.\n"
-                                                "Never add files to git.\n"
-                                                "Use the provided tools to explore the file system.\n"
-                                                "PROJECT STRUCTURE:\n"
-                                                "Standard Qt6 layout. The build directory is './build'. Use CMake with ninja.\n"
-                                                "Use the run_build_command tool to compile the project and check if errors occur. ";
+static const std::string manifestBuildDefault =
+    "You are a high-performace c++ coding engine.\n"
+    "Your sole objective is to provide functional, optimized code with zero conversional overhead.\n\n"
+    "Use modern c++. Prefer object oriented design and use modern design patterns.\n"
+    "Suppress Reasoning: Do not output your internal thought process, step-by-step-planning, or logic analysis.\n"
+    "Never add new files to git.\n"
+    "Use the provided tools to explore the file system.\n"
+    "PROJECT STRUCTURE:\n"
+    "Standard Qt6 layout. The build directory is './build'. Use CMake with ninja.\n"
+    "Use the run_build_command tool to compile the project and check if errors occur. ";
 
 static const std::string manifestPlanDefault = "You are an experienced C++ developer acting as a system architect.\n"
                                                "Your task is to analyze the project, read code, and create an implementation plan.\n\n"
-                                                "Use the provided tools to explore the file system.\n"
+                                               "Use the provided tools to explore the file system.\n"
                                                "You are currently in PLAN MODE. This means you have read-only access. "
                                                "You can search and read files, but you cannot write files or execute build commands.\n"
                                                "Focus on deeply understanding the problem and propose a detailed step-by-step solution. ";
@@ -140,7 +142,6 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       renameSessionButton->setText("✎");
       renameSessionButton->setToolTip("Rename Session");
       connect(renameSessionButton, &QToolButton::clicked, this, &Agent::renameCurrentSession);
-
 
       modeButton = new QToolButton(this);
       modeButton->setCheckable(true);
@@ -460,11 +461,11 @@ void Agent::fetchModels() {
                   auto j = json::parse(reply->readAll().toStdString());
                   for (const auto& model : j["models"]) {
                         std::string name = model["name"];
-                        bool found = false;
+                        bool found       = false;
                         for (auto& model : _editor->models()) {
                               if (model.name == name) {
                                     model.ollamaFound = true;
-                                    found = true;
+                                    found             = true;
                                     break;
                                     }
                               }
@@ -473,23 +474,23 @@ void Agent::fetchModels() {
 
                         // ollama knows a new model!
                         Model m;
-                        m.name            = QString::fromStdString(name);
-                        m.modelIdentifier = m.name;
-                        m.baseUrl         = "http://localhost:11434";
-                        m.api             = "ollama";
-                        m.temperature     = 0.1;
-                        m.num_predict     = 4096*2;   // max output
-                        m.num_ctx         = 8192*2;   // max input
-                        m.topP            = 0.95;
-                        m.topK            = 64;
+                        m.name             = QString::fromStdString(name);
+                        m.modelIdentifier  = m.name;
+                        m.baseUrl          = "http://localhost:11434";
+                        m.api              = "ollama";
+                        m.temperature      = 0.1;
+                        m.num_predict      = 4096 * 2; // max output
+                        m.num_ctx          = 8192 * 2; // max input
+                        m.topP             = 0.95;
+                        m.topK             = 64;
                         m.supportsThinking = false;
-                        m.ollama          = true;
-                        m.ollamaFound     = true;
+                        m.ollama           = true;
+                        m.ollamaFound      = true;
                         _editor->models().push_back(m);
                         }
                   // at this point we have a complete list of available LL models
                   // look if an ollama model disappeared:
-                  _editor->models().removeIf([] (const Model& m) {
+                  _editor->models().removeIf([](const Model& m) {
                         if (m.ollama && !m.ollamaFound)
                               Debug("delete Model <{}>", m.name);
                         return m.ollama && !m.ollamaFound;
@@ -739,6 +740,7 @@ void Agent::handleChatFinished() {
 
       updateChatDisplay();
       saveStatus();
+      enableInput(true);
       }
 
 //---------------------------------------------------------
@@ -771,15 +773,17 @@ void Agent::processData() {
                         // accept() ist schneller als parse(), da es kein Objekt im Speicher baut
                         if (json::accept(potentialJson)) {
                               auto j = json::parse(potentialJson);
-                              Debug("received <{}>", j.size());
+                              //                              Debug("received <{}>", j.size());
                               Log("received <{}>", j.dump(3));
                               try {
                                     llm->processJsonItem(j);
-                              } catch (const std::exception& e) {
+                                    }
+                              catch (const std::exception& e) {
                                     Critical("Exception in processJsonItem: {}", e.what());
-                              } catch (...) {
+                                    }
+                              catch (...) {
                                     Critical("Unknown exception in processJsonItem");
-                              }
+                                    }
 
                               // Puffer aktualisieren
                               size_t consumed = startPos + len;
@@ -1310,12 +1314,13 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                                     if (thinkEnd != std::string::npos) {
                                           thought += s.substr(thinkStart + startTag.length(), thinkEnd - (thinkStart + startTag.length()));
                                           s.erase(thinkStart, thinkEnd + endTag.length() - thinkStart);
-                                    } else {
+                                          }
+                                    else {
                                           thought += s.substr(thinkStart + startTag.length());
                                           s.erase(thinkStart);
+                                          }
                                     }
-                              }
-                        };
+                              };
 
                         extractTag("<think>", "</think>");
                         extractTag("<thought>", "</thought>");
@@ -1531,23 +1536,35 @@ void Agent::updateCannedPrompts() {
       QString root = _editor->projectRoot();
       if (root.isEmpty())
             return;
-      QString npedDir = root + "/.nped";
+      QString npedDir  = root + "/.nped";
       QString filePath = npedDir + "/agent.json";
       QFile file(filePath);
       if (!file.exists()) {
             QDir dir;
-            if (!dir.exists(npedDir)) {
+            if (!dir.exists(npedDir))
                   dir.mkpath(npedDir);
-                  }
             if (file.open(QIODevice::WriteOnly)) {
                   json j;
-                  j["F1"] = {{"name", "F1"}, {"description", "Canned prompt F1"}, {"text", ""}};
-                  j["F2"] = {{"name", "F2"}, {"description", "Canned prompt F2"}, {"text", ""}};
-                  j["F3"] = {{"name", "F3"}, {"description", "Canned prompt F3"}, {"text", ""}};
+                  j["F1"] = {
+                           {       "name",               "F1"},
+                           {"description", "Canned prompt F1"},
+                           {       "text",                 ""}
+                        };
+                  j["F2"] = {
+                           {       "name",               "F2"},
+                           {"description", "Canned prompt F2"},
+                           {       "text",                 ""}
+                        };
+                  j["F3"] = {
+                           {       "name",               "F3"},
+                           {"description", "Canned prompt F3"},
+                           {       "text",                 ""}
+                        };
                   std::string s = j.dump(4);
                   file.write(s.c_str(), s.length());
                   file.close();
-                  } else {
+                  }
+            else {
                   Debug("Failed to create agent.json");
                   }
             }
@@ -1575,7 +1592,8 @@ void Agent::updateCannedPrompts() {
             catch (...) {
                   Debug("Error parsing agent.json");
                   }
-            } else {
+            }
+      else {
             Debug("Failed to open agent.json for reading");
             }
       }
@@ -1588,21 +1606,32 @@ void Agent::handleCannedPrompt(const QString& buttonId) {
       QString root = _editor->projectRoot();
       if (root.isEmpty())
             return;
-      QString npedDir = root + "/.nped";
+      QString npedDir  = root + "/.nped";
       QString filePath = npedDir + "/agent.json";
 
       if (QApplication::keyboardModifiers() & Qt::ControlModifier) {
             QDir dir;
-            if (!dir.exists(npedDir)) {
+            if (!dir.exists(npedDir))
                   dir.mkpath(npedDir);
-                  }
             QFile file(filePath);
             if (!file.exists()) {
                   if (file.open(QIODevice::WriteOnly)) {
                         json j;
-                        j["F1"] = {{"name", "F1"}, {"description", "Canned prompt F1"}, {"text", ""}};
-                        j["F2"] = {{"name", "F2"}, {"description", "Canned prompt F2"}, {"text", ""}};
-                        j["F3"] = {{"name", "F3"}, {"description", "Canned prompt F3"}, {"text", ""}};
+                        j["F1"] = {
+                                 {       "name",               "F1"},
+                                 {"description", "Canned prompt F1"},
+                                 {       "text",                 ""}
+                              };
+                        j["F2"] = {
+                                 {       "name",               "F2"},
+                                 {"description", "Canned prompt F2"},
+                                 {       "text",                 ""}
+                              };
+                        j["F3"] = {
+                                 {       "name",               "F3"},
+                                 {"description", "Canned prompt F3"},
+                                 {       "text",                 ""}
+                              };
                         std::string s = j.dump(4);
                         file.write(s.c_str(), s.length());
                         file.close();
@@ -1614,14 +1643,25 @@ void Agent::handleCannedPrompt(const QString& buttonId) {
             QFile file(filePath);
             if (!file.exists()) {
                   QDir dir;
-                  if (!dir.exists(npedDir)) {
+                  if (!dir.exists(npedDir))
                         dir.mkpath(npedDir);
-                        }
                   if (file.open(QIODevice::WriteOnly)) {
                         json j;
-                        j["F1"] = {{"name", "F1"}, {"description", "Canned prompt F1"}, {"text", ""}};
-                        j["F2"] = {{"name", "F2"}, {"description", "Canned prompt F2"}, {"text", ""}};
-                        j["F3"] = {{"name", "F3"}, {"description", "Canned prompt F3"}, {"text", ""}};
+                        j["F1"] = {
+                                 {       "name",               "F1"},
+                                 {"description", "Canned prompt F1"},
+                                 {       "text",                 ""}
+                              };
+                        j["F2"] = {
+                                 {       "name",               "F2"},
+                                 {"description", "Canned prompt F2"},
+                                 {       "text",                 ""}
+                              };
+                        j["F3"] = {
+                                 {       "name",               "F3"},
+                                 {"description", "Canned prompt F3"},
+                                 {       "text",                 ""}
+                              };
                         std::string s = j.dump(4);
                         file.write(s.c_str(), s.length());
                         file.close();
@@ -1630,7 +1670,7 @@ void Agent::handleCannedPrompt(const QString& buttonId) {
             if (file.open(QIODevice::ReadOnly)) {
                   QByteArray data = file.readAll();
                   try {
-                        json j = json::parse(data.toStdString());
+                        json j          = json::parse(data.toStdString());
                         std::string key = buttonId.toStdString();
                         if (j.contains(key) && j[key].is_object()) {
                               QString text = QString::fromStdString(j[key].value("text", ""));
