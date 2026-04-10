@@ -19,6 +19,7 @@ bool HistoryManager::trim() {
       // 1. Wenn der letzte Turn eine Zusammenfassung war:
       // Wir setzen activeEntries auf 2 (Zusammenfassungs-Anfrage und Modell-Antwort).
       if (summaryRequested) {
+            Debug("****Summary Requested");
             size_t n = 0;
             for (auto it = _data.rbegin(); it != _data.rend(); ++it) {
                   n++;

@@ -117,6 +117,18 @@ struct Range {
       };
 
 //---------------------------------------------------------
+//   Attachment
+//---------------------------------------------------------
+
+enum class AttachmentType { Image, Text, Audio };
+
+struct Attachment {
+    AttachmentType type;
+    QString data; // base64 or path
+    QString label;
+    };
+
+//---------------------------------------------------------
 //   PatchItem
 //---------------------------------------------------------
 

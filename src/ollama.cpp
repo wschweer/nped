@@ -66,7 +66,7 @@ json OllamaClient::prompt(QNetworkRequest* request) {
 
       json requestJson;
       requestJson["model"]  = model->modelIdentifier.toStdString();
-      requestJson["stream"] = true;
+      requestJson["stream"] = model->stream;
 
       json options;
       if (model->num_ctx > 0)
@@ -113,8 +113,11 @@ json OllamaClient::prompt(QNetworkRequest* request) {
             if (msg.contains("tool_call_id"))
                   jmsg["tool_call_id"] = msg["tool_call_id"];
             // Embed screenshot: Ollama multimodal uses "images" array with base64 strings
-            if (msg.contains("image"))
+            if (msg.contains("images") && msg["images"].is_array()) {
+                  jmsg["images"] = msg["images"];
+            } else if (msg.contains("image")) {
                   jmsg["images"] = json::array({msg["image"].get<std::string>()});
+            }
             history.push_back(jmsg);
             }
       requestJson["messages"] = history;

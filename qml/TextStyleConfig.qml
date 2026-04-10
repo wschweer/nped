@@ -29,7 +29,7 @@ ColumnLayout {
         color: Material.foreground
         }
     Rectangle {
-        // height: 1;
+        implicitHeight: 1
         Layout.fillWidth: true
         color: Material.accent
         }

@@ -33,28 +33,18 @@ QString LLMClient::name() const {
 
 LLMClient* llmFactory(Agent* agent, Model* model, const std::vector<json>& mcps) {
       LLMClient* client = nullptr;
-      for (const auto c : clientList)
-            if (c->name() == model->api)
-                  client = c;
-      if (!client) {
-            if (model->api == "gemini")
-                  client = new GeminiClient(agent, model, mcps);
-            else if (model->api == "ollama")
-                  client = new OllamaClient(agent, model, mcps);
-            else if (model->api == "anthropic")
-                  client = new AnthropicClient(agent, model, mcps);
-            else if (model->api == "openai")
-                  client = new OpenAiClient(agent, model, mcps);
-            else {
-                  Critical("unknown llm interface <{}>", model->api);
-                  client        = new OllamaClient(agent, model, mcps);
-                  client->model = model;
-                  return client;
-                  }
-            if (client)
-                  clientList.push_back(client);
+      if (model->api == "gemini")
+            client = new GeminiClient(agent, model, mcps);
+      else if (model->api == "ollama")
+            client = new OllamaClient(agent, model, mcps);
+      else if (model->api == "anthropic")
+            client = new AnthropicClient(agent, model, mcps);
+      else if (model->api == "openai")
+            client = new OpenAiClient(agent, model, mcps);
+      else {
+            Critical("unknown llm interface <{}>", model->api);
+            client = new OllamaClient(agent, model, mcps);
             }
-      if (client)
-            client->model = model;
+      client->model = model;
       return client;
       }

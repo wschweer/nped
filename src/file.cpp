@@ -152,60 +152,60 @@ QString Editor::evalPP(const QString& pdata) {
                   if (item.contains("min")) {
                         if (!jsonArgs.empty())
                               jsonArgs += ", ";
-                        jsonArgs += format("\\\"min\\\":{}", item["min"]);
+                        jsonArgs += std::format("\\\"min\\\":{}", item["min"]);
                         }
                   if (item.contains("max")) {
                         if (!jsonArgs.empty())
                               jsonArgs += ", ";
-                        jsonArgs += format("\\\"max\\\":{}", item["max"]);
+                        jsonArgs += std::format("\\\"max\\\":{}", item["max"]);
                         }
                   if (item.contains("precision")) {
                         if (!jsonArgs.empty())
                               jsonArgs += ", ";
-                        jsonArgs += format("\\\"precision\\\":{}", item["precision"]);
+                        jsonArgs += std::format("\\\"precision\\\":{}", item["precision"]);
                         }
                   if (item.contains("units")) {
                         if (!jsonArgs.empty())
                               jsonArgs += ", ";
-                        jsonArgs += format("\\\"units\\\":{}", item["units"]);
+                        jsonArgs += std::format("\\\"units\\\":{}", item["units"]);
                         }
                   if (item.contains("label")) {
                         if (!jsonArgs.empty())
                               jsonArgs += ", ";
-                        jsonArgs += format("\\\"label\\\":{}", item["label"]);
+                        jsonArgs += std::format("\\\"label\\\":{}", item["label"]);
                         }
                   if (item.contains("script")) {
                         if (!jsonArgs.empty())
                               jsonArgs += ", ";
-                        jsonArgs += format("\\\"script\\\":{}", item["script"]);
+                        jsonArgs += std::format("\\\"script\\\":{}", item["script"]);
                         }
                   if (item.contains("nosave")) {
                         if (!jsonArgs.empty())
                               jsonArgs += ", ";
-                        jsonArgs += format("\\\"nosave\\\":{}", item["nosave"]);
+                        jsonArgs += std::format("\\\"nosave\\\":{}", item["nosave"]);
                         }
                   if (item.contains("noshow")) {
                         if (!jsonArgs.empty())
                               jsonArgs += ", ";
-                        jsonArgs += format("\\\"noshow\\\":{}", item["noshow"]);
+                        jsonArgs += std::format("\\\"noshow\\\":{}", item["noshow"]);
                         }
                   if (item.contains("scriptable")) {
                         if (!jsonArgs.empty())
                               jsonArgs += ", ";
-                        jsonArgs += format("\\\"scriptable\\\":{}", item["scriptable"]);
+                        jsonArgs += std::format("\\\"scriptable\\\":{}", item["scriptable"]);
                         }
                   //                  jsonArgs = QString::fromStdString(jsonArgs).replace("\"", "\\\"").toStdString();
-                  result += format("      Property* {0}Property = PropertyMap::push_back(\"{0}\", ", name);
-                  result += format("new Property(this, \"{}\", [this] {{ {}Changed(); }}, {}", name, name, item["default"]);
+                  result += std::format("      Property* {0}Property = PropertyMap::push_back(\"{0}\", ", name);
+                  result += std::format("new Property(this, \"{}\", [this] {{ {}Changed(); }}, {}", name, name, item["default"]);
                   if (jsonArgs.empty())
                         result += "));\n";
                   else
-                        result += format(", \"{{ {} }}\"));\n", jsonArgs);
+                        result += std::format(", \"{{ {} }}\"));\n", jsonArgs);
                   }
             else {
-                  result += format("      {} _{}", item.at("type"), name);
+                  result += std::format("      {} _{}", item.at("type"), name);
                   if (item.contains("default"))
-                        result += format("={}", item["default"]);
+                        result += std::format("={}", item["default"]);
                   result += ";\n";
                   }
             }

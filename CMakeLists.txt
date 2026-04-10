@@ -96,6 +96,7 @@ qt_add_executable(nped
       src/filetype.h
       src/ls.cpp
       src/ls.h
+      src/attachmentbutton.h
       )
 
 qt_add_resources(nped "qmls"
@@ -115,6 +116,8 @@ qt_add_resources(nped "mages"
       images/camera-dark.svg
       images/tool.svg
       images/tool-dark.svg
+      images/stop.svg
+      images/stop_white.svg
       images/back.svg
       images/back_white.svg
       images/forward.svg

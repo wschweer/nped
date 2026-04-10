@@ -17,6 +17,7 @@
 #include <sys/eventfd.h>
 #include <poll.h>
 #include <atomic>
+#include <format>
 #include <QUrl>
 #include "lsclient.h"
 #include "logger.h"
@@ -42,8 +43,11 @@ LSclient* LSclient::createClient(Editor* editor, const std::string& name) {
                   auto* lc       = new LSclient(editor, name);
                   QStringList sl = s.args.simplified().split(" ");
                   std::vector<std::string> args;
-                  for (const auto& s : sl)
-                        args.push_back(s.toStdString());
+                  for (const auto& s : sl) {
+                        std::string root = editor->projectRoot().toStdString();
+                        std::string arg  = std::vformat(s.toStdString(), std::make_format_args(root));
+                        args.push_back(arg);
+                        }
                   if (!lc->start(s.command.toStdString(), args)) {
                         Critical("cannot init language server <{}>", s.command);
                         delete lc;
@@ -296,6 +300,9 @@ void LSclient::readerLoop() {
             fcntl(stderrPipe[0], F_SETFL, flags | O_NONBLOCK);
 
       running = true;
+
+      emit isRunning();
+
       while (running) {
             int ret = poll(fds, 3, -1);
             if (ret < 0) {
@@ -430,7 +437,9 @@ bool LSclient::start(const std::string& path, const std::vector<string>& args) {
             close(stderrPipe[1]);
 
             reader = new std::thread(&LSclient::readerLoop, this);
-            initializeRequest();
+            connect(this, &LSclient::isRunning, this, [this] {
+                  initializeRequest();
+                  });
             }
       return true;
       }
@@ -517,7 +526,7 @@ bool LSclient::notification(const char* method, const json& params) {
       msg["method"]  = method;
       msg["params"]  = params;
       //      Debug("<{}>", method);
-      CDebug(IO, "write: <{}>", msg.dump(3));
+      CLog(IO, "write: <{}>", msg.dump(3));
       return writeMessage(msg.dump());
       }
 
@@ -531,7 +540,7 @@ bool LSclient::request(const char* method, const json& params) {
       msg["method"]  = method;
       msg["params"]  = params;
       msg["id"]      = id++;
-      CDebug(IO, "write: <{}>", msg.dump(3));
+      CLog(IO, "write: <{}>", msg.dump(3));
       return writeMessage(msg.dump());
       }
 
@@ -749,7 +758,7 @@ bool LSclient::processMessage(const std::string& message) {
       json response;
       try {
             response = json::parse(message);
-            CDebug(IO, "read: <{}>", response.dump(3));
+            CLog(IO, "read: <{}>", response.dump(3));
             }
       catch (json::parse_error& e) {
             Critical("json::parse failed: {}", e.what());
@@ -909,7 +918,7 @@ void LSclient::astResponse(File* f, const json& msg) {
 
 void LSclient::symbolRequest(const QString& symbol) {
       callbacks[id] = [this](const json& msg) {
-            QString res = "";
+            string res = "";
             if (msg.contains("result") && msg["result"].is_array()) {
                   for (const auto& item : msg["result"]) {
                         if (item.contains("location")) {
@@ -918,11 +927,11 @@ void LSclient::symbolRequest(const QString& symbol) {
                               if (uri.startsWith("file://"))
                                     uri = uri.mid(7);
                               Range range(loc["range"]);
-                              res += uri + ":" + QString::number(range.start.row + 1) + "\n";
+                              res += std::format("{}:{}\n", uri, range.start.row + 1);
                               }
                         }
                   }
-            if (res.isEmpty())
+            if (res.empty())
                   res = "Symbol not found.";
             emit symbolSearchResult(res);
             };

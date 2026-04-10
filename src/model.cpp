@@ -9,9 +9,6 @@
 //  the file LICENCE.GPL
 //=============================================================================
 
-#include <QJsonArray>
-#include <QJsonObject>
-
 #include "logger.h"
 #include "model.h"
 
@@ -19,15 +16,17 @@
 //   serialize TextStyles
 //---------------------------------------------------------
 
-QJsonArray Models::toJson() const {
-      QJsonArray array;
+json Models::toJson() const {
+      json array = json::array();
       for (const auto& m : *this) {
-            QJsonObject obj;
-            obj["name"]             = m.name;
-            obj["url"]              = m.baseUrl;
-            obj["key"]              = m.apiKey;
-            obj["modelId"]          = m.modelIdentifier;
-            obj["api"]              = m.api;
+            if (m.dynamic)
+                  continue;
+            json obj;
+            obj["name"]             = m.name.toStdString();
+            obj["url"]              = m.baseUrl.toStdString();
+            obj["key"]              = m.apiKey.toStdString();
+            obj["modelId"]          = m.modelIdentifier.toStdString();
+            obj["api"]              = m.api.toStdString();
             obj["supportsThinking"] = m.supportsThinking;
             obj["temperature"]      = m.temperature;
             obj["topP"]             = m.topP;
@@ -35,8 +34,8 @@ QJsonArray Models::toJson() const {
             obj["maxTokens"]        = m.maxTokens;
             obj["num_ctx"]          = m.num_ctx;
             obj["num_predict"]      = m.num_predict;
-            obj["ollama"]           = m.ollama;
-            array.append(obj);
+            obj["stream"]           = m.stream;
+            array.push_back(obj);
             }
       return array;
       }
@@ -45,35 +44,36 @@ QJsonArray Models::toJson() const {
 //   fromJson
 //---------------------------------------------------------
 
-void Models::fromJson(const QJsonArray& array) {
+void Models::fromJson(const json& array) {
       clear();
-      for (int i = 0; i < array.size(); ++i) {
-            QJsonObject obj = array[i].toObject();
+      try {
+            for (const json& obj : array) {
+                  Model m;
+                  m.name            = QString::fromStdString(obj["name"]);
+                  m.baseUrl         = QString::fromStdString(obj["url"]);
+                  m.apiKey          = QString::fromStdString(obj["key"]);
+                  m.modelIdentifier = QString::fromStdString(obj["modelId"]);
+                  m.api             = QString::fromStdString(obj["api"]);
 
-            Model m;
-            m.name            = obj["name"].toString();
-            m.baseUrl         = obj["url"].toString();
-            m.apiKey          = obj["key"].toString();
-            m.modelIdentifier = obj["modelId"].toString();
-            m.api             = obj["api"].toString();
-            // Optional fields – graceful fallback to struct defaults if absent
-            if (obj.contains("supportsThinking"))
-                  m.supportsThinking = obj["supportsThinking"].toBool();
-            if (obj.contains("temperature"))
-                  m.temperature = obj["temperature"].toDouble(-1.0);
-            if (obj.contains("topP"))
-                  m.topP = obj["topP"].toDouble(-1.0);
-            if (obj.contains("topK"))
-                  m.topK = obj["topK"].toDouble(-1.0);
-            if (obj.contains("maxTokens")) {
-                  m.maxTokens = obj["maxTokens"].toInt(-1);
+                  // Optional fields – graceful fallback to struct defaults if absent
+                  m.supportsThinking = obj.value("supportsThinking", false);
+                  m.temperature      = obj.value("temperature", -1.0);
+                  m.topP             = obj.value("topP", -1.0);
+                  m.topK             = obj.value("topK", -1.0);
+                  m.maxTokens        = obj.value("maxTokens", -1);
+                  m.num_ctx          = obj.value("num_ctx", -1);
+                  m.num_predict      = obj.value("num_predict", -1);
+                  m.stream           = obj.value("stream", true);
+                  append(m);
                   }
-            if (obj.contains("num_ctx"))
-                  m.num_ctx = obj["num_ctx"].toInt(-1);
-            if (obj.contains("num_predict"))
-                  m.num_predict = obj["num_predict"].toInt(-1);
-            if (obj.contains("ollama"))
-                  m.ollama = obj["ollama"].toBool(false);
-            append(m);
+            }
+      catch (const json::parse_error& e) {
+            Debug("Parse Error: {}", e.what());
+            }
+      catch (const json::type_error& e) {
+            Debug("TypeError: {}", e.what());
+            }
+      catch (...) {
+            Critical("Unexpected error");
             }
       }

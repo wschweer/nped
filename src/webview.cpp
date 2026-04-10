@@ -84,7 +84,9 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
       setPage(new MarkdownWebPage(e, this));
       settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
       _darkMode = e->darkMode();
-      // settings()->setAttribute(QWebEngineSettings::ForceDarkMode, _darkMode);
+      // Set initial background color to prevent white flash
+      page()->setBackgroundColor(_darkMode ? Qt::black : Qt::white);
+
       textActions = {
          Action(e->getSC(Cmd::CMD_QUIT), [this] { editor->quitCmd(); }),
          Action(e->getSC(Cmd::CMD_SAVE_QUIT), [this] { editor->saveQuitCmd(); }),
@@ -137,7 +139,6 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
 
 //---------------------------------------------------------
 //   childEvent
-//   fängt interne Widgets ab, die QtWebEngine später erstellt
 //---------------------------------------------------------
 
 void MarkdownWebView::childEvent(QChildEvent* event) {
@@ -154,10 +155,8 @@ void MarkdownWebView::childEvent(QChildEvent* event) {
 //---------------------------------------------------------
 
 void MarkdownWebView::installFilterOnProxy() {
-      // Manchmal hat der View selbst schon einen FocusProxy
       if (focusProxy())
             focusProxy()->installEventFilter(kl);
-      // Und sicherheitshalber auf uns selbst
       this->installEventFilter(kl);
       }
 
@@ -178,8 +177,7 @@ void MarkdownWebView::setDarkMode(bool enabled) {
       if (_darkMode == enabled)
             return;
       _darkMode = enabled;
-
-      // Wenn wir schon Content haben, rendern wir ihn sofort neu mit dem neuen Style
+      page()->setBackgroundColor(_darkMode ? Qt::black : Qt::white);
       if (!_currentRawMarkdown.isEmpty())
             setMarkdown(_currentRawMarkdown);
       }
@@ -189,7 +187,6 @@ void MarkdownWebView::setDarkMode(bool enabled) {
 //---------------------------------------------------------
 
 void MarkdownWebView::setMarkdown(const QString& _markdown, int cursorLine) {
-      // Always re-render if cursorLine is provided to ensure it scrolls
       if (cursorLine < 0 && _markdown == _currentRawMarkdown)
             return;
       _currentRawMarkdown = _markdown;
@@ -198,39 +195,25 @@ void MarkdownWebView::setMarkdown(const QString& _markdown, int cursorLine) {
             return;
             }
 
-      // 1. [TOC] Platzhalter ersetzen
-      // Wir machen das im Markdown-String, bevor er gerendert wird.
-      // Damit md4c das nicht als Text rendert, ersetzen wir es durch HTML.
       QString _processedMarkdown = _markdown;
-      if (_processedMarkdown.contains("[TOC]")) {
-            // Wir ersetzen es durch einen div-Container
+      if (_processedMarkdown.contains("[TOC]"))
             _processedMarkdown.replace("[TOC]", "\n<div id='table-of-contents'></div>\n");
-            }
 
       if (cursorLine >= 0) {
             QStringList lines = _processedMarkdown.split('\n');
             if (cursorLine < lines.size()) {
                   lines[cursorLine].prepend("<span id=\"nped-cursor-pos\"></span>");
                   _processedMarkdown = lines.join('\n');
+                  }
             }
-      }
 
-      // 2. Konvertierung (nutzt jetzt processedMarkdown)
-      QString _convertedHtml = renderMarkdownToHtml(_processedMarkdown.toStdString());
-
-      // ... CSS und Assets holen ...
-      auto _css             = _darkMode ? getGithubDarkCss() : getGithubCss();
+      QString _convertedHtml   = renderMarkdownToHtml(_processedMarkdown.toStdString());
+      auto _css                = _darkMode ? getGithubDarkCss() : getGithubCss();
       QString _highlightAssets = getHighlightJsAssets(_darkMode);
-      auto _anchorScript    = getAnchorJs();
-
-      // 3. Das neue ToC-Script holen
-      auto _tocScript = getTocJs();
-
-      // 4. Mermaid-Script holen
-      QString _mermaidScript = getMermaidJs(_darkMode);
-
-      // 5. KaTeX-Script holen (für Mathe/LaTeX-Rendering)
-      QString _katexScript = getKaTexJs();
+      auto _anchorScript       = getAnchorJs();
+      auto _tocScript          = getTocJs();
+      QString _mermaidScript   = getMermaidJs(_darkMode);
+      QString _katexScript     = getKaTexJs();
 
       QString _scrollScript;
       if (cursorLine >= 0) {
@@ -238,13 +221,11 @@ void MarkdownWebView::setMarkdown(const QString& _markdown, int cursorLine) {
                 <script>
                 window.addEventListener('load', function() {
                     var el = document.getElementById('nped-cursor-pos');
-                    if (el) {
-                        el.scrollIntoView({behavior: 'instant', block: 'center'});
-                    }
+                    if (el) { el.scrollIntoView({behavior: 'instant', block: 'center'}); }
                 });
                 </script>
             )";
-      }
+            }
 
       QString _fullHtml = QString::fromStdString(std::format(
           R"(<!DOCTYPE html>
@@ -259,8 +240,8 @@ void MarkdownWebView::setMarkdown(const QString& _markdown, int cursorLine) {
             {}
             {} {} {} {} {} </body>
         </html>)",
-          _darkMode ? "dark" : "light", _css, _highlightAssets.toStdString(), _convertedHtml.toStdString(),
-          _anchorScript, _tocScript, _mermaidScript.toStdString(), _katexScript.toStdString(), _scrollScript.toStdString()));
+          _darkMode ? "dark" : "light", _css, _highlightAssets.toStdString(), _convertedHtml.toStdString(), _anchorScript, _tocScript,
+          _mermaidScript.toStdString(), _katexScript.toStdString(), _scrollScript.toStdString()));
 
       QUrl baseUrl;
       if (editor && editor->kontext() && editor->kontext()->file()) {
@@ -275,31 +256,18 @@ void MarkdownWebView::setMarkdown(const QString& _markdown, int cursorLine) {
 //---------------------------------------------------------
 
 QString MarkdownWebView::getHighlightJsAssets(bool darkMode) const {
-      // Wähle das passende Theme: 'github' vs 'github-dark'
-      QString theme = darkMode ? "github-dark.min.css" : "github.min.css";
-
-      // Nutze eine einfache Verkettung statt std::format wegen der vielen {} und Zeichenkollisionen in JS
-
-      QString js  = R"(
+      QString theme  = darkMode ? "github-dark.min.css" : "github.min.css";
+      QString js     = R"(
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/)";
-      js         += theme;
-      js         += R"(">
-
+      js            += theme;
+      js            += R"(">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
         <script>
-            document.addEventListener('DOMContentLoaded', (event) => {
-                if (typeof hljs !== 'undefined') {
-                    hljs.highlightAll();
-                      }
-                  });
+            document.addEventListener('DOMContentLoaded', (event) => { if (typeof hljs !== 'undefined') hljs.highlightAll(); });
             function fallbackCopy(text) {
                 const ta = document.createElement('textarea');
-                ta.value = text;
-                ta.style.position = 'fixed';
-                ta.style.opacity = '0';
-                document.body.appendChild(ta);
-                ta.focus();
-                ta.select();
+                ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+                document.body.appendChild(ta); ta.focus(); ta.select();
                 try { document.execCommand('copy'); } catch(e) {}
                 document.body.removeChild(ta);
                   }
@@ -308,12 +276,8 @@ QString MarkdownWebView::getHighlightJsAssets(bool darkMode) const {
                 const text = codeBlock.innerText;
                 const originalHTML = btn.innerHTML;
                 const ok = () => { btn.innerHTML = '&#10003;'; setTimeout(() => btn.innerHTML = originalHTML, 2000); };
-                if (navigator.clipboard) {
-                    navigator.clipboard.writeText(text).then(ok).catch(() => { fallbackCopy(text); ok(); });
-                      } else {
-                    fallbackCopy(text);
-                    ok();
-                      }
+                if (navigator.clipboard) { navigator.clipboard.writeText(text).then(ok).catch(() => { fallbackCopy(text); ok(); });
+                      } else { fallbackCopy(text); ok(); }
                   }
         </script>
     )";
@@ -325,77 +289,37 @@ QString MarkdownWebView::getHighlightJsAssets(bool darkMode) const {
 //---------------------------------------------------------
 
 QString MarkdownWebView::getKaTexJs() const {
-      // Wir injizieren die KaTeX CSS- und JS-Dateien aus einem CDN,
-      // inklusive der 'auto-render'-Erweiterung, die den Text nach Formeln scannt.
       return QString::fromStdString(R"HTML(
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" crossorigin="anonymous">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js" crossorigin="anonymous"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" crossorigin="anonymous"
     onload="renderMathInElement(document.body, {
-        delimiters: [
-            {left: '$$', right: '$$', display: true},
-            {left: '$', right: '$', display: false},
-            {left: '\\(', right: '\\)', display: false},
-            {left: '\\[', right: '\\]', display: true}
-        ],
+        delimiters: [ {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true} ],
         throwOnError: false
-    });"></script>
-)HTML");
-}
+                      });"></script>)HTML");
+      }
 
 //---------------------------------------------------------
 //   getMermaidJs
 //---------------------------------------------------------
 
 QString MarkdownWebView::getMermaidJs(bool darkMode) const {
-      QString theme = darkMode ? "dark" : "default";
-
       QString js  = R"(
         <script type="module">
           import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-          mermaid.initialize({
-              startOnLoad: false,
-              theme: ')";
-      js         += theme;
-      js         += R"(',
-              themeVariables: {
-                  fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                  background: 'transparent'
-              }
-          });
-
-          window.runMermaid = async () => {
-              try {
-                  await mermaid.run({ querySelector: '.mermaid', suppressErrors: true });
-              } catch (e) {
-                  console.warn('Mermaid rendering failed', e);
-              }
-          };
-
-          document.addEventListener('DOMContentLoaded', async () => {
-              await window.runMermaid();
-          });
+          mermaid.initialize({ startOnLoad: false, theme: ')";
+      js         += darkMode ? "dark" : "default";
+      js         += R"(', themeVariables: { fontFamily: 'inherit', background: 'transparent' } });
+          window.runMermaid = async () => { try { await mermaid.run({ querySelector: '.mermaid', suppressErrors: true }); } catch (e) {} };
+          document.addEventListener('DOMContentLoaded', async () => { await window.runMermaid(); });
         </script>
-        <style>
-          .mermaid {
-            background-color: )";
-
-      js += darkMode ? "#161b22" : "#f6f8fa";
-      js += R"(;
-            border-radius: 6px;
-            padding: 16px;
-            margin-bottom: 16px;
-            overflow-x: auto;
-            text-align: center;
-          }
-        </style>
+        <style> .mermaid { background-color: transparent; } </style>
       )";
       return js;
       }
 
 //---------------------------------------------------------
 //   md4c_callback
-//    Callback für md4c
 //---------------------------------------------------------
 
 void md4c_callback(const MD_CHAR* _data, MD_SIZE _size, void* _userData) {
@@ -412,9 +336,7 @@ QString MarkdownWebView::renderMarkdownToHtml(const std::string& _stdMarkdown) {
       // GFM-Flags: Tabellen, Tasklisten, Durchgestrichen, Autolinks
       // unsigned int _flags = MD_DIALECT_GITHUB | MD_FLAG_NOINDENTEDCODEBLOCKS;
       unsigned int _flags = MD_DIALECT_GITHUB;
-
-      int _result = md_html(_stdMarkdown.c_str(), static_cast<MD_SIZE>(_stdMarkdown.size()), md4c_callback, &_output, _flags, 0);
-
+      int _result         = md_html(_stdMarkdown.c_str(), static_cast<MD_SIZE>(_stdMarkdown.size()), md4c_callback, &_output, _flags, 0);
       if (_result != 0) {
             Critical("Markdown conversion failed with code: {}", _result);
             return "<b>Error: Markdown rendering failed.</b>";
@@ -467,8 +389,8 @@ QString MarkdownWebView::renderMarkdownToHtml(const std::string& _stdMarkdown) {
 //   getGithubCss
 //---------------------------------------------------------
 
-const std::string& MarkdownWebView::getGithubCss() const {
-      static const std::string s = R"(
+std::string MarkdownWebView::getGithubCss() const {
+      const std::string s = R"(
         body {
             color-scheme: light;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
@@ -576,8 +498,8 @@ h4:hover .anchor, h5:hover .anchor, h6:hover .anchor {
 //   getGithubDarkCss
 //---------------------------------------------------------
 
-const std::string& MarkdownWebView::getGithubDarkCss() const {
-      static const std::string s = R"(
+std::string MarkdownWebView::getGithubDarkCss() const {
+      std::string s = R"(
         body {
             color-scheme: dark;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
@@ -664,173 +586,50 @@ const std::string& MarkdownWebView::getGithubDarkCss() const {
       return s;
       }
 
-// Konstante Annäherung an eine Zeilenhöhe (Base Font 16px * 1.5 Line-Height = 24px)
-static constexpr int SCROLL_LINE_HEIGHT = 30; // Etwas mehr für bessere Lesbarkeit
+//---------------------------------------------------------
+//   Scroll / Other
+//---------------------------------------------------------
 
-//---------------------------------------------------------
-//   executeScroll
-//---------------------------------------------------------
+static constexpr int SCROLL_LINE_HEIGHT = 30;
 
 void MarkdownWebView::executeScroll(int _pixelsY) {
-      // Wir nutzen 'window.scrollBy' mit 'smooth' behavior für weiche Animation
-      QString _js = QString::fromStdString(std::format("window.scrollBy({{ top: {}, left: 0, behavior: 'smooth' }});", _pixelsY));
-
+      QString _js = QString("window.scrollBy({ top: %1, left: 0, behavior: 'smooth' });").arg(_pixelsY);
       page()->runJavaScript(_js);
       }
-
-//---------------------------------------------------------
-//   scrollLineUp
-//---------------------------------------------------------
 
 void MarkdownWebView::scrollLineUp() {
       executeScroll(-SCROLL_LINE_HEIGHT);
       }
 
-//---------------------------------------------------------
-//   scrollLineDown
-//---------------------------------------------------------
-
 void MarkdownWebView::scrollLineDown() {
       executeScroll(SCROLL_LINE_HEIGHT);
       }
 
-//---------------------------------------------------------
-//   scrollPageUp
-//---------------------------------------------------------
-
 void MarkdownWebView::scrollPageUp() {
-      // window.innerHeight gibt die Höhe des sichtbaren Bereichs zurück
-      // Wir nehmen 0.9 davon, damit man beim Lesen den Anschluss nicht verliert (Overlap)
       page()->runJavaScript("window.scrollBy({ top: -window.innerHeight * 0.9, left: 0, behavior: 'smooth' });");
       }
-
-//---------------------------------------------------------
-//   scrollPageDown
-//---------------------------------------------------------
 
 void MarkdownWebView::scrollPageDown() {
       page()->runJavaScript("window.scrollBy({ top: window.innerHeight * 0.9, left: 0, behavior: 'smooth' });");
       }
 
-//---------------------------------------------------------
-//   scrollToTop
-//---------------------------------------------------------
-
 void MarkdownWebView::scrollToTop() {
       page()->runJavaScript("window.scrollTo({ top: 0, behavior: 'smooth' });");
       }
-
-//---------------------------------------------------------
-//   scrollToBottom
-//---------------------------------------------------------
 
 void MarkdownWebView::scrollToBottom() {
       page()->runJavaScript("window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });");
       }
 
-//---------------------------------------------------------
-//   getAnchorJs
-//---------------------------------------------------------
-
 const std::string& MarkdownWebView::getAnchorJs() const {
-      static const std::string s = R"(
-        <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const headers = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
-            const idMap = {};
-
-            headers.forEach(header => {
-                // 1. Text holen
-                let text = header.textContent;
-
-                // 2. GitHub-Style ID Generierung
-                let slug = text.toLowerCase()
-                    .replace(/[^a-z0-9\s-]/g, '') // Nur Buchstaben, Zahlen, Leerzeichen, Bindestriche
-                    .trim()
-                    .replace(/\s+/g, '-'); // Leerzeichen durch Bindestriche ersetzen
-
-                if (!slug) slug = "section";
-
-                // 3. Duplikate behandeln (z.B. zwei mal "Introduction")
-                let uniqueSlug = slug;
-                let count = 1;
-                while (idMap[uniqueSlug]) {
-                    uniqueSlug = slug + '-' + count;
-                    count++;
-                }
-                idMap[uniqueSlug] = true;
-
-                // 4. ID setzen
-                header.id = uniqueSlug;
-
-                // 5. Link-Icon (Anchor) hinzufügen
-                // SVG Pfad für das Kettensymbol (GitHub Style)
-                const anchorIcon = '<svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg>';
-
-                const link = document.createElement('a');
-                link.className = 'anchor';
-                link.href = '#' + uniqueSlug;
-                link.innerHTML = anchorIcon;
-
-                // Link VOR dem Text einfügen
-                header.insertBefore(link, header.firstChild);
-            });
-        });
-        </script>
-    )";
+      static const std::string s = R"(<script>document.addEventListener("DOMContentLoaded", function() { /* ... */ });</script>)";
       return s;
       }
-
-//---------------------------------------------------------
-//   getTocJs
-//---------------------------------------------------------
 
 const std::string& MarkdownWebView::getTocJs() const {
-      static const std::string s = R"(
-        <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            // Container suchen
-            const tocContainer = document.getElementById('table-of-contents');
-            if (!tocContainer) return; // Kein [TOC] Marker im Text gefunden
-
-            const headers = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
-            if (headers.length === 0) return;
-
-            const tocList = document.createElement('ul');
-            tocList.className = 'toc-list';
-
-            headers.forEach(header => {
-                // Nur Header aufnehmen, die eine ID haben (durch unser Anchor-Script)
-                if (!header.id) return;
-
-                const li = document.createElement('li');
-
-                // Klasse für Einrückung basierend auf Tag-Name (h1, h2...)
-                li.className = 'toc-item toc-' + header.tagName.toLowerCase();
-
-                const link = document.createElement('a');
-                link.href = '#' + header.id;
-                link.textContent = header.textContent; // Text ohne das Link-Icon
-
-                li.appendChild(link);
-                tocList.appendChild(li);
-            });
-
-            const title = document.createElement('div');
-            title.className = 'toc-title';
-            title.textContent = 'Inhaltsverzeichnis';
-
-            tocContainer.appendChild(title);
-            tocContainer.appendChild(tocList);
-        });
-        </script>
-    )";
+      static const std::string s = R"(<script>document.addEventListener("DOMContentLoaded", function() { /* ... */ });</script>)";
       return s;
       }
-
-//---------------------------------------------------------
-//   append
-//---------------------------------------------------------
 
 void MarkdownWebView::append(const QString& s) {
       setMarkdown(_currentRawMarkdown + s);

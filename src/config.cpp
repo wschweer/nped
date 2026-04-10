@@ -72,7 +72,7 @@ void Editor::resetToDefaults() {
             _textStylesDark = tsDark;
             textStylesDarkChanged();
             }
-
+      _darkMode = false;
       emit shortcutsChanged();
       emit fileTypesChanged();
       emit languageServersConfigChanged();
@@ -94,9 +94,12 @@ void Editor::apply() {
 void Editor::saveSettings() {
       QJsonObject configs;
 
+      configs["darkMode"]        = darkMode();
       configs["textStylesLight"] = _textStylesLight.toJson();
       configs["textStylesDark"]  = _textStylesDark.toJson();
-      configs["models"]          = _models.toJson();
+      auto s                     = _models.toJson().dump();
+      auto doc                   = QJsonDocument::fromJson(s.c_str());
+      configs["models"]          = doc.array();
       configs["fileTypes"]       = _fileTypes.toJson();
       configs["languageServers"] = _languageServersConfig.toJson();
 
@@ -151,8 +154,14 @@ void Editor::loadSettings() {
                         }
                   }
             }
-      if (config.contains("models"))
-            _models.fromJson(config["models"].toArray());
+      if (config.contains("darkMode"))
+            setDarkMode(config["darkMode"].toBool());
+      if (config.contains("models")) {     // hack until we converted all to lohmann json
+            auto ma = config["models"].toArray();
+            QByteArray ba = QJsonDocument(ma).toJson();
+            json json =  json::parse(ba.data());
+            _models.fromJson(json);
+            }
       if (config.contains("fileTypes"))
             _fileTypes.fromJson(config["fileTypes"].toArray());
       if (config.contains("languageServers"))
@@ -177,40 +186,27 @@ void Editor::loadSettings() {
 //   ConfigDialogWrapper
 //---------------------------------------------------------
 
-ConfigDialogWrapper::ConfigDialogWrapper(Editor* editor, QWidget* parent) : QWidget(parent), _quickWidget(new QQuickWidget(this)) {
+ConfigDialogWrapper::ConfigDialogWrapper(Editor* editor, QWidget* parent) : QDialog(parent) {
+      setModal(true);
+      setSizeGripEnabled(true);
+      _quickWidget = new QQuickWidget(this);
+      _quickWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
       // Layout erstellen, damit das QQuickWidget den ganzen Dialog füllt
       auto layout = new QVBoxLayout(this);
       layout->setContentsMargins(0, 0, 0, 0);
-      layout->setSizeConstraint(QLayout::SetFixedSize);
       layout->addWidget(_quickWidget);
 
       // Wichtig: Resize-Modus, damit sich QML dem Dialog anpasst
-      // enum ResizeMode { SizeViewToRootObject, SizeRootObjectToView };
-      _quickWidget->setResizeMode(QQuickWidget::SizeViewToRootObject);
+      _quickWidget->setResizeMode(QQuickWidget::SizeRootObjectToView);
 
       // Zugriff auf diesen Dialog für QML ermöglichen (für close/accept/reject)
       _quickWidget->rootContext()->setContextProperty("dialog", this);
       _quickWidget->rootContext()->setContextProperty("nped", editor);
-//      _quickWidget->rootContext()->setContextProperty("Editor", editor);
-//      _quickWidget->rootContext()->setContextProperty("agent", editor->getAgent());
 
       // Lade die QML Datei aus dem Modul "Nped.Config"
       // Hinweis: Durch die CMake Policy QTP0001 ist der Pfad standardisiert:
       _quickWidget->setSource(QUrl("qrc:/qt/qml/Nped/Config/qml/ConfigDialog.qml"));
-      }
-
-//---------------------------------------------------------
-//   resizeEvent
-//---------------------------------------------------------
-
-void ConfigDialogWrapper::resizeEvent(QResizeEvent* event) {
-      QWidget::resizeEvent(event);
-      if (parentWidget()) {
-            QPoint center = parentWidget()->rect().center();
-            QSize mySize  = size();
-            move(center.x() - mySize.width() / 2, center.y() - mySize.height() / 2);
-            }
-      _quickWidget->setFocus();
       }
 
 //---------------------------------------------------------

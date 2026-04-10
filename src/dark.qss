@@ -53,8 +53,8 @@ QToolButton {
     padding: 0px;
     min-width: 32px;
     min-height: 32px;
-    background-color: #333;
-    color: #eee;
+    background-color: #00000000;
+    color: #ddd;
     qproperty-iconSize: 32px;
 }
 
@@ -64,12 +64,13 @@ QToolButton:hover {
 }
 
 QToolButton:pressed {
-    background-color: #222;
+    background-color: #00000000;
     border: 1px solid #888;
 }
 
 QToolButton:checked {
     background-color: #555;
+    color: #eee;
     border: 1px solid #aaa;
 }
 

@@ -25,26 +25,24 @@
 
 #include "editor.h"
 #include "agent.h"
-#include "chatdisplay.h"
 #include "logger.h"
 #include "undo.h"
 #include "kontext.h"
 #include "file.h"
 #include "lsclient.h"
-#include "webview.h"
 
 //---------------------------------------------------------
 //   getMCPTools
 //    return list of available tools
 //   rw create_file                 createFile(path,content)
-//   rw modify_file                 modifiyFile(path,content)
+//   rw modify_file                 modifyFile(path,content)
+//   rw replace_in_file             replaceInFile(path, search, replace)
 //   ro list_directory              listDirectory(path)
 //   ro search_project              searchProject(query, pattern="")
 //   ro read_file                   readFile(path, start, end)
 //   ro find_symbol                 findSymbol(name)
 //   ro fetch_web_documentation     fetchWebDocumentation(url)
 //   rw run_build_command           runBuildCommand(cmd)
-//   rw replace_in_file             replaceInFile(path, search, replace)
 //   ro get_git_status              getGitStatus()
 //   ro get_git_diff                getGitDiff(path="")
 //   ro get_git_log                 getGitLog(limit=5)
@@ -68,15 +66,18 @@ std::vector<json> Agent::getMCPTools() const {
 
             // 1. File Operations
             if (isExecuteMode()) {
-                  tools.push_back(MCPToolBuilder("create_file", "Creates a new file at the specified path with the provided content.")
-                                      .add_parameter("path", "string", "The path where the file should be created.")
-                                      .add_parameter("content", "string", "The initial content of the file.")
+                  tools.push_back(MCPToolBuilder("read_file", "Reads a file or a specific range of lines from a file.")
+                                      .add_parameter("path", "string", "The path to the file.")
+                                      .add_parameter("start_line", "integer", "The first line to read (1-indexed).", false)
+                                      .add_parameter("end_line", "integer", "The last line to read.", false)
                                       .build());
 
-                  tools.push_back(MCPToolBuilder("modify_file", "Completely overwrites an existing file with new content.")
-                                      .add_parameter("path", "string", "The path to the file.")
-                                      .add_parameter("content", "string", "The new content for the file.")
-                                      .build());
+                  tools.push_back(
+                      MCPToolBuilder("write_file",
+                                     "Completely overwrites an existing file with new content or creates a new file with content")
+                          .add_parameter("path", "string", "The path to the file.")
+                          .add_parameter("content", "string", "The content for the file.")
+                          .build());
 
                   tools.push_back(MCPToolBuilder("replace_in_file", "Replaces a specific text block with new content. Use this for "
                                                                     "targeted edits to avoid overwriting the whole file.")
@@ -85,12 +86,6 @@ std::vector<json> Agent::getMCPTools() const {
                                       .add_parameter("replace", "string", "The new text to insert.")
                                       .build());
                   }
-
-            tools.push_back(MCPToolBuilder("read_file", "Reads a file or a specific range of lines from a file.")
-                                .add_parameter("path", "string", "The path to the file.")
-                                .add_parameter("start_line", "integer", "The first line to read (1-indexed).", false)
-                                .add_parameter("end_line", "integer", "The last line to read.", false)
-                                .build());
 
             // 2. Navigation & Search
             tools.push_back(MCPToolBuilder("list_directory", "Lists all files and subdirectories within a given path.")
@@ -157,7 +152,7 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
       auto trim = [](const QString& s, int maxLen = 80) {
             QString res = s.length() > maxLen ? s.left(maxLen - 3) + "..." : s;
             return res.toHtmlEscaped(); // Gleichzeitig HTML Sonderzeichen maskieren
-                                                            };
+                                                                                    };
 #endif
       // 1. Definiere, welche Tools harmlos sind (Nur-Lese-Zugriff)
       bool isReadOnlyTool =
@@ -180,30 +175,30 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             if (!arguments.contains("command"))
                   return "Error: Parameter 'command' missing.";
             QString cmd = QString::fromStdString(arguments["command"].get<std::string>());
-            return runBuildCommand(cmd).toStdString();
+            return runBuildCommand(cmd);
             }
       else if (functionName == "fetch_web_documentation") {
             if (!arguments.contains("url"))
                   return "Error: Parameter 'url' missing.";
             QString url = QString::fromStdString(arguments["url"].get<std::string>());
-            return fetchWebDocumentation(url).toStdString();
+            return fetchWebDocumentation(url);
             }
       else if (functionName == "get_git_status") {
-            return getGitStatus().toStdString();
+            return getGitStatus();
             }
       else if (functionName == "get_git_diff") {
             QString p = arguments.contains("path") ? QString::fromStdString(arguments["path"].get<std::string>()) : "";
-            return getGitDiff(p).toStdString();
+            return getGitDiff(p);
             }
       else if (functionName == "get_git_log") {
             int limit = arguments.contains("limit") ? arguments["limit"].get<int>() : 5;
-            return getGitLog(limit).toStdString();
+            return getGitLog(limit);
             }
       else if (functionName == "create_git_commit") {
             if (!arguments.contains("message"))
                   return "Error: Parameter 'message' missing.";
             QString msg = QString::fromStdString(arguments["message"].get<std::string>());
-            return createGitCommit(msg).toStdString();
+            return createGitCommit(msg);
             }
 
       //==========================================================
@@ -216,13 +211,13 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             QString query = QString::fromStdString(arguments["query"].get<std::string>());
             QString pattern =
                 arguments.contains("file_pattern") ? QString::fromStdString(arguments["file_pattern"].get<std::string>()) : "";
-            return searchProject(query, pattern).toStdString();
+            return searchProject(query, pattern);
             }
       else if (functionName == "find_symbol") {
             if (!arguments.contains("symbol"))
                   return "Error: Parameter 'symbol' missing.";
             QString symbol = QString::fromStdString(arguments["symbol"].get<std::string>());
-            return findSymbol(symbol).toStdString();
+            return findSymbol(symbol);
             }
       if (!arguments.contains("path"))
             return "Error: Parameter 'path' missing for local file tool: " + functionName;
@@ -239,45 +234,65 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
       if (functionName == "read_file") {
             QString content;
             if (!readFile(path, content))
-                  return content.toStdString();
+                  return errorResponse(content.toStdString());
             QStringList lines = content.split('\n');
 
             // [startLine, endLine] is a closed interval
             // we must transform it to a half closed interval: [startLine, endLine)
 
-            int startLine     = arguments.contains("start_line") ? arguments["start_line"].get<int>() - 1 : 0;
-            int endLine       = arguments.contains("end_line") ? arguments["end_line"].get<int>(): lines.size();
-            int n             = lines.size();
-            startLine         = std::clamp(startLine, 0, n);
-            endLine           = std::clamp(endLine, 0, n);
-            std::string result;
+            int startLine = arguments.contains("start_line") ? arguments["start_line"].get<int>() - 1 : 0;
+            int endLine   = arguments.contains("end_line") ? arguments["end_line"].get<int>() : lines.size();
+            int n         = lines.size();
+
+            if (startLine < 0 || startLine >= n)
+                  return errorResponse("start_line is outside of valid range");
+            if (endLine < 0 || endLine > n)
+                  return errorResponse("end_line is outside of valid range");
+            startLine     = std::clamp(startLine, 0, n);
+            endLine       = std::clamp(endLine, 0, n);
+
+            std::vector<std::string> extractedLines;
             for (int i = startLine; i < endLine; ++i)
-                  result += std::format("{}: {}\n", i + 1, lines[i]);
-            return result;
+                  extractedLines.push_back(lines[i].toStdString());
+            json result = {
+                     {    "status",      "success"},
+                     { "startLine",  startLine + 1},
+                     {   "endLine",    endLine + 1},
+                     {     "lines", extractedLines},
+                     {"totalLines",   lines.size()}
+                  };
+            return result.dump();
+            }
+
+      else if (functionName == "write_file") {
+            if (!arguments.contains("content"))
+                  return "Error: Parameter 'content' missing.";
+            QString content = QString::fromStdString(arguments["content"].get<std::string>());
+            return writeFile(path, content);
             }
       else if (functionName == "list_directory") {
-            return listDirectory(path).toStdString();
-            }
-      else if (functionName == "create_file") {
-            if (!arguments.contains("content"))
-                  return "Error: Parameter 'content' missing.";
-            QString content = QString::fromStdString(arguments["content"].get<std::string>());
-            return createFile(path, content).toStdString();
-            }
-      else if (functionName == "modify_file") {
-            if (!arguments.contains("content"))
-                  return "Error: Parameter 'content' missing.";
-            QString content = QString::fromStdString(arguments["content"].get<std::string>());
-            return modifyFile(path, content).toStdString();
+            return listDirectory(path);
             }
       else if (functionName == "replace_in_file") {
             if (!arguments.contains("search") || !arguments.contains("replace"))
                   return "Error: Parameters 'search' or 'replace' missing.";
             QString search  = QString::fromStdString(arguments["search"].get<std::string>());
             QString replace = QString::fromStdString(arguments["replace"].get<std::string>());
-            return replaceInFile(path, search, replace).toStdString();
+            return replaceInFile(path, search, replace);
             }
       return "Error: Unknown tool (" + functionName + ").";
+      }
+
+//---------------------------------------------------------
+//   errorResponse
+//---------------------------------------------------------
+
+std::string Agent::errorResponse(const std::string& message) const {
+      json error = {
+               { "status", "error"},
+               {"message", message}
+            };
+      return error.dump();
       }
 
 //---------------------------------------------------------
@@ -314,7 +329,7 @@ QString Agent::normalizePath(const QString& path) const {
 
 bool Agent::readFile(const QString& ipath, QString& result) {
       QString path = normalizePath(ipath);
-      File* f = _editor->findFile(path);
+      File* f      = _editor->findFile(path);
       if (f) {
             result = f->plainText();
             return true;
@@ -329,27 +344,11 @@ bool Agent::readFile(const QString& ipath, QString& result) {
       }
 
 //---------------------------------------------------------
-//   readFileLines
-//---------------------------------------------------------
-
-QString Agent::readFileLines(const QString& path, int startLine, int endLine) {
-      QString content;
-      if (!readFile(path, content))
-            return content;
-      QStringList lines = content.split('\n');
-      QStringList result;
-      for (int i = startLine - 1; i < endLine && i < lines.size(); ++i)
-            if (i >= 0 && i < lines.size())
-                  result.append(QString::number(i + 1) + ": " + lines[i]);
-      return result.join('\n');
-      }
-
-//---------------------------------------------------------
 //   searchProject
 //---------------------------------------------------------
 
-QString Agent::searchProject(const QString& query, const QString& filePattern) {
-      QString result;
+string Agent::searchProject(const QString& query, const QString& filePattern) {
+      string result;
       QDir dir(_editor->projectRoot());
       QStringList filters;
       if (!filePattern.isEmpty())
@@ -368,15 +367,16 @@ QString Agent::searchProject(const QString& query, const QString& filePattern) {
             QStringList lines = content.split('\n');
             for (int i = 0; i < lines.size(); ++i)
                   if (lines[i].contains(query))
-                        result += relativePath + ":" + QString::number(i + 1) + ": " + lines[i].trimmed() + "\n";
+                        result += std::format("{}:{}:{}\n", relativePath, i + 1, lines[i].trimmed());
             }
-      if (result.isEmpty())
-            return "No matches found for '" + query + "'.";
+      if (result.empty())
+            return std::format("No matches found for '{}'", query);
+#if 0
       if (result.length() > 4000) {
-            result.truncate(4000);
+            result.resize(4000);
             result += "\n... [Too many results, output truncated]";
-            }
-      Debug("result <{}>", result);
+                                    }
+#endif
       return result;
       }
 
@@ -384,7 +384,7 @@ QString Agent::searchProject(const QString& query, const QString& filePattern) {
 //   findSymbol
 //---------------------------------------------------------
 
-QString Agent::findSymbol(const QString& symbol) {
+string Agent::findSymbol(const QString& symbol) {
       LSclient* client = _editor->getLSclient("clangd");
       if (!client)
             return "Error: No Language Server available.";
@@ -392,9 +392,9 @@ QString Agent::findSymbol(const QString& symbol) {
             return "Error: Language Server not ready, try again later";
 
       QEventLoop loop;
-      QString result;
+      string result;
 
-      auto connection = connect(client, &LSclient::symbolSearchResult, [&](const QString& res) {
+      auto connection = connect(client, &LSclient::symbolSearchResult, [&](const string& res) {
             result = res;
             loop.quit();
             });
@@ -417,31 +417,11 @@ QString Agent::findSymbol(const QString& symbol) {
       }
 
 //---------------------------------------------------------
-//   createFile
+//   writeFile
 //---------------------------------------------------------
 
-QString Agent::createFile(const QString& ipath, const QString& content) {
-      auto path = normalizePath(ipath);
-      if (QFile::exists(path))
-            return "Error: File already exists. Use modify_file.";
-
-      QFile file(path);
-      if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
-            return "Error creating file (" + file.errorString() + ")";
-      QTextStream out(&file);
-      out << content;
-      _editor->addFile(path);
-      return "Success: File " + path + " successfully created.";
-      }
-
-//---------------------------------------------------------
-//   modifyFile
-//---------------------------------------------------------
-
-QString Agent::modifyFile(const QString& ipath, const QString& content) {
+string Agent::writeFile(const QString& ipath, const QString& content) {
       QString path = normalizePath(ipath);
-      if (!QFile::exists(path))
-            return "Error: File does not exist. Use create_file.";
 
       File* f = _editor->findFile(path);
       if (f) {
@@ -457,25 +437,25 @@ QString Agent::modifyFile(const QString& ipath, const QString& content) {
             QFile file(path);
             // QIODevice::Truncate löscht den alten Inhalt der Datei
             if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
-                  return "Error modifying file (" + file.errorString() + ")";
+                  return std::format("Error opening or creating file ({})", file.errorString());
             QTextStream out(&file);
             out << content;
             }
-      return "Success: File " + path + " successfully modified.";
+      return std::format("Success: File {} successfully written.", path);
       }
 
 //---------------------------------------------------------
 // Tool 4: list_directory
 //---------------------------------------------------------
 
-QString Agent::listDirectory(const QString& ipath) {
+string Agent::listDirectory(const QString& ipath) {
       auto path = normalizePath(ipath);
 
       QDir dir(path);
       if (!dir.exists())
             return "Error: The directory does not exist on disk.";
 
-      QString result = "Contents of directory " + path + ":\n";
+      string result = std::format("Contents of directory {}:\n", path);
 
       // Wir holen alle Dateien und Ordner, filtern aber "." und ".." aus
       QFileInfoList list = dir.entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries);
@@ -487,9 +467,9 @@ QString Agent::listDirectory(const QString& ipath) {
             if (fileInfo.fileName().startsWith("."))
                   continue;
             if (fileInfo.isDir())
-                  result += "[DIR]    " + fileInfo.fileName() + "\n";
+                  result += std::format("[DIR]    {}\n", fileInfo.fileName());
             else
-                  result += "[FILE]   " + fileInfo.fileName() + " (" + QString::number(fileInfo.size()) + " bytes)\n";
+                  result += std::format("[FILE]   {} ({} bytes)\n", fileInfo.fileName(), fileInfo.size());
             }
       return result;
       }
@@ -498,7 +478,7 @@ QString Agent::listDirectory(const QString& ipath) {
 // Tool 5: fetch_web_documentation
 // ---------------------------------------------------------
 
-QString Agent::fetchWebDocumentation(const QString& urlString) {
+string Agent::fetchWebDocumentation(const QString& urlString) {
       QUrl url(urlString);
       if (!url.isValid() || (url.scheme() != "http" && url.scheme() != "https"))
             return "Error: Invalid URL. Must start with http:// or https://.";
@@ -516,10 +496,10 @@ QString Agent::fetchWebDocumentation(const QString& urlString) {
       if (reply->error() != QNetworkReply::NoError) {
             QString errorStr = reply->errorString();
             reply->deleteLater();
-            return "Network error while fetching URL: " + errorStr;
+            return std::format("Network error while fetching URL: {}", errorStr);
             }
 
-      QString content = reply->readAll();
+      string content = reply->readAll().toStdString();
       reply->deleteLater();
 
       // SICHERHEITS-LIMIT: Webseiten (HTML) können absurd groß sein.
@@ -527,7 +507,7 @@ QString Agent::fetchWebDocumentation(const QString& urlString) {
       // sprengt das sofort das "Context Window" von Ollama und es stürzt ab.
       // Wir kappen die Antwort sicherheitshalber bei 8000 Zeichen.
       if (content.length() > kWebFetchMaxChars) {
-            content.truncate(kWebFetchMaxChars);
+            content  = content.substr(content.length() - kWebFetchMaxChars);
             content += "\n\n... [ATTENTION SYSTEM: Documentation was truncated here because it was too large.]";
             }
 
@@ -538,18 +518,18 @@ QString Agent::fetchWebDocumentation(const QString& urlString) {
 //   replaceInFile
 //---------------------------------------------------------
 
-QString Agent::replaceInFile(const QString& ipath, const QString& searchStr, const QString& replaceStr) {
+string Agent::replaceInFile(const QString& ipath, const QString& searchStr, const QString& replaceStr) {
       static constexpr const char notFound[] = "Error: The searched text (search) was not found in the file. "
                                                "Make sure that indentations, spaces, and line breaks match exactly.";
       QString path = normalizePath(ipath);
       if (!QFile::exists(path)) {
-            Debug("File <{}> does not exist", path);
+            Debug("File <{}> ipath <{}> does not exist", path, ipath);
             return "Error: File does not exist.";
             }
 
       File* f = _editor->findFile(path);
       if (f) {
-//            Debug("local search/replace in <{}>: <{}> -- <{}>", path, searchStr, replaceStr);
+            //            Debug("local search/replace in <{}>: <{}> -- <{}>", path, searchStr, replaceStr);
             f->undo()->beginMacro();
             auto rv = f->searchReplace(searchStr, replaceStr);
             f->undo()->endMacro();
@@ -560,12 +540,13 @@ QString Agent::replaceInFile(const QString& ipath, const QString& searchStr, con
             QFile file(path);
             // 1. Datei komplett in den Speicher lesen
             if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-                  return "Error: Could not open file for reading: " + file.errorString();
+                  return std::format("Error: Could not open file for reading: {}", file.errorString());
             QString content = QTextStream(&file).readAll();
             file.close();
 
             // 2. Prüfen, ob der Suchstring überhaupt existiert
             if (!content.contains(searchStr)) {
+                  Debug("not found: <{}>", searchStr);
                   // WICHTIG FÜR DIE KI: Ein klares Feedback, warum es gescheitert ist.
                   return notFound;
                   }
@@ -575,27 +556,27 @@ QString Agent::replaceInFile(const QString& ipath, const QString& searchStr, con
 
             // 4. Datei überschreiben
             if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
-                  return "Error: Could not open file for writing: " + file.errorString();
+                  return std::format("Error: Could not open file for writing: {}", file.errorString());
             QTextStream out(&file);
             out << content;
             file.close();
             }
-      return "success: text in " + path + " replaced.";
+      return std::format("success: text in {} replaced.", path);
       }
 
 //---------------------------------------------------------
 // Tool: getGitStatus
 //---------------------------------------------------------
 
-QString Agent::getGitStatus() {
+string Agent::getGitStatus() {
       QString projRoot = QDir::cleanPath(_editor->projectRoot());
       QProcess process;
       process.setWorkingDirectory(projRoot);
       process.start("git", QStringList() << "status");
       process.waitForFinished();
 
-      QString out = QString::fromUtf8(process.readAllStandardOutput());
-      if (out.isEmpty())
+      string out(process.readAllStandardOutput());
+      if (out.empty())
             return "No changes (working tree clean).";
       return out;
       }
@@ -604,7 +585,7 @@ QString Agent::getGitStatus() {
 // Tool: getGitDiff
 //---------------------------------------------------------
 
-QString Agent::getGitDiff(const QString& path) {
+string Agent::getGitDiff(const QString& path) {
       QString projRoot = QDir::cleanPath(_editor->projectRoot());
       QProcess process;
       process.setWorkingDirectory(projRoot);
@@ -617,13 +598,13 @@ QString Agent::getGitDiff(const QString& path) {
       process.start("git", args);
       process.waitForFinished();
 
-      QString result = QString::fromUtf8(process.readAllStandardOutput());
-      if (result.isEmpty())
+      string result(process.readAllStandardOutput());
+      if (result.empty())
             return "There are no uncommitted changes.";
 
       // SICHERHEITS-LIMIT: Diffs können gigantisch werden!
       if (result.length() > kGitDiffMaxChars) {
-            result.truncate(kGitDiffMaxChars);
+            result  = result.substr(result.length() - kGitDiffMaxChars);
             result += "\n\n... [ATTENTION SYSTEM: Diff truncated because it was too large for the context window.]";
             }
       return result;
@@ -633,7 +614,7 @@ QString Agent::getGitDiff(const QString& path) {
 // Tool: getGitLog
 //---------------------------------------------------------
 
-QString Agent::getGitLog(int limit) {
+string Agent::getGitLog(int limit) {
       QString projRoot = QDir::cleanPath(_editor->projectRoot());
       QProcess process;
       process.setWorkingDirectory(projRoot);
@@ -642,8 +623,8 @@ QString Agent::getGitLog(int limit) {
       process.start("git", QStringList() << "log" << "-n" << QString::number(limit) << "--oneline");
       process.waitForFinished();
 
-      QString out = QString::fromUtf8(process.readAllStandardOutput());
-      if (out.isEmpty())
+      string out(process.readAllStandardOutput());
+      if (out.empty())
             return "Error reading git log or repository is empty.";
       return out;
       }
@@ -652,37 +633,38 @@ QString Agent::getGitLog(int limit) {
 // Tool: createGitCommit
 //---------------------------------------------------------
 
-QString Agent::createGitCommit(const QString& message) {
+string Agent::createGitCommit(const QString& message) {
       // Wenn der Agent im Entwurfs-Modus ist, blockieren wir Schreibvorgänge
       if (!isExecuteMode())
-            return "Plan Mode Active: Commit '" + message + "' was NOT executed. This is a read-only simulation. No commit was created.";
+            return std::format("Plan Mode Active: Commit '{}' was NOT executed. This is a read-only simulation. No commit was created.",
+                               message);
 
       QString projRoot = QDir::cleanPath(_editor->projectRoot());
       QProcess process;
       process.setWorkingDirectory(projRoot);
 
       // 1. Stage all changes
-      process.start("git", QStringList() << "add" << ".");
-      process.waitForFinished();
+      //      process.start("git", QStringList() << "add" << ".");
+      //      process.waitForFinished();
 
       // 2. Commit
-      process.start("git", QStringList() << "commit" << "-m" << message);
+      process.start("git", QStringList() << "commit" << "-a" << "-m" << message);
       process.waitForFinished();
 
       QByteArray err = process.readAllStandardError();
       QByteArray out = process.readAllStandardOutput();
 
       if (!err.isEmpty() && !QString::fromUtf8(err).contains("master")) // Git nutzt stderr oft für Warnungen
-            return "Warning/Error during commit: " + QString::fromUtf8(err);
+            return std::format("Warning/Error during commit: {}", err);
 
-      return "Commit successful: " + QString::fromUtf8(out);
+      return std::format("Commit successful: {}", out);
       }
 
 //---------------------------------------------------------
 //   runBuildCommand
 //---------------------------------------------------------
 
-QString Agent::runBuildCommand(const QString& command) {
+string Agent::runBuildCommand(const QString& command) {
       QString projRoot = QDir::cleanPath(_editor->projectRoot());
       QString buildDir = projRoot + "/build";
 
@@ -700,7 +682,7 @@ QString Agent::runBuildCommand(const QString& command) {
             if (isExecuteMode()) {
                   if (!dir.mkpath(".")) { // Erzeugt das Verzeichnis inkl. übergeordneter Ordner falls nötig
                         Critical("failed creating <{}>", buildDir);
-                        return "Error: could not create build directory: " + buildDir;
+                        return std::format("Error: could not create build directory: {}", buildDir);
                         }
                   }
             else {
@@ -746,13 +728,13 @@ QString Agent::runBuildCommand(const QString& command) {
       QByteArray stdOut = process.readAllStandardOutput();
       QByteArray stdErr = process.readAllStandardError();
 
-      QString result  = "Command executed: " + command + "\n";
-      result         += "Exit Code: " + QString::number(process.exitCode()) + "\n\n";
+      string result  = std::format("Command executed: {}\n", command);
+      result        += std::format("Exit Code: {}\n\n", process.exitCode());
 
       if (!stdOut.isEmpty())
-            result += "--- Standard Output ---\n" + QString::fromUtf8(stdOut) + "\n";
+            result += std::format("--- Standard Output ---\n{}\n", stdOut);
       if (!stdErr.isEmpty())
-            result += "--- Standard Error ---\n" + QString::fromUtf8(stdErr) + "\n";
+            result += std::format("--- Standard Error ---\n{}\n", stdErr);
 
       // 6. SICHERHEITS-LIMIT: Compiler-Logs können riesig sein!
       // Wenn wir zu viel Text senden, stürzt Ollama wegen "Context Window Overflow" ab.
@@ -761,8 +743,8 @@ QString Agent::runBuildCommand(const QString& command) {
             // fast immer GANZ UNTEN am Ende der Ausgabe. Wir schneiden also den unwichtigen
             // Anfang (z.B. "Scanning dependencies...") ab und behalten das Ende!
 
-            QString truncated  = "[... BEGINNING OF LOG TRUNCATED DUE TO LENGTH ...]\n\n";
-            truncated         += result.right(kBuildLogMaxChars);
+            string truncated  = "[... BEGINNING OF LOG TRUNCATED DUE TO LENGTH ...]\n\n";
+            truncated        += result.substr(result.length() - kBuildLogMaxChars);
             return truncated;
             }
 

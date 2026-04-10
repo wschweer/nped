@@ -12,6 +12,7 @@
 #pragma once
 
 #include <QWidget>
+#include "types.h"
 
 //---------------------------------------------------------
 //   Model
@@ -19,8 +20,6 @@
 
 struct Model {
       Q_GADGET
-      Q_PROPERTY(bool ollama MEMBER ollama)
-      Q_PROPERTY(bool ollamaFound MEMBER ollamaFound)
       Q_PROPERTY(QString name MEMBER name)
       Q_PROPERTY(QString modelIdentifier MEMBER modelIdentifier)
       Q_PROPERTY(QString baseUrl MEMBER baseUrl)
@@ -34,10 +33,13 @@ struct Model {
       Q_PROPERTY(int maxTokens MEMBER maxTokens)
       Q_PROPERTY(int num_ctx MEMBER num_ctx)
       Q_PROPERTY(int num_predict MEMBER num_predict)
+      Q_PROPERTY(bool stream MEMBER stream)
 
     public:
-      bool ollama{false}; // this is not a local ollama model
-      bool ollamaFound{false};
+      bool dynamic{false}; // True if a model was added by the system and not the user,
+                           // for example automatically detected ollama models. This models are
+                           // not saved. If the user edits an model, it will change to dynamic = false.
+
       QString name;
       QString modelIdentifier;
       QString baseUrl;
@@ -50,6 +52,7 @@ struct Model {
       int maxTokens                       = -1;    ///< <0: use per-client default
       int num_ctx                         = -1;
       int num_predict                     = -1;
+      bool stream                         = true;
       bool operator==(const Model&) const = default;
       };
 
@@ -61,8 +64,8 @@ class Models : public QList<Model>
       {
     public:
       using QList<Model>::QList;
-      void fromJson(const QJsonArray& array);
-      QJsonArray toJson() const;
+      void fromJson(const json& array);
+      json toJson() const;
       };
 
 Q_DECLARE_METATYPE(Model)

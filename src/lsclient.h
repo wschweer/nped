@@ -86,16 +86,19 @@ class LSclient : public QObject
       void initializedChanged();
       void notificationReceived(json msg);
       void responseReceived(int id, json msg);
-      void symbolSearchResult(const QString& result);
+      void symbolSearchResult(const std::string& result);
+      void isRunning();
+
+   public slots:
+      bool initializeRequest();
 
     public:
       explicit LSclient(Editor* e, const std::string& name);
       ~LSclient() override;
-      bool start(const std::string& path, const std::vector<string>& args);
+      bool start(const std::string& path, const std::vector<std::string>& args);
 
       void stop();
       std::string name() const { return _name; }
-      bool initializeRequest();
       bool initialized() const { return _initialized; }
       bool astProvider() const { return _name == "clangd"; }
       void prepareRenameRequest(Kontext*);

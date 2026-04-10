@@ -74,7 +74,7 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
       // Older claude-3 models cap at 4096 – set model->maxTokens accordingly in the config.
       const int maxTokens            = (model->maxTokens > 0) ? model->maxTokens : 8192;
       anthropicRequest["max_tokens"] = maxTokens;
-      anthropicRequest["stream"]     = true;
+      anthropicRequest["stream"]     = model->stream;
       if (!tools.empty())
             anthropicRequest["tools"] = tools;
 

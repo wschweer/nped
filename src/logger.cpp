@@ -22,12 +22,18 @@ bool verbose = true;
 //---------------------------------------------------------
 
 void Logger::write(std::ostream& f, MsgType t, const MsgLogContext& c, const std::string& msg) {
-      string type;
+      std::string type;
 
-      if (t == MsgType::Printf) {
-            f << format("{}\n", msg);
-            return;
+      switch (t) {
+            case MsgType::Printf: f << format("{}\n", msg); return;
+            case MsgType::Log: type = "Log"; break;
+            case MsgType::Debug: type = "Debug"; break;
+            case MsgType::Info: type = "Info"; break;
+            case MsgType::Warning: type = "Warning"; break;
+            case MsgType::Critical: type = "Critical"; break;
+            case MsgType::Fatal: type = "Fatal"; break;
             }
+
       if (&f == &std::cerr) {
             // color messages
             if (t == MsgType::Critical)
@@ -55,8 +61,7 @@ void Logger::open(const char* appName) {
       f.open(s.c_str(), std::ios_base::out);
 
       if (!f.is_open()) {
-            cerr << "cannot open logfile <" << s << ">: " << strerror(errno) << "\n";
-            exit(-1);
+            std::cerr << "cannot open logfile <" << s << ">: " << strerror(errno) << "\n";
             }
       }
 
@@ -65,6 +70,7 @@ void Logger::open(const char* appName) {
 //---------------------------------------------------------
 
 void Logger::write(MsgType t, const MsgLogContext& c, const std::string& msg) {
+      std::lock_guard<std::mutex> lock(_mutex);
       switch (t) {
             case MsgType::Log: // write only into log file
                   break;
@@ -83,10 +89,8 @@ void Logger::write(MsgType t, const MsgLogContext& c, const std::string& msg) {
             }
       if (f.is_open()) {
             write(f, t, c, msg);
-            flush(f); // this slows down things a bit
+            //            flush(f); // this slows down things a bit
             }
-      if (t == MsgType::Fatal)
-            abort();
       }
 
 Logger logger;

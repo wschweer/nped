@@ -17,8 +17,6 @@
 #include <string>
 #include <ostream>
 
-using namespace std;
-
 //-------------------------------------------------------
 // These fancy templates allow you to use
 // enums bits as flags in a somewhat typesafe manner.
@@ -64,15 +62,18 @@ constexpr T& operator&=(T& left, T right) {
       return left = left & right;
       }
 
+#include <mutex>
 #include <QString>
 
 //---------------------------------------------------------
 //   formatter QString
 //---------------------------------------------------------
 
-template <> struct std::formatter<QString> {
+ template <> struct std::formatter<QString> {
       constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
-      auto format(const QString& s, auto& ctx) const { return std::format_to(ctx.out(), "{}", s.toStdString()); }
+      auto format(const QString& s, auto& ctx) const {
+            return std::format_to(ctx.out(), "{}", s.toStdString());
+            }
       };
 
 //---------------------------------------------------------
@@ -81,7 +82,9 @@ template <> struct std::formatter<QString> {
 
 template <> struct std::formatter<QStringView> {
       constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
-      auto format(const QStringView& s, auto& ctx) const { return std::format_to(ctx.out(), "{}", s.toLocal8Bit().data()); }
+      auto format(const QStringView& s, auto& ctx) const {
+            return std::format_to(ctx.out(), "{}", s.toString());
+            }
       };
 
 namespace Logger {
@@ -104,6 +107,7 @@ struct MsgLogContext {
 class Logger
       {
       std::ofstream f;
+      std::mutex _mutex;
 
       void write(std::ostream& f, MsgType t, const MsgLogContext& c, const std::string& msg);
 
@@ -123,6 +127,7 @@ extern Logger logger;
 #define Warning(msg, ...)
 #define Critical(msg, ...)
 #define CDebug(cond, msg, ...)
+#define CLog(cond, msg, ...)
 #else
 #define Debug(msg, ...)                                                                                                                    \
       do {                                                                                                                                 \
@@ -142,6 +147,12 @@ extern Logger logger;
       do {                                                                                                                                 \
             Logger::logger.write(Logger::MsgType::Log, {__FILE__, __LINE__, __FUNCTION__}, std::format(msg __VA_OPT__(, ) __VA_ARGS__));   \
             } while (0)
+#define CLog(cond, msg, ...)                                                                                                               \
+      do {                                                                                                                                 \
+            if (cond)                                                                                                                      \
+                  Logger::logger.write(Logger::MsgType::Log, {__FILE__, __LINE__, __FUNCTION__},                                           \
+                                       std::format(msg __VA_OPT__(, ) __VA_ARGS__));                                                       \
+            } while (0)
 #define Warning(msg, ...)                                                                                                                  \
       do {                                                                                                                                 \
             Logger::logger.write(Logger::MsgType::Warning, {__FILE__, __LINE__, __FUNCTION__},                                             \
@@ -154,7 +165,7 @@ extern Logger logger;
             } while (0)
 #define Printf(msg, ...)                                                                                                                   \
       do {                                                                                                                                 \
-            Logger::logger.write(Logger::MsgType::Printf, {__FILE__, __LINE__, __FUNCTION__},                                            \
+            Logger::logger.write(Logger::MsgType::Printf, {__FILE__, __LINE__, __FUNCTION__},                                              \
                                  std::format(msg __VA_OPT__(, ) __VA_ARGS__));                                                             \
             } while (0)
 #endif

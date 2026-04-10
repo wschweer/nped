@@ -235,26 +235,10 @@ void Editor::updateStyle() {
 //---------------------------------------------------------
 
 Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
-#if 0 // experimental
-      fileWatcher = new QFileSystemWatcher(this);
-      connect(fileWatcher, &QFileSystemWatcher::fileChanged, [](const QString& path) {
-            // QFileSystemWatcher emits fileChanged for both modification and deletion
-            File* f = findFile(path);
-            if (f) {
-                  QFileInfo fi(path);
-                  if (fi.exists())
-                        Critical("file <{}> changed on disk", path);
-                  else
-                        Critical("file <{}> deleted from disk", path);
-                                                                                                                        }
-                                                                                                                  });
-#endif
-
       if (!initProject())
             Critical("init project failed");
       resetToDefaults();
       loadSettings();
-      loadProjectStatus();
 
       // Associate a KeySequence with a function which performs an editor action.
       // The function is surrounded by an startCmd() and an endCmd() call.
@@ -347,7 +331,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
          Action(getSC(Cmd::CMD_GOTO_DEFINITION), [this] { gotoDefinition(); }),
          Action(getSC(Cmd::CMD_GOTO_BACK), [this] { backKontext(); }),
          Action(getSC(Cmd::CMD_SHOW_INFO), [this] { hover(); }),
-         Action(getSC(Cmd::CMD_EXPAND_MACROS), [] {}),  // dummy
+         Action(getSC(Cmd::CMD_EXPAND_MACROS), [] {}), // dummy
          Action(getSC(Cmd::CMD_COMPLETIONS), [this] { requestCompletions(); }),
          Action(getSC(Cmd::CMD_FUNCTION_HEADER), [this] { kontext()->createFunctionHeader(); }),
          Action(getSC(Cmd::CMD_GIT_TOGGLE), [this] { _gitButton->setChecked(!_gitButton->isChecked()); }),
@@ -368,7 +352,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             });
       connect(kl, &KeyLogger::keyLabelChanged, [this](QString s) { _keyLabel->setText(s); });
 
-      QWidget* box = new QWidget;
+      box = new QWidget;
       setCentralWidget(box);
 
       QVBoxLayout* vbox = new QVBoxLayout();
@@ -402,86 +386,34 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       hbox->addWidget(aiButton, 0, Qt::AlignRight);
       connect(aiButton, &QToolButton::toggled, [this] {
             bool visible = aiButton->isChecked();
+            int agentIndex = splitter->indexOf(agent());
             if (!visible) {
                   // The panel is visible and will be switched to invisible.
                   // Save the actual width before switching.
-                  agentWidth = agent->size().width() + splitter->handleWidth();
+                  agentWidth = splitter->sizes()[agentIndex];
                   }
             // Try to adjust the main window so that the edit widget does
             // not change in width.
-            auto sz      = size();
-            int newWidth = sz.width() + (visible ? agentWidth : -(agentWidth));
-            agent->setVisible(visible);
-            resize(newWidth, sz.height());
+            int newWidth = width();
+            agent()->setVisible(visible);
+            if (visible) {
+                  QList<int> sizes  = splitter->sizes();
+                  sizes[agentIndex] = agentWidth;
+                  splitter->setSizes(sizes);
+                  newWidth += agentWidth + splitter->handleWidth();
+                  }
+            else
+                  newWidth += -(agentWidth + splitter->handleWidth());
+            resize(newWidth, height());
             });
 
       _stack      = new QStackedWidget(this);
       hScroll     = new QScrollBar(Qt::Horizontal);
       vScroll     = new QScrollBar(Qt::Vertical);
       _editWidget = new EditWidget(nullptr, this);
-      _mdWidget   = new MarkdownWebView(this, this);
-      _mdWidget->setZoomFactor(1.5);
-
-      QWidget* mdContainer  = new QWidget(this);
-      QVBoxLayout* mdLayout = new QVBoxLayout(mdContainer);
-      mdLayout->setContentsMargins(0, 0, 0, 0);
-      mdLayout->setSpacing(0);
-
-      QWidget* navBar        = new QWidget(mdContainer);
-      QHBoxLayout* navLayout = new QHBoxLayout(navBar);
-      navLayout->setContentsMargins(4, 4, 4, 4);
-      navLayout->setSpacing(4);
-
-      QToolButton* btnBack = new QToolButton(navBar);
-      btnBack->setToolTip("Back");
-      connect(btnBack, &QToolButton::clicked, _mdWidget, &QWebEngineView::back);
-
-      QToolButton* btnForward = new QToolButton(navBar);
-      btnForward->setToolTip("Forward");
-      connect(btnForward, &QToolButton::clicked, _mdWidget, &QWebEngineView::forward);
-
-      QToolButton* btnReload = new QToolButton(navBar);
-      btnReload->setToolTip("Reload");
-      connect(btnReload, &QToolButton::clicked, _mdWidget, &QWebEngineView::reload);
-
-      QToolButton* btnHome = new QToolButton(navBar);
-      btnHome->setToolTip("Home");
-      connect(btnHome, &QToolButton::clicked, [this]() {
-            if (kontext() && kontext()->file()) {
-                  if (kontext()->file()->languageId() == "markdown")
-                        _mdWidget->setMarkdown(kontext()->file()->plainText(), kontext()->fileRow());
-                  else
-                        _mdWidget->setHtml(kontext()->file()->plainText());
-                  }
-            });
-
-      navLayout->addWidget(btnBack);
-      navLayout->addWidget(btnForward);
-      navLayout->addWidget(btnReload);
-      navLayout->addWidget(btnHome);
-      navLayout->addStretch();
-
-      mdLayout->addWidget(navBar, 0);
-      mdLayout->addWidget(_mdWidget, 1);
 
       _stack->addWidget(_editWidget);
-      _stack->addWidget(mdContainer);
-
-      connect(this, &Editor::darkModeChanged, [this, btnBack, btnForward, btnReload, btnHome](bool dark) {
-            btnBack->setIcon(QIcon(dark ? ":/images/back_white.svg" : ":/images/back.svg"));
-            btnForward->setIcon(QIcon(dark ? ":/images/forward_white.svg" : ":/images/forward.svg"));
-            btnReload->setIcon(QIcon(dark ? ":/images/reload_white.svg" : ":/images/reload.svg"));
-            btnHome->setIcon(QIcon(dark ? ":/images/home_white.svg" : ":/images/home.svg"));
-            _mdWidget->setDarkMode(dark);
-            updateStyle();
-            update();
-            });
-      // Initial style
-      bool dark = darkMode();
-      btnBack->setIcon(QIcon(dark ? ":/images/back_white.svg" : ":/images/back.svg"));
-      btnForward->setIcon(QIcon(dark ? ":/images/forward_white.svg" : ":/images/forward.svg"));
-      btnReload->setIcon(QIcon(dark ? ":/images/reload_white.svg" : ":/images/reload.svg"));
-      btnHome->setIcon(QIcon(dark ? ":/images/home_white.svg" : ":/images/home.svg"));
+      //      _stack->addWidget(mdContainer);
       updateStyle();
       _editWidget->setFocus();
       connect(_editWidget, &EditWidget::markerClicked, [this](int row) {
@@ -499,14 +431,6 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       splitter->addWidget(w);
       int wIndex = splitter->indexOf(w);
       splitter->setStretchFactor(wIndex, 100);
-
-      agent = new Agent(this, box);
-      agent->setMinimumWidth(agentMinimumWidth);
-      agent->setVisible(false);
-      splitter->addWidget(agent);
-      int agentIndex = splitter->indexOf(agent);
-      splitter->setStretchFactor(agentIndex, 0);
-      splitter->setCollapsible(agentIndex, false);
 
       //*****************************************
       //    Git
@@ -526,13 +450,22 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             if (!visible) {
                   // The panel is visible and will be switched to invisible.
                   // Save the actual width before switching.
-                  gitPanelWidth = gitPanel->size().width() + splitter->handleWidth();
+                  gitWidth = splitter->sizes()[splitter->indexOf(gitPanel)];
                   }
             // Try to adjust the main window so that the edit widget does
             // not change in width.
             auto sz      = size();
-            int newWidth = sz.width() + (visible ? gitPanelWidth : -(gitPanelWidth));
+            int newWidth = sz.width();
             gitPanel->setVisible(visible);
+            if (visible) {
+                  QList<int> sizes = splitter->sizes();
+                  int gitIndex     = splitter->indexOf(gitPanel);
+                  sizes[gitIndex]  = gitWidth;
+                  splitter->setSizes(sizes);
+                  newWidth += gitWidth + splitter->handleWidth();
+                  }
+            else
+                  newWidth += -(gitWidth + splitter->handleWidth());
             resize(newWidth, sz.height());
             });
 
@@ -548,6 +481,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       connect(this, &Editor::darkModeChanged, [this]() {
             QString iconPath = darkMode() ? ":/images/configure_white.svg" : ":/images/configure.svg";
             configButton->setIcon(QIcon::fromTheme("preferences-system", QIcon(iconPath)));
+            updateStyle();
+            update();
             });
       connect(configButton, &QToolButton::clicked, [this] {
             ConfigDialogWrapper* dialog = new ConfigDialogWrapper(this, this);
@@ -677,6 +612,105 @@ Editor::~Editor() {
       }
 
 //---------------------------------------------------------
+//   agent
+//---------------------------------------------------------
+
+Agent* Editor::agent() {
+      if (!_agent) {
+            _agent = new Agent(this, box);
+            _agent->setMinimumWidth(agentMinimumWidth);
+            _agent->setVisible(false);
+            splitter->addWidget(_agent);
+            int agentIndex = splitter->indexOf(_agent);
+            splitter->setStretchFactor(agentIndex, 0);
+            splitter->setCollapsible(agentIndex, false);
+            if (!_projectMode)
+                  _aiVisible = false;
+
+            if (_aiVisible) {
+                  _agent->setVisible(_aiVisible);
+                  const QSignalBlocker blocker(aiButton);
+                  aiButton->setChecked(_aiVisible);
+
+                  QList<int> sizes  = splitter->sizes();
+                  sizes[0] = width();
+                  sizes[agentIndex] = agentWidth;
+                  splitter->setSizes(sizes);
+                  }
+            }
+      return _agent;
+      }
+
+//---------------------------------------------------------
+//   mdWidget
+//---------------------------------------------------------
+
+MarkdownWebView* Editor::mdWidget() {
+      if (!_mdWidget) {
+            _mdWidget = new MarkdownWebView(this, this);
+            _mdWidget->setZoomFactor(1.5);
+            QWidget* mdContainer  = new QWidget(this);
+            QVBoxLayout* mdLayout = new QVBoxLayout(mdContainer);
+            mdLayout->setContentsMargins(0, 0, 0, 0);
+            mdLayout->setSpacing(0);
+
+            QWidget* navBar        = new QWidget(mdContainer);
+            QHBoxLayout* navLayout = new QHBoxLayout(navBar);
+            navLayout->setContentsMargins(4, 4, 4, 4);
+            navLayout->setSpacing(4);
+
+            QToolButton* btnBack = new QToolButton(navBar);
+            btnBack->setToolTip("Back");
+            connect(btnBack, &QToolButton::clicked, _mdWidget, &QWebEngineView::back);
+
+            QToolButton* btnForward = new QToolButton(navBar);
+            btnForward->setToolTip("Forward");
+            connect(btnForward, &QToolButton::clicked, _mdWidget, &QWebEngineView::forward);
+
+            QToolButton* btnReload = new QToolButton(navBar);
+            btnReload->setToolTip("Reload");
+            connect(btnReload, &QToolButton::clicked, _mdWidget, &QWebEngineView::reload);
+
+            QToolButton* btnHome = new QToolButton(navBar);
+            btnHome->setToolTip("Home");
+            connect(btnHome, &QToolButton::clicked, [this]() {
+                  if (kontext() && kontext()->file()) {
+                        if (kontext()->file()->languageId() == "markdown")
+                              _mdWidget->setMarkdown(kontext()->file()->plainText(), kontext()->fileRow());
+                        else
+                              _mdWidget->setHtml(kontext()->file()->plainText());
+                        }
+                  });
+
+            connect(this, &Editor::darkModeChanged, [this, btnBack, btnForward, btnReload, btnHome](bool dark) {
+                  QString iconPath = darkMode() ? ":/images/configure_white.svg" : ":/images/configure.svg";
+                  btnBack->setIcon(QIcon(dark ? ":/images/back_white.svg" : ":/images/back.svg"));
+                  btnForward->setIcon(QIcon(dark ? ":/images/forward_white.svg" : ":/images/forward.svg"));
+                  btnReload->setIcon(QIcon(dark ? ":/images/reload_white.svg" : ":/images/reload.svg"));
+                  btnHome->setIcon(QIcon(dark ? ":/images/home_white.svg" : ":/images/home.svg"));
+                  _mdWidget->setDarkMode(dark);
+                  });
+            navLayout->addWidget(btnBack);
+            navLayout->addWidget(btnForward);
+            navLayout->addWidget(btnReload);
+            navLayout->addWidget(btnHome);
+            navLayout->addStretch();
+
+            mdLayout->addWidget(navBar, 0);
+            mdLayout->addWidget(_mdWidget, 1);
+
+            _stack->addWidget(mdContainer);
+            // Initial style
+            bool dark = darkMode();
+            btnBack->setIcon(QIcon(dark ? ":/images/back_white.svg" : ":/images/back.svg"));
+            btnForward->setIcon(QIcon(dark ? ":/images/forward_white.svg" : ":/images/forward.svg"));
+            btnReload->setIcon(QIcon(dark ? ":/images/reload_white.svg" : ":/images/reload.svg"));
+            btnHome->setIcon(QIcon(dark ? ":/images/home_white.svg" : ":/images/home.svg"));
+            }
+      return _mdWidget;
+      }
+
+//---------------------------------------------------------
 //   initEnterWidget
 //---------------------------------------------------------
 
@@ -769,16 +803,16 @@ void Editor::updateViewMode() {
             case ViewMode::WebView: {
                   if (_stack->currentIndex() != 1)
                         _stack->setCurrentIndex(1);
-                  _mdWidget->setFocus();
-                  auto lid = kontext()->file()->languageId();
+                  mdWidget()->setFocus();
+                  auto lid         = kontext()->file()->languageId();
                   const auto& text = kontext()->file()->plainText();
                   if (lid == "markdown")
-                        _mdWidget->setMarkdown(text, kontext()->fileRow());
+                        mdWidget()->setMarkdown(text, kontext()->fileRow());
                   else if (lid == "html")
-                        _mdWidget->setHtml(text);
+                        mdWidget()->setHtml(text);
                   else if (lid == "image")
-                        _mdWidget->load(QUrl::fromLocalFile(kontext()->file()->path()));
-                  vScroll->setVisible(false);   // mdWidget has its own scroll bar
+                        mdWidget()->load(QUrl::fromLocalFile(kontext()->file()->path()));
+                  vScroll->setVisible(false); // mdWidget has its own scroll bar
                   } break;
 
                   //            case ViewMode::Functions:
@@ -794,17 +828,6 @@ void Editor::updateViewMode() {
 void Kontext::toggleViewMode() {
       const auto& l = file()->languageId();
       if (l == "cpp" || l == "c") {
-#if 0
-            switch (_viewMode) {
-                  default:
-                  case ViewMode::Functions:
-                        _viewMode = ViewMode::File;
-                        break;
-                  case ViewMode::File:
-                        _viewMode = ViewMode::Functions;
-                        break;
-                                                                                                                                                      }
-#endif
             setViewMode(ViewMode::Functions);
             }
       else if (l == "markdown" || l == "html" || l == "image") {
@@ -832,8 +855,10 @@ LSclient* Editor::getLSclient(const QString& serverName) {
             languageServers.push_back(LanguageServer(serverName, client));
             //            Debug("new language server started: <{}>", serverName);
             }
-      else
-            Debug("could not start language server: <{}>", serverName);
+      else {
+            //            QString ss = serverName;
+            //            Debug("could not start language server: <{}>", ss);
+            }
       return client;
       }
 
@@ -1119,9 +1144,9 @@ void Editor::endCmd() {
 //---------------------------------------------------------
 
 void Editor::quitCmd() {
-      saveProjectStatus();
       saveStatus();
-      agent->saveStatus();
+      if (_agent)
+            agent()->saveStatus();
       close();
       }
 
@@ -1146,10 +1171,7 @@ void Editor::saveAll() {
 
 void Editor::saveQuitCmd() {
       saveAll();
-      saveProjectStatus();
-      saveStatus();
-      agent->saveStatus();
-      close();
+      quitCmd();
       }
 
 //---------------------------------------------------------
@@ -1194,6 +1216,7 @@ void Editor::setFontSize(qreal s) {
 
 //---------------------------------------------------------
 //   saveStatus
+//    save the local status in current directory/.nped.json
 //---------------------------------------------------------
 
 void Editor::saveStatus() {
@@ -1204,7 +1227,7 @@ void Editor::saveStatus() {
       j["width"]   = width();
       j["height"]  = height();
 
-      j["darkMode"] = darkMode();
+      //      j["darkMode"] = darkMode();
 
       QByteArray geom = saveGeometry();
       j["geometry"]   = geom.toHex().toStdString();
@@ -1212,15 +1235,21 @@ void Editor::saveStatus() {
       QByteArray state = saveState();
       j["state"]       = state.toHex().toStdString();
 
-      QByteArray splitterState = splitter->saveState();
-      j["splitter"]            = splitterState.toHex().toStdString();
+      j["aiVisible"] = _agent && _agent->isVisible();
+      //      j["aiModel"]       = agent()->currentModel().toStdString();
 
-      j["aiVisible"]     = agent->isVisible();
-      j["aiModel"]       = agent->currentModel().toStdString();
-      j["aiExecuteMode"] = agent->isExecuteMode();
-      j["search"]        = searchPattern.pattern().toStdString();
-      j["replace"]       = replace.toStdString();
-      j["gitPanel"]      = _gitButton->isChecked();
+      //      j["aiExecuteMode"] = agent()->isExecuteMode();
+      j["search"]   = searchPattern.pattern().toStdString();
+      j["replace"]  = replace.toStdString();
+      j["gitPanel"] = _gitButton->isChecked();
+
+      if (gitPanel && gitPanel->isVisible())
+            gitWidth = splitter->sizes()[splitter->indexOf(gitPanel)];
+      if (_agent && _agent->isVisible())
+            agentWidth = splitter->sizes()[splitter->indexOf(_agent)];
+
+      j["gitWidth"]   = gitWidth;
+      j["agentWidth"] = agentWidth;
 
       json kontexte = json::array();
       for (const auto k : _kontextList) {
@@ -1237,46 +1266,6 @@ void Editor::saveStatus() {
 
       std::ofstream fs(".nped.json");
       fs << j.dump(4);
-      agent->saveStatus();
-      }
-
-//---------------------------------------------------------
-//   saveProjectStatus
-//---------------------------------------------------------
-
-void Editor::saveProjectStatus() {
-      if (!persistent)
-            return;
-      json j;
-      j["version"] = "1.0";
-      j["aiModel"] = agent->currentModel().toStdString();
-
-      std::ofstream fs(projectRoot().toStdString() + "/.nped/project.json");
-      fs << j.dump(4);
-      agent->saveStatus();
-      }
-
-//---------------------------------------------------------
-//   loadProjectStatus
-//---------------------------------------------------------
-
-void Editor::loadProjectStatus() {
-      std::ifstream fs(projectRoot().toStdString() + "/.nped/project.json");
-      if (fs.is_open()) {
-            try {
-                  json j;
-                  fs >> j;
-
-                  if (j.contains("aiModel"))
-                        _settingsLLModel = QString::fromStdString(j["aiModel"].get<std::string>());
-                  }
-            catch (const json::parse_error& e) {
-                  Critical("Error parsing ./.nped/project.json: {}", e.what());
-                  }
-            catch (const json::type_error& e) {
-                  Critical("Type error reading .nped/project.json: {}", e.what());
-                  }
-            }
       }
 
 //---------------------------------------------------------
@@ -1288,10 +1277,10 @@ bool Editor::loadStatus(int argc, char** argv) {
       // do not load history if there are filenames on the command line
       bool loadFiles = (argc == 0);
 
-      auto screen        = qApp->primaryScreen();
-      int h              = screen->geometry().height();
-      int w              = (h * 8) / 10;
-      bool stateRestored = false;
+      auto screen           = qApp->primaryScreen();
+      int h                 = screen->geometry().height();
+      int w                 = (h * 8) / 10;
+      bool geometryRestored = false;
 
       int idx = 0;
 
@@ -1311,50 +1300,39 @@ bool Editor::loadStatus(int argc, char** argv) {
                         replace = QString::fromStdString(j["replace"].get<std::string>());
                   if (j.contains("currentKontext") && loadFiles)
                         idx = j["currentKontext"].get<int>();
-                  if (j.contains("splitter")) {
-                        QByteArray splitterState = QByteArray::fromHex(QByteArray::fromStdString(j["splitter"].get<std::string>()));
-                        splitter->restoreState(splitterState);
-                        agentWidth    = agent->sizeHint().width();    // agent->size().width();
-                        gitPanelWidth = gitPanel->sizeHint().width(); // gitPanel->size().width();
-                        }
+                  if (j.contains("aiVisible"))
+                        _aiVisible = j["aiVisible"].get<bool>();
 
-                  if (j.contains("aiExecuteMode")) {
-                        bool v = j["aiExecuteMode"].get<bool>();
-                        agent->setExecuteMode(v);
-                        }
+                  if (j.contains("gitWidth"))
+                        gitWidth = j["gitWidth"].get<int>();
+                  if (j.contains("agentWidth"))
+                        agentWidth = j["agentWidth"].get<int>();
 
-                  if (j.contains("aiModel"))
-                        _settingsLLModel = QString::fromStdString(j["aiModel"].get<std::string>());
-
-                  if (j.contains("aiVisible")) {
-                        bool v = j["aiVisible"].get<bool>();
-                        if (!_projectMode)
-                              v = false;
-                        agent->setVisible(v);
-                        const QSignalBlocker blocker(aiButton);
-                        aiButton->setChecked(v);
-                        }
-                  if (j.contains("gitPanel")) {
-                        bool val = j["gitPanel"].get<bool>();
-                        gitPanel->setVisible(val);
-                        const QSignalBlocker blocker(_gitButton);
-                        _gitButton->setChecked(val);
+                  if (j.contains("geometry")) {
+                        QByteArray geom  = QByteArray::fromHex(QByteArray::fromStdString(j["geometry"].get<std::string>()));
+                        geometryRestored = true;
+                        restoreGeometry(geom);
                         }
 
                   if (j.contains("state")) {
                         QByteArray state = QByteArray::fromHex(QByteArray::fromStdString(j["state"].get<std::string>()));
                         restoreState(state);
-                        stateRestored = true;
                         }
 
-                  if (j.contains("geometry")) {
-                        QByteArray geom = QByteArray::fromHex(QByteArray::fromStdString(j["geometry"].get<std::string>()));
-                        restoreGeometry(geom);
-                        }
+                  if (_aiVisible)
+                        agent();
 
-                  if (j.contains("darkMode")) {
-                        bool v = j["darkMode"].get<bool>();
-                        setDarkMode(v);
+                  if (j.contains("gitPanel")) {
+                        bool val = j["gitPanel"].get<bool>();
+                        gitPanel->setVisible(val);
+                        const QSignalBlocker blocker(_gitButton);
+                        _gitButton->setChecked(val);
+                        if (val) {
+                              QList<int> sizes = splitter->sizes();
+                              int gitIndex     = splitter->indexOf(gitPanel);
+                              sizes[gitIndex]  = gitWidth;
+                              splitter->setSizes(sizes);
+                              }
                         }
 
                   if (loadFiles && j.contains("kontexte") && j["kontexte"].is_array()) {
@@ -1392,7 +1370,7 @@ bool Editor::loadStatus(int argc, char** argv) {
                   }
             }
 
-      if (!stateRestored)
+      if (!geometryRestored)
             setGeometry(0, 0, w, h);
       for (int i = 0; i < argc; ++i)
             addFileInitial(argv[i]);
@@ -1968,9 +1946,8 @@ void Editor::getNextWord() {
 //---------------------------------------------------------
 
 void Editor::cBrackets() {
-      Debug("===={}", std::this_thread::get_id());
       const auto& s = kontext()->currentLine();
-      Debug("<{}>", s);
+      //      Debug("<{}>", s);
       int level = 0;
       for (const auto& c : s)
             if (c == '(')

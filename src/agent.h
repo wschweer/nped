@@ -1,4 +1,4 @@
-//=============================================================================
+//============================================================================="
 //  nped Program Editor
 //
 //  Copyright (C) 2026 Werner Schweer
@@ -30,6 +30,9 @@
 #include "llm.h"
 #include "dashboard.h"
 #include "model.h"
+#include "attachmentbutton.h"
+
+using string = std::string;
 
 class Editor;
 class QTextEdit;
@@ -206,6 +209,7 @@ class Agent : public QWidget
       QComboBox* sessionComboBox;
       QComboBox* modelMenu;
       QToolButton* statusLabel;
+      QToolButton* stopButton;
       QToolButton* modeButton;
       QToolButton* configButton;
       QToolButton* screenshotButton;
@@ -214,6 +218,7 @@ class Agent : public QWidget
       QToolButton* button3;
       QWidget* buttonPanel{nullptr};          ///< narrow vertical icon panel left of prompt input
       QWidget* dataPanel{nullptr};          ///< narrow vertical icon panel right of prompt input
+      QHBoxLayout*  dataPanelLayout{nullptr};
       QWidget* promptActionPanel{nullptr};
       void updateDataPanel();               ///< rebuilds thumbnail labels for all pending images
 
@@ -222,9 +227,8 @@ class Agent : public QWidget
 
       // Screenshot
       ScreenshotHelper* screenshotHelper{nullptr};
-      QList<QString>    _pendingImages;       ///< base64-encoded JPEG strings, one per attached image/screenshot
-      QVBoxLayout*      _dataPanelLayout{nullptr};
-      QList<QLabel*>    _imageIconLabels;     ///< one thumbnail label per pending image
+      QList<Attachment> _attachments;       ///< pending files attached to prompt
+      QList<AttachmentButton*> _attachmentIconButtons; ///< one thumbnail button per pending attachment
 
       // Netzwerk & Status
       QNetworkAccessManager* networkManager;
@@ -234,6 +238,7 @@ class Agent : public QWidget
 
       bool _isExecuteMode{true};
       bool isRetrying{false};
+      bool _stopRequested{false};
       int retryPause{2000};
       int currentRetryCount{0};
       const int maxRetries{5};
@@ -267,33 +272,30 @@ class Agent : public QWidget
       QString handleReadFile(const json& args);
       QString handleReadFileLines(const json& args);
       QString handleListDirectory(const json& args);
-      QString handleCreateFile(const json& args);
-      QString handleModifyFile(const json& args);
+      QString handleWriteFile(const json& args);
       QString handleReplaceInFile(const json& args);
 
       // Agenten-Tools & Pfad-Sicherheit
+      std::string errorResponse(const std::string& message) const;
       bool isPathSafe(const QString& path);
       bool readFile(const QString& path, QString& result);
-      QString readFileLines(const QString& path, int startLine, int endLine);
-      QString createFile(const QString& path, const QString& content);
-      QString modifyFile(const QString& path, const QString& content);
-      QString listDirectory(const QString& path);
-      QString searchProject(const QString& query, const QString& filePattern);
-      QString findSymbol(const QString& symbol);
-      QString fetchWebDocumentation(const QString& urlString);
-      QString runBuildCommand(const QString& command);
-      QString replaceInFile(const QString& path, const QString& searchStr, const QString& replaceStr);
-      QString getGitStatus();
-      QString getGitDiff(const QString& path = "");
-      QString getGitLog(int limit = 5);
-      QString createGitCommit(const QString& message);
+      string writeFile(const QString& path, const QString& content);
+      string listDirectory(const QString& path);
+      string searchProject(const QString& query, const QString& filePattern);
+      string findSymbol(const QString& symbol);
+      string fetchWebDocumentation(const QString& urlString);
+      string runBuildCommand(const QString& command);
+      string replaceInFile(const QString& path, const QString& searchStr, const QString& replaceStr);
+      string getGitStatus();
+      string getGitDiff(const QString& path = "");
+      string getGitLog(int limit = 5);
+      string createGitCommit(const QString& message);
       QString normalizePath(const QString& path) const;
 
       void setInputEnabled(bool enabled);
       DropAwarePlainTextEdit* userInput;
 
       // ask_user tool: non-modal blocking via QEventLoop
-      bool _waitingForUserInput{false};
       QString _userInputAnswer;
 
     protected:
@@ -311,8 +313,11 @@ class Agent : public QWidget
       void onSessionSelected(int index);
       void onScreenshotReady(const QImage& image);
       void onScreenshotFailed(const QString& reason);
+      void removeAttachment(int index);
       void handleCannedPrompt(const QString& buttonId);
       void updateCannedPrompts();
+
+      void stop();
 
     public slots:
       void sendMessage(QString);
@@ -320,7 +325,7 @@ class Agent : public QWidget
 
     signals:
       void modelChanged();
-      void modelsChanged();
+//      void modelsChanged();
 
     public:
       explicit Agent(Editor* e, QWidget* parent = nullptr);

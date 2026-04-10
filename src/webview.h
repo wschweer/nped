@@ -68,11 +68,13 @@ class MarkdownWebView : public QWebEngineView
       // Hilft uns, das interne Chromium-Widget zu finden
       void childEvent(QChildEvent* event) override;
       void installFilterOnProxy();
-      const std::string& getGithubCss() const;
-      const std::string& getGithubDarkCss() const;
+      std::string getGithubCss() const;
+      std::string getGithubDarkCss() const;
 
     public slots:
       virtual void setDarkMode(bool);
+
+      Editor* getEditor() const { return editor; }
 
     public:
       explicit MarkdownWebView(Editor*, QWidget* parent = nullptr);

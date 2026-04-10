@@ -24,6 +24,7 @@
 #include <QListView>
 #include <QTextEdit>
 #include <QQuickWidget>
+#include <QDialog>
 // #include <QFileSystemWatcher>
 #include <vector>
 #include "file.h"
@@ -262,7 +263,7 @@ class Editor : public QMainWindow
       Q_PROPERTY(QString fontFamily READ fontFamily WRITE setFontFamily NOTIFY fontFamilyChanged)
       Q_PROPERTY(QList<ShortcutConfig> shortcuts READ shortcuts NOTIFY shortcutsChanged)
       Q_PROPERTY(QList<FileType> fileTypes READ fileTypes NOTIFY fileTypesChanged)
-      Q_PROPERTY(QList<LanguageServerConfig> languageServersConfig READ languageServersConfig NOTIFY languageServersConfigChanged)
+      Q_PROPERTY(QList<LanguageServerConfig> languageServersConfig READ languageServersConfig WRITE setLanguageServersConfig NOTIFY languageServersConfigChanged)
       Q_PROPERTY(QStringList monospacedFonts READ monospacedFonts CONSTANT)
       Q_PROPERTY(bool darkMode READ darkMode WRITE setDarkMode NOTIFY darkModeChanged)
       Q_PROPERTY(QList<TextStyle> textStylesLight READ textStylesLight NOTIFY textStylesLightChanged)
@@ -284,10 +285,12 @@ class Editor : public QMainWindow
 
       LanguageServerList languageServers;
 
+      QWidget* box;
+      bool _aiVisible { false };
       QWidget* enter;
       QStackedWidget* _stack;
       EditWidget* _editWidget;
-      MarkdownWebView* _mdWidget;
+      MarkdownWebView* _mdWidget { nullptr };
       size_t _currentKontext{0};
       QLabel* urlLabel;
       QLabel* lineLabel;
@@ -303,13 +306,13 @@ class Editor : public QMainWindow
 
       QTimer* cursorTimer;
       QTimer* lsUpdateTimer;
-      Agent* agent;
+      Agent* _agent { nullptr };
       Models _models;
 
       static const int agentMinimumWidth{500};
-      int agentWidth{agentMinimumWidth};
       static const int gitPanelMinimumWidth{300};
-      int gitPanelWidth{gitPanelMinimumWidth};
+      int agentWidth{agentMinimumWidth};
+      int gitWidth{gitPanelMinimumWidth};
       QListView* gitPanel;
       GitList gitList;
 
@@ -335,7 +338,7 @@ class Editor : public QMainWindow
       Git _git;
       bool _darkMode{false};
 
-      QString _settingsLLModel;
+//      QString _settingsLLModel;
       //       QFileSystemWatcher* fileWatcher;
 
       QFont _font;
@@ -349,13 +352,14 @@ class Editor : public QMainWindow
 
       PickText pickText;
 
+      Agent* agent();
+      MarkdownWebView* mdWidget();
+
       bool enterActive{false};
 
       void initFont();
       void saveStatus();
-      void saveProjectStatus();
       bool loadStatus(int argc, char** argv);
-      void loadProjectStatus();
       void initEnterWidget();
       void updateIcons(bool dark);
 
@@ -435,7 +439,6 @@ class Editor : public QMainWindow
             return _kontextList[_currentKontext];
             }
       const Kontext* kontext() const { return _kontextList.at(_currentKontext); }
-      Agent* getAgent() const { return agent; }
       QFont font() { return _font; }
       qreal fh() const { return _fh; }
       qreal fa() const { return _fa; }
@@ -484,7 +487,7 @@ class Editor : public QMainWindow
       json readJson(const QString& path);
       QString evalPP(const QString& pdata);
       std::vector<File*>& getFiles() { return files; }
-      QString settingsLLModel() { return _settingsLLModel; }
+//      QString settingsLLModel() { return _settingsLLModel; }
       Kontext* addFile(const QString& path);
 
       void enterCmd();
@@ -506,9 +509,18 @@ class Editor : public QMainWindow
       TextStyles textStylesLight() { return _textStylesLight; }
       TextStyles textStylesDark() { return _textStylesDark; }
       QList<LanguageServerConfig> languageServersConfig() const { return _languageServersConfig; }
+      void setLanguageServersConfig(const QList<LanguageServerConfig>& l) {
+            LanguageServersConfig c;
+            for (const auto& cfg : l)       // ugh!
+                  c.push_back(cfg);
+            if (_languageServersConfig != c) {
+                  _languageServersConfig = c;
+                  emit languageServersConfigChanged();
+                  }
+            Debug("========================????");
+            }
       void loadSettings();
       void saveSettings();
-      void setLanguageServersConfig(const QList<LanguageServerConfig>& l);
       Q_INVOKABLE void resetToDefaults();
       bool darkMode() const { return _darkMode; }
       void setDarkMode(bool v) {
@@ -535,13 +547,14 @@ class Editor : public QMainWindow
                   }
             update();
             }
-      Models models() { return _models; }
+      Models& models() { return _models; }
       Q_INVOKABLE Model model(int idx) { return _models[idx]; }
-      Q_INVOKABLE void setModel(int idx, const Model& m) { _models[idx] = m; }
+      Q_INVOKABLE void setModel(int idx, const Model& m) { _models[idx] = m; emit modelsChanged(); }
       Q_INVOKABLE void addModel() { _models.push_back(Model()); emit modelsChanged(); }
       Q_INVOKABLE void removeModel(const Model m) { _models.removeIf([m](const Model& mm) { return mm == m;}); emit modelsChanged(); }
       QStringList modelsModel() {
             QStringList sl;
+            Debug("=====models {}", _models.size());
             for (const auto& model : _models)
                   sl.push_back(model.name);
             return sl;
@@ -577,18 +590,10 @@ class KeyLogger : public QObject
 //   ConfigDialogWrapper
 //---------------------------------------------------------
 
-class ConfigDialogWrapper : public QWidget
+class ConfigDialogWrapper : public QDialog
       {
       Q_OBJECT
       QQuickWidget* _quickWidget;
-
-    protected:
-      // Größe beim Start anpassen
-      void resizeEvent(QResizeEvent* event) override;
-
-    public slots:
-      void accept() { close(); }
-      void reject() { close(); }
 
     public:
       explicit ConfigDialogWrapper(Editor*, QWidget* parent = nullptr);

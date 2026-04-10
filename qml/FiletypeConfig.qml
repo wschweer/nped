@@ -20,10 +20,15 @@ ColumnLayout {
 
     Label {
         text: "File Associations"
-        font.pointSize: 18; font.bold: true
+        font.pointSize: 18
+        font.bold: true
         color: Material.foreground
         }
-    Rectangle { height: 1; Layout.fillWidth: true; color: Material.accent }
+    Rectangle {
+        implicitHeight: 1
+        Layout.fillWidth: true
+        color: Material.accent
+        }
 
     RowLayout {
         Layout.fillWidth: true
@@ -39,7 +44,7 @@ ColumnLayout {
                 color: Material.theme === Material.Dark ? "#424242" : "#eeeeee"
                 border.color: Material.theme === Material.Dark ? "#616161" : "#bdbdbd"
                 radius: 4
-            }
+                }
 
             ColumnLayout {
                 anchors.fill: parent
@@ -53,8 +58,9 @@ ColumnLayout {
                     model: nped.fileTypes
 
                     Component.onCompleted: {
-                        if (count > 0) currentIndex = 0
-                    }
+                        if (count > 0)
+                            currentIndex = 0;
+                        }
 
                     delegate: ItemDelegate {
                         width: ListView.view.width
@@ -63,8 +69,8 @@ ColumnLayout {
                         highlighted: ListView.isCurrentItem
                         onClicked: ListView.view.currentIndex = index
                         font.weight: ListView.isCurrentItem ? Font.DemiBold : Font.Normal
+                        }
                     }
-                }
 
                 Button {
                     Layout.fillWidth: true
@@ -72,20 +78,20 @@ ColumnLayout {
                     flat: true
                     Material.foreground: Material.accent
                     onClicked: {
-                        var list = nped.fileTypes
+                        var list = nped.fileTypes;
                         list.push({
                             extensions: "*.new",
                             languageId: "text",
                             languageServer: "none",
                             tabSize: 4,
                             parse: false
-                        })
-                        nped.fileTypes = list
-                        fileTypeListView.currentIndex = list.length - 1
+                            });
+                        nped.fileTypes = list;
+                        fileTypeListView.currentIndex = list.length - 1;
+                        }
                     }
                 }
             }
-        }
 
         // Right Side: Details
         ScrollView {
@@ -98,8 +104,8 @@ ColumnLayout {
 
             ColumnLayout {
                 anchors.fill: parent
-//                Layout.fillWidth: true
-//                Layout.fillHeight: true
+                //                Layout.fillWidth: true
+                //                Layout.fillHeight: true
                 spacing: 15
                 anchors.margins: 10
 
@@ -111,7 +117,7 @@ ColumnLayout {
                     text: "Edit File Type: " + (parent.currentFileType ? parent.currentFileType.extensions : "")
                     font.bold: true
                     font.pointSize: 1
-                }
+                    }
 
                 GridLayout {
                     Layout.fillWidth: true
@@ -120,7 +126,10 @@ ColumnLayout {
                     rowSpacing: 10
 
                     // Extensions
-                    Label { text: "Extensions:"; Layout.alignment: Qt.AlignRight }
+                    Label {
+                        text: "Extensions:"
+                        Layout.alignment: Qt.AlignRight
+                        }
                     TextField {
                         text: parent.parent.currentFileType ? parent.parent.currentFileType.extensions : ""
                         Layout.fillWidth: true
@@ -130,12 +139,15 @@ ColumnLayout {
                                 var l = nped.fileTypes;
                                 l[fileTypeListView.currentIndex].extensions = text;
                                 nped.fileTypes = l;
+                                }
                             }
                         }
-                    }
 
                     // Language ID
-                    Label { text: "Language ID:"; Layout.alignment: Qt.AlignRight }
+                    Label {
+                        text: "Language ID:"
+                        Layout.alignment: Qt.AlignRight
+                        }
                     TextField {
                         text: parent.parent.currentFileType ? parent.parent.currentFileType.languageId : ""
                         Layout.fillWidth: true
@@ -145,12 +157,15 @@ ColumnLayout {
                                 var l = nped.fileTypes;
                                 l[fileTypeListView.currentIndex].languageId = text;
                                 nped.fileTypes = l;
+                                }
                             }
                         }
-                    }
 
                     // Language Server
-                    Label { text: "LSP Server:"; Layout.alignment: Qt.AlignRight }
+                    Label {
+                        text: "LSP Server:"
+                        Layout.alignment: Qt.AlignRight
+                        }
                     TextField {
                         text: parent.parent.currentFileType ? parent.parent.currentFileType.languageServer : ""
                         Layout.fillWidth: true
@@ -160,14 +175,18 @@ ColumnLayout {
                                 var l = nped.fileTypes;
                                 l[fileTypeListView.currentIndex].languageServer = text;
                                 nped.fileTypes = l;
+                                }
                             }
                         }
-                    }
 
                     // Tab Size
-                    Label { text: "Tab Size:"; Layout.alignment: Qt.AlignRight }
+                    Label {
+                        text: "Tab Size:"
+                        Layout.alignment: Qt.AlignRight
+                        }
                     SpinBox {
-                        from: 1; to: 16
+                        from: 1
+                        to: 16
                         value: parent.parent.currentFileType ? parent.parent.currentFileType.tabSize : 4
                         editable: true
                         Layout.preferredWidth: 100
@@ -176,25 +195,14 @@ ColumnLayout {
                                 var l = nped.fileTypes;
                                 l[fileTypeListView.currentIndex].tabSize = value;
                                 nped.fileTypes = l;
+                                }
                             }
                         }
                     }
 
-                    // Parse (Enable LSP)
-                    Label { text: "Enable LSP:"; Layout.alignment: Qt.AlignRight }
-                    Switch {
-                        checked: parent.parent.currentFileType ? parent.parent.currentFileType.parse : false
-                        onToggled: {
-                            if (fileTypeListView.currentIndex >= 0) {
-                                var l = nped.fileTypes;
-                                l[fileTypeListView.currentIndex].parse = checked;
-                                nped.fileTypes = l;
-                            }
-                        }
+                Item {
+                    implicitHeight: 10
                     }
-                }
-
-                Item { height: 10 }
 
                 Button {
                     Layout.alignment: Qt.AlignRight
@@ -207,10 +215,10 @@ ColumnLayout {
                             list.splice(fileTypeListView.currentIndex, 1);
                             nped.fileTypes = list;
                             fileTypeListView.currentIndex = Math.min(fileTypeListView.currentIndex, list.length - 1);
+                            }
                         }
                     }
                 }
             }
         }
     }
-}

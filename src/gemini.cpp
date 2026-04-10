@@ -99,6 +99,17 @@ json GeminiClient::prompt(QNetworkRequest* request) {
             };
 
       for (auto msg : agent->historyManager->getActiveEntries()) {
+            if (msg.contains("role") && msg["role"] == "assistant")
+                  msg["role"] = "model";
+
+            if (!msg.contains("parts") && msg.contains("content")) {
+                  if (msg["content"].is_string())
+                        msg["parts"] = json::array({{{"text", msg["content"]}}});
+                  else
+                        msg["parts"] = json::array({{{"text", msg["content"].dump()}}});
+                  msg.erase("content");
+                  }
+
             // New format: "images" array
             if (msg.contains("images") && msg["images"].is_array()) {
                   for (const auto& imgItem : msg["images"]) {
@@ -186,7 +197,7 @@ void GeminiClient::processTools() {
       json msg; // tool answer message
       try {
             agent->chatDisplay->startNewStreamingMessage("model");
-            msg["role"]  = "function";
+            msg["role"]  = "user";
             msg["parts"] = json::array();
 
             std::string displayMsg;
@@ -206,7 +217,7 @@ void GeminiClient::processTools() {
                         displayMsg += agent->formatToolCall(fc["name"], args);
                   }
 
-            agent->chatDisplay->handleIncomingChunk("", displayMsg);
+            // agent->chatDisplay->handleIncomingChunk("", displayMsg);
             }
       catch (const json::parse_error& e) {
             Critical("Parse Error: {}", e.what());

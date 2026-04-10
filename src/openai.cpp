@@ -67,7 +67,7 @@ json OpenAiClient::prompt(QNetworkRequest* request) {
 
       json requestJson;
       requestJson["model"]  = model->modelIdentifier.toStdString();
-      requestJson["stream"] = true;
+      requestJson["stream"] = model->stream;
       if (!tools.empty())
             requestJson["tools"] = tools;
 

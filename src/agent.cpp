@@ -20,6 +20,10 @@
 #include <QToolButton>
 #include <QMenu>
 #include <QComboBox>
+#include <QProxyStyle>
+#include <QStyleOptionComboBox>
+#include <QPainter>
+
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QLabel>
@@ -44,6 +48,7 @@
 #include <QMimeData>
 #include <QInputDialog>
 #include <QMessageBox>
+#include "attachmentbutton.h"
 #include <QRegularExpression>
 #include <iostream>
 #include <fstream>
@@ -62,6 +67,8 @@
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
+
+#define AI true // dump AI input/output for debugging
 
 // Default manifests
 static const std::string manifestBuildDefault =
@@ -111,9 +118,16 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
                   }
             });
 
+      stopButton = new QToolButton(this);
+      stopButton->setIcon(QIcon(_editor->darkMode() ? ":images/stop_white.svg" : ":images/stop.svg"));
+      stopButton->setToolTip("Stop AI");
+      stopButton->setMinimumWidth(30);
+      stopButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
+      connect(stopButton, &QToolButton::clicked, this, &Agent::stop);
+
       modelMenu = new QComboBox(this);
       modelMenu->setMinimumWidth(210);
-      connect(this, &Agent::modelsChanged, [this] {
+      connect(_editor, &Editor::modelsChanged, [this] {
             bool blocked = modelMenu->blockSignals(true);
             modelMenu->clear();
             for (const auto& m : _editor->models())
@@ -122,11 +136,13 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
                   modelMenu->setCurrentText(model.name);
             modelMenu->blockSignals(blocked);
             });
+
       connect(modelMenu, &QComboBox::activated, [this](int index) { setCurrentModel(_editor->models()[index].name); });
 
       sessionComboBox = new QComboBox(this);
-      sessionComboBox->setMinimumWidth(250);
+      sessionComboBox->setMinimumWidth(166);
       connect(sessionComboBox, &QComboBox::activated, this, &Agent::onSessionSelected);
+      updateSessionList();
 
       newSessionButton = new QToolButton(this);
       newSessionButton->setText("+");
@@ -154,6 +170,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       modeButton->setText(_isExecuteMode ? "Build" : "Plan");
       modeButton->setProperty("class", _isExecuteMode ? "errorButton" : "actionButton");
 
+      dashboard->addWidget(stopButton);
       dashboard->addWidget(statusLabel);
       dashboard->addWidget(modeButton, 0);
       dashboard->addStretch(0);
@@ -177,8 +194,8 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
                   llm->setTools(mcpTools);
 
             if (chatDisplay) {
-                  chatDisplay->addMessage("system", format("<br><i>[System: Mode changed to <b>{}</b>]</i>",
-                                                           (checked ? "Build (read/write)" : "Plan (read only)")));
+                  chatDisplay->addMessage("system", std::format("<br><i>[System: Mode changed to <b>{}</b>]</i>",
+                                                                (checked ? "Build (read/write)" : "Plan (read only)")));
                   }
             });
 
@@ -224,11 +241,11 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
 
       connect(screenshotButton, &QToolButton::clicked, [this](bool) {
             // If images are already attached, discard all of them
-            if (!_pendingImages.isEmpty()) {
-                  _pendingImages.clear();
+            if (!_attachments.isEmpty()) {
+                  _attachments.clear();
                   screenshotButton->setChecked(false);
                   screenshotButton->setToolTip("Take Screenshot and attach to next prompt");
-                  chatDisplay->addMessage("system", "<i>[All attached images discarded]</i><br>");
+                  chatDisplay->addMessage("system", "<i>[All attached files discarded]</i><br>");
                   updateDataPanel();
                   return;
                   }
@@ -244,6 +261,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             showThoughtsAction->setIcon(QIcon(_editor->darkMode() ? ":images/thinking-dark.svg" : ":images/thinking.svg"));
             showToolMessageAction->setIcon(QIcon(_editor->darkMode() ? ":images/tool-dark.svg" : ":images/tool.svg"));
             screenshotButton->setIcon(QIcon(_editor->darkMode() ? ":images/camera-dark.svg" : ":images/camera.svg"));
+            stopButton->setIcon(QIcon(_editor->darkMode() ? ":images/stop_white.svg" : ":images/stop.svg"));
             });
 
       // --- 2. Chat Display ---
@@ -266,14 +284,13 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       userInput->installEventFilter(this);
       connect(userInput, &DropAwarePlainTextEdit::imageDropped, this, &Agent::onScreenshotReady);
 
-      // 3a. Schmales vertikales Icon-Panel rechts neben dem Prompt-Eingabefeld
+      // 3a. Horizontale Leiste für Attachements
       dataPanel = new QWidget(this);
-      dataPanel->setFixedWidth(48);
-      dataPanel->setFixedHeight(inputHeight); // exakt so hoch wie das Eingabefeld
-      QVBoxLayout* dataPanelLayout = new QVBoxLayout(dataPanel);
+      dataPanel->setFixedHeight(48); // Feste Höhe
+      dataPanelLayout = new QHBoxLayout(dataPanel);
       dataPanelLayout->setContentsMargins(2, 2, 2, 2);
       dataPanelLayout->setSpacing(4);
-      dataPanelLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+      dataPanelLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
       // 3a. Schmales vertikales Icon-Panel links neben dem Prompt-Eingabefeld
       buttonPanel = new QWidget(this);
@@ -305,24 +322,26 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       connect(button3, &QToolButton::clicked, [this] { handleCannedPrompt("F3"); });
       buttonPanelLayout->addWidget(button3);
 
-      // Save layout pointer so updateDataPanel() can add/remove thumbnail labels dynamically
-      _dataPanelLayout = dataPanelLayout;
-      _dataPanelLayout->addStretch(1);
+      // 3c. Widgets in einer vertikalen Box kombinieren
+      QWidget* inputContainer = new QWidget(this);
+      inputContainer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+      QVBoxLayout* inputContainerLayout = new QVBoxLayout(inputContainer);
+      inputContainerLayout->setContentsMargins(0, 0, 0, 0);
+      inputContainerLayout->setSpacing(0);
 
-      // 3c. Widgets in einer horizontalen Zeile kombinieren
+      // Input row
       QWidget* inputRow = new QWidget(this);
-      inputRow->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed); // kein vertikales Wachstum
+      inputRow->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
       QHBoxLayout* inputRowLayout = new QHBoxLayout(inputRow);
       inputRowLayout->setContentsMargins(0, 0, 0, 0);
       inputRowLayout->setSpacing(2);
+
       inputRowLayout->addWidget(buttonPanel);
       inputRowLayout->addWidget(userInput);
-      inputRowLayout->addWidget(dataPanel);
+      inputContainerLayout->addWidget(dataPanel);
+      inputContainerLayout->addWidget(inputRow);
 
-      mainLayout->addWidget(inputRow); // kein Stretch: nimmt nur den nötigen Platz
-
-      // Toolbar placed below the prompt input
-      // mainLayout->addWidget(toolBar);
+      mainLayout->addWidget(inputContainer); // kein Stretch: nimmt nur den nötigen Platz
 
       connect(_editor, &Editor::fontChanged, [this](QFont f) {
             chatDisplay->setFont(f);
@@ -385,7 +404,8 @@ void Agent::setCurrentModel(const QString& s, bool clearChat) {
             if (m.name == s) {
                   pendingModelName.clear();
                   model = m;
-                  llm   = llmFactory(this, &model, mcpTools);
+                  delete llm;
+                  llm = llmFactory(this, &model, mcpTools);
                   connect(llm, &LLMClient::incomingChunk, this, [this](const std::string& thoughtChunk, const std::string& textChunk) {
                         if (filterThoughts)
                               chatDisplay->handleIncomingChunk("", textChunk);
@@ -462,40 +482,41 @@ void Agent::fetchModels() {
                   for (const auto& model : j["models"]) {
                         std::string name = model["name"];
                         bool found       = false;
-                        for (auto& model : _editor->models()) {
-                              if (model.name == name) {
-                                    model.ollamaFound = true;
-                                    found             = true;
+                        for (auto& em : _editor->models()) {
+                              if (em.modelIdentifier == name) {
+                                    found = true;
                                     break;
                                     }
                               }
                         if (found)
                               continue;
 
-                        // ollama knows a new model!
                         Model m;
-                        m.name             = QString::fromStdString(name);
-                        m.modelIdentifier  = m.name;
-                        m.baseUrl          = "http://localhost:11434";
-                        m.api              = "ollama";
-                        m.temperature      = 0.1;
+                        m.name            = QString::fromStdString(name);
+                        m.modelIdentifier = m.name;
+                        m.baseUrl         = "http://localhost:11434/api/chat";
+                        m.api             = "ollama";
+#if 0
+                        m.temperature      = 1.0;
                         m.num_predict      = 4096 * 2; // max output
                         m.num_ctx          = 8192 * 2; // max input
                         m.topP             = 0.95;
                         m.topK             = 64;
                         m.supportsThinking = false;
-                        m.ollama           = true;
-                        m.ollamaFound      = true;
+                        m.stream           = true;
+#endif
+                        m.dynamic = true;
                         _editor->models().push_back(m);
                         }
+#if 0
                   // at this point we have a complete list of available LL models
                   // look if an ollama model disappeared:
-                  _editor->models().removeIf([](const Model& m) {
-                        if (m.ollama && !m.ollamaFound)
-                              Debug("delete Model <{}>", m.name);
-                        return m.ollama && !m.ollamaFound;
-                        });
-
+                  _editor->models().removeIf([](const Model& em) {
+                        if (em.ollama && !em.ollamaFound)
+                              Debug("delete Model <{}>", em.name);
+                        return em.ollama && !em.ollamaFound;
+                                                      });
+#endif
                   // Now we can select the last used model as saved in settings
 
                   if (!pendingModelName.isEmpty()) {
@@ -503,10 +524,10 @@ void Agent::fetchModels() {
                         pendingModelName.clear();
                         setCurrentModel(pending, false);
                         }
-                  else if (model.name.isEmpty()) {
-                        setCurrentModel(_editor->settingsLLModel(), false);
-                        }
-                  emit modelsChanged();
+                  //                  else if (model.name.isEmpty()) {
+                  //                        setCurrentModel(_editor->settingsLLModel(), false);
+                  //                        }
+                  emit _editor->modelsChanged();
                   }
             catch (const json::parse_error& e) {
                   Debug("Parse Error: {}", e.what());
@@ -529,21 +550,7 @@ void Agent::sendMessage(QString qtext) {
       if (text.empty() || model.name == "")
             return;
 
-      // If the agent is waiting for a user answer (ask_user tool),
-      // capture the reply and unblock the event loop instead of sending to LLM.
-      if (_waitingForUserInput) {
-            _waitingForUserInput = false;
-            _userInputAnswer     = qtext.trimmed();
-            userInput->setEnabled(false);
-            chatDisplay->startNewStreamingMessage("User");
-            chatDisplay->handleIncomingChunk("", text);
-            chatDisplay->scrollToBottom();
-            return;
-            }
-
-      chatDisplay->startNewStreamingMessage("User");
-      chatDisplay->handleIncomingChunk("", text);
-      chatDisplay->scrollToBottom();
+      //      chatDisplay->addMessage("User", text);
 
       json msg;
       msg["role"] = "user";
@@ -552,17 +559,25 @@ void Agent::sendMessage(QString qtext) {
       else // ollama / anthropic / openai
             msg["content"] = text;
 
-      // Attach all pending images (if any) as a base64-encoded JPEG array
-      if (!_pendingImages.isEmpty()) {
+      // Attach all pending attachments (if any)
+      if (!_attachments.isEmpty()) {
             json imagesArray = json::array();
-            for (const QString& b64 : _pendingImages)
-                  imagesArray.push_back(b64.toStdString());
-            msg["images"] = imagesArray;
-            _pendingImages.clear();
+            // Assuming we only support image attachments for now with the existing API call
+            for (const auto& att : _attachments)
+                  if (att.type == AttachmentType::Image)
+                        imagesArray.push_back(att.data.toStdString());
+            if (!imagesArray.empty())
+                  msg["images"] = imagesArray;
+            _attachments.clear();
             screenshotButton->setChecked(false);
             screenshotButton->setToolTip("Take Screenshot and attach to next prompt");
             updateDataPanel();
             }
+
+      std::string logText;
+      std::string thought;
+      logContent(msg, logText, thought);
+      chatDisplay->addMessage("User", logText);
 
       // Approximate token count: 4 chars per token
       historyManager->addRequest(msg, text.length() / 4);
@@ -599,10 +614,33 @@ std::string Agent::truncateOutput(const std::string& text, int maxChars) {
       }
 
 //---------------------------------------------------------
+//   stop
+//---------------------------------------------------------
+
+void Agent::stop() {
+      _stopRequested = true;
+      if (currentReply) {
+            currentReply->disconnect();
+            currentReply->abort();
+            currentReply->deleteLater();
+            currentReply = nullptr;
+            }
+      // If there is an active local event loop from a tool (e.g., ask_user), it needs to be exited.
+      // But typically ask_user blocks processTools, and since tools are run sequentially,
+      // an abort of network is mostly enough, but let's allow enableInput on stop
+      enableInput(true);
+      }
+
+//---------------------------------------------------------
 //   sendMessage2
 //---------------------------------------------------------
 
 void Agent::sendMessage2() {
+      if (_stopRequested) {
+            _stopRequested = false;
+            enableInput(true);
+            return;
+            }
       setInputEnabled(false);
       retryPause = 2000;
 
@@ -611,9 +649,8 @@ void Agent::sendMessage2() {
       json jsonPayLoad   = llm->prompt(&request);
       QByteArray payload = QString::fromStdString(jsonPayLoad.dump()).toUtf8();
 
-      Debug("send <{}>", jsonPayLoad.size());
-      Log("send <{}>", jsonPayLoad.dump(3));
-      request.setTransferTimeout(60000 * 5);
+      CLog(AI, "send <{}>", jsonPayLoad.dump(3));
+      request.setTransferTimeout(60000 * 10);
 
       chatDisplay->startNewStreamingMessage(model.name.toStdString());
 
@@ -639,6 +676,7 @@ void Agent::handleChatReadyRead() {
             return;
             }
       QByteArray newData = currentReply->readAll();
+      CLog(AI, "{}", newData.data());
       streamBuffer.append(newData);
       processData();
       }
@@ -678,15 +716,16 @@ void Agent::handleChatFinished() {
                               waitMs += (rand() % 500);
 
                               chatDisplay->addMessage(
-                                  "system", format("<br><font color='orange'><b>[Rate Limit]:</b> Pause for {} seconds...</font><br>",
-                                                   waitMs / 1000.0));
+                                  "system", std::format("<br><font color='orange'><b>[Rate Limit]:</b> Pause for {} seconds...</font><br>",
+                                                        waitMs / 1000.0));
                               }
                         // B: Server Error (5xx) -> Exponential Backoff
                         else {
                               waitMs = 2000 * std::pow(2, currentRetryCount);
                               chatDisplay->addMessage(
-                                  "system", format("<br><font color='orange'><b>[Server Error {}]:</b> Retry {}/{} in {}s...</font><br>",
-                                                   statusCode, currentRetryCount + 1, maxRetries, waitMs / 1000.0));
+                                  "system",
+                                  std::format("<br><font color='orange'><b>[Server Error {}]:</b> Retry {}/{} in {}s...</font><br>",
+                                              statusCode, currentRetryCount + 1, maxRetries, waitMs / 1000.0));
                               }
 
                         currentReply->deleteLater();
@@ -702,7 +741,7 @@ void Agent::handleChatFinished() {
                   else {
                         Debug("too many reply's");
                         chatDisplay->addMessage(
-                            "system", format("<br><font color='red'><b>[Abort]:</b> Too many attempts ({}).</font><br>", maxRetries));
+                            "system", std::format("<br><font color='red'><b>[Abort]:</b> Too many attempts ({}).</font><br>", maxRetries));
                         }
                   }
 
@@ -719,7 +758,7 @@ void Agent::handleChatFinished() {
             Debug("Network/API error {}: {}", int(currentReply->error()), errorMessage);
 
             // Show the error to the user in the UI
-            chatDisplay->addMessage("system", format("<br><font color='red'><b>[Connection abort]:</b> {}</font><br>", errorMessage));
+            chatDisplay->addMessage("system", std::format("<br><font color='red'><b>[Connection abort]:</b> {}</font><br>", errorMessage));
             currentReply->deleteLater();
             currentReply = nullptr;
 
@@ -738,9 +777,12 @@ void Agent::handleChatFinished() {
 
       llm->dataFinished();
 
-      updateChatDisplay();
+      // Only wipe and rebuild the UI if the tool loop did not
+      // start a new request
+
+      if (!currentReply)
+            updateChatDisplay();
       saveStatus();
-      enableInput(true);
       }
 
 //---------------------------------------------------------
@@ -774,7 +816,7 @@ void Agent::processData() {
                         if (json::accept(potentialJson)) {
                               auto j = json::parse(potentialJson);
                               //                              Debug("received <{}>", j.size());
-                              Log("received <{}>", j.dump(3));
+                              CLog(AI, "received <{}>", j.dump(3));
                               try {
                                     llm->processJsonItem(j);
                                     }
@@ -823,10 +865,6 @@ SessionInfo Agent::getSessionInfo() const {
 
       QString sessionFolder = QDir::cleanPath(root + "/.nped");
       QDir dir(sessionFolder);
-      // create path if it does not exist
-      QDir().mkpath(sessionFolder);
-
-      //      Debug("session folder <{}>", sessionFolder);
 
       QStringList filters;
       filters << "Session-*.json";
@@ -838,8 +876,15 @@ SessionInfo Agent::getSessionInfo() const {
                   Debug("bad filename <{}>", fileInfo.baseName());
                   continue;
                   }
-            //            Debug("<{}> {} {} {} {}", fileInfo.baseName(), parts[0], parts[1], parts[2], parts[3], parts[4]);
-            QDate currentDate(parts[3].toInt(), parts[2].toInt(), parts[1].toInt());
+
+            QDate currentDate;
+            // Handle both Old (Session-dd-MM-yyyy-n) and New (Session-yy-MM-dd-n) formats
+            currentDate = QDate(parts[1].toInt() + 2000, parts[2].toInt(), parts[3].toInt());
+            if (!currentDate.isValid()) {
+                  Debug("invalid date in filename <{}>", fileInfo.baseName());
+                  continue;
+                  }
+
             int currentNumber = parts[4].toInt();
 
             if (!info.lastDate.isValid() || currentDate > info.lastDate ||
@@ -867,20 +912,15 @@ QString Agent::sessionName(bool getNext) const {
       else
             nextNumber = info.lastNumber + 1;
 
-      // Format: Session-dd-MM-yyyy-n.json
-      // 'z' sorgt dafür, dass führende Nullen bei Tag/Monat erhalten bleiben (dd-MM)
+      // old Format: Session-dd-MM-yyyy-n.json
+      // new Format: Session-yy-MM-dd-n.json
 
       QString root = _editor->projectRoot();
       if (root.isEmpty()) // no session, no session info
             return QString();
 
       QString sessionFolder = QDir::cleanPath(root + "/.nped");
-      return QString("%5/Session-%1-%2-%3-%4.json")
-          .arg(today.day(), 2, 10, QChar('0'))
-          .arg(today.month(), 2, 10, QChar('0'))
-          .arg(today.year())
-          .arg(nextNumber)
-          .arg(sessionFolder);
+      return QString("%1/Session-%2-%3.json").arg(sessionFolder).arg(today.toString("yy-MM-dd")).arg(nextNumber);
       }
 
 //---------------------------------------------------------
@@ -1020,9 +1060,10 @@ void Agent::onSessionSelected(int index) {
             }
       }
 
-//---------------------------------------------------------
+//-----------------------------------------------------------------------------
 //   saveStatus
-//---------------------------------------------------------
+//    save as json lines, so you cannot call json.dump(xx), only json.dump()
+//-----------------------------------------------------------------------------
 
 void Agent::saveStatus() {
       if (currentSessionFileName.isEmpty() || historyManager->empty())
@@ -1044,19 +1085,15 @@ void Agent::saveStatus() {
       if (f.is_open()) {
             if (savedEntries == 0) {
                   json header;
-                  header["model"]              = currentModel().toStdString();
-                  header["activeEntries"]      = historyManager->getActiveEntriesCount();
-                  header["filterToolMessages"] = filterToolMessages;
-                  header["filterThoughts"]     = filterThoughts;
+                  header["model"]         = currentModel().toStdString();
+                  header["activeEntries"] = historyManager->getActiveEntriesCount();
                   f << header.dump() << "\n";
                   }
             const auto& data = historyManager->data();
             if (savedEntries < data.size()) {
                   if (savedEntries > 0) {
                         json meta;
-                        meta["activeEntries"]      = historyManager->getActiveEntriesCount();
-                        meta["filterToolMessages"] = filterToolMessages;
-                        meta["filterThoughts"]     = filterThoughts;
+                        meta["activeEntries"] = historyManager->getActiveEntriesCount();
                         f << meta.dump() << "\n";
                         }
                   for (size_t i = savedEntries; i < data.size(); ++i)
@@ -1076,10 +1113,8 @@ void Agent::saveStatus() {
 //---------------------------------------------------------
 
 void Agent::loadStatus(const QString& sessionPath) {
-      if (!_editor)
-            return;
-
       QString fileToLoad = sessionPath;
+
       if (fileToLoad.isEmpty()) {
             auto info  = getSessionInfo();
             fileToLoad = info.fileName;
@@ -1089,91 +1124,43 @@ void Agent::loadStatus(const QString& sessionPath) {
             std::ifstream i(fileToLoad.toStdString());
             if (i.is_open()) {
                   std::string content((std::istreambuf_iterator<char>(i)), std::istreambuf_iterator<char>());
-                  try {
-                        json root = json::parse(content);
-                        if (root.is_object() && root.contains("history")) {
-                              if (root.contains("model")) {
-                                    std::string modelName = root["model"];
-                                    QString m             = QString::fromStdString(modelName);
-                                    setCurrentModel(m, false);
+                  // Not a valid full JSON object? Try JSON Lines fallback
+                  std::istringstream iss(content);
+                  std::string line;
+                  json h            = json::array();
+                  size_t actEntries = 0;
+                  while (std::getline(iss, line)) {
+                        if (line.empty())
+                              continue;
+                        try {
+                              json obj = json::parse(line);
+                              if (obj.contains("model")) {
+                                    std::string modelName = obj["model"];
+                                    setCurrentModel(QString::fromStdString(modelName), false);
                                     }
-                              if (root.contains("filterToolMessages")) {
-                                    filterToolMessages = root["filterToolMessages"];
-                                    if (showToolMessageAction)
-                                          showToolMessageAction->setChecked(!filterToolMessages);
-                                    }
-                              if (root.contains("filterThoughts")) {
-                                    filterThoughts = root["filterThoughts"];
-                                    if (showThoughtsAction)
-                                          showThoughtsAction->setChecked(!filterThoughts);
-                                    }
-                              const json& history = root["history"];
-                              historyManager->setHistory(history);
-                              if (root.contains("activeEntries"))
-                                    historyManager->setActiveEntries(root["activeEntries"]);
+                              if (obj.contains("activeEntries"))
+                                    actEntries = obj["activeEntries"];
+                              if (obj.contains("role") || obj.contains("parts") || obj.contains("content"))
+                                    h.push_back(obj);
                               }
-                        else if (root.is_array()) {
-                              historyManager->setHistory(root);
+                        catch (...) {
                               }
-                        savedEntries           = historyManager->data().size();
-                        currentSessionFileName = fileToLoad;
-                        updateSessionList();
-                        updateChatDisplay();
-                        chatDisplay->scrollToBottom();
-                        return;
                         }
-                  catch (const json::parse_error& e) {
-                        // Not a valid full JSON object? Try JSON Lines fallback
-                        std::istringstream iss(content);
-                        std::string line;
-                        json h            = json::array();
-                        size_t actEntries = 0;
-                        while (std::getline(iss, line)) {
-                              if (line.empty())
-                                    continue;
-                              try {
-                                    json obj = json::parse(line);
-                                    if (obj.contains("model")) {
-                                          std::string modelName = obj["model"];
-                                          setCurrentModel(QString::fromStdString(modelName), false);
-                                          }
-                                    if (obj.contains("activeEntries"))
-                                          actEntries = obj["activeEntries"];
-                                    if (obj.contains("filterToolMessages")) {
-                                          filterToolMessages = obj["filterToolMessages"];
-                                          if (showToolMessageAction)
-                                                showToolMessageAction->setChecked(!filterToolMessages);
-                                          }
-                                    if (obj.contains("filterThoughts")) {
-                                          filterThoughts = obj["filterThoughts"];
-                                          if (showThoughtsAction)
-                                                showThoughtsAction->setChecked(!filterThoughts);
-                                          }
-                                    if (obj.contains("role") || obj.contains("parts") || obj.contains("content"))
-                                          h.push_back(obj);
-                                    }
-                              catch (...) {
-                                    }
-                              }
-                        historyManager->setHistory(h);
-                        // Only override activeEntries when an explicit value was found in the file.
-                        // If actEntries == 0 (old session format without activeEntries metadata),
-                        // setHistory() has already set activeEntries = data.size(), which is correct.
-                        if (actEntries > 0)
-                              historyManager->setActiveEntries(actEntries);
-                        savedEntries           = historyManager->data().size();
-                        currentSessionFileName = fileToLoad;
-                        updateSessionList();
-                        updateChatDisplay();
-                        chatDisplay->scrollToBottom();
-                        return;
-                        }
-                  }
-            else {
-                  Debug("no session file found <{}>", fileToLoad);
+                  historyManager->setHistory(h);
+                  // Only override activeEntries when an explicit value was found in the file.
+                  // If actEntries == 0 (old session format without activeEntries metadata),
+                  // setHistory() has already set activeEntries = data.size(), which is correct.
+                  if (actEntries > 0)
+                        historyManager->setActiveEntries(actEntries);
+                  savedEntries           = historyManager->data().size();
+                  currentSessionFileName = fileToLoad;
+                  updateSessionList();
+                  updateChatDisplay();
+                  chatDisplay->scrollToBottom();
+                  return;
                   }
             }
-
+      Debug("no session found: start new one");
       // No last session found -> Start new session
       currentSessionFileName = sessionName(true);
       savedEntries           = 0;
@@ -1285,6 +1272,16 @@ std::string Agent::formatToolCall(const std::string& name, const json& args, con
 
 void Agent::logContent(const json& content, std::string& msg, std::string& thought) {
       try {
+            if (content.contains("images") && content["images"].is_array()) {
+                  for (const auto& img : content["images"]) {
+                        if (img.is_string()) {
+                              msg += std::format("<img src=\"data:image/jpeg;base64,{}\" style=\"max-width: 500px; display: block; margin: "
+                                                 "10px 0;\"/><br>",
+                                                 img.get<std::string>());
+                              }
+                        }
+                  }
+
             if (!content.contains("parts")) {
                   // Anthropic Extended Thinking: top-level "thinking" field on assistant messages.
                   // The field is stored as a JSON object {type, thinking, signature} or as a
@@ -1452,11 +1449,11 @@ void Agent::onScreenshotReady(const QImage& image) {
       buf.open(QIODevice::WriteOnly);
       image.save(&buf, "JPEG", 70); // quality 70 – good balance between size and fidelity
 
-      _pendingImages.append(jpegData.toBase64());
+      _attachments.append({AttachmentType::Image, jpegData.toBase64(), "screenshot"});
 
-      const int count = _pendingImages.size();
+      const int count = _attachments.size();
       screenshotButton->setChecked(true);
-      screenshotButton->setToolTip(QString("%1 image(s) attached. Click 📷 to discard all.").arg(count));
+      screenshotButton->setToolTip(QString("%1 attachment(s) attached. Click 📷 to discard all.").arg(count));
 
       chatDisplay->addMessage("system", QString("<i>[Image #%1 attached (%2×%3 px) – will be sent with next prompt. "
                                                 "Click 📷 to discard all.]</i><br>")
@@ -1489,48 +1486,71 @@ void Agent::onScreenshotFailed(const QString& reason) {
 
 void Agent::updateDataPanel() {
       // Remove and delete all existing thumbnail labels
-      for (QLabel* lbl : _imageIconLabels) {
-            _dataPanelLayout->removeWidget(lbl);
+      for (AttachmentButton* lbl : _attachmentIconButtons) {
+            dataPanelLayout->removeWidget(lbl);
             delete lbl;
             }
-      _imageIconLabels.clear();
+      _attachmentIconButtons.clear();
 
-      // Remove the trailing stretch so we can re-add it after the new labels
+      // Remove the trailing stretch so we can re-add it after the new buttons
       // Qt stores the stretch item at the last position; removeItem(int) works by index.
       // The simplest approach: just remove the last item if it is a spacer.
-      int itemCount = _dataPanelLayout->count();
+      int itemCount = dataPanelLayout->count();
       if (itemCount > 0) {
-            QLayoutItem* last = _dataPanelLayout->itemAt(itemCount - 1);
+            QLayoutItem* last = dataPanelLayout->itemAt(itemCount - 1);
             if (last && last->spacerItem()) {
-                  _dataPanelLayout->removeItem(last);
+                  dataPanelLayout->removeItem(last);
                   delete last;
                   }
             }
 
-      // Create one thumbnail label per pending image
-      for (int i = 0; i < _pendingImages.size(); ++i) {
-            const QByteArray raw = QByteArray::fromBase64(_pendingImages[i].toUtf8());
-            QImage img;
-            img.loadFromData(raw, "JPEG");
+      // Create one thumbnail label per pending attachment
+      for (int i = 0; i < _attachments.size(); ++i) {
+            const auto& att = _attachments[i];
+            if (att.type == AttachmentType::Image) {
+                  const QByteArray raw = QByteArray::fromBase64(att.data.toUtf8());
+                  QImage img;
+                  img.loadFromData(raw, "JPEG");
 
-            QLabel* lbl = new QLabel(dataPanel);
-            lbl->setAlignment(Qt::AlignCenter);
-            if (!img.isNull())
-                  lbl->setPixmap(QPixmap::fromImage(img).scaled(24, 24, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-            else
-                  lbl->setText("🖼");
-            lbl->setToolTip(QString("Image #%1 – will be sent with next prompt").arg(i + 1));
-            lbl->setVisible(true);
-            _dataPanelLayout->addWidget(lbl);
-            _imageIconLabels.append(lbl);
+                  AttachmentButton* lbl = new AttachmentButton(i, nullptr);
+                  lbl->setParent(dataPanel);
+                  if (!img.isNull()) {
+                        QPixmap pm = QPixmap::fromImage(img);
+                        QIcon icon(pm.scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+                        // Ensure the thumbnail is square and fits well
+                        lbl->setIcon(icon);
+                        lbl->setFixedSize(36, 36); // Slight padding
+                        lbl->setCheckable(true);
+                        lbl->setAutoExclusive(true);
+                        lbl->setStyleSheet("QToolButton { border: 1px solid #555; border-radius: 4px; } QToolButton:checked { border: 2px "
+                                           "solid #0078d7; }");
+                        }
+                  else {
+                        lbl->setText("🖼");
+                        lbl->setFixedSize(36, 36);
+                        lbl->setCheckable(true);
+                        lbl->setStyleSheet("QToolButton { border: 1px solid #555; border-radius: 4px; } QToolButton:checked { border: 2px "
+                                           "solid #0078d7; }");
+                        }
+                  lbl->setToolTip(QString("Image #%1 – will be sent with next prompt").arg(i + 1));
+                  lbl->setVisible(true);
+                  connect(lbl, &AttachmentButton::deleteRequested, [this](int idx) {
+                        removeAttachment(idx);
+                        });
+                  dataPanelLayout->addWidget(lbl);
+                  _attachmentIconButtons.append(lbl);
+                  }
             }
 
-      _dataPanelLayout->addStretch(1);
+      dataPanelLayout->addStretch(1);
       }
 
-//---------------------------------------------------------
-//   updateCannedPrompts
-//---------------------------------------------------------
+void Agent::removeAttachment(int index) {
+      if (index >= 0 && index < _attachments.size()) {
+            _attachments.removeAt(index);
+            updateDataPanel();
+            }
+      }
 
 void Agent::updateCannedPrompts() {
       QString root = _editor->projectRoot();

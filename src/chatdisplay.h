@@ -19,6 +19,7 @@
 class ChatDisplay : public MarkdownWebView
       {
       Q_OBJECT
+      Editor* _editor;
       std::string currentStreamingThought;
       std::string currentStreamingText;
 
@@ -33,7 +34,7 @@ class ChatDisplay : public MarkdownWebView
       void handleIncomingChunk(const std::string& thoughtChunk, const std::string& textChunk);
 
     public:
-      ChatDisplay(Editor* e, QWidget* parent = nullptr) : MarkdownWebView(e, parent) {}
+      ChatDisplay(Editor* e, QWidget* parent = nullptr) : MarkdownWebView(e, parent), _editor(e) {}
       void scrollToBottom() { MarkdownWebView::scrollToBottom(); }
       void setup();
       void clear() {
@@ -46,7 +47,6 @@ class ChatDisplay : public MarkdownWebView
       QString quoteForJs(const QString& str);
 
       void startNewStreamingMessage(const std::string& r) {
-            // delay creation of new message until real data arrived to avoid display of empty messages
             mustStartMessage = true;
             role = r;
             }

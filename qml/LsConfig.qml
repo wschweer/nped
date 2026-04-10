@@ -10,17 +10,21 @@
 //=============================================================================
 
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtQuick.Layouts
-import QtQuick.Dialogs
 
 ColumnLayout {
     Label {
         text: "Language Servers (LSP)"
-        font.pointSize: 18; font.bold: true
+        font.pointSize: 18
+        font.bold: true
         color: Material.foreground
         }
-    Rectangle { height: 1; Layout.fillWidth: true; color: Material.accent }
+    Rectangle {
+        implicitHeight: 1
+        Layout.fillWidth: true
+        color: Material.accent
+        }
 
     RowLayout {
         Layout.fillWidth: true
@@ -50,10 +54,13 @@ ColumnLayout {
                     model: nped.languageServersConfig
 
                     Component.onCompleted: {
-                        if (count > 0) currentIndex = 0
-                    }
+                        if (count > 0)
+                            currentIndex = 0;
+                        }
 
                     delegate: ItemDelegate {
+                        required property var modelData
+                        required property var index
                         width: ListView.view.width
                         height: 40
                         text: modelData.name || "New Server"
@@ -69,10 +76,14 @@ ColumnLayout {
                     flat: true
                     Material.foreground: Material.accent
                     onClicked: {
-                        var list = nped.languageServersConfig
-                        list.push({name: "New Server", command: "/usr/bin/...", args: ""})
-                        nped.languageServersConfig = list
-                        serverListView.currentIndex = list.length - 1
+                        var list = nped.languageServersConfig;
+                        list.push({
+                            name: "New Server",
+                            command: "/usr/bin/...",
+                            args: ""
+                            });
+                        nped.languageServersConfig = list;
+                        serverListView.currentIndex = list.length - 1;
                         }
                     }
                 }
@@ -86,20 +97,20 @@ ColumnLayout {
             clip: true
             ScrollBar.vertical.policy: ScrollBar.AsNeeded
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            id: server
+            property var currentServer: serverListView.currentIndex >= 0 && serverListView.currentIndex < nped.languageServersConfig.length ? nped.languageServersConfig[serverListView.currentIndex] : null
 
             ColumnLayout {
                 anchors.fill: parent
-//                Layout.fillWidth: true
-//                 Layout.fillHeight: true
+                //                Layout.fillWidth: true
+                //                 Layout.fillHeight: true
                 spacing: 15
                 anchors.margins: 10
 
-                property var currentServer: serverListView.currentIndex >= 0 && serverListView.currentIndex < nped.languageServersConfig.length ? nped.languageServersConfig[serverListView.currentIndex] : null
-
-                visible: currentServer !== null
+                visible: server.currentServer !== null
 
                 Label {
-                    text: "Edit Server: " + (parent.currentServer ? parent.currentServer.name : "")
+                    text: "Edit Server: " + (server.currentServer ? server.currentServer.name : "")
                     font.bold: true
                     font.pointSize: 14
                     }
@@ -111,9 +122,12 @@ ColumnLayout {
                     rowSpacing: 10
 
                     // Name
-                    Label { text: "Name:"; Layout.alignment: Qt.AlignRight }
+                    Label {
+                        text: "Name:"
+                        Layout.alignment: Qt.AlignRight
+                        }
                     TextField {
-                        text: parent.parent.currentServer ? parent.parent.currentServer.name : ""
+                        text: server.currentServer ? server.currentServer.name : ""
                         Layout.fillWidth: true
                         placeholderText: "e.g. clangd"
                         onEditingFinished: {
@@ -121,14 +135,17 @@ ColumnLayout {
                                 var l = nped.languageServersConfig;
                                 l[serverListView.currentIndex].name = text;
                                 nped.languageServersConfig = l;
+                                }
                             }
                         }
-                    }
 
                     // Command
-                    Label { text: "Command:"; Layout.alignment: Qt.AlignRight }
+                    Label {
+                        text: "Command:"
+                        Layout.alignment: Qt.AlignRight
+                        }
                     TextField {
-                        text: parent.parent.currentServer ? parent.parent.currentServer.command : ""
+                        text: server.currentServer ? server.currentServer.command : ""
                         Layout.fillWidth: true
                         placeholderText: "/path/to/executable"
                         onEditingFinished: {
@@ -136,14 +153,17 @@ ColumnLayout {
                                 var l = nped.languageServersConfig;
                                 l[serverListView.currentIndex].command = text;
                                 nped.languageServersConfig = l;
+                                }
                             }
                         }
-                    }
 
                     // Arguments
-                    Label { text: "Arguments:"; Layout.alignment: Qt.AlignRight }
+                    Label {
+                        text: "Arguments:"
+                        Layout.alignment: Qt.AlignRight
+                        }
                     TextField {
-                        text: parent.parent.currentServer ? parent.parent.currentServer.args : ""
+                        text: server.currentServer ? server.currentServer.args : ""
                         Layout.fillWidth: true
                         placeholderText: "--stdio --log=verbose"
                         onEditingFinished: {
@@ -151,12 +171,14 @@ ColumnLayout {
                                 var l = nped.languageServersConfig;
                                 l[serverListView.currentIndex].args = text;
                                 nped.languageServersConfig = l;
+                                }
                             }
                         }
                     }
-                }
 
-                Item { height: 10 }
+                Item {
+                    height: 10
+                    }
 
                 Button {
                     Layout.alignment: Qt.AlignRight
@@ -169,10 +191,10 @@ ColumnLayout {
                             list.splice(serverListView.currentIndex, 1);
                             nped.languageServersConfig = list;
                             serverListView.currentIndex = Math.min(serverListView.currentIndex, list.length - 1);
+                            }
                         }
                     }
                 }
             }
         }
     }
-}

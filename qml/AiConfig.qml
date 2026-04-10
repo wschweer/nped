@@ -336,6 +336,16 @@ ColumnLayout {
                                     }
                                 }
                             }
+                        CheckBox {
+                            text: "Stream"
+                            checked: cl.model ? cl.model.stream : false
+                            onToggled: {
+                                if (modelListView.currentIndex >= 0) {
+                                    cl.model.stream = checked;
+                                    nped.setModel(modelListView.currentIndex, cl.model);
+                                    }
+                                }
+                            }
                         }
                     }
                 Item {

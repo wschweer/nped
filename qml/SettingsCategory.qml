@@ -31,7 +31,7 @@ ColumnLayout {
     Rectangle {
         implicitHeight: 1
         Layout.fillWidth: true
-        color: Material.foreground
-        opacity: 0.2
+        color: Material.accent
         }
+
     }

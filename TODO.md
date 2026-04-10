@@ -1,5 +1,20 @@
 # TODO
 
+## Splitter Persistenz
+- [x] Der Splitter des Main-Windows besteht aus EditWin Ai-Panel und Git-Panel. Die beiden letzten können bei bedarf ein/aus geschaltet
+werden und haben dann ausgschaltet die Breite Null. Die Breite der Ai und Git PAnels im sichtbaren mode soll permanent gespeichert werden
+und zwar die letzte bekannte **sichtbare** breite. Die Breiten sollen persistent gespeichert werden.
+Immer wenn ein panel aufgeklappt wird, soll es die zuletzt gespeicherte Breite bekommen.
+
+## File & Media additions
+
+## Add Stop Button
+- [x] Platziere links neben dem "Send" Button im Ai Dashboard einen Neuen Button "Stop".
+- [x] Zeichne ein Icon für den "Stop" Button in BW im handgemalten Stil der anderen Icons im Dashboard für den
+  dark and light Stil.
+- [x] Implementiere eine "Stop" Funktion, um einen Tool-Loop der AI abzubrechen und verbinde
+  ihn mit dem Stop Button.
+
 ## Extend Canned prompts
 
 - [x] Restructure the configuration file .nped/agent.json: F1 F2 and F3 are changed
