@@ -1395,8 +1395,7 @@ File* Editor::createNewFile(const QFileInfo& fi) {
       File* file = new File(this, fi);
       connect(file, &File::modifiedChanged, [this]() { tabBar->modifiedChanged(); });
       tabBar->modifiedChanged();
-      if (lclient())
-            connect(file, &File::fileChanged, [this] { lsUpdateTimer->start(400); });
+      connect(file, &File::fileChanged, [this] { lsUpdateTimer->start(400); });
       file->load();
       files.push_back(file);
       return file;

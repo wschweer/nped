@@ -25,17 +25,21 @@
 //---------------------------------------------------------
 
 struct LScapabilities {
+      bool astProvider{false};
       bool documentFormattingProvider{false};
       bool renameProvider{false};
       bool hoverProvider{false};
       bool definitionProvider{false};
       bool completionProvider{false};
-      void read(const json& serverCapabilities) {
-            documentFormattingProvider = serverCapabilities.value("documentFormattingProvider", false);
-            renameProvider             = serverCapabilities.value("renameProvider", false);
-            hoverProvider              = serverCapabilities.value("hoverProvider", false);
-            definitionProvider         = serverCapabilities.value("definitionProvider", false);
-            completionProvider         = serverCapabilities.contains("completionProvider");
+      void read(const json& cap) {
+            astProvider                = cap.value("astProvider", false);
+#if 0
+            documentFormattingProvider = cap.value("documentFormattingProvider", false);
+            renameProvider             = cap.value("renameProvider", false);
+            hoverProvider              = cap.value("hoverProvider", false);
+            definitionProvider         = cap.value("definitionProvider", false);
+            completionProvider         = cap.contains("completionProvider");
+#endif
             }
       };
 
@@ -73,7 +77,6 @@ class LSclient : public QObject
 
       void gotoRequest(const char* req, File* file, const Pos& cursor);
       void handleDiagnostics(const json& params);
-      void astResponse(File* f, const json& msg);
 
       bool notification(const char* method, const json& params = json::object());
       bool request(const char* method, const json& params = json::object());
@@ -100,7 +103,7 @@ class LSclient : public QObject
       void stop();
       std::string name() const { return _name; }
       bool initialized() const { return _initialized; }
-      bool astProvider() const { return _name == "clangd"; }
+      bool astProvider() const { return scap.astProvider; }
       void prepareRenameRequest(Kontext*);
       void renameRequest(Kontext*, const QString&, int, int);
 

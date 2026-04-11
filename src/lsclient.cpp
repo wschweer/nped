@@ -10,9 +10,7 @@
 //=============================================================================
 
 #include <unistd.h>
-// #include <iostream>
 #include <sys/wait.h>
-// #include <sstream>
 #include <fcntl.h>
 #include <sys/eventfd.h>
 #include <poll.h>
@@ -26,7 +24,7 @@
 #include "kontext.h"
 #include "ast.h"
 #include "completion.h"
-//
+
 
 // Conditional Trace:
 #define IO false
@@ -276,6 +274,7 @@ void LSclient::renameRequest(Kontext* k, const QString& newName, int row, int co
 //   readerLoop
 //---------------------------------------------------------
 
+
 void LSclient::readerLoop() {
       std::vector<char> buffer(1024 * 128);
       ssize_t bytesRead;
@@ -324,8 +323,6 @@ void LSclient::readerLoop() {
                               break;
                               }
                         buffer2[n] = '\0';
-                        QString s(buffer2);
-                        Log("{}: <{}>", _name, s.trimmed());
                         }
                   }
             if (fds[0].revents & (POLLIN | POLLHUP | POLLERR)) {
@@ -345,7 +342,7 @@ void LSclient::readerLoop() {
                               }
                         else if (bytesRead < 0) {
                               if (errno != EAGAIN)
-                                    Debug("error({}): {}", errno, strerror(errno));
+                                    Critical("error({}): {}", errno, strerror(errno));
                               break;
                               }
                         buffer.data()[bytesRead]  = '\0';
@@ -358,7 +355,7 @@ void LSclient::readerLoop() {
                                           size_t pos = message.find("Content-Length: ");
                                           if (pos == std::string::npos) {
                                                 // start over
-                                                Debug("garbage input: <{}>", message);
+                                                Critical("garbage input: <{}>", message);
                                                 message.clear();
                                                 continue;
                                                 }
@@ -400,6 +397,9 @@ bool LSclient::start(const std::string& path, const std::vector<string>& args) {
             return false;
             }
 
+      connect(this, &LSclient::isRunning, this, [this] {
+            initializeRequest();
+            });
       pid_t pid = fork();
       if (pid == -1) {
             Critical("fork failed: {}", strerror(errno));
@@ -435,11 +435,7 @@ bool LSclient::start(const std::string& path, const std::vector<string>& args) {
             close(stdinPipe[0]);
             close(stdoutPipe[1]);
             close(stderrPipe[1]);
-
             reader = new std::thread(&LSclient::readerLoop, this);
-            connect(this, &LSclient::isRunning, this, [this] {
-                  initializeRequest();
-                  });
             }
       return true;
       }
@@ -488,7 +484,7 @@ bool LSclient::writeMessage(const std::string& json) {
 bool LSclient::initializeRequest() {
       callbacks[id] = [this](const json& msg) {
             if (msg.contains("result") && msg["result"].contains("capabilities")) {
-                  // scap.read(msg["result"]["capabilities"]);
+                  scap.read(msg["result"]["capabilities"]);
                   }
             notification("initialized");
             _initialized = true;
@@ -765,7 +761,7 @@ bool LSclient::processMessage(const std::string& message) {
             return true;
             }
       if (response.contains("error")) {
-            Debug("Server error: <{}>", response.dump(4));
+            Critical("Server error: <{}>", response.dump(4));
             // do not return false here to avoid infinite loop
             }
       if (response.contains("id")) {
@@ -777,7 +773,7 @@ bool LSclient::processMessage(const std::string& message) {
                   emit responseReceived(id, response);
                   }
             catch (...) {
-                  Debug("Server error: {}", response.dump(4));
+                  Critical("Server error: {}", response.dump(4));
                   return true;
                   }
             }
@@ -887,7 +883,12 @@ bool LSclient::didChangeNotification(File* file, const Patches& patches) {
 //---------------------------------------------------------
 
 void LSclient::astRequest(File* file) {
-      callbacks[id] = [this, file](const json& msg) { astResponse(file, msg); };
+      callbacks[id] = [file](const json& msg) {
+            //      Debug("{}", msg.dump(4));
+            ASTNode node;
+            node.read(msg["result"]);
+            file->setAST(node);
+            };
       json textDocument;
       textDocument["uri"]     = "file://" + file->path().toStdString();
       textDocument["version"] = file->version();
@@ -899,17 +900,6 @@ void LSclient::astRequest(File* file) {
       json params;
       params["textDocument"] = textDocument;
       request("textDocument/ast", params);
-      }
-
-//---------------------------------------------------------
-//   astResponse
-//---------------------------------------------------------
-
-void LSclient::astResponse(File* f, const json& msg) {
-      //      Debug("{}", msg.dump(4));
-      ASTNode node;
-      node.read(msg["result"]);
-      f->setAST(node);
       }
 
 //---------------------------------------------------------

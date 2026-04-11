@@ -34,6 +34,8 @@ void Logger::write(std::ostream& f, MsgType t, const MsgLogContext& c, const std
             case MsgType::Fatal: type = "Fatal"; break;
             }
 
+//      std::lock_guard<std::mutex> lock(_mutex);
+
       if (&f == &std::cerr) {
             // color messages
             if (t == MsgType::Critical)
@@ -70,14 +72,13 @@ void Logger::open(const char* appName) {
 //---------------------------------------------------------
 
 void Logger::write(MsgType t, const MsgLogContext& c, const std::string& msg) {
-      std::lock_guard<std::mutex> lock(_mutex);
       switch (t) {
-            case MsgType::Log: // write only into log file
+            case MsgType::Log:      // log only into file
                   break;
             case MsgType::Debug:
             case MsgType::Warning:
             case MsgType::Info:
-                  if (!verbose)
+                  if (!verbose)     // verbose==true logs into file
                         break;
                   [[fallthrough]]; // always show
             case MsgType::Critical:
@@ -89,7 +90,7 @@ void Logger::write(MsgType t, const MsgLogContext& c, const std::string& msg) {
             }
       if (f.is_open()) {
             write(f, t, c, msg);
-            //            flush(f); // this slows down things a bit
+            //  flush(f); // this slows down things a bit but saves last messages before a crash
             }
       }
 

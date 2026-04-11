@@ -486,9 +486,7 @@ void File::lcOpen() {
 //---------------------------------------------------------
 
 void File::updateAST() {
-      if (!client || !client->initialized())
-            return;
-      if (client->astProvider())
+      if (client && client->initialized() && client->astProvider())
             client->astRequest(this);
       }
 
