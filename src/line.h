@@ -113,6 +113,7 @@ class Line : QString
       QString left(int len) const { return QString::left(len); }
       const QString& qstring() const { return static_cast<const QString&>(*this); }
       QChar operator[](int idx) const { return (idx < 0 || idx >= size()) ? QChar(' ') : QString::at(idx); }
+      QChar at(int idx) const { return (idx < 0 || idx >= size()) ? QChar(' ') : QString::at(idx); }
       bool empty() const { return QString::isEmpty(); }
       void insert(int idx, QChar c) {
             QString::insert(idx, c);

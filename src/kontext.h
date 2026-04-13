@@ -26,10 +26,11 @@ class QPoint;
 //---------------------------------------------------------
 
 enum class ViewMode {
-      File,      // text source
-      Functions, // filter functions and methods
-      Bugs,      // ls annotations
-      GitVersion,
+      File,        // text source
+      Outline,     // outline src by listing class, functions etc
+      Annotations, // ls annotations
+      GitVersion,  // show a readonly git version
+      GitDiff,     // show a git diff
       SearchResults,
       WebView
       };
@@ -97,7 +98,6 @@ class Kontext : public QObject
       void moveNextWord();
       const QString& currentLine() const;
       void flipSelectionCursor();
-
       Selection& selection() { return _selection; }
       QString selectionText();
       const Cursor& selectionStartCursor() const { return _selection.cursor; }
@@ -109,19 +109,33 @@ class Kontext : public QObject
       Pos& startSelect() { return _selection.start; }
       Pos endSelect() const { return _selection.end; }
       Pos& endSelect() { return _selection.end; }
-
       int c_compound();
       void setViewMode(ViewMode mode);
       void createFunction(const QString&);
       void createFunctionHeader();
       bool atLineEnd() const;
       void gotoLine(const QString&);
-      bool cursorValid() const { return _cursor.filePos.row >= 0 && _cursor.filePos.row < _file->rows(); }
+      bool cursorValid() const { return _cursor.filePos.row >= 0 && _cursor.filePos.row < rows(); }
       void moveCursorRel(int dx, int dy, MoveType moveType = MoveType::Normal);
       void moveCursorAbs(int col, int row);
       void setCursorAbs(const Cursor&);
       void moveCursorTopLine();
       void moveCursorBottomLine();
       void fixScreenCursor(Cursor& c);
-      void toggleViewMode();
+
+      const Line& line(int y) const;
+      int maxLineLength() const;
+      bool posValid(const Pos& pos) const;
+      int nextRow(int row) const;
+      int nextRowIfAvailable(int row) const {
+            int nrow = nextRow(row);
+            return (nrow == -1) ? row : nrow;
+            }
+      int previousRow(int row) const;
+      int previousRowIfAvailable(int row) const {
+            int prow = previousRow(row);
+            return (prow == -1) ? row : prow;
+            }
+      bool folded(int row) const;
+      bool readOnly() const;
       };

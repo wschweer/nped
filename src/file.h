@@ -18,7 +18,6 @@
 #include <QPoint>
 #include <QColor>
 
-#include "ast.h"
 #include "git.h"
 #include "line.h"
 #include "types.h"
@@ -47,15 +46,16 @@ class File : public QObject
       UndoStack* _undo;
       QFile f;
 
-      ViewMode _viewMode;
-      Lines _kollaps;
+      json _symbols;
+
+      Lines _outline;
       Lines _bugs;
       Lines _searchResults;
       Lines _fileText;
       Lines _gitVersion;
+      int _currentGitHistory{0};
 
       std::vector<GitHistory*> _gitHistory;
-      int _currentGitHistory{0};
 
       int _version{1};
       FileType fileType = defaultFileType;
@@ -63,21 +63,17 @@ class File : public QObject
       QFile::Permissions mode{QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther};
       QFileInfo _fi;
       int referenceCount{0};
-      ASTNode astTopNode;
       LSclient* client{nullptr};
 
       int toOffset(const Pos&);
-      void updateKollaps();
-      void dumpLine(Lines& lines, int level, int clevel, const ASTNode& node) const;
       void lcOpen();
-      bool levelcount(const Pos& p, int* level, const ASTNode& node) const;
       void markExpansion();
-      bool posValid(const Pos& pos) const;
 
     signals:
       void fileChanged();         // trigger language server update?
       void cursorChanged(Cursor); // undo requests a new kontext cursor position
       void modifiedChanged();     // signal to tabBar
+      void symbolsReady();        // symbols arrived from language server
 
     public slots:
       void toggleFold(int row);
@@ -101,41 +97,40 @@ class File : public QObject
       int tab() const { return fileType.tabSize; }
       QString plainText() const { return _fileText.join('\n'); }
       int indent(const Pos& pos) const;
+      void updateOutline();
 
-      void setKollaps(const Lines& map);
       void setBugs(const Lines& map);
-      const Lines& kollaps() const { return _kollaps; }
+      const Lines& outline() const { return _outline; }
       const Lines& bugs() const { return _bugs; }
       const std::vector<GitHistory*>& gitHistory() const { return _gitHistory; }
       std::vector<GitHistory*>& gitHistory() { return _gitHistory; }
       const GitHistory* gitHistory(int idx) const { return _gitHistory[idx]; }
       Lines& gitVersion() { return _gitVersion; }
+      const Lines& gitVersion() const { return _gitVersion; }
+      void setGitVersion(const Lines& l) { _gitVersion = l; }
       const Lines& searchResults() const { return _searchResults; }
       Lines& searchResults() { return _searchResults; }
       void setSearchResults(const Lines& map);
       const Lines& fileText() const { return _fileText; }
       const Line& fileText(int row) const;
-      const Line& line(int y) const;
       int version() const { return _version; }
-      void setAST(const ASTNode& node);
       void setLabel(int y, QChar c, QColor color = QColorConstants::Black);
       void clearLabel();
 
       int distance(Pos start, Pos end) const;
-      int columns(int y) const { return (y < rows()) ? line(y).size() : 0; }
-      int rows() const;
-      int maxLineLength() const;
+      int columns(int y) const { return (y < fileRows()) ? fileLine(y).size() : 0; }      // TODO
       LSclient* languageClient() { return client; }
       void setLSclient(LSclient* c) { client = c; }
       // editing:
       void patch(Patches& items);
       Pos advance(const Pos& p, int dist) const;
 
+      int fileRows() const { return _fileText.size(); }
+      const Line& fileLine(int row) const { return _fileText.at(row); }
+
       bool readOnly() const;
       void postprocessFormat();
-      void updateAST();
 
-      bool folded(int row) const;
       void setFoldFlag(int row, bool folded);
       bool isFoldable(int row) const;
 
@@ -145,17 +140,10 @@ class File : public QObject
       bool clearSearchMarks();
       void showGitVersion(int);
       int currentGitHistory() const { return _currentGitHistory; }
+      void setCurrentGitHistory(int n) { _currentGitHistory = n; }
       void foldAll(bool);
       void unfold(int row);
-      int nextRow(int row) const;
-      int nextRowIfAvailable(int row) const {
-            int nrow = nextRow(row);
-            return (nrow == -1) ? row : nrow;
-            }
-      int previousRow(int row) const;
-      int previousRowIfAvailable(int row) const {
-            int prow = previousRow(row);
-            return (prow == -1) ? row : prow;
-            }
       bool searchReplace(const QString& search, const QString& replaceText);
+      void setSymbols(const json& j);
+      const json& symbols() const { return _symbols; }
       };

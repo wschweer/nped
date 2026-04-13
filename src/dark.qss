@@ -31,16 +31,16 @@ QPlainTextEdit {
 }
 
 QTabBar::tab {
-    color: #eee;
+/*    color: #eee;  */
     background: #222;
     padding: 8px 12px;
-    border: 1px solid #555;
+/*    border: 1px solid #555; */
     border-bottom: none;
 }
 
 QTabBar::tab:selected {
-    background: #eee;
-    color: #000;
+    background: #666;
+/*    color: #000; */
 }
 
 QToolBar {
@@ -139,6 +139,37 @@ QScrollBar:vertical {
      border: 0px solid grey;
      background: #222;
      height: 0px;
+     subcontrol-position: top;
+     subcontrol-origin: margin;
+ }
+
+QScrollBar:horizontal {
+     border: 0px solid grey;
+     background: #222;
+     height: 15px;
+     margin: 2px 0 2px 0;
+ }
+ QScrollBar::handle:horizontal {
+     background: #444;
+     min-width: 20px;
+     border-radius: 2px;
+     border: 1px solid #666;
+ }
+ QScrollBar::handle:horizontal:hover {
+     background: #666;
+ }
+ QScrollBar::add-line:horizontal {
+     border: 0px solid grey;
+     background: #222;
+     width: 0px;
+     subcontrol-position: bottom;
+     subcontrol-origin: margin;
+ }
+
+ QScrollBar::sub-line:horizontal {
+     border: 0px solid grey;
+     background: #222;
+     width: 0px;
      subcontrol-position: top;
      subcontrol-origin: margin;
  }

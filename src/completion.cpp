@@ -32,9 +32,12 @@ CompletionsPopup::CompletionsPopup(QWidget* parent) : QFrame(parent, Qt::ToolTip
       list                = new QListWidget(nullptr);
       list->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding));
       layout->addWidget(list);
+      layout->setSpacing(6);  // default
       setMinimumWidth(10);
       setMinimumHeight(10);
-      setMaximumHeight(250);
+      connect(list, &QListWidget::itemActivated, [this] (QListWidgetItem* item) {
+            emit applyCompletion(list->row(item));
+            });
       }
 
 //---------------------------------------------------------
@@ -73,15 +76,25 @@ void CompletionsPopup::up() {
 void Editor::requestCompletions() {
       if (completionsPopup->isVisible()) {
             int idx                = completionsPopup->currentIndex();
-            const PatchItem& item  = completions[idx].patch;
-            Pos p2                 = item.startPos;
-            p2.col                += item.insertText.size();
-            undoPatch(item.startPos, item.toRemove, item.insertText, Cursor(p2, Pos()), kontext()->cursor());
-
-            completionsPopup->hide();
-            return;
+            applyCompletion(idx);
             }
-      kontext()->file()->languageClient()->completionRequest(kontext());
+      else
+            kontext()->file()->languageClient()->completionRequest(kontext());
+      }
+
+//---------------------------------------------------------
+//   applyCompletion
+//---------------------------------------------------------
+
+void Editor::applyCompletion(int idx)
+      {
+      const PatchItem& item  = completions[idx].patch;
+      Pos p2                 = item.startPos;
+      p2.col                += item.insertText.size();
+      Cursor c1 = kontext()->cursor();    // current cursor position
+      Cursor c2(p2, Pos(p2.col, -1));     // cursor after insert operation
+      undoPatch(item.startPos, item.toRemove, item.insertText, c2, c1);
+      hideCompletions();
       }
 
 //---------------------------------------------------------
@@ -95,14 +108,14 @@ void Editor::showCompletions(const Completions& l) {
       auto s      = kontext()->cursor().screenPos;
       auto k      = editWidget()->charPosToPixel(s) + QPoint(50, 0);
       //      auto pt     = editWidget()->mapToGlobal(k);
-      QFontMetricsF fm(completionsPopup->font());
-      qreal _fw = fm.horizontalAdvance("x", QTextOption());
+      QFontMetricsF fm(completionsPopup->listFont(), completionsPopup);
       qreal _fh = fm.lineSpacing();
       completionsPopup->setList(l);
-      int w = 0;
+      double w = 0;
       for (const auto& s : completions)
-            w = std::max(w, int(s.label.size()));
-      completionsPopup->setGeometry(k.x(), k.y(), w * _fw, _fh * (l.size() + 1));
+            w = std::max(w, fm.horizontalAdvance(s.label));
+      auto cm = 12 + 30;
+      completionsPopup->setGeometry(k.x(), k.y(), int(w) + cm, (_fh+1) * l.size() + cm);
       completionsPopup->show();
       editWidget()->setFocus();
       }

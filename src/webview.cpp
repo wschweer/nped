@@ -18,6 +18,8 @@
 #include <QDir>
 #include <QUrl>
 #include <QWebEngineSettings>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include "webview.h"
 #include "kontext.h"
@@ -44,7 +46,8 @@ bool MarkdownWebPage::acceptNavigationRequest(const QUrl& url, NavigationType ty
                   // Check if it's an anchor link within the same page
                   if (!url.fragment().isEmpty()) {
                         // Let the view handle anchor links if they are for the same file
-                        if (editor && editor->kontext() && editor->kontext()->file() && path == editor->kontext()->file()->path())
+                        if (editor && editor->kontext() && editor->kontext()->file() &&
+                            path == editor->kontext()->file()->path())
                               return true;
                         }
 
@@ -56,11 +59,13 @@ bool MarkdownWebPage::acceptNavigationRequest(const QUrl& url, NavigationType ty
                                     e->setCurrentKontext(k);
                                     QFileInfo fi(path);
                                     QString ext = fi.suffix().toLower();
-                                    if (ext == "md" || ext == "markdown" || ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "gif" ||
-                                        ext == "svg" || ext == "webp" || ext == "html" || ext == "htm") {
+                                    if (ext == "md" || ext == "markdown" || ext == "jpg" || ext == "jpeg" ||
+                                        ext == "png" || ext == "gif" || ext == "svg" || ext == "webp" ||
+                                        ext == "html" || ext == "htm") {
                                           if (k->viewMode() != ViewMode::WebView) {
-                                                k->toggleViewMode();
-                                                e->updateViewMode();
+                                                k->editor->toggleViewMode();
+                                                //TODO                                                k->toggleViewMode();
+                                                //TODO                                                e->updateViewMode();
                                                 }
                                           }
                                     }
@@ -85,7 +90,7 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
       settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
       _darkMode = e->darkMode();
       // Set initial background color to prevent white flash
-      page()->setBackgroundColor(_darkMode ? Qt::black : Qt::white);
+      page()->setBackgroundColor(_darkMode ? QColor("#222222") : Qt::white);
 
       textActions = {
          Action(e->getSC(Cmd::CMD_QUIT), [this] { editor->quitCmd(); }),
@@ -109,20 +114,19 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
          Action(e->getSC(Cmd::CMD_KONTEXT_PREV), [this] { editor->prevKontext(); }),
          Action(e->getSC(Cmd::CMD_KONTEXT_NEXT), [this] { editor->nextKontext(); }),
 
-         Action(e->getSC(Cmd::CMD_KONTEXT_UP), [this] { editor->kontext()->moveCursorRel(0, -1, MoveType::Roll); }),
-         Action(e->getSC(Cmd::CMD_KONTEXT_DOWN), [this] { editor->kontext()->moveCursorRel(0, 1, MoveType::Roll); }),
+         Action(e->getSC(Cmd::CMD_KONTEXT_UP),
+                [this] { editor->kontext()->moveCursorRel(0, -1, MoveType::Roll); }),
+         Action(e->getSC(Cmd::CMD_KONTEXT_DOWN),
+                [this] { editor->kontext()->moveCursorRel(0, 1, MoveType::Roll); }),
          Action(e->getSC(Cmd::CMD_PICK), [] {}),
          Action(e->getSC(Cmd::CMD_PUT), [this] { editor->put(); }),
          Action(e->getSC(Cmd::CMD_SELECT_ROW), [] {}),
          Action(e->getSC(Cmd::CMD_SELECT_COL), [] {}),
-         Action(e->getSC(Cmd::CMD_VIEW_FUNCTIONS),
-                [this] {
-                      editor->kontext()->toggleViewMode();
-                      editor->updateViewMode();
-                      }),
+         Action(e->getSC(Cmd::CMD_VIEW_FUNCTIONS), [this] { editor->toggleViewMode(); }),
          Action(e->getSC(Cmd::CMD_SEARCH_NEXT), [] {}),
          Action(e->getSC(Cmd::CMD_SEARCH_PREV), [] {}),
-         Action(e->getSC(Cmd::CMD_GIT_TOGGLE), [this] { editor->gitButton()->setChecked(!editor->gitButton()->isChecked()); }),
+         Action(e->getSC(Cmd::CMD_GIT_TOGGLE),
+                [this] { editor->gitButton()->setChecked(!editor->gitButton()->isChecked()); }),
          Action(e->getSC(Cmd::CMD_SCREENSHOT), [this] { editor->screenshot(); }),
             };
 
@@ -134,7 +138,13 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
             });
       connect(kl, &KeyLogger::keyLabelChanged, [this](QString s) { editor->keyLabel()->setText(s); });
       installEventFilter(kl);
-      connect(this, &QWebEngineView::loadFinished, this, [this] { isLoaded = true; });
+      connect(this, &QWebEngineView::loadFinished, this, [this] {
+            isLoaded = true;
+            if (!_pendingDiff.isEmpty() && url().toString().contains("diff.html")) {
+                  showGitDiff(_pendingDiff);
+                  _pendingDiff.clear();
+                  }
+            });
       }
 
 //---------------------------------------------------------
@@ -177,9 +187,12 @@ void MarkdownWebView::setDarkMode(bool enabled) {
       if (_darkMode == enabled)
             return;
       _darkMode = enabled;
-      page()->setBackgroundColor(_darkMode ? Qt::black : Qt::white);
-      if (!_currentRawMarkdown.isEmpty())
+      page()->setBackgroundColor(_darkMode ? QColor("#222222") : Qt::white);
+      if (!_currentRawMarkdown.isEmpty() && !url().toString().contains("diff.html"))
             setMarkdown(_currentRawMarkdown);
+      else if (url().toString().contains("diff.html") && !_currentDiff.isEmpty())
+            showGitDiff(_currentDiff);
+      showGitDiff(_currentDiff);
       }
 
 //---------------------------------------------------------
@@ -207,13 +220,14 @@ void MarkdownWebView::setMarkdown(const QString& _markdown, int cursorLine) {
                   }
             }
 
-      QString _convertedHtml   = renderMarkdownToHtml(_processedMarkdown.toStdString());
-      auto _css                = _darkMode ? getGithubDarkCss() : getGithubCss();
-      QString _highlightAssets = getHighlightJsAssets(_darkMode);
-      auto _anchorScript       = getAnchorJs();
-      auto _tocScript          = getTocJs();
-      QString _mermaidScript   = getMermaidJs(_darkMode);
-      QString _katexScript     = getKaTexJs();
+      QString _convertedHtml    = renderMarkdownToHtml(_processedMarkdown.toStdString());
+      auto _css                 = _darkMode ? getGithubDarkCss() : getGithubCss();
+      _css                     += getScrollbarCss(_darkMode).toStdString();
+      QString _highlightAssets  = getHighlightJsAssets(_darkMode);
+      auto _anchorScript        = getAnchorJs();
+      auto _tocScript           = getTocJs();
+      QString _mermaidScript    = getMermaidJs(_darkMode);
+      QString _katexScript      = getKaTexJs();
 
       QString _scrollScript;
       if (cursorLine >= 0) {
@@ -240,8 +254,9 @@ void MarkdownWebView::setMarkdown(const QString& _markdown, int cursorLine) {
             {}
             {} {} {} {} {} </body>
         </html>)",
-          _darkMode ? "dark" : "light", _css, _highlightAssets.toStdString(), _convertedHtml.toStdString(), _anchorScript, _tocScript,
-          _mermaidScript.toStdString(), _katexScript.toStdString(), _scrollScript.toStdString()));
+          _darkMode ? "dark" : "light", _css, _highlightAssets.toStdString(), _convertedHtml.toStdString(),
+          _anchorScript, _tocScript, _mermaidScript.toStdString(), _katexScript.toStdString(),
+          _scrollScript.toStdString()));
 
       QUrl baseUrl;
       if (editor && editor->kontext() && editor->kontext()->file()) {
@@ -249,6 +264,31 @@ void MarkdownWebView::setMarkdown(const QString& _markdown, int cursorLine) {
             baseUrl = QUrl::fromLocalFile(fi.absoluteDir().absolutePath() + "/");
             }
       setHtml(_fullHtml, baseUrl);
+      }
+
+//---------------------------------------------------------
+//   getScrollbarCss
+//---------------------------------------------------------
+
+QString MarkdownWebView::getScrollbarCss(bool darkMode) const {
+      if (darkMode) {
+            return R"(
+            ::-webkit-scrollbar { width: 12px; height: 12px; }
+            ::-webkit-scrollbar-track { background: #1e1e1e; }
+            ::-webkit-scrollbar-thumb { background: #555; border: 2px solid #1e1e1e; border-radius: 6px; }
+            ::-webkit-scrollbar-thumb:hover { background: #777; }
+            ::-webkit-scrollbar-corner { background: #1e1e1e; }
+            )";
+            }
+      else {
+            return R"(
+            ::-webkit-scrollbar { width: 12px; height: 12px; }
+            ::-webkit-scrollbar-track { background: #ffffff; }
+            ::-webkit-scrollbar-thumb { background: #c1c1c1; border: 2px solid #ffffff; border-radius: 6px; }
+            ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+            ::-webkit-scrollbar-corner { background: #ffffff; }
+            )";
+            }
       }
 
 //---------------------------------------------------------
@@ -296,7 +336,7 @@ QString MarkdownWebView::getKaTexJs() const {
     onload="renderMathInElement(document.body, {
         delimiters: [ {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true} ],
         throwOnError: false
-                      });"></script>)HTML");
+                                  });"></script>)HTML");
       }
 
 //---------------------------------------------------------
@@ -336,27 +376,31 @@ QString MarkdownWebView::renderMarkdownToHtml(const std::string& _stdMarkdown) {
       // GFM-Flags: Tabellen, Tasklisten, Durchgestrichen, Autolinks
       // unsigned int _flags = MD_DIALECT_GITHUB | MD_FLAG_NOINDENTEDCODEBLOCKS;
       unsigned int _flags = MD_DIALECT_GITHUB;
-      int _result         = md_html(_stdMarkdown.c_str(), static_cast<MD_SIZE>(_stdMarkdown.size()), md4c_callback, &_output, _flags, 0);
+      int _result = md_html(_stdMarkdown.c_str(), static_cast<MD_SIZE>(_stdMarkdown.size()), md4c_callback,
+                            &_output, _flags, 0);
       if (_result != 0) {
             Critical("Markdown conversion failed with code: {}", _result);
             return "<b>Error: Markdown rendering failed.</b>";
             }
 
       // Convert links to JPGs into image tags
-      QRegularExpression imgRe("<a href=\"([^\"]+\\.jpe?g)\"[^>]*>([^<]*)</a>", QRegularExpression::CaseInsensitiveOption);
+      QRegularExpression imgRe("<a href=\"([^\"]+\\.jpe?g)\"[^>]*>([^<]*)</a>",
+                               QRegularExpression::CaseInsensitiveOption);
       _output.replace(imgRe, "<img src=\"\\1\" alt=\"\\2\" style=\"max-width: 100%;\" />");
 
       // Code-Block Wrapping (mit weniger strengem Regex)
-      QRegularExpression re("<pre><code( class=\"language-(.*?)\")?>(.*?)</code></pre>", QRegularExpression::DotMatchesEverythingOption);
+      QRegularExpression re("<pre><code( class=\"language-(.*?)\")?>(.*?)</code></pre>",
+                            QRegularExpression::DotMatchesEverythingOption);
 
       int offset = 0;
       QString result;
       QRegularExpressionMatch match;
       while ((match = re.match(_output, offset)).hasMatch()) {
-            result            += _output.mid(offset, match.capturedStart() - offset);
-            QString lang       = match.captured(2).isEmpty() ? "code" : match.captured(2);
-            QString codeClass  = match.captured(2).isEmpty() ? "language-plaintext" : "language-" + match.captured(2);
-            QString code       = match.captured(3);
+            result       += _output.mid(offset, match.capturedStart() - offset);
+            QString lang  = match.captured(2).isEmpty() ? "code" : match.captured(2);
+            QString codeClass =
+                match.captured(2).isEmpty() ? "language-plaintext" : "language-" + match.captured(2);
+            QString code = match.captured(3);
 
             if (lang.toLower() == "mermaid") {
                   // Gib Mermaid-Blöcke unverändert (aber als div class="mermaid") aus, damit sie gerendert werden können.
@@ -505,15 +549,15 @@ std::string MarkdownWebView::getGithubDarkCss() const {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
             line-height: 1.5; padding: 32px; max-width: 980px; margin: 0 auto;
             color: #c9d1d9;
-            background-color: #0d1117;
+            background-color: #222222;
             scroll-behavior: smooth;
         }
 
         .code-container { border: 1px solid #30363d; border-radius: 6px; margin: 10px 0; display: block; }
-        .code-header { background: #161b22; padding: 5px 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; font-size: 0.8em; font-family: sans-serif; }
+        .code-header { background: #333333; padding: 5px 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; font-size: 0.8em; font-family: sans-serif; }
         .code-body { max-height: 400px; overflow-y: auto; overflow-x: auto; display: block; }
         .code-body pre { margin: 0; padding: 10px; overflow: visible; }
-        .copy-btn { cursor: pointer; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; padding: 3px 6px; font-size: 0.9em; color: #c9d1d9; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+        .copy-btn { cursor: pointer; background: #222222; border: 1px solid #30363d; border-radius: 4px; padding: 3px 6px; font-size: 0.9em; color: #c9d1d9; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
         .copy-btn:hover { background: #21262d; }
 
         .markdown-body h1, .markdown-body h2 {
@@ -533,7 +577,7 @@ std::string MarkdownWebView::getGithubDarkCss() const {
         }
 
         .markdown-body pre {
-            background-color: #161b22;
+            background-color: #333333;
             border-radius: 6px;
             padding: 16px;
             border: 1px solid #30363d;
@@ -544,11 +588,11 @@ std::string MarkdownWebView::getGithubDarkCss() const {
             padding: 6px 13px;
         }
         .markdown-body table tr {
-            background-color: #0d1117;
+            background-color: #222222;
             border-top: 1px solid #21262d;
         }
         .markdown-body table tr:nth-child(2n) {
-            background-color: #161b22;
+            background-color: #333333;
         }
 
         /* Anker Styling */
@@ -572,7 +616,7 @@ std::string MarkdownWebView::getGithubDarkCss() const {
 
         /* ToC Container */
         #table-of-contents {
-            background-color: #161b22;
+            background-color: #333333;
             border: 1px solid #30363d;
             padding: 16px;
             margin-bottom: 24px;
@@ -591,7 +635,6 @@ std::string MarkdownWebView::getGithubDarkCss() const {
 //---------------------------------------------------------
 
 static constexpr int SCROLL_LINE_HEIGHT = 30;
-
 void MarkdownWebView::executeScroll(int _pixelsY) {
       QString _js = QString("window.scrollBy({ top: %1, left: 0, behavior: 'smooth' });").arg(_pixelsY);
       page()->runJavaScript(_js);
@@ -606,11 +649,13 @@ void MarkdownWebView::scrollLineDown() {
       }
 
 void MarkdownWebView::scrollPageUp() {
-      page()->runJavaScript("window.scrollBy({ top: -window.innerHeight * 0.9, left: 0, behavior: 'smooth' });");
+      page()->runJavaScript(
+          "window.scrollBy({ top: -window.innerHeight * 0.9, left: 0, behavior: 'smooth' });");
       }
 
 void MarkdownWebView::scrollPageDown() {
-      page()->runJavaScript("window.scrollBy({ top: window.innerHeight * 0.9, left: 0, behavior: 'smooth' });");
+      page()->runJavaScript(
+          "window.scrollBy({ top: window.innerHeight * 0.9, left: 0, behavior: 'smooth' });");
       }
 
 void MarkdownWebView::scrollToTop() {
@@ -622,15 +667,35 @@ void MarkdownWebView::scrollToBottom() {
       }
 
 const std::string& MarkdownWebView::getAnchorJs() const {
-      static const std::string s = R"(<script>document.addEventListener("DOMContentLoaded", function() { /* ... */ });</script>)";
+      static const std::string s =
+          R"(<script>document.addEventListener("DOMContentLoaded", function() { /* ... */ });</script>)";
       return s;
       }
 
 const std::string& MarkdownWebView::getTocJs() const {
-      static const std::string s = R"(<script>document.addEventListener("DOMContentLoaded", function() { /* ... */ });</script>)";
+      static const std::string s =
+          R"(<script>document.addEventListener("DOMContentLoaded", function() { /* ... */ });</script>)";
       return s;
       }
 
 void MarkdownWebView::append(const QString& s) {
       setMarkdown(_currentRawMarkdown + s);
+      }
+
+void MarkdownWebView::showGitDiff(const QString& diffOutput) {
+      _currentDiff = diffOutput;
+      if (!url().toString().contains("diff.html")) {
+            _pendingDiff = diffOutput;
+            setUrl(QUrl("qrc:/res/diff.html"));
+            return;
+            }
+      // JSON-Escape für den Diff-Output
+      // JSON-Escape für den Diff-Output
+      QJsonDocument doc(QJsonObject{
+               { "diff",                   diffOutput},
+               {"theme", _darkMode ? "dark" : "light"}
+            });
+      QString safeScript = QString("if(typeof renderDiff === 'function') renderDiff(%1);")
+                               .arg(QString::fromUtf8(doc.toJson()));
+      this->page()->runJavaScript(safeScript);
       }

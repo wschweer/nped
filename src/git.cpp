@@ -227,12 +227,67 @@ Lines Git::getFile(const git_oid* oid) {
       git_off_t size = git_blob_rawsize(blob);
 
       Lines l(QString::fromUtf8((const char*)content, size));
-      for (const auto& ll : l)
-            Debug("<{}>", ll.qstring());
-      Debug("Lines == {}", l.size());
+      //      for (const auto& ll : l)
+      //            Debug("<{}>", ll.qstring());
+      //      Debug("Lines == {}", l.size());
 
       git_blob_free(blob);
       return l;
+      }
+
+//---------------------------------------------------------
+//   getDiff
+//    ref   - Reference line list to diff against
+//    oid   - BLOB OID
+//---------------------------------------------------------
+
+// Unified Diff structure
+struct DiffPayload {
+      QString diff;
+      };
+int print_cb(const git_diff_delta*, const git_diff_hunk*, const git_diff_line* line, void* payload) {
+      DiffPayload* data = (DiffPayload*)payload;
+      if (line) {
+            if (line->origin == GIT_DIFF_LINE_CONTEXT ||
+                line->origin == GIT_DIFF_LINE_ADDITION ||
+                line->origin == GIT_DIFF_LINE_DELETION) {
+                  data->diff += QChar(line->origin);
+                  }
+            data->diff += QString::fromUtf8(line->content, line->content_len);
+            }
+      return 0;
+      }
+Lines Git::getDiff(const Lines& ref, const git_oid* oid) {
+      if (!initialized)
+            return Lines();
+
+      git_blob* blob = nullptr;
+      if (git_blob_lookup(&blob, repo, oid) < 0)
+            return Lines();
+
+      QByteArray refContent = ref.join('\n').toUtf8();
+      git_oid ref_oid;
+      git_blob_create_from_buffer(&ref_oid, repo, refContent.data(), refContent.size());
+      git_blob* refBlob = nullptr;
+      git_blob_lookup(&refBlob, repo, &ref_oid);
+
+      git_diff_options diff_opts;
+      git_diff_options_init(&diff_opts, GIT_DIFF_OPTIONS_VERSION);
+
+      DiffPayload payload;
+      git_patch* patch = nullptr;
+      git_patch_from_blobs(&patch, refBlob, nullptr, blob, nullptr, &diff_opts);
+
+      if (patch) {
+            git_patch_print(patch, print_cb, &payload);
+            git_patch_free(patch);
+            }
+
+      Lines result(payload.diff);
+
+      git_blob_free(blob);
+      git_blob_free(refBlob);
+      return result;
       }
 
 //---------------------------------------------------------
@@ -242,36 +297,11 @@ Lines Git::getFile(const git_oid* oid) {
 void Editor::updateGitHistory() {
       if (!kontext() || !kontext()->file())
             return;
-      QString fileName = kontext()->file()->fileName();
+      QDir dir(projectRoot());
+      QString fileName = dir.relativeFilePath(kontext()->file()->path());
+      Debug("<{}>", fileName);
       _git.getHistory(fileName, kontext()->file()->gitHistory());
       gitList.set(kontext()->file()->gitHistory());
-      gitPanel->setCurrentIndex(gitList.index(kontext()->file()->currentGitHistory(), 0));
+//      gitListView->setCurrentIndex(gitList.index(kontext()->file()->currentGitHistory(), 0));
       update();
-      }
-
-//---------------------------------------------------------
-//   showGitVersion
-//---------------------------------------------------------
-
-void File::showGitVersion(int row) {
-      _currentGitHistory = row;
-      if (row == 0) {
-            editor->kontext()->setViewMode(ViewMode::File);
-            }
-      else {
-            auto history = gitHistory(row);
-            auto oid     = history->oid;
-            char oid_str[GIT_OID_HEXSZ + 1];
-            git_oid_tostr(oid_str, sizeof(oid_str), &oid);
-            Lines lines = editor->git()->getFile(&oid);
-
-            _gitVersion = lines;
-            if (_viewMode == ViewMode::GitVersion) {
-                  makePretty();
-                  editor->editWidget()->update();
-                  }
-            if (editor->kontext()->viewMode() != ViewMode::GitVersion)
-                  editor->kontext()->setViewMode(ViewMode::GitVersion);
-            makePretty();
-            }
       }

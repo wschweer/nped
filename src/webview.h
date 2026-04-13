@@ -35,11 +35,11 @@ class MarkdownWebPage : public QWebEnginePage
       Q_OBJECT
       Editor* editor;
 
-    public:
-      explicit MarkdownWebPage(Editor* e, QObject* parent = nullptr);
-
     protected:
       bool acceptNavigationRequest(const QUrl& url, NavigationType type, bool isMainFrame) override;
+
+    public:
+      explicit MarkdownWebPage(Editor* e, QObject* parent = nullptr);
       };
 
 //---------------------------------------------------------
@@ -55,8 +55,9 @@ class MarkdownWebView : public QWebEngineView
       const std::string& getTocJs() const;
 
       QString _currentRawMarkdown;
-
       std::vector<Action> textActions;
+      QString _pendingDiff;
+      QString _currentDiff;
       Editor* editor;
       KeyLogger* kl{nullptr};
       // Hilfsmethode für JS-Injection
@@ -86,6 +87,8 @@ class MarkdownWebView : public QWebEngineView
       QString renderMarkdownToHtml(const std::string& markdown);
       QString getMermaidJs(bool darkMode) const;
       QString getKaTexJs() const;
+      QString getScrollbarCss(bool darkMode) const;
+      void showGitDiff(const QString& diffOutput);
 
       // Scrolling Interface
       void scrollLineUp();

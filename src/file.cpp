@@ -24,6 +24,12 @@
 #include <vector>
 #include <algorithm> // Für std::find_if
 #include <optional>  // Für std::optional
+#include <QEventLoop>
+#include <QTimer>
+
+#include <QEventLoop>
+
+#include <QTimer>
 
 #include "editor.h"
 #include "agent.h"
@@ -310,7 +316,6 @@ void File::onFileChangedOnDisk(const QString& /*path*/) {
 File::File(Editor* e, const QFileInfo& fi) : _fi(fi), editor(e) {
       f.setFileName(_fi.absoluteFilePath());
       _readOnly = !_fi.isWritable();
-      _viewMode = ViewMode::File;
       _undo     = new UndoStack(this);
       connect(_undo, &UndoStack::dirtyChanged, [this] { emit modifiedChanged(); });
 
@@ -339,29 +344,11 @@ File::~File() {
       }
 
 //---------------------------------------------------------
-//   setViewMode
-//---------------------------------------------------------
-
-void File::setViewMode(ViewMode m, const Pos&) {
-      _viewMode = m;
-      switch (_viewMode) {
-            case ViewMode::Functions: updateKollaps(); break;
-            case ViewMode::File:
-            case ViewMode::SearchResults:
-            case ViewMode::GitVersion:
-            case ViewMode::Bugs: break;
-            case ViewMode::WebView: break;
-            }
-      }
-
-//---------------------------------------------------------
 //   readOnly
 //---------------------------------------------------------
 
 bool File::readOnly() const {
-      //      if (editor && editor->getAgent() && editor->getAgent()->isWorking())
-      //            return true;
-      return _readOnly || (_viewMode != ViewMode::File);
+      return _readOnly;
       }
 
 //---------------------------------------------------------
@@ -460,13 +447,11 @@ bool File::load() {
 //---------------------------------------------------------
 
 void File::lcOpen() {
-      if (!client) {
-            //            Debug("no ls client");
+      if (!client)
             return;
-            }
       if (client->initialized()) {
             client->didOpenNotification(this);
-            updateAST();
+            updateOutline();
             }
       else {
             connect(
@@ -474,20 +459,11 @@ void File::lcOpen() {
                 [this] {
                       if (client->initialized()) {
                             client->didOpenNotification(this);
-                            updateAST();
+                            updateOutline();
                             }
                       },
                 Qt::SingleShotConnection);
             }
-      }
-
-//---------------------------------------------------------
-//   updateAST
-//---------------------------------------------------------
-
-void File::updateAST() {
-      if (client && client->initialized() && client->astProvider())
-            client->astRequest(this);
       }
 
 //---------------------------------------------------------
@@ -624,57 +600,20 @@ bool File::save() {
       }
 
 //---------------------------------------------------------
-//   setKollaps
+//   updateOutline
 //---------------------------------------------------------
 
-void File::setKollaps(const Lines& map) {
-      _kollaps = map;
-      if (_viewMode == ViewMode::Functions)
-            editor->editWidget()->update();
-      }
-
-//---------------------------------------------------------
-//   kollaps
-//---------------------------------------------------------
-
-void File::updateKollaps() {
-      Lines map;
-      dumpLine(map, 0, 0, astTopNode);
-      setKollaps(map);
-      }
-
-//---------------------------------------------------------
-//   dumpLine
-//---------------------------------------------------------
-
-void File::dumpLine(Lines& lines, int level, int clevel, const ASTNode& node) const {
-      bool selected;
-      if (fileType.header)
-            selected = node.p1.row != node.p2.row && node.role == "declaration";
-      else
-            selected =
-                (node.role == "declaration" && (node.kind == "Function" || node.kind == "CXXMethod" || node.kind == "CXXConstructor"));
-      if (selected) {
-            int y = node.p1.row;
-            if (y < fileText().size()) {
-                  const QString& s = fileText().at(node.p1.row).qstring();
-                  if (lines.empty() || lines.back().qstring() != s)
-                        lines.push_back(s, node.p1);
-                  }
+void File::updateOutline() {
+      if (!client)
+            return;
+      if (!client->initialized()) {
+            Debug("======not initializes LS: {}", path());
+            _outline = Lines();
+            //            if (_viewMode == ViewMode::Functions)
+            //                  editor->editWidget()->update();
+            return;
             }
-      for (const auto& c : node.children)
-            dumpLine(lines, ++level, clevel, c);
-      }
-
-//---------------------------------------------------------
-//   setAST
-//---------------------------------------------------------
-
-void File::setAST(const ASTNode& node) {
-      astTopNode = node;
-      Lines map;
-      dumpLine(map, 0, 0, astTopNode);
-      setKollaps(map);
+      client->documentSymbolRequest(this);
       }
 
 //---------------------------------------------------------
@@ -683,8 +622,8 @@ void File::setAST(const ASTNode& node) {
 
 void File::setBugs(const Lines& map) {
       _bugs = map;
-      if (_viewMode == ViewMode::Bugs)
-            editor->editWidget()->update();
+      //      if (_viewMode == ViewMode::Bugs)
+      //            editor->editWidget()->update();
       }
 
 //---------------------------------------------------------
@@ -693,8 +632,8 @@ void File::setBugs(const Lines& map) {
 
 void File::setSearchResults(const Lines& map) {
       _searchResults = map;
-      if (_viewMode == ViewMode::SearchResults)
-            editor->editWidget()->update();
+      //      if (_viewMode == ViewMode::SearchResults)
+      //            editor->editWidget()->update();
       }
 
 //---------------------------------------------------------
@@ -720,94 +659,60 @@ void File::clearLabel() {
       }
 
 //---------------------------------------------------------
-//   inside
+//   indent
+//    "good enough" indent parser for C/C++
 //---------------------------------------------------------
 
-static bool operator>=(const Pos& p1, const Pos& p2) {
-      return (p1.row > p2.row) || ((p1.row == p2.row) && (p1.col >= p2.col));
-      }
-
-static bool operator<(const Pos& p1, const Pos& p2) {
-      return (p1.row < p2.row) || ((p1.row == p2.row) && (p1.col < p2.col));
-      }
-
-static bool inside(const Pos& p, const ASTNode& node) {
-      if (node.p1.row == 0 && node.p2.row == 0)
-            return true;
-      return (p >= node.p1) && (p < node.p2);
-      }
-
-//---------------------------------------------------------
-//   levelcount
-//---------------------------------------------------------
-
-bool File::levelcount(const Pos& p, int* level, const ASTNode& node) const {
-      if (!inside(p, node))
-            return false;
-
-      int idx = 0;
-      for (const auto& c : node.children) {
-            //Debug("==========={} {}", *level, c.kind);
-            if (inside(p, c)) {
-                  //Debug("    inside kind <{}> role <{}>", c.kind, c.role);
-
-                  // 1. Prüfen, ob wir das Level erhöhen müssen
-                  //                  bool isElseIf = (c.kind == "If" && node.kind == "If" && c.role == "else");
-                  bool isElseIf = (c.kind == "If" && node.kind == "If" && idx == 2);
-
-                  // Wir erhöhen das Level bei Kontrollstrukturen,
-                  // außer es handelt sich um ein 'else if'.
-                  if ((c.kind == "If" && !isElseIf) || c.kind == "For" || c.kind == "Function" || c.kind == "CXXRecord" ||
-                      c.kind == "CXXMethod" || c.kind == "While" || c.kind == "Switch" || c.kind == "Do" || c.kind == "Case" ||
-                      c.kind == "Default") {
-                        //Debug("++level");
-                        (*level)++;
-                        }
-
-                  // 2. Rekursion: Tiefer in den Baum gehen
-                  levelcount(p, level, c);
-                  return true;
-                  }
-            ++idx;
-            }
-      return true;
-      }
-
-//---------------------------------------------------------
-//   clevel
-//---------------------------------------------------------
-
-int File::indent(const Pos& cursor) const {
-      int level = 0;
-      if (client) {
-            levelcount(cursor, &level, astTopNode);
-            return level * tab();
-            }
-      int row = cursor.row;
-      if (row == 0 || row >= rows())
-            return 0;
-      //      const auto& text = fileText(row);
-      int column = 0;
-      for (const auto& c : line(row)) {
-            if (c != ' ')
+int File::indent(const Pos& pos) const {
+      //      if (client)
+      //            client->indentRequest(this, pos.row);
+      // find previous text line
+      const Line* l;
+      int row = pos.row - 1;
+      while (row >= 0) {
+            l = &fileLine(row);
+            if (!l->empty())
                   break;
-            ++column;
+            --row;
             }
-      return column;
-      }
+      if (row < 0)
+            return 0;
+      int col;
+      for (col = 0; col < l->size(); ++col)
+            if (l->at(col) != ' ')
+                  break;
 
-//---------------------------------------------------------
-//   posValid
-//---------------------------------------------------------
+      // default: return indentation of previous line
+      if (languageId() != "cpp" && languageId() != "c")
+            return col;
 
-bool File::posValid(const Pos& pos) const {
-      if (pos.col < 0 || pos.row < 0)
-            return false;
-      if (pos.col > columns(pos.row))
-            return false;
-      if (pos.row >= rows())
-            return false;
-      return true;
+      QString s       = l->qstring().simplified();
+      auto mustIndent = [](const QString& s) {
+            return s.startsWith("if") || s.startsWith("for") || s.startsWith("while") || s.startsWith("do") || s.startsWith("else");
+            };
+
+      if (mustIndent(s))
+            col += tab();
+      if (s.endsWith("}"))
+            col -= tab();
+      else if (row > 0) {
+            // check if this is a one liner indent
+            --row;
+            while (row >= 0) {
+                  l = &fileLine(row);
+                  if (!l->empty())
+                        break;
+                  --row;
+                  }
+            if (row >= 0) {
+                  s = l->qstring().simplified();
+                  if (mustIndent(s) && !s.endsWith("{")) // one line indent?
+                        col -= tab();
+                  }
+            }
+      if (col < 0)
+            col = 0;
+      return col;
       }
 
 //--------------------------------------------------------------
@@ -831,10 +736,11 @@ void File::patch(Patches& items) {
                   }
             if (!pi.empty()) {
                   nothingToRemove = false;
-                  if (!posValid(pi.startPos)) {
+                  /* TODO                  if (!posValid(pi.startPos)) {
                         Critical("invalid position col {} line {}", pi.startPos.col, pi.startPos.row);
                         return;
-                        }
+                                                }
+*/
                   }
             }
       if (nothingToRemove) {
@@ -886,18 +792,19 @@ int File::toOffset(const Pos& p) {
 //-----------------------------------------------------------------------------
 
 int File::distance(Pos begin, Pos end) const {
-      if (begin.row < 0 || begin.row > rows()) {
-            Critical("bad start row {} rows {}", begin.row, rows());
+      int n = fileRows();
+      if (begin.row < 0 || begin.row > n) {
+            Critical("bad start row {} rows {}", begin.row, n);
             return 0;
             }
-      if (end.row < 0 || end.row > rows()) {
-            Critical("bad end row {} rows {}", end.row, rows());
+      if (end.row < 0 || end.row > n) {
+            Critical("bad end row {} rows {}", end.row, fileRows());
             return 0;
             }
-      if (end.row == rows() && columns(end.row-1)) {
+      if (end.row == n && columns(end.row - 1)) {
             Critical("last line has no newline");
             end.row -= 1;
-            end.col = columns(end.row);
+            end.col  = columns(end.row);
             }
       // Falls Start nach Ende liegt oder im selben Punkt:
       if (begin.row > end.row || (begin.row == end.row && begin.col >= end.col))
@@ -1027,65 +934,6 @@ const Line& File::fileText(int row) const {
       }
 
 //---------------------------------------------------------
-//   line
-//---------------------------------------------------------
-
-const Line& File::line(int row) const {
-      const Lines* lines = nullptr;
-      switch (_viewMode) {
-            default: break;
-            case ViewMode::File: lines = &_fileText; break;
-            case ViewMode::Functions: lines = &_kollaps; break;
-            case ViewMode::GitVersion: lines = &_gitVersion; break;
-            case ViewMode::Bugs: lines = &_bugs; break;
-            }
-      static const Line emptyLine;
-      if (!lines || lines->empty() || row >= lines->size())
-            return emptyLine;
-      return lines->at(row);
-      }
-
-//---------------------------------------------------------
-//   rows
-//---------------------------------------------------------
-
-int File::rows() const {
-      int n = 0;
-      switch (_viewMode) {
-            default:
-            case ViewMode::File: n = _fileText.size(); break;
-            case ViewMode::Functions: n = _kollaps.size(); break;
-            case ViewMode::GitVersion: n = _gitVersion.size(); break;
-            case ViewMode::Bugs: n = _bugs.size(); break;
-            }
-      //      if (readOnly() && n > 0)
-      //            n -= 1;
-      return n;
-      }
-
-//---------------------------------------------------------
-//   maxLineLength
-//---------------------------------------------------------
-
-int File::maxLineLength() const {
-      int maxLen         = 0;
-      const Lines* lines = nullptr;
-      switch (_viewMode) {
-            default:
-            case ViewMode::File: lines = &_fileText; break;
-            case ViewMode::Functions: lines = &_kollaps; break;
-            case ViewMode::GitVersion: lines = &_gitVersion; break;
-            case ViewMode::Bugs: lines = &_bugs; break;
-            }
-      if (lines) {
-            for (const auto& line : *lines)
-                  if (line.size() > maxLen)
-                        maxLen = line.size();
-            }
-      return maxLen;
-      }
-
-//---------------------------------------------------------
 //   add
 //---------------------------------------------------------
 
@@ -1192,42 +1040,18 @@ bool File::clearSearchMarks() {
       }
 
 //---------------------------------------------------------
-//   folded
-//    check if row is part of a foldable area and return
-//    true if its folded (unvisible)
-//---------------------------------------------------------
-
-bool File::folded(int row) const {
-      if (row >= rows())
-            return false;
-      const Line& l = line(row);
-      FoldMark mark = l.fold();
-      if (mark != FoldMark::Fold)
-            return false;
-      // go back to begin of folded area to find out if
-      // area is folded by checking the arrow mark
-      while (row--) {
-            const Line& l = line(row);
-            FoldMark mark = l.fold();
-            if (mark == FoldMark::Begin)
-                  return l.label() == QChar(0x25b6);
-            }
-      return false;
-      }
-
-//---------------------------------------------------------
 //   unfold
 //---------------------------------------------------------
 
 void File::unfold(int row) {
-      if (row >= rows())
+      if (row >= fileRows())
             return;
-      const Line& l = line(row);
+      const Line& l = fileLine(row);
       FoldMark mark = l.fold();
       if (mark != FoldMark::Fold)
             return;
       while (row--) {
-            const Line& l = line(row);
+            const Line& l = fileLine(row);
             FoldMark mark = l.fold();
             if (mark == FoldMark::Begin) {
                   setFoldFlag(row, false);
@@ -1274,40 +1098,6 @@ void File::foldAll(bool v) {
             if (l.fold() == FoldMark::Begin)
                   setFoldFlag(row, v);
             }
-      }
-
-//---------------------------------------------------------
-//   nextRow
-//    return next visible row
-//    return -1 if there is no next row
-//---------------------------------------------------------
-
-int File::nextRow(int row) const {
-      if (row >= rows() - 1)
-            return -1;
-      ++row;
-      while (row < (rows() - 1) && folded(row))
-            ++row;
-      if (folded(row))
-            return -1;
-      return row;
-      }
-
-//---------------------------------------------------------
-//   previousRow
-//    return previous visible row
-//    return -1 if there is no previous row
-//---------------------------------------------------------
-
-int File::previousRow(int row) const {
-      if (row <= 0)
-            return -1;
-      --row;
-      while (row > 0 && folded(row))
-            --row;
-      if (folded(row))
-            return -1;
-      return row;
       }
 
 //---------------------------------------------------------
@@ -1389,4 +1179,58 @@ bool File::searchReplace(const QString& search, const QString& replaceText) {
             undo()->push(new Patch(this, matches[j], searchLen, replaceText, Cursor(), Cursor()));
             }
       return true;
+      }
+
+//---------------------------------------------------------
+//   setSymbols
+//---------------------------------------------------------
+
+void File::setSymbols(const json& j) {
+      _symbols = j;
+
+      //---------------------------------------------------------
+      //   processSymbol
+      //---------------------------------------------------------
+
+      std::string res;
+      Lines map;
+
+      std::function<void(const json&, int)> processSymbol = [&](const json& item, int depth) {
+            if (item.contains("kind") && item.contains("name")) {
+                  int kind = item["kind"].get<int>();
+                  // Kinds: 5=Class, 6=Method, 12=Function, 3=Namespace, 22=Struct
+                  if (kind == 5 || kind == 6 || kind == 12 || kind == 3 || kind == 22) {
+                        std::string name = item["name"].get<std::string>();
+                        int line         = -1;
+                        if (item.contains("location")) {
+                              auto litem = item["location"];
+                              if (litem.contains("range") && litem["range"].contains("start"))
+                                    line = litem["range"]["start"]["line"].get<int>() + 1;
+                              std::string indent(depth * 2, ' ');
+                              std::string kindStr;
+                              switch (kind) {
+                                    case 5: kindStr = "Class"; break;
+                                    case 6: kindStr = "Method"; break;
+                                    case 12: kindStr = "Function"; break;
+                                    case 3: kindStr = "Namespace"; break;
+                                    case 22: kindStr = "Struct"; break;
+                                    }
+                              res += std::format("{}[Line {}] {}: {}\n", indent, line, kindStr, name);
+                              const QString& s = fileText().at(line-1).qstring();
+                              map.push_back(s, Pos(0, line-1));
+                              }
+                        if (item.contains("children") && item["children"].is_array())
+                              for (const auto& child : item["children"])
+                                    processSymbol(child, depth + 1);
+                        }
+                  }
+            };
+
+      for (const auto& item : _symbols)
+            processSymbol(item, 0);
+      _outline = map;
+      if (res.empty())
+            res = "No structural symbols found or unsupported response format.";
+      _symbols = res;
+      emit symbolsReady();
       }

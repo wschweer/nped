@@ -72,10 +72,10 @@ bool Editor::createMatchList() {
       Lines matchLines;
       matches.clear();
       clearSearchMarks();
-      for (int i = 0; i < file->rows(); ++i) {
+      for (int i = 0; i < kontext()->rows(); ++i) {
             int col = 0;
             for (;;) {
-                  const QString& s = file->line(i).qstring();
+                  const QString& s = kontext()->line(i).qstring();
                   auto match       = searchPattern.match(s, col);
                   if (!match.hasMatch())
                         break;

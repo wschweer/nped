@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Git Diff</title>
+    <!-- Diff2HTML Styles -->
+    <link rel="stylesheet" href="qrc:/res/diff2html.min.css">
+    <!-- Local JS -->
+    <script src="qrc:/res/js/diff2html.min.js"></script>
+    <script src="qrc:/res/js/diff2html-ui.min.js"></script>
+    <style>
+        body { margin: 0; padding: 20px; font-family: sans-serif; }
+        body.light { background-color: #fff; color: #333; }
+        body.dark { background-color: #1e1e1e; color: #ccc; }
+        /* Scrollbar styles */
+        ::-webkit-scrollbar { width: 12px; height: 12px; }
+        ::-webkit-scrollbar-track { background: #ffffff; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border: 2px solid #ffffff; border-radius: 6px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        ::-webkit-scrollbar-corner { background: #ffffff; }
+
+        body.dark ::-webkit-scrollbar-track { background: #1e1e1e; }
+        body.dark ::-webkit-scrollbar-thumb { background: #555; border: 2px solid #1e1e1e; }
+        body.dark ::-webkit-scrollbar-thumb:hover { background: #777; }
+        body.dark ::-webkit-scrollbar-corner { background: #1e1e1e; }
+
+
+        /* Dark mode overrides for diff2html */
+        /* Dark mode overrides for diff2html */
+        body.dark .d2h-file-header { background-color: #2d2d2d; border-bottom: 1px solid #444; color: #eee; }
+        body.dark .d2h-file-wrapper { border: 1px solid #444; border-radius: 4px; background: #1e1e1e; }
+        body.dark .d2h-code-linenumber,
+        body.dark .d2h-code-side-linenumber { background-color: #252525; border: solid #444; border-width: 0 1px; color: #888; }
+        body.dark .d2h-code-line,
+        body.dark .d2h-code-side-line { color: #d4d4d4; }
+        body.dark .d2h-emptyplaceholder,
+        body.dark .d2h-code-side-emptyplaceholder { background-color: #252525; border-color: #444; }
+        body.dark .d2h-del { background-color: #4b1818; border-color: #5c1b1b; }
+        body.dark .d2h-del.d2h-change { background-color: #5c1b1b; border-color: #6d1f1f; }
+        body.dark .d2h-ins { background-color: #1b3d1b; border-color: #214f21; }
+        body.dark .d2h-ins.d2h-change { background-color: #214f21; border-color: #2a632a; }
+        body.dark .d2h-info { background-color: #2b3a4a; border-color: #3b4e63; color: #8eb1d1; }
+        body.dark .d2h-file-name { color: #eee; }
+        body.dark .d2h-file-list-header { background-color: #2d2d2d; border-bottom: 1px solid #444; color: #eee; }
+        body.dark .d2h-file-list-wrapper { border: 1px solid #444; background: #1e1e1e; margin-bottom: 20px; }
+        body.dark a { color: #569cd6; }
+        body.dark .d2h-code-line del,
+        body.dark .d2h-code-side-line del { background-color: #8c2a2a; }
+        body.dark .d2h-code-line ins,
+        body.dark .d2h-code-side-line ins { background-color: #2b6b2b; }
+        body.dark .d2h-code-line-prefix { color: #888; }
+        body.dark a { color: #569cd6; }
+    </style>
+</head>
+<body>
+    <div id="diff-container"></div>
+    <script>
+        function renderDiff(data) {
+            if (data.theme === 'dark') {
+                document.body.classList.remove('light');
+                document.body.classList.add('dark');
+            } else {
+                document.body.classList.remove('dark');
+                document.body.classList.add('light');
+            }
+            const targetElement = document.getElementById('diff-container');
+            const configuration = {
+                drawFileList: false,
+                fileListToggle: false,
+                fileContentToggle: false,
+                fileListStartVisible: false,
+                matching: 'none',
+                outputFormat: 'line-by-line',
+                colorScheme: data.theme || 'light'
+            };
+            const diff2htmlUi = new Diff2HtmlUI(targetElement, data.diff, configuration);
+            diff2htmlUi.draw();
+            diff2htmlUi.highlightCode();
+        }
+    </script>
+</body>
+</html>

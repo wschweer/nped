@@ -39,10 +39,15 @@ class CompletionsPopup : public QFrame
 
       QListWidget* list;
 
+    signals:
+      void applyCompletion(int idx);
+
     public:
       CompletionsPopup(QWidget* parent = nullptr);
       void setList(const Completions& l);
       void up();
       void down();
       int currentIndex() const { return list->currentRow(); }
+      QFont listFont() { return list->font(); }
+      void setListFont(const QFont& f) { list->setFont(f); }
       };

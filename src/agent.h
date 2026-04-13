@@ -280,17 +280,22 @@ class Agent : public QWidget
       bool isPathSafe(const QString& path);
       bool readFile(const QString& path, QString& result);
       string writeFile(const QString& path, const QString& content);
+      std::string getFileOutline(const QString& file);
+      std::string getDiagnostics(const QString& file);
+      std::string findReferences(const QString& file, int line, int column);
       string listDirectory(const QString& path);
+      string listFilesRecursive(const QString& path);
       string searchProject(const QString& query, const QString& filePattern);
       string findSymbol(const QString& symbol);
       string fetchWebDocumentation(const QString& urlString);
       string runBuildCommand(const QString& command);
-      string replaceInFile(const QString& path, const QString& searchStr, const QString& replaceStr);
+      string replaceLines(const QString& path, int startLine, int linesToDelete, const QString& replaceText);
       string getGitStatus();
       string getGitDiff(const QString& path = "");
       string getGitLog(int limit = 5);
       string createGitCommit(const QString& message);
       QString normalizePath(const QString& path) const;
+      void saveAll();
 
       void setInputEnabled(bool enabled);
       DropAwarePlainTextEdit* userInput;

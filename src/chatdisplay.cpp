@@ -86,7 +86,7 @@ QString ChatDisplay::getChatCss() const {
           border-top: 1px solid #d0d7de;
           font-style: italic;
           }}
-    )", bg, fg));
+    )", bg, fg)) + getScrollbarCss(false);
       }
 
 //---------------------------------------------------------
@@ -105,7 +105,7 @@ QString ChatDisplay::getChatDarkCss() const {
         .ai      {{ background: rgba(255,255,255,0.05); border-left: 4px solid {1}; align-self: flex-start; width: 100%; }}
         .user    {{ background: rgba(255,255,255,0.1); border-right: 4px solid {1}; align-self: flex-end; width: 96%; }}
         code {{ background-color: rgba(230,230,230,0.15); border-radius: 10px; padding: 2px 4px; }}
-    )",  bg, fg));
+    )",  bg, fg)) + getScrollbarCss(true);
       }
 
  //---------------------------------------------------------

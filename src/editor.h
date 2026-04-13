@@ -117,7 +117,7 @@ enum class Cmd {
       CMD_SHOW_INFO,
       CMD_FORMAT,
       CMD_VIEW_FUNCTIONS,
-      CMD_VIEW_BUGS,
+      CMD_ANNOTATIONS,
       CMD_GOTO_TYPE_DEFINITION,
       CMD_GOTO_IMPLEMENTATION,
       CMD_GOTO_DEFINITION,
@@ -146,7 +146,7 @@ struct ShortcutConfig {
       Q_GADGET
 
       Q_ENUM(Cmd)
-//      Q_PROPERTY(Cmd cmd MEMBER cmd)
+      //      Q_PROPERTY(Cmd cmd MEMBER cmd)
       Q_PROPERTY(QString id MEMBER id)
       Q_PROPERTY(QString description MEMBER description)
       Q_PROPERTY(QString buildin MEMBER sequence)
@@ -154,9 +154,8 @@ struct ShortcutConfig {
 
     public:
       ShortcutConfig() { sequence = buildin; }
-      ShortcutConfig(QString b, QString c, QString d)
-         : id(b), description(c), buildin(d), sequence(d) {}
-//      Cmd cmd;
+      ShortcutConfig(QString b, QString c, QString d) : id(b), description(c), buildin(d), sequence(d) {}
+      //      Cmd cmd;
       QString id;
       QString description;
       QString buildin;
@@ -188,13 +187,17 @@ class TabBar : public QTabBar
             updateGeometry(); // without this horizontal size is not reliable set
             }
 
+    protected:
+      bool ro{false};
+      bool modified{false};
+
+    public slots:
+      void modifiedChanged();
+
     public:
-      TabBar(QWidget* parent = nullptr) : QTabBar(parent) { setMovable(true); }
-      void modifiedChanged() {
-            for (int i = 0; i < count(); ++i) {
-                  File* f = tabData(i).value<File*>();
-                  setTabTextColor(i, f->readOnly() ? QColor("blue") : (f->modified() ? QColor("red") : QColor("black")));
-                  }
+      TabBar(QWidget* parent = nullptr) : QTabBar(parent) {
+            setMovable(true);
+            //            connect(this, &TabBar::currentChanged, this, &TabBar::modifiedChanged);
             }
       };
 
@@ -258,12 +261,13 @@ class Editor : public QMainWindow
       QML_UNCREATABLE("no")
       QML_NAMED_ELEMENT(nped)
 
-      Q_PROPERTY(QStringList  modelsModel READ modelsModel NOTIFY modelsChanged)
-//      Q_PROPERTY(Models models READ models WRITE setModels NOTIFY modelsChanged)
+      Q_PROPERTY(QStringList modelsModel READ modelsModel NOTIFY modelsChanged)
+      //      Q_PROPERTY(Models models READ models WRITE setModels NOTIFY modelsChanged)
       Q_PROPERTY(QString fontFamily READ fontFamily WRITE setFontFamily NOTIFY fontFamilyChanged)
       Q_PROPERTY(QList<ShortcutConfig> shortcuts READ shortcuts NOTIFY shortcutsChanged)
       Q_PROPERTY(QList<FileType> fileTypes READ fileTypes NOTIFY fileTypesChanged)
-      Q_PROPERTY(QList<LanguageServerConfig> languageServersConfig READ languageServersConfig WRITE setLanguageServersConfig NOTIFY languageServersConfigChanged)
+      Q_PROPERTY(QList<LanguageServerConfig> languageServersConfig READ languageServersConfig WRITE setLanguageServersConfig NOTIFY
+                     languageServersConfigChanged)
       Q_PROPERTY(QStringList monospacedFonts READ monospacedFonts CONSTANT)
       Q_PROPERTY(bool darkMode READ darkMode WRITE setDarkMode NOTIFY darkModeChanged)
       Q_PROPERTY(QList<TextStyle> textStylesLight READ textStylesLight NOTIFY textStylesLightChanged)
@@ -286,11 +290,13 @@ class Editor : public QMainWindow
       LanguageServerList languageServers;
 
       QWidget* box;
-      bool _aiVisible { false };
+      bool _aiVisible{false};
+      bool _gitVisible{false};
+
       QWidget* enter;
       QStackedWidget* _stack;
       EditWidget* _editWidget;
-      MarkdownWebView* _mdWidget { nullptr };
+      MarkdownWebView* _mdWidget{nullptr};
       size_t _currentKontext{0};
       QLabel* urlLabel;
       QLabel* lineLabel;
@@ -306,14 +312,16 @@ class Editor : public QMainWindow
 
       QTimer* cursorTimer;
       QTimer* lsUpdateTimer;
-      Agent* _agent { nullptr };
+      Agent* _agent{nullptr};
       Models _models;
 
       static const int agentMinimumWidth{500};
       static const int gitPanelMinimumWidth{300};
       int agentWidth{agentMinimumWidth};
       int gitWidth{gitPanelMinimumWidth};
-      QListView* gitPanel;
+      QWidget* _gitPanel{nullptr};
+      QListView* gitListView;
+      bool gitDiff{false};
       GitList gitList;
 
       QSplitter* splitter;
@@ -338,7 +346,7 @@ class Editor : public QMainWindow
       Git _git;
       bool _darkMode{false};
 
-//      QString _settingsLLModel;
+      //      QString _settingsLLModel;
       //       QFileSystemWatcher* fileWatcher;
 
       QFont _font;
@@ -373,8 +381,10 @@ class Editor : public QMainWindow
       void deleteRestOfLine();
       void insertTab();
       void pick();
+
     public:
       void put();
+
     private:
       void rowSelect();
       void colSelect();
@@ -408,8 +418,9 @@ class Editor : public QMainWindow
       void formatting();
       void startCmd();
       void endCmd();
-      void updateViewMode();
+      void setViewMode(ViewMode vm);
       void screenshot();
+      void applyCompletion(int idx);
 
     signals:
       void fontFamilyChanged();
@@ -429,6 +440,7 @@ class Editor : public QMainWindow
 
       void setCurrentKontext(size_t idx);
       void setCurrentKontext(Kontext*);
+      void toggleViewMode();
 
       const ShortcutConfig& getSC(Cmd cmd);
       void saveAll();
@@ -487,7 +499,7 @@ class Editor : public QMainWindow
       json readJson(const QString& path);
       QString evalPP(const QString& pdata);
       std::vector<File*>& getFiles() { return files; }
-//      QString settingsLLModel() { return _settingsLLModel; }
+      //      QString settingsLLModel() { return _settingsLLModel; }
       Kontext* addFile(const QString& path);
 
       void enterCmd();
@@ -505,13 +517,12 @@ class Editor : public QMainWindow
                   }
             }
       FileTypes fileTypes() const { return _fileTypes; }
-
       TextStyles textStylesLight() { return _textStylesLight; }
       TextStyles textStylesDark() { return _textStylesDark; }
       QList<LanguageServerConfig> languageServersConfig() const { return _languageServersConfig; }
       void setLanguageServersConfig(const QList<LanguageServerConfig>& l) {
             LanguageServersConfig c;
-            for (const auto& cfg : l)       // ugh!
+            for (const auto& cfg : l) // ugh!
                   c.push_back(cfg);
             if (_languageServersConfig != c) {
                   _languageServersConfig = c;
@@ -530,6 +541,7 @@ class Editor : public QMainWindow
                   }
             }
       void showCompletions(const Completions&);
+      void hideCompletions();
       //       QFileSystemWatcher* getFileWatcher() const { return fileWatcher; }
       enum UpdateFlag { UpdateNothing = 0, UpdateLine = 1, UpdateScreen = 2, UpdateAll = 4 };
       Q_DECLARE_FLAGS(UpdateFlags, UpdateFlag)
@@ -549,16 +561,26 @@ class Editor : public QMainWindow
             }
       Models& models() { return _models; }
       Q_INVOKABLE Model model(int idx) { return _models[idx]; }
-      Q_INVOKABLE void setModel(int idx, const Model& m) { _models[idx] = m; emit modelsChanged(); }
-      Q_INVOKABLE void addModel() { _models.push_back(Model()); emit modelsChanged(); }
-      Q_INVOKABLE void removeModel(const Model m) { _models.removeIf([m](const Model& mm) { return mm == m;}); emit modelsChanged(); }
+      Q_INVOKABLE void setModel(int idx, const Model& m) {
+            _models[idx] = m;
+            emit modelsChanged();
+            }
+      Q_INVOKABLE void addModel() {
+            _models.push_back(Model());
+            emit modelsChanged();
+            }
+      Q_INVOKABLE void removeModel(const Model m) {
+            _models.removeIf([m](const Model& mm) { return mm == m; });
+            emit modelsChanged();
+            }
       QStringList modelsModel() {
             QStringList sl;
-            Debug("=====models {}", _models.size());
             for (const auto& model : _models)
                   sl.push_back(model.name);
             return sl;
             }
+      void showGitVersion(int row);
+      QWidget* gitPanel();
       };
 
 //---------------------------------------------------------

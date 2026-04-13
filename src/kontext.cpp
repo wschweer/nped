@@ -37,21 +37,12 @@ void Kontext::setSelectionMode(SelectionMode sm) {
       }
 
 //---------------------------------------------------------
-//   rows
-//   Helper function
-//---------------------------------------------------------
-
-int Kontext::rows() const {
-      return file()->rows();
-      }
-
-//---------------------------------------------------------
 //   atLineEnd
 //---------------------------------------------------------
 
 bool Kontext::atLineEnd() const {
       //      const Lines& t = text();
-      if (_cursor.filePos.row >= file()->rows() || _cursor.filePos.row < 0)
+      if (_cursor.filePos.row >= rows() || _cursor.filePos.row < 0)
             return true;
       int n = file()->columns(_cursor.filePos.row);
       if (_cursor.filePos.col >= n)
@@ -87,7 +78,7 @@ int Kontext::moveRow(int row, int delta, int* screenDy) const {
             ++row;
             if (screenDy)
                   *screenDy += 1;
-            while (file()->folded(row) && row < rows() - 1)
+            while (folded(row) && row < rows() - 1)
                   ++row;
             }
       while (delta < 0 && row > 0) {
@@ -97,7 +88,7 @@ int Kontext::moveRow(int row, int delta, int* screenDy) const {
                   if (screenDy)
                         *screenDy -= 1;
                   }
-            while (file()->folded(row) && row > 0)
+            while (folded(row) && row > 0)
                   --row;
             }
       return row;
@@ -109,16 +100,15 @@ int Kontext::moveRow(int row, int delta, int* screenDy) const {
 
 void Kontext::updateSelection() {
       _selection.end = _cursor.filePos;
-      if (endSelect().row >= file()->rows())
-            endSelect().row = file()->rows() - 1;
+      if (endSelect().row >= rows())
+            endSelect().row = rows() - 1;
       }
 
 //---------------------------------------------------------
 //   flipSelectionCursor
 //---------------------------------------------------------
 
-void Kontext::flipSelectionCursor()
-      {
+void Kontext::flipSelectionCursor() {
       _selection.flip();
       setCursorAbs(Cursor(_selection.end, Pos(_selection.end.col, _cursor.screenPos.row)));
       }
@@ -143,10 +133,10 @@ void Kontext::setSelection(const QRect& r) {
       //      QRect nr         = r.normalized();
       _selection.start = r.topLeft();
       _selection.end   = r.bottomRight();
-      if (startSelect().row >= file()->rows())
-            startSelect().row = file()->rows() - 1;
-      if (endSelect().row >= file()->rows())
-            endSelect().row = file()->rows() - 1;
+      if (startSelect().row >= rows())
+            startSelect().row = rows() - 1;
+      if (endSelect().row >= rows())
+            endSelect().row = rows() - 1;
       }
 
 //---------------------------------------------------------
@@ -162,7 +152,7 @@ int Kontext::screenLines() const {
 //---------------------------------------------------------
 
 void Kontext::movePrevWord() {
-      const Line& s = file()->line(_cursor.filePos.row);
+      const Line& s = line(_cursor.filePos.row);
       int n         = s.size();
       int i         = _cursor.filePos.col;
       if (i >= n)
@@ -204,11 +194,11 @@ static bool trenner(QChar c) {
 
 void Kontext::moveNextWord() {
       //      const auto& t = text();
-      if (_cursor.filePos.row >= file()->rows()) {
+      if (_cursor.filePos.row >= rows()) {
             Debug("no text");
             return;
             }
-      const Line& s = file()->line(_cursor.filePos.row);
+      const Line& s = line(_cursor.filePos.row);
       int n         = s.size();
 
       int i = _cursor.filePos.col;
@@ -233,7 +223,7 @@ void Kontext::moveNextWord() {
 //---------------------------------------------------------
 
 const QString& Kontext::currentLine() const {
-      return file()->line(_cursor.filePos.row).qstring();
+      return line(_cursor.filePos.row).qstring();
       }
 
 //---------------------------------------------------------
@@ -247,11 +237,10 @@ QString Kontext::selectionText() {
             case SelectionMode::RowSelect: {
                   QStringList sl;
                   for (int i = 0; i < selection().height(); ++i)
-                        sl << file()->line(selection().y() + i).qstring();
+                        sl << line(selection().y() + i).qstring();
                   s  = sl.join('\n');
                   s += "\n";
-                  }
-                  break;
+                  } break;
 
             case SelectionMode::CharSelect: {
                   Pos p1 = startSelect();
@@ -260,94 +249,28 @@ QString Kontext::selectionText() {
                         std::swap(p1, p2);
 
                   if (p1.row == p2.row) {
-                        s = file()->line(p1.row).qstring().mid(p1.col, p2.col - p1.col + 1);
+                        s = line(p1.row).qstring().mid(p1.col, p2.col - p1.col + 1);
                         }
                   else {
-                        s = file()->line(p1.row).qstring().mid(p1.col) + "\n";
+                        s = line(p1.row).qstring().mid(p1.col) + "\n";
                         for (int i = p1.row + 1; i < p2.row; ++i)
-                              s += file()->line(i).qstring() + "\n";
-                        s += file()->line(p2.row).qstring().left(p2.col+1);
+                              s += line(i).qstring() + "\n";
+                        s += line(p2.row).qstring().left(p2.col + 1);
                         }
-                  }
-                  break;
+                  } break;
 
             case SelectionMode::ColSelect:
                   for (int i = selection().y(); i < selection().y() + selection().height(); ++i) {
-                        QString ss = file()->line(i).mid(selection().x(), selection().width());
+                        QString ss = line(i).mid(selection().x(), selection().width());
                         while (ss.size() < selection().width())
                               ss += " ";
                         s += (ss + "\n");
                         }
                   break;
-            case SelectionMode::NoSelect:
-                  break;
+            case SelectionMode::NoSelect: break;
             }
       // Debug("<{}>", s);
       return s;
-      }
-
-//---------------------------------------------------------
-//   switchToLineMap
-//    move to the right line in map
-//    p   - current cursor position
-//    map - line list
-//---------------------------------------------------------
-
-void Kontext::switchToLineMap(const Lines& map) {
-      int i   = 0;
-      int row = _cursor.filePos.row;
-      //      Debug("row {} size {}", row, map.size());
-      for (; i < int(map.size()); ++i) {
-            int y = map[i].tag().row;
-            //            Debug("{} -- {}", y, row);
-            if (y == row)
-                  break;
-            if (y > row) {
-                  i = std::max(0, i - 1);
-                  break;
-                  }
-            }
-      moveCursorAbs(0, i);
-      }
-
-//---------------------------------------------------------
-//   setViewMode
-//---------------------------------------------------------
-
-void Kontext::setViewMode(ViewMode m) {
-      ViewMode old = _viewMode;
-      _viewMode    = old != ViewMode::File ? ViewMode::File : m;
-      file()->setViewMode(_viewMode, _cursor.filePos);
-
-      switch (_viewMode) {
-            case ViewMode::File: {
-                  int row;
-                  const Lines* map{nullptr};
-                  switch (old) {
-                        case ViewMode::Functions: map = &file()->kollaps(); break;
-                        case ViewMode::Bugs: map = &file()->bugs(); break;
-                        case ViewMode::SearchResults: map = &file()->searchResults(); break;
-                        case ViewMode::GitVersion: break;
-                        case ViewMode::File: break;    // cannot happen
-                        case ViewMode::WebView: break; // cannot happen
-                        }
-                  if (map) {
-                        if (_cursor.filePos.row >= map->size())
-                              row = 0;
-                        else
-                              row = map->at(_cursor.filePos.row).tag().row;
-                        moveCursorAbs(0, row);
-                        }
-                  } break;
-
-            case ViewMode::Functions: switchToLineMap(file()->kollaps()); break;
-            case ViewMode::Bugs: switchToLineMap(file()->bugs()); break;
-            case ViewMode::SearchResults: switchToLineMap(file()->searchResults()); break;
-            case ViewMode::GitVersion: break;
-            case ViewMode::WebView: break;
-            }
-      updateSelection();
-      editor->update();
       }
 
 //---------------------------------------------------------
@@ -377,11 +300,11 @@ void Kontext::createFunction(const QString& s) {
                                   "      }\n")
                               .arg(s);
 
-      if (y < file()->rows() && !file()->line(y).empty())
+      if (y < rows() && !line(y).empty())
             prototype += "\n";
       int off = 5;
       if (y > 2) {
-            if (!file()->line(y - 1).empty()) {
+            if (!line(y - 1).empty()) {
                   prototype.push_front("\n");
                   ++off;
                   }
@@ -408,11 +331,11 @@ void Kontext::createFunctionHeader() {
                            "//---------------------------------------------------------\n")
                        .arg(s);
 
-      if (y < file()->rows() && !file()->line(y).empty())
+      if (y < rows() && !line(y).empty())
             ss += "\n";
       int off = 4;
       if (y > 2) {
-            if (!file()->line(y - 1).empty()) {
+            if (!line(y - 1).empty()) {
                   ss.push_front("\n");
                   ++off;
                   }
@@ -435,7 +358,7 @@ void Kontext::gotoLine(const QString& s) {
 //---------------------------------------------------------
 
 int Kontext::columns() const {
-      return file()->line(fileRow()).size();
+      return line(fileRow()).size();
       }
 
 //---------------------------------------------------------
@@ -444,7 +367,7 @@ int Kontext::columns() const {
 
 void Kontext::fixCursor() {
       int lastScreenRow   = screenRows();
-      lastScreenRow      -= _cursor.fileRow() >= file()->rows() - 2 ? 1 : 1 + ContextLines;
+      lastScreenRow      -= _cursor.fileRow() >= rows() - 2 ? 1 : 1 + ContextLines;
       int firstScreenRow  = _cursor.fileRow() == 0 ? 0 : ContextLines;
       if (_cursor.screenPos.row > lastScreenRow)
             _cursor.screenPos.row = lastScreenRow;
@@ -463,7 +386,7 @@ void Kontext::fixCursor() {
 //---------------------------------------------------------
 
 void Kontext::fixScreenCursor(Cursor& c) {
-      int lastScreenRow  = screenRows() - (c.fileRow() >= file()->rows() - 2 ? 1 : 1 + ContextLines);
+      int lastScreenRow  = screenRows() - (c.fileRow() >= rows() - 2 ? 1 : 1 + ContextLines);
       int firstScreenRow = c.fileRow() == 0 ? 0 : ContextLines;
 
       if (c.screenPos.row > lastScreenRow)
@@ -486,13 +409,13 @@ void Kontext::moveCursorRel(int dx, int dy, MoveType type) {
       if (type == MoveType::Page) {
             while (dy > 0 && _cursor.filePos.row < lastRow) {
                   --dy;
-                  int nrow = file()->nextRow(_cursor.filePos.row);
+                  int nrow = nextRow(_cursor.filePos.row);
                   if (nrow != -1)
                         _cursor.filePos.row = nrow;
                   }
             while (dy < 0 && _cursor.filePos.row > 0) {
                   ++dy;
-                  int nrow = file()->previousRow(_cursor.filePos.row);
+                  int nrow = previousRow(_cursor.filePos.row);
                   if (nrow != -1)
                         _cursor.filePos.row = nrow;
                   }
@@ -506,19 +429,19 @@ void Kontext::moveCursorRel(int dx, int dy, MoveType type) {
       if (type == MoveType::Roll) {
             _cursor.screenPos.row += dy;
             _cursor.screenPos.col += dx;
-            int lastScreenRow      = screenRows() - (_cursor.fileRow() >= file()->rows() - 2 ? 1 : 1 + ContextLines);
+            int lastScreenRow      = screenRows() - (_cursor.fileRow() >= rows() - 2 ? 1 : 1 + ContextLines);
             int firstScreenRow     = _cursor.fileRow() == 0 ? 0 : ContextLines;
 
             if (_cursor.screenPos.row > lastScreenRow) {
                   int n = _cursor.screenPos.row - lastScreenRow;
                   while (n--)
-                        _cursor.filePos.row = file()->previousRowIfAvailable(_cursor.filePos.row);
+                        _cursor.filePos.row = previousRowIfAvailable(_cursor.filePos.row);
                   _cursor.screenPos.row = lastScreenRow;
                   }
             else if (_cursor.screenPos.row < firstScreenRow) {
                   int n = firstScreenRow - _cursor.screenPos.row;
                   while (n--)
-                        _cursor.filePos.row = file()->nextRowIfAvailable(_cursor.filePos.row);
+                        _cursor.filePos.row = nextRowIfAvailable(_cursor.filePos.row);
                   _cursor.screenPos.row = firstScreenRow;
                   }
             }
@@ -528,14 +451,14 @@ void Kontext::moveCursorRel(int dx, int dy, MoveType type) {
             while (dy > 0 && row < lastRow) {
                   --dy;
                   ++screenPosDelta;
-                  int nrow = file()->nextRow(row);
+                  int nrow = nextRow(row);
                   if (nrow != -1)
                         row = nrow;
                   }
             while (dy < 0 && row > 0) {
                   ++dy;
                   --screenPosDelta;
-                  int nrow = file()->previousRow(row);
+                  int nrow = previousRow(row);
                   if (nrow != -1)
                         row = nrow;
                   }
@@ -581,7 +504,7 @@ void Kontext::setCursorAbs(const Cursor& c) {
             _cursor.screenPos.col = c.screenPos.col;
       if (c.screenPos.row >= 0)
             _cursor.screenPos.row = c.screenPos.row;
-      _cursor.filePos.row   = std::clamp(_cursor.filePos.row, 0, file()->rows() - 1);
+      _cursor.filePos.row   = std::clamp(_cursor.filePos.row, 0, rows() - 1);
       _cursor.filePos.col   = std::max(0, _cursor.filePos.col);
       _cursor.screenPos.row = std::clamp(_cursor.screenPos.row, 0, screenRows());
       _cursor.screenPos.col = std::clamp(_cursor.screenPos.col, 0, screenColumns());
@@ -606,4 +529,219 @@ void Kontext::moveCursorTopLine() {
 void Kontext::moveCursorBottomLine() {
       int n = screenLines() - screenRow() - ContextLines - 1;
       moveCursorRel(0, n);
+      }
+
+//---------------------------------------------------------
+//   switchToLineMap
+//    move to the right line in map
+//    p   - current cursor position
+//    map - line list
+//---------------------------------------------------------
+
+void Kontext::switchToLineMap(const Lines& map) {
+      int i   = 0;
+      int row = _cursor.filePos.row;
+      //      Debug("row {} size {}", row, map.size());
+      for (; i < int(map.size()); ++i) {
+            int y = map[i].tag().row;
+            //            Debug("{} -- {}", y, row);
+            if (y == row)
+                  break;
+            if (y > row) {
+                  i = std::max(0, i - 1);
+                  break;
+                  }
+            }
+      moveCursorAbs(0, i);
+      }
+
+//---------------------------------------------------------
+//   setViewMode
+//    map cursorposition between different views if
+//    possible
+//---------------------------------------------------------
+
+void Kontext::setViewMode(ViewMode m) {
+      ViewMode old = _viewMode;
+
+      _viewMode = m;
+      switch (_viewMode) {
+            case ViewMode::File: {
+                  int row;
+                  const Lines* map{nullptr};
+                  switch (old) {
+                        case ViewMode::Outline:
+                              //
+                              map = &file()->outline();
+                              break;
+                        case ViewMode::Annotations: //
+                              map = &file()->bugs();
+                              break;
+                        case ViewMode::SearchResults: //
+                              map = &file()->searchResults();
+                              break;
+                        case ViewMode::GitVersion: break;
+                        case ViewMode::GitDiff: break;
+                        case ViewMode::File: break;    // cannot happen
+                        case ViewMode::WebView: break; // cannot happen
+                        }
+                  if (map) {
+                        if (_cursor.filePos.row >= map->size())
+                              row = 0;
+                        else
+                              row = map->at(_cursor.filePos.row).tag().row;
+                        moveCursorAbs(0, row);
+                        }
+                  } break;
+
+            case ViewMode::Outline: switchToLineMap(file()->outline()); break;
+            case ViewMode::Annotations: switchToLineMap(file()->bugs()); break;
+            case ViewMode::SearchResults: switchToLineMap(file()->searchResults()); break;
+            case ViewMode::GitVersion: break;
+            case ViewMode::GitDiff: break;
+            case ViewMode::WebView: break;
+            }
+      updateSelection();
+      editor->update();
+      }
+
+//---------------------------------------------------------
+//   line
+//---------------------------------------------------------
+
+const Line& Kontext::line(int row) const {
+      const Lines* lines = nullptr;
+// Debug("{}", int(_viewMode));
+      switch (_viewMode) {
+            default: break;
+            case ViewMode::File:       lines = &file()->fileText(); break;
+            case ViewMode::Outline:  lines = &file()->outline(); break;
+            case ViewMode::GitVersion: lines = &file()->gitVersion(); break;
+            case ViewMode::GitDiff:    lines = &file()->gitVersion(); break;
+            case ViewMode::Annotations:       lines = &file()->bugs(); break;
+            }
+      static const Line emptyLine;
+      if (!lines || lines->empty() || row >= lines->size())
+            return emptyLine;
+      return lines->at(row);
+      }
+
+//---------------------------------------------------------
+//   rows
+//---------------------------------------------------------
+
+int Kontext::rows() const {
+      int n = 0;
+      switch (_viewMode) {
+            default:
+            case ViewMode::File: n = file()->fileText().size(); break;
+            case ViewMode::Outline: n = file()->outline().size(); break;
+            case ViewMode::GitVersion: n = file()->gitVersion().size(); break;
+            case ViewMode::Annotations: n = file()->bugs().size(); break;
+            }
+      //      if (readOnly() && n > 0)
+      //            n -= 1;
+      return n;
+      }
+
+//---------------------------------------------------------
+//   maxLineLength
+//---------------------------------------------------------
+
+int Kontext::maxLineLength() const {
+      int maxLen         = 0;
+      const Lines* lines = nullptr;
+      switch (_viewMode) {
+            default:
+            case ViewMode::File: lines = &file()->fileText(); break;
+            case ViewMode::Outline: lines = &file()->outline(); break;
+            case ViewMode::GitVersion: lines = &file()->gitVersion(); break;
+            case ViewMode::Annotations: lines = &file()->bugs(); break;
+            }
+      if (lines) {
+            for (const auto& line : *lines)
+                  if (line.size() > maxLen)
+                        maxLen = line.size();
+            }
+      return maxLen;
+      }
+
+//---------------------------------------------------------
+//   posValid
+//---------------------------------------------------------
+
+bool Kontext::posValid(const Pos& pos) const {
+      if (pos.col < 0 || pos.row < 0)
+            return false;
+      if (pos.col > file()->columns(pos.row))
+            return false;
+      if (pos.row >= rows())
+            return false;
+      return true;
+      }
+
+//---------------------------------------------------------
+//   nextRow
+//    return next visible row
+//    return -1 if there is no next row
+//---------------------------------------------------------
+
+int Kontext::nextRow(int row) const {
+      if (row >= rows() - 1)
+            return -1;
+      ++row;
+      while (row < (rows() - 1) && folded(row))
+            ++row;
+      if (folded(row))
+            return -1;
+      return row;
+      }
+
+//---------------------------------------------------------
+//   previousRow
+//    return previous visible row
+//    return -1 if there is no previous row
+//---------------------------------------------------------
+
+int Kontext::previousRow(int row) const {
+      if (row <= 0)
+            return -1;
+      --row;
+      while (row > 0 && folded(row))
+            --row;
+      if (folded(row))
+            return -1;
+      return row;
+      }
+
+//---------------------------------------------------------
+//   folded
+//    check if row is part of a foldable area and return
+//    true if its folded (unvisible)
+//---------------------------------------------------------
+
+bool Kontext::folded(int row) const {
+      if (row >= rows())
+            return false;
+      const Line& l = line(row);
+      FoldMark mark = l.fold();
+      if (mark != FoldMark::Fold)
+            return false;
+      // go back to begin of folded area to find out if
+      // area is folded by checking the arrow mark
+      while (row--) {
+            const Line& l = line(row);
+            FoldMark mark = l.fold();
+            if (mark == FoldMark::Begin)
+                  return l.label() == QChar(0x25b6);
+            }
+      return false;
+      }
+
+//---------------------------------------------------------
+//   readOnly
+//---------------------------------------------------------
+
+bool Kontext::readOnly() const {
+      return file()->readOnly() || _viewMode != ViewMode::File;
       }

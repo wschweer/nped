@@ -60,4 +60,5 @@ class Git
       QString getCurrentBranch();
       void getHistory(const QString&, std::vector<GitHistory*>&);
       Lines getFile(const git_oid* oid);
+      Lines getDiff(const Lines& ref, const git_oid* oid);
       };

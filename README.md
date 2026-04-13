@@ -1,11 +1,11 @@
 # NPed
 
-NPed (Program Editor) is a modern C++23 and Qt6-based text editor and lightweight IDE featuring Language Server and AI (LLM's) Integration.
+NPed (Program Editor) is a modern C++23 and Qt6-based text editor and lightweight
+IDE featuring Language Server and AI (LLM's) Integration.
 
 |simple Ui:  | with Ai-Panel | dark-Style |
-| ------- | -------- | ------- |
-| [<img src="manual/simple-ui.jpg" style="width:200px;"/>](manual/simple-ui.jpg) | [<img src="manual/ai-ui.jpg" style="width:300px;"/>](manual/ai-ui.jpg)  | [<img src="manual/dark-ui.jpg" style="width:300px;"/>](manual/dark-ui.jpg)  |
-
+| -------    | --------      | ------- |
+[<img src="manual/simple-ui.jpg" style="width:200px;"/>](manual/simple-ui.jpg) | [<img src="manual/ai-ui.jpg" style="width:300px;"/>](manual/ai-ui.jpg)  | [<img src="manual/dark-ui.jpg" style="width:300px;"/>](manual/dark-ui.jpg)
 
 - [Overview](manual/overview.md)
 - [Current Status](manual/status.md)

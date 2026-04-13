@@ -177,17 +177,16 @@ int EditWidget::screenRowToFileRow(int screenRow) {
       // we only know the cursor position and use it as a start
       Kontext* k = editor->kontext();
       Cursor c   = k->cursor();
-      File* file = k->file();
       int n      = screenRow - c.screenRow();
       int row    = c.fileRow();
       if (n == 0)
             return row;
       if (n > 0)
             for (int i = 0; i < n; ++i)
-                  row = file->nextRowIfAvailable(row);
+                  row = k->nextRowIfAvailable(row);
       else
             for (int i = 0; i > n; --i)
-                  row = file->previousRowIfAvailable(row);
+                  row = k->previousRowIfAvailable(row);
       return row;
       }
 
@@ -229,6 +228,7 @@ void EditWidget::mousePressEvent(QMouseEvent* e) {
       k->updateSelection();
       emit k->cursorChanged();
       editor->update();
+      editor->hideCompletions();
       setFocus(Qt::OtherFocusReason);
       }
 
@@ -254,7 +254,7 @@ void EditWidget::mouseMoveEvent(QMouseEvent* e) {
       if (p.x() >= 0 && p.x() < leftMargin()) {
             Kontext* k = editor->kontext();
             int row    = screenRowToFileRow(int((p.y() - EditWidget::BORDER) / editor->fh()));
-            row        = std::clamp(row, 0, std::max(0, k->file()->rows() - 1));
+            row        = std::clamp(row, 0, std::max(0, k->rows() - 1));
             if (k->file()->isFoldable(row)) {
                   hoverMark = row;
                   update();
@@ -296,7 +296,7 @@ struct DrawingContext {
 //---------------------------------------------------------
 
 void EditWidget::paintLine(DrawingContext& dc, int fileRow, int y) {
-      const Line& l = editor->kontext()->file()->line(fileRow);
+      const Line& l = editor->kontext()->line(fileRow);
       //*************************************************************
       //    paint selection background
       //*************************************************************
@@ -389,7 +389,7 @@ void EditWidget::paintEvent(QPaintEvent* e) {
       if (!k)
             return;
 
-      const File* file     = k->file();
+//      const File* file     = k->file();
       const Cursor& cursor = k->cursor();
       QRect r(e->rect());
 
@@ -438,7 +438,7 @@ void EditWidget::paintEvent(QPaintEvent* e) {
                   painter.fillRect(QRect(0, y - dc.fa - 1, width(), dc.fh + 2), nonTextColor);
             else {
                   paintLine(dc, fileRow, y);
-                  fileRow = file->previousRow(fileRow);
+                  fileRow = k->previousRow(fileRow);
                   }
             }
 
@@ -446,14 +446,14 @@ void EditWidget::paintEvent(QPaintEvent* e) {
       //    draw text from cursor position to end of screen
       //*************************************************************
 
-      fileRow = file->nextRow(cursor.fileRow());
+      fileRow = k->nextRow(cursor.fileRow());
       for (int i = cursor.screenRow() + 1; i < rows(); ++i) {
             int y = EditWidget::BORDER + dc.fa + i * dc.fh;
             if (fileRow < 0)
                   painter.fillRect(QRect(0, y - dc.fa - 1, width(), dc.fh + 2), nonTextColor);
             else {
                   paintLine(dc, fileRow, y);
-                  fileRow = file->nextRow(fileRow);
+                  fileRow = k->nextRow(fileRow);
                   }
             }
 
@@ -469,7 +469,7 @@ void EditWidget::paintEvent(QPaintEvent* e) {
             painter.fillRect(rr, editor->textStyle(TextStyle::Cursor).bg);
             painter.setPen(editor->textStyle(TextStyle::Cursor).fg);
             painter.setFont(editor->font());
-            QString s = k->cursorValid() ? k->file()->line(k->fileRow())[k->fileCol()] : QString("");
+            QString s = k->cursorValid() ? k->line(k->fileRow())[k->fileCol()] : QString("");
             painter.drawText(cx, cy + dc.fa, s);
             }
       painter.end();

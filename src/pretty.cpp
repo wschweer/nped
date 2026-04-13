@@ -64,7 +64,8 @@ void File::markCpp() {
       QString rStringPattern;
 
       bool inChar = false;
-      for (auto& l : _viewMode == ViewMode::GitVersion ? _gitVersion : _fileText) {
+//TODO      for (auto& l : _viewMode == ViewMode::GitVersion ? _gitVersion : _fileText) {
+      for (auto& l : _fileText) {
             l.clearPrettyMarks();
             int col1 = 0;
             for (int i = 0; i < l.size(); ++i) {

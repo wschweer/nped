@@ -12,6 +12,7 @@
 #include <QApplication>
 #include <QMainWindow>
 #include <QBoxLayout>
+#include <QToolBar>
 #include <QClipboard>
 #include <QCompleter>
 #include <QDir>
@@ -47,6 +48,7 @@
 #include "agent.h"
 #include "webview.h"
 #include "completion.h"
+#include "textstyle.h"
 // #include "screenshot.h"
 
 #include <nlohmann/json.hpp>
@@ -83,6 +85,7 @@ std::map<Cmd, ShortcutConfig> Editor::_shortcuts = {
          {    Cmd::CMD_DELETE_LINE_RIGHT,   {"CMD_DELETE_LINE_RIGHT", "Delete Line Right", "Ctrl + Q,  Ctrl + Y"}},
          {                 Cmd::CMD_UNDO,                                        {"CMD_UNDO", "Undo", "Ctrl + Z"}},
          {                 Cmd::CMD_REDO,                                {"CMD_REDO", "Redo", "Shift + Ctrl + Z"}},
+
          {               Cmd::CMD_RUBOUT,                           {"CMD_RUBOUT", "Rubout", "Delete; Backspace"}},
          {          Cmd::CMD_CHAR_DELETE,                               {"CMD_CHAR_DELETE", "Delete", "Ctrl + G"}},
          {          Cmd::CMD_INSERT_LINE,                          {"CMD_INSERT_LINE", "Insert Line", "Ctrl + N"}},
@@ -105,7 +108,7 @@ std::map<Cmd, ShortcutConfig> Editor::_shortcuts = {
          {            Cmd::CMD_SHOW_INFO,                          {"CMD_SHOW_INFO", "Show AI Panel", "Ctrl + H"}},
          {               Cmd::CMD_FORMAT,                         {"CMD_FORMAT", "Format", "Ctrl + O,  Ctrl + F"}},
          {       Cmd::CMD_VIEW_FUNCTIONS,                       {"CMD_VIEW_FUNCTIONS", "Toggle View", "Ctrl + V"}},
-         {            Cmd::CMD_VIEW_BUGS,                     {"CMD_VIEW_BUGS", "View LS Annotation", "Ctrl + B"}},
+         {          Cmd::CMD_ANNOTATIONS,                     {"CMD_VIEW_BUGS", "View LS Annotation", "Ctrl + B"}},
          { Cmd::CMD_GOTO_TYPE_DEFINITION,             {"CMD_GOTO_TYPE_DEFINITION", "Goto Type Definition", "F10"}},
          {  Cmd::CMD_GOTO_IMPLEMENTATION,               {"CMD_GOTO_IMPLEMENTATION", "Goto Implementation", "F11"}},
          {      Cmd::CMD_GOTO_DEFINITION,                       {"CMD_GOTO_DEFINITION", "Goto Definition", "F12"}},
@@ -198,7 +201,8 @@ bool KeyLogger::eventFilter(QObject* obj, QEvent* event) {
             }
       if (!partial)
             clear();
-      emit keyLabelChanged(QKeySequence(keys[0], keys[1], keys[2], keys[3]).toString(QKeySequence::NativeText));
+      emit keyLabelChanged(
+          QKeySequence(keys[0], keys[1], keys[2], keys[3]).toString(QKeySequence::NativeText));
       return QObject::eventFilter(obj, event);
       }
 
@@ -213,6 +217,7 @@ const ShortcutConfig& Editor::getSC(Cmd cmd) {
 QList<ShortcutConfig> Editor::shortcuts() const {
       QList<ShortcutConfig> l;
       for (const auto& [key, val] : _shortcuts)
+
             l.push_back(val);
       return l;
       }
@@ -266,7 +271,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
                       kontext()->moveCursorRel(0, 1);
                       }),
          Action(getSC(Cmd::CMD_LINE_START), [this] { kontext()->moveCursorAbs(0, -1); }),
-         Action(getSC(Cmd::CMD_LINE_END), [this] { kontext()->moveCursorAbs(kontext()->currentLine().size(), -1); }),
+         Action(getSC(Cmd::CMD_LINE_END),
+                [this] { kontext()->moveCursorAbs(kontext()->currentLine().size(), -1); }),
          Action(getSC(Cmd::CMD_LINE_TOP), [this] { kontext()->moveCursorTopLine(); }),
          Action(getSC(Cmd::CMD_LINE_BOTTOM), [this] { kontext()->moveCursorBottomLine(); }),
          Action(getSC(Cmd::CMD_PAGE_UP),
@@ -316,12 +322,14 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
          Action(getSC(Cmd::CMD_FLIP_CURSOR), [this] { kontext()->flipSelectionCursor(); }),
 
          Action(getSC(Cmd::CMD_FORMAT), [this] { formatting(); }),
-         Action(getSC(Cmd::CMD_VIEW_FUNCTIONS),
+         Action(getSC(Cmd::CMD_VIEW_FUNCTIONS), [this] { toggleViewMode(); }),
+         Action(getSC(Cmd::CMD_ANNOTATIONS),
                 [this] {
-                      kontext()->toggleViewMode();
-                      updateViewMode();
+                      if (kontext()->viewMode() == ViewMode::Annotations)
+                            setViewMode(ViewMode::File);
+                      else
+                            setViewMode(ViewMode::Annotations);
                       }),
-         Action(getSC(Cmd::CMD_VIEW_BUGS), [this] { kontext()->setViewMode(ViewMode::Bugs); }),
          Action(getSC(Cmd::CMD_SEARCH_NEXT), [this] { searchNext(); }),
          Action(getSC(Cmd::CMD_SEARCH_PREV), [this] { searchPrev(); }),
          Action(getSC(Cmd::CMD_DELETE_WORD), [this] { deleteNextWord(); }),
@@ -338,7 +346,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
          Action(getSC(Cmd::CMD_FOLD_ALL), [this] { foldAll(); }),
          Action(getSC(Cmd::CMD_UNFOLD_ALL), [this] { unfoldAll(); }),
          Action(getSC(Cmd::CMD_FOLD_TOGGLE), [this] { foldToggle(); }),
-         //             Action(getSC(Cmd::CMD_SEARCH_LIST, [this] { kontext()->setViewMode(ViewMode::SearchResults); }),
+         //             Action(getSC(Cmd::CMD_SEARCH_LIST, [this] { setViewMode(ViewMode::SearchResults); }),
          Action(getSC(Cmd::CMD_RENAME), [this] { rename(); }),
          Action(getSC(Cmd::CMD_SCREENSHOT), [this] { screenshot(); }),
             };
@@ -385,7 +393,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       aiButton->setToolTip("toggle AI panel");
       hbox->addWidget(aiButton, 0, Qt::AlignRight);
       connect(aiButton, &QToolButton::toggled, [this] {
-            bool visible = aiButton->isChecked();
+            bool visible   = aiButton->isChecked();
             int agentIndex = splitter->indexOf(agent());
             if (!visible) {
                   // The panel is visible and will be switched to invisible.
@@ -450,16 +458,16 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             if (!visible) {
                   // The panel is visible and will be switched to invisible.
                   // Save the actual width before switching.
-                  gitWidth = splitter->sizes()[splitter->indexOf(gitPanel)];
+                  gitWidth = splitter->sizes()[splitter->indexOf(gitPanel())];
                   }
             // Try to adjust the main window so that the edit widget does
             // not change in width.
             auto sz      = size();
             int newWidth = sz.width();
-            gitPanel->setVisible(visible);
+            gitPanel()->setVisible(visible);
             if (visible) {
                   QList<int> sizes = splitter->sizes();
-                  int gitIndex     = splitter->indexOf(gitPanel);
+                  int gitIndex     = splitter->indexOf(gitPanel());
                   sizes[gitIndex]  = gitWidth;
                   splitter->setSizes(sizes);
                   newWidth += gitWidth + splitter->handleWidth();
@@ -491,20 +499,6 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             dialog->show();
             });
       hbox->addWidget(configButton, 0, Qt::AlignRight);
-
-      gitPanel = new QListView(box);
-      gitPanel->setObjectName("gitPanel");
-      gitPanel->setMinimumWidth(gitPanelMinimumWidth);
-      gitPanel->setVisible(false);
-      gitPanel->setModel(&gitList);
-      connect(gitPanel, &QListView::clicked, [this](const QModelIndex& index) {
-            kontext()->file()->showGitVersion(index.row());
-            tabBar->modifiedChanged();
-            _editWidget->setFocus();
-            update();
-            });
-      splitter->addWidget(gitPanel);
-      splitter->setCollapsible(splitter->indexOf(gitPanel), false);
 
       vbox->addWidget(splitter, 500);
 
@@ -582,6 +576,11 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
 
       completionsPopup = new CompletionsPopup(nullptr);
       completionsPopup->hide();
+      connect(completionsPopup, &CompletionsPopup::applyCompletion, [this](int idx) {
+            startCmd();
+            applyCompletion(idx);
+            endCmd();
+            });
 
       //*****************************************
       //    Initialize from .nped
@@ -593,7 +592,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       connect(cursorTimer, &QTimer::timeout, [this] { unsetCursor(); });
       lsUpdateTimer = new QTimer(this);
       lsUpdateTimer->setSingleShot(true);
-      connect(lsUpdateTimer, &QTimer::timeout, [this] { kontext()->file()->updateAST(); });
+      connect(lsUpdateTimer, &QTimer::timeout, [this] { kontext()->file()->updateOutline(); });
 
       _editWidget->setFocus();
       _editWidget->installEventFilter(kl);
@@ -609,6 +608,14 @@ Editor::~Editor() {
                   delete ls.client;
                   }
             }
+      }
+
+//---------------------------------------------------------
+//   hideCompletions
+//---------------------------------------------------------
+
+void Editor::hideCompletions() {
+      completionsPopup->hide();
       }
 
 //---------------------------------------------------------
@@ -633,12 +640,69 @@ Agent* Editor::agent() {
                   aiButton->setChecked(_aiVisible);
 
                   QList<int> sizes  = splitter->sizes();
-                  sizes[0] = width();
+                  sizes[0]          = width();
                   sizes[agentIndex] = agentWidth;
                   splitter->setSizes(sizes);
                   }
             }
       return _agent;
+      }
+
+//---------------------------------------------------------
+//   gitPanel
+//---------------------------------------------------------
+
+QWidget* Editor::gitPanel() {
+      if (!_gitPanel) {
+            _gitPanel = new QWidget(box);
+            _gitPanel->setObjectName("gitPanel");
+            _gitPanel->setMinimumWidth(gitPanelMinimumWidth);
+            _gitPanel->setVisible(false);
+
+            splitter->insertWidget(1, _gitPanel);
+
+            QVBoxLayout* gitLayout = new QVBoxLayout(_gitPanel);
+            gitLayout->setContentsMargins(0, 0, 0, 0);
+            gitLayout->setSpacing(0);
+
+            QToolBar* gitToolBar = new QToolBar(_gitPanel);
+            gitLayout->addWidget(gitToolBar);
+
+            QAction* diffAction = gitToolBar->addAction("Diff");
+            diffAction->setCheckable(true);
+            diffAction->setChecked(gitDiff);
+            connect(diffAction, &QAction::toggled, [this](bool checked) {
+                  gitDiff = checked;
+                  if (kontext() && kontext()->file() && kontext()->file()->currentGitHistory() != 0) {
+                        showGitVersion(kontext()->file()->currentGitHistory());
+                        update();
+                        }
+                  });
+
+            int gitIndex = splitter->indexOf(_gitPanel);
+            splitter->setCollapsible(gitIndex, false);
+            if (_gitVisible) {
+                  _gitPanel->setVisible(_gitVisible);
+                  const QSignalBlocker blocker(_gitButton);
+                  _gitButton->setChecked(_gitVisible);
+
+                  QList<int> sizes = splitter->sizes();
+                  sizes[0]         = width();
+                  sizes[gitIndex]  = gitWidth;
+                  splitter->setSizes(sizes);
+                  }
+            gitListView = new QListView(_gitPanel);
+            gitListView->setModel(&gitList);
+            gitLayout->addWidget(gitListView);
+
+            connect(gitListView, &QListView::clicked, [this](const QModelIndex& index) {
+                  showGitVersion(index.row());
+                  tabBar->modifiedChanged();
+                  _editWidget->setFocus();
+                  update();
+                  });
+            }
+      return _gitPanel;
       }
 
 //---------------------------------------------------------
@@ -665,6 +729,17 @@ MarkdownWebView* Editor::mdWidget() {
 
             QToolButton* btnForward = new QToolButton(navBar);
             btnForward->setToolTip("Forward");
+
+            auto updateButtons = [btnBack, btnForward, this]() {
+                  if (!_mdWidget || !_mdWidget->page())
+                        return;
+                  btnBack->setEnabled(_mdWidget->page()->history()->canGoBack());
+                  btnForward->setEnabled(_mdWidget->page()->history()->canGoForward());
+                  };
+            connect(_mdWidget, &QWebEngineView::loadFinished, this,
+                    [updateButtons](bool ok) { updateButtons(); });
+            updateButtons();
+
             connect(btnForward, &QToolButton::clicked, _mdWidget, &QWebEngineView::forward);
 
             QToolButton* btnReload = new QToolButton(navBar);
@@ -682,14 +757,17 @@ MarkdownWebView* Editor::mdWidget() {
                         }
                   });
 
-            connect(this, &Editor::darkModeChanged, [this, btnBack, btnForward, btnReload, btnHome](bool dark) {
-                  QString iconPath = darkMode() ? ":/images/configure_white.svg" : ":/images/configure.svg";
-                  btnBack->setIcon(QIcon(dark ? ":/images/back_white.svg" : ":/images/back.svg"));
-                  btnForward->setIcon(QIcon(dark ? ":/images/forward_white.svg" : ":/images/forward.svg"));
-                  btnReload->setIcon(QIcon(dark ? ":/images/reload_white.svg" : ":/images/reload.svg"));
-                  btnHome->setIcon(QIcon(dark ? ":/images/home_white.svg" : ":/images/home.svg"));
-                  _mdWidget->setDarkMode(dark);
-                  });
+            connect(
+                this, &Editor::darkModeChanged, [this, btnBack, btnForward, btnReload, btnHome](bool dark) {
+                      QString iconPath =
+                          darkMode() ? ":/images/configure_white.svg" : ":/images/configure.svg";
+                      btnBack->setIcon(QIcon(dark ? ":/images/back_white.svg" : ":/images/back.svg"));
+                      btnForward->setIcon(
+                          QIcon(dark ? ":/images/forward_white.svg" : ":/images/forward.svg"));
+                      btnReload->setIcon(QIcon(dark ? ":/images/reload_white.svg" : ":/images/reload.svg"));
+                      btnHome->setIcon(QIcon(dark ? ":/images/home_white.svg" : ":/images/home.svg"));
+                      _mdWidget->setDarkMode(dark);
+                      });
             navLayout->addWidget(btnBack);
             navLayout->addWidget(btnForward);
             navLayout->addWidget(btnReload);
@@ -778,63 +856,6 @@ void Editor::initEnterWidget() {
                         leaveEnter();
                         });
                   enterLine->addAction(action);
-                  }
-            }
-      }
-
-//-----------------------------------------------------------------------------
-//   updateViewMode
-//    The main editor window is stacked:
-//          index 0:    editWidget, used for all view modes except WebView
-//          index 1:    mdWidget, used for view mode WebView
-//-----------------------------------------------------------------------------
-
-void Editor::updateViewMode() {
-      auto viewMode = kontext()->viewMode();
-      switch (viewMode) {
-            default:
-            case ViewMode::File:
-                  if (_stack->currentIndex() != 0)
-                        _stack->setCurrentIndex(0);
-                  _editWidget->setFocus();
-                  vScroll->setVisible(true);
-                  break;
-
-            case ViewMode::WebView: {
-                  if (_stack->currentIndex() != 1)
-                        _stack->setCurrentIndex(1);
-                  mdWidget()->setFocus();
-                  auto lid         = kontext()->file()->languageId();
-                  const auto& text = kontext()->file()->plainText();
-                  if (lid == "markdown")
-                        mdWidget()->setMarkdown(text, kontext()->fileRow());
-                  else if (lid == "html")
-                        mdWidget()->setHtml(text);
-                  else if (lid == "image")
-                        mdWidget()->load(QUrl::fromLocalFile(kontext()->file()->path()));
-                  vScroll->setVisible(false); // mdWidget has its own scroll bar
-                  } break;
-
-                  //            case ViewMode::Functions:
-                  //                kontext()->setViewMode(ViewMode::Functions);
-                  //                  break;
-            }
-      }
-
-//---------------------------------------------------------
-//   toggleViewMode
-//---------------------------------------------------------
-
-void Kontext::toggleViewMode() {
-      const auto& l = file()->languageId();
-      if (l == "cpp" || l == "c") {
-            setViewMode(ViewMode::Functions);
-            }
-      else if (l == "markdown" || l == "html" || l == "image") {
-            switch (_viewMode) {
-                  default:
-                  case ViewMode::File: _viewMode = ViewMode::WebView; break;
-                  case ViewMode::WebView: _viewMode = ViewMode::File; break;
                   }
             }
       }
@@ -957,13 +978,13 @@ void Editor::setCurrentKontext(size_t idx) {
             return;
             }
       _currentKontext = idx;
-      kontext()->setCursorAbs(kontext()->cursor());
+      //      kontext()->setCursorAbs(kontext()->cursor());
       tabBar->setCurrentIndex(_currentKontext);
       urlLabel->setText(kontext()->file()->path());
-      update();
+      setViewMode(kontext()->viewMode());
+      //      update();
       updateGitHistory();
       updateCursor();
-      updateViewMode();
       }
 
 void Editor::setCurrentKontext(Kontext* k) {
@@ -982,7 +1003,7 @@ void Editor::addKontext(Kontext* k, int index) {
       connectKontext(k);
       QFileInfo fi(k->file()->path());
       index = tabBar->insertTab(index, fi.fileName());
-      tabBar->setTabData(index, QVariant::fromValue<File*>(k->file()));
+      tabBar->setTabData(index, QVariant::fromValue<Kontext*>(k));
       _kontextList.insert(index, k);
       tabBar->modifiedChanged();
       }
@@ -1029,7 +1050,7 @@ void Editor::removeKontext(int idx) {
 
 void Editor::updateVScrollbar() {
       int visible = editWidget()->visibleSize().height();
-      int total   = kontext()->file()->rows() - 2;
+      int total   = kontext()->rows() - 2;
       int pos     = kontext()->fileRow() - kontext()->screenRow();
       vScroll->blockSignals(true);
       if (total < 0)
@@ -1047,7 +1068,7 @@ void Editor::updateVScrollbar() {
 
 void Editor::updateHScrollbar() {
       int visible = editWidget()->visibleSize().width();
-      int total   = kontext()->file()->maxLineLength();
+      int total   = kontext()->maxLineLength();
       int pos     = kontext()->fileCol() - kontext()->screenCol();
       hScroll->blockSignals(true);
       if (total < 0)
@@ -1084,7 +1105,7 @@ void Editor::vScrollTo(int ypos) {
       startCmd();
       kontext()->cursor().screenPos = Pos(kontext()->screenCol(), kontext()->fileRow() - ypos);
       int cursorY                   = kontext()->fileRow();
-      int maxCursorY                = std::min(ypos + editWidget()->visibleSize().height(), int(kontext()->file()->rows()));
+      int maxCursorY = std::min(ypos + editWidget()->visibleSize().height(), int(kontext()->rows()));
       //     Debug("cursorY {} maxCursorY {} ypos {}", cursorY, maxCursorY, ypos);
       if (cursorY < (ypos + 1))
             kontext()->cursor().filePos = Pos(kontext()->fileCol(), std::min(maxCursorY, ypos + 1));
@@ -1201,6 +1222,7 @@ void Editor::initFont() {
       lineLabel->setFont(f);
       colLabel->setFont(f);
       _keyLabel->setFont(f);
+      completionsPopup->setListFont(f);
       qApp->setFont(f);
       emit fontChanged(f);
       }
@@ -1235,16 +1257,16 @@ void Editor::saveStatus() {
       QByteArray state = saveState();
       j["state"]       = state.toHex().toStdString();
 
-      j["aiVisible"] = _agent && _agent->isVisible();
+      j["aiVisible"]  = _agent && _agent->isVisible();
+      j["gitVisible"] = _gitButton->isChecked();
       //      j["aiModel"]       = agent()->currentModel().toStdString();
 
       //      j["aiExecuteMode"] = agent()->isExecuteMode();
-      j["search"]   = searchPattern.pattern().toStdString();
-      j["replace"]  = replace.toStdString();
-      j["gitPanel"] = _gitButton->isChecked();
+      j["search"]  = searchPattern.pattern().toStdString();
+      j["replace"] = replace.toStdString();
 
-      if (gitPanel && gitPanel->isVisible())
-            gitWidth = splitter->sizes()[splitter->indexOf(gitPanel)];
+      if (_gitPanel && _gitPanel->isVisible())
+            gitWidth = splitter->sizes()[splitter->indexOf(_gitPanel)];
       if (_agent && _agent->isVisible())
             agentWidth = splitter->sizes()[splitter->indexOf(_agent)];
 
@@ -1254,11 +1276,12 @@ void Editor::saveStatus() {
       json kontexte = json::array();
       for (const auto k : _kontextList) {
             json jk;
-            jk["file"] = k->file()->path().toStdString();
-            jk["x"]    = k->fileCol();
-            jk["y"]    = k->fileRow();
-            jk["xoff"] = k->fileCol() - k->screenCol();
-            jk["yoff"] = k->fileRow() - k->screenRow();
+            jk["file"]     = k->file()->path().toStdString();
+            jk["x"]        = k->fileCol();
+            jk["y"]        = k->fileRow();
+            jk["xoff"]     = k->fileCol() - k->screenCol();
+            jk["yoff"]     = k->fileRow() - k->screenRow();
+            jk["viewMode"] = int(k->viewMode());
             kontexte.push_back(jk);
             }
       j["kontexte"]       = kontexte;
@@ -1300,6 +1323,9 @@ bool Editor::loadStatus(int argc, char** argv) {
                         replace = QString::fromStdString(j["replace"].get<std::string>());
                   if (j.contains("currentKontext") && loadFiles)
                         idx = j["currentKontext"].get<int>();
+                  if (j.contains("gitVisible"))
+                        _gitVisible = j["gitVisible"].get<bool>();
+
                   if (j.contains("aiVisible"))
                         _aiVisible = j["aiVisible"].get<bool>();
 
@@ -1309,31 +1335,22 @@ bool Editor::loadStatus(int argc, char** argv) {
                         agentWidth = j["agentWidth"].get<int>();
 
                   if (j.contains("geometry")) {
-                        QByteArray geom  = QByteArray::fromHex(QByteArray::fromStdString(j["geometry"].get<std::string>()));
+                        QByteArray geom =
+                            QByteArray::fromHex(QByteArray::fromStdString(j["geometry"].get<std::string>()));
                         geometryRestored = true;
                         restoreGeometry(geom);
                         }
 
                   if (j.contains("state")) {
-                        QByteArray state = QByteArray::fromHex(QByteArray::fromStdString(j["state"].get<std::string>()));
+                        QByteArray state =
+                            QByteArray::fromHex(QByteArray::fromStdString(j["state"].get<std::string>()));
                         restoreState(state);
                         }
 
                   if (_aiVisible)
                         agent();
-
-                  if (j.contains("gitPanel")) {
-                        bool val = j["gitPanel"].get<bool>();
-                        gitPanel->setVisible(val);
-                        const QSignalBlocker blocker(_gitButton);
-                        _gitButton->setChecked(val);
-                        if (val) {
-                              QList<int> sizes = splitter->sizes();
-                              int gitIndex     = splitter->indexOf(gitPanel);
-                              sizes[gitIndex]  = gitWidth;
-                              splitter->setSizes(sizes);
-                              }
-                        }
+                  if (_gitVisible)
+                        gitPanel();
 
                   if (loadFiles && j.contains("kontexte") && j["kontexte"].is_array()) {
                         for (const auto& jk : j["kontexte"]) {
@@ -1351,13 +1368,16 @@ bool Editor::loadStatus(int argc, char** argv) {
                                     int y  = jk.contains("y") ? jk["y"].get<int>() : 0;
                                     int xo = jk.contains("xoff") ? jk["xoff"].get<int>() : 0;
                                     int yo = jk.contains("yoff") ? jk["yoff"].get<int>() : 0;
+                                    int vm = jk.contains("viewMode") ? jk["viewMode"].get<int>()
+                                                                     : int(ViewMode::File);
 
                                     k->blockSignals(true);
-                                    y  = std::clamp(y, 0, k->file()->rows() - 1);
+                                    y  = std::clamp(y, 0, k->rows() - 1);
                                     yo = std::clamp(yo, 0, y);
                                     k->setScreenPos(Pos(x - xo, y - yo));
                                     k->setFilePos(Pos(x, y));
                                     k->blockSignals(false);
+                                    k->setViewMode(ViewMode(vm));
                                     }
                               }
                         }
@@ -1379,11 +1399,7 @@ bool Editor::loadStatus(int argc, char** argv) {
             Critical("no file to edit");
             exit(0);
             }
-      _currentKontext = std::clamp(idx, 0, int(_kontextList.size() - 1));
-      tabBar->setCurrentIndex(_currentKontext);
-      urlLabel->setText(kontext()->file()->path());
-      update();
-      updateCursor();
+      setCurrentKontext(std::clamp(idx, 0, int(_kontextList.size() - 1)));
       return true;
       }
 
@@ -1395,7 +1411,7 @@ File* Editor::createNewFile(const QFileInfo& fi) {
       File* file = new File(this, fi);
       connect(file, &File::modifiedChanged, [this]() { tabBar->modifiedChanged(); });
       tabBar->modifiedChanged();
-      connect(file, &File::fileChanged, [this] { lsUpdateTimer->start(400); });
+      connect(file, &File::fileChanged, [this] { lsUpdateTimer->start(800); });
       file->load();
       files.push_back(file);
       return file;
@@ -1428,9 +1444,9 @@ Kontext* Editor::addFileInitial(const QString& path) {
             file = createNewFile(fi);
       Kontext* k = new Kontext(this, file);
       connectKontext(k);
-      int index = tabBar->addTab(fi.fileName());
-      tabBar->setTabData(index, QVariant::fromValue<File*>(k->file()));
       _kontextList.push_back(k);
+      int index = tabBar->addTab(fi.fileName());
+      tabBar->setTabData(index, QVariant::fromValue<Kontext*>(k));
       tabBar->modifiedChanged();
       return k;
       }
@@ -1461,7 +1477,7 @@ void Editor::enterCmd() {
       if (endSelectionMode())
             return;
       if (completionsPopup->isVisible()) {
-            completionsPopup->hide();
+            hideCompletions();
             return;
             }
       QDir dir(kontext()->file()->fi().absolutePath());
@@ -1493,7 +1509,6 @@ void Editor::nextKontext() {
       kontext()->file()->undo()->endMacro();
       setCurrentKontext((_currentKontext + 1) % _kontextList.size());
       kontext()->file()->undo()->beginMacro();
-      updateViewMode();
       _editWidget->setFocus();
       }
 
@@ -1508,7 +1523,6 @@ void Editor::prevKontext() {
             idx = _kontextList.size() - 1;
       setCurrentKontext(idx);
       kontext()->file()->undo()->beginMacro();
-      updateViewMode();
       _editWidget->setFocus();
       }
 
@@ -1533,7 +1547,7 @@ static void advance(Pos* p, const QString& s) {
 void Editor::input(const QString& s) {
       if (endSelectionMode())
             return;
-      if (kontext()->file()->readOnly())
+      if (kontext()->readOnly())
             return;
       Cursor cursor = kontext()->cursor();
       QString ss;
@@ -1584,7 +1598,7 @@ void Editor::rubout() {
             return;
       if (cursor.fileCol() == 0) {
             // const auto& p = kontext()->text();
-            auto s1 = kontext()->file()->line(cursor.fileRow() - 1);
+            auto s1 = kontext()->line(cursor.fileRow() - 1);
             Pos pt(s1.size(), cursor.fileRow() - 1);
             Cursor ac         = cursor;
             ac.filePos        = pt;
@@ -1671,8 +1685,7 @@ void Editor::deleteRestOfLine() {
       if (endSelectionMode())
             return;
       auto cursor       = kontext()->cursor();
-      File* file        = kontext()->file();
-      QString rightPart = file->line(cursor.fileRow()).mid(cursor.fileCol());
+      QString rightPart = kontext()->line(cursor.fileRow()).mid(cursor.fileCol());
       undoPatch(cursor.filePos, rightPart.size(), "", cursor, cursor);
       }
 
@@ -1764,17 +1777,17 @@ void Editor::put() {
                   for (const auto& s : sl) {
                         int fill;
                         int n = x;
-                        if (y >= file->rows()) // at text end?
+                        if (y >= file->fileRows()) // at text end?
                               fill = x;
                         else {
-                              n = file->line(y).size();
+                              n = kontext()->line(y).size();
                               if (n < x)
                                     fill = x - n;
                               else
                                     fill = 0;
                               }
                         QString is = QString(fill, QChar(' ')) + s;
-                        if ((y < file->rows()) && (x >= file->line(y).size())) { // TODO: check
+                        if ((y < file->fileRows()) && (x >= file->fileLine(y).size())) { // TODO: check
                               // remove trailing spaces
                               int n = is.size();
                               while (n && is[n - 1].isSpace())
@@ -2178,4 +2191,147 @@ void Editor::unfoldAll() {
 void Editor::foldToggle() {
       int row = kontext()->fileRow();
       kontext()->file()->toggleFold(row);
+      }
+
+//---------------------------------------------------------
+//   modifiedChanged
+//---------------------------------------------------------
+
+void TabBar::modifiedChanged() {
+      for (int i = 0; i < count(); ++i) {
+            Kontext* kontext = tabData(i).value<Kontext*>();
+            if (!kontext)
+                  Fatal("no kontext for tab {}", i);
+            QColor color;
+            bool readOnly = kontext->readOnly();
+            TextStyle ts  = kontext->editor->textStyle(TextStyle::Normal);
+            bool modified = kontext->file()->modified();
+            color         = readOnly ? QColor("blue") : (modified ? QColor("red") : ts.fg);
+            setTabTextColor(i, color);
+            }
+      }
+
+//-----------------------------------------------------------------------------
+//   setViewMode
+//    The main editor window is stacked:
+//          index 0:    editWidget, used for all view modes except WebView
+//          index 1:    mdWidget, used for view mode WebView
+//    switch to the right widget
+//    call kontext->setViewMode  to setup the right content
+//-----------------------------------------------------------------------------
+
+void Editor::setViewMode(ViewMode viewMode) {
+      switch (viewMode) {
+            case ViewMode::Annotations:
+            case ViewMode::Outline:
+            case ViewMode::SearchResults:
+            case ViewMode::File:
+                  _stack->setCurrentIndex(0);
+                  _editWidget->setFocus();
+                  vScroll->setVisible(true);
+                  break;
+
+            case ViewMode::GitVersion:
+                  _stack->setCurrentIndex(0);
+                  _editWidget->setFocus();
+                  vScroll->setVisible(true);
+                  break;
+
+            case ViewMode::GitDiff: {
+                  Debug("=====git diff view");
+                  mdWidget()->setFocus();
+                  const auto& text = kontext()->file()->gitVersion();
+                  mdWidget()->showGitDiff(text.join('\n'));
+                  vScroll->setVisible(false); // mdWidget has its own scroll bar
+                  _stack->setCurrentIndex(1);
+                  } break;
+
+            case ViewMode::WebView: {
+                  mdWidget()->setFocus();
+                  auto lid         = kontext()->file()->languageId();
+                  const auto& text = kontext()->file()->plainText();
+                  if (lid == "markdown") {
+                        Debug("setMarkdown <{}>", text.size());
+                        mdWidget()->setMarkdown(text, kontext()->fileRow());
+                        }
+                  else if (lid == "html")
+                        mdWidget()->setHtml(text);
+                  else if (lid == "image")
+                        mdWidget()->load(QUrl::fromLocalFile(kontext()->file()->path()));
+                  _stack->setCurrentIndex(1);
+                  vScroll->setVisible(false); // mdWidget has its own scroll bar
+                  } break;
+            }
+      kontext()->setViewMode(viewMode);
+      tabBar->modifiedChanged(); // update readOnly marking
+      }
+
+//---------------------------------------------------------
+//   toggleViewMode
+//---------------------------------------------------------
+
+void Editor::toggleViewMode() {
+      const auto& l = kontext()->file()->languageId();
+
+      switch (kontext()->viewMode()) {
+            case ViewMode::File:
+                  if (l == "cpp" || l == "c")
+                        if (kontext()->file()->currentGitHistory() == 0)
+                              setViewMode(ViewMode::Outline);
+                        else
+                              showGitVersion(kontext()->file()->currentGitHistory());
+                  else if (l == "markdown" || l == "html" || l == "image")
+                        setViewMode(ViewMode::WebView);
+                  break;
+            case ViewMode::Outline:
+                  //
+                  setViewMode(ViewMode::File);
+                  break;
+            case ViewMode::Annotations:
+                  //
+                  setViewMode(ViewMode::File);
+                  break;
+            case ViewMode::GitVersion:
+                  //
+                  setViewMode(ViewMode::File);
+                  break;
+            case ViewMode::GitDiff:
+                  //
+                  setViewMode(ViewMode::File);
+                  break;
+            case ViewMode::SearchResults:
+                  //
+                  setViewMode(ViewMode::File);
+                  break;
+            case ViewMode::WebView:
+                  //
+                  setViewMode(ViewMode::File);
+                  break;
+            }
+      }
+
+//---------------------------------------------------------
+//   showGitVersion
+//---------------------------------------------------------
+
+void Editor::showGitVersion(int row) {
+      kontext()->file()->setCurrentGitHistory(row);
+      if (row == 0) { // this is the HEAD version
+            setViewMode(ViewMode::File);
+            }
+      else {
+            auto history = kontext()->file()->gitHistory(row);
+            auto oid     = history->oid;
+            Lines lines;
+            if (gitDiff) {
+                  lines = git()->getDiff(kontext()->file()->fileText(), &oid);
+                  kontext()->file()->setGitVersion(lines);
+                  setViewMode(ViewMode::GitDiff);
+                  }
+            else {
+                  lines = git()->getFile(&oid);
+                  kontext()->file()->setGitVersion(lines);
+                  setViewMode(ViewMode::GitVersion);
+                  }
+            }
       }

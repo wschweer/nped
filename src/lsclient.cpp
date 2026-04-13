@@ -22,12 +22,10 @@
 #include "editor.h"
 #include "undo.h"
 #include "kontext.h"
-#include "ast.h"
 #include "completion.h"
 
-
 // Conditional Trace:
-#define IO false
+#define IO true
 enum DiagnosticSeverity { Error = 1, Warning, Information, Hint };
 //
 //---------------------------------------------------------
@@ -73,7 +71,7 @@ void PatchItem::setRange(const Range& r, File* f) {
 
 void LSclient::gotoRequest(const char* req, File* file, const Pos& cursor) {
       callbacks[id] = [this](const json& msg) {
-            // Debug("<{}>", msg.dump(3));
+            Debug("<{}>", msg.dump(3));
             if (!msg.contains("result") || msg["result"].is_null())
                   return;
             const json& result = msg["result"];
@@ -115,14 +113,17 @@ void LSclient::gotoRequest(const char* req, File* file, const Pos& cursor) {
 //---------------------------------------------------------
 
 void LSclient::gotoDefinition(File* file, const Pos& cursor) {
+      Debug("====");
       gotoRequest("textDocument/definition", file, cursor);
       }
 
 void LSclient::gotoTypeDefinition(File* file, const Pos& cursor) {
+      Debug("====");
       gotoRequest("textDocument/typeDefinition", file, cursor);
       }
 
 void LSclient::gotoImplementation(File* file, const Pos& cursor) {
+      Debug("====");
       gotoRequest("textDocument/implementation", file, cursor);
       }
 
@@ -177,6 +178,8 @@ void LSclient::completionRequest(Kontext* k) {
                               c.patch.setRange(r, k->file());
                               }
                         list.push_back(c);
+                        if (list.size() >= maxCompletions)
+                              break;
                         }
                   k->editor->showCompletions(list);
                   }
@@ -186,11 +189,14 @@ void LSclient::completionRequest(Kontext* k) {
       textDocument["version"] = file->version();
       json params;
       params["textDocument"] = textDocument;
+      json options;
+      options["maxResults"] = maxCompletions;
       json position;
       //      Pos cursor = k->cursor().filePos;
       position["line"]      = k->fileRow();
       position["character"] = k->fileCol();
       params["position"]    = position;
+      params["options"]     = options;
       request("textDocument/completion", params);
       }
 
@@ -273,7 +279,6 @@ void LSclient::renameRequest(Kontext* k, const QString& newName, int row, int co
 //---------------------------------------------------------
 //   readerLoop
 //---------------------------------------------------------
-
 
 void LSclient::readerLoop() {
       std::vector<char> buffer(1024 * 128);
@@ -397,9 +402,7 @@ bool LSclient::start(const std::string& path, const std::vector<string>& args) {
             return false;
             }
 
-      connect(this, &LSclient::isRunning, this, [this] {
-            initializeRequest();
-            });
+      connect(this, &LSclient::isRunning, this, [this] { initializeRequest(); });
       pid_t pid = fork();
       if (pid == -1) {
             Critical("fork failed: {}", strerror(errno));
@@ -483,9 +486,8 @@ bool LSclient::writeMessage(const std::string& json) {
 
 bool LSclient::initializeRequest() {
       callbacks[id] = [this](const json& msg) {
-            if (msg.contains("result") && msg["result"].contains("capabilities")) {
+            if (msg.contains("result") && msg["result"].contains("capabilities"))
                   scap.read(msg["result"]["capabilities"]);
-                  }
             notification("initialized");
             _initialized = true;
             emit initializedChanged();
@@ -631,7 +633,7 @@ void LSclient::formattingRequest(Kontext* kontext) {
                   Range range(p["range"]);
                   pi.startPos = range.start;
                   if (_name == "qmlls")
-                        range.end.row -= 1;     // HACK
+                        range.end.row -= 1; // HACK
                   pi.toRemove = file->distance(pi.startPos, range.end);
                   patch->add(pi);
                   }
@@ -694,9 +696,9 @@ void LSclient::handleDiagnostics(const json& params) {
             Range r = readRange(d);
 
             int y = r.start.row;
-            if (y >= f->rows()) {
-                  // Debug("bad row {} rows {}", pt.y(), f->rows());
-                  y = f->rows() - 1;
+            if (y >= f->fileRows()) {
+                  // Debug("bad row {} rows {}", pt.y(), f->fileRows());
+                  y = f->fileRows() - 1;
                   }
             QChar marker{' '};
             QColor color;
@@ -761,7 +763,7 @@ bool LSclient::processMessage(const std::string& message) {
             return true;
             }
       if (response.contains("error")) {
-            Critical("Server error: <{}>", response.dump(4));
+            Debug("Server error: <{}>", response.dump(4));
             // do not return false here to avoid infinite loop
             }
       if (response.contains("id")) {
@@ -829,8 +831,9 @@ void LSclient::handleResponse(int id, json response) {
       if (callbacks.contains(id)) {
             callbacks[id](response);
             callbacks.erase(id);
+            return;
             }
-      else if (response.contains("method")) {
+      if (response.contains("method")) {
             const auto method = response["method"];
             if (method == "window/workDoneProgress/create") {
                   json msg;
@@ -838,14 +841,10 @@ void LSclient::handleResponse(int id, json response) {
                   msg["jsonrpc"] = "2.0";
                   writeMessage(msg.dump());
                   editor->showProgress(true);
-                  }
-            else {
-                  Debug("unhandled response id {} {}", id, response.dump(4));
+                  return;
                   }
             }
-      else {
-            Debug("unhandled response id {} {}", id, response.dump(4));
-            }
+      Debug("unhandled response id {} {}", id, response.dump(4));
       }
 
 //---------------------------------------------------------
@@ -879,27 +878,59 @@ bool LSclient::didChangeNotification(File* file, const Patches& patches) {
       }
 
 //---------------------------------------------------------
-//   astRequest
+//   documentSymbolRequest
 //---------------------------------------------------------
 
-void LSclient::astRequest(File* file) {
-      callbacks[id] = [file](const json& msg) {
-            //      Debug("{}", msg.dump(4));
-            ASTNode node;
-            node.read(msg["result"]);
-            file->setAST(node);
-            };
-      json textDocument;
-      textDocument["uri"]     = "file://" + file->path().toStdString();
-      textDocument["version"] = file->version();
-      Range range;
-      range.start           = QPoint(0, 0);
-      range.end             = QPoint(0, file->rows());
-      textDocument["range"] = range.toJson();
+void LSclient::documentSymbolRequest(File* file) {
+      callbacks[id] =
+          [file](const json& msg) {
+            if (msg.contains("result") && msg["result"].is_array())
+                  file->setSymbols(msg["result"]);
+                };
 
       json params;
-      params["textDocument"] = textDocument;
-      request("textDocument/ast", params);
+      params["textDocument"] = {
+               {"uri", QUrl::fromLocalFile(file->path()).toString().toStdString()}
+            };
+
+      request("textDocument/documentSymbol", params);
+      }
+
+//---------------------------------------------------------
+//   referencesRequest
+//---------------------------------------------------------
+
+void LSclient::referencesRequest(const QString& file, int line, int col) {
+      callbacks[id] = [this](const json& msg) {
+            std::string res;
+            if (msg.contains("result") && msg["result"].is_array()) {
+                  for (const auto& item : msg["result"]) {
+                        QString uri = QString::fromStdString(item["uri"].get<std::string>());
+                        if (uri.startsWith("file://"))
+                              uri = uri.mid(7);
+                        int rline = -1;
+                        if (item.contains("range") && item["range"].contains("start"))
+                              rline = item["range"]["start"]["line"].get<int>() + 1;
+                        res += std::format("{}:{}\n", uri.toStdString(), rline);
+                        }
+                  }
+            if (res.empty())
+                  res = "No references found.";
+            emit referencesSearchResult(res);
+            };
+      json params;
+      params["textDocument"] = {
+               {"uri", QUrl::fromLocalFile(file).toString().toStdString()}
+            };
+      // LSP uses 0-based lines and columns
+      params["position"] = {
+               {     "line", line - 1},
+               {"character",  col - 1}
+            };
+      params["context"] = {
+               {"includeDeclaration", true}
+            };
+      request("textDocument/references", params);
       }
 
 //---------------------------------------------------------
@@ -928,4 +959,38 @@ void LSclient::symbolRequest(const QString& symbol) {
       json params;
       params["query"] = symbol.toStdString();
       request("workspace/symbol", params);
+      }
+
+//---------------------------------------------------------
+//   indentRequest
+//---------------------------------------------------------
+
+void LSclient::indentRequest(const File* file, int line) {
+      callbacks[id] = [](const json& msg) {
+            std::string res;
+            if (msg.contains("result"))
+                  json n = msg["result"];
+            };
+
+      json textDocument;
+      textDocument["uri"]     = "file://" + file->path().toStdString();
+      textDocument["version"] = file->version();
+      json params;
+      params["textDocument"] = textDocument;
+
+      json range;
+      json start;
+      start["line"]      = line - 1;
+      start["character"] = 0;
+      json end;
+      end["line"]      = line - 1;
+      end["character"] = file->fileText(line - 1).size();
+      range["start"]   = start;
+      range["end"]     = end;
+      json options;
+      options["tabSize"]      = 4;
+      options["insertSpaces"] = true;
+      params["range"]         = range;
+      params["options"]       = options;
+      request("textDocument/rangeFormatting", params);
       }

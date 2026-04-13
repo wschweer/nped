@@ -287,7 +287,7 @@ ColumnLayout {
 
                     // num_ctx
                     Label {
-                        text: "num_ctx:"
+                        text: "Context Window:"
                         Layout.alignment: Qt.AlignRight
                         }
                     TextField {

@@ -69,7 +69,6 @@ qt_add_executable(nped
       src/undo.cpp
       src/ide.cpp
       src/lsclient.cpp
-      src/ast.cpp
       src/completer.cpp
       src/completion.cpp
       src/search.cpp
@@ -91,18 +90,24 @@ qt_add_executable(nped
       src/dashboard.h
       src/textstyle.cpp
       src/textstyle.h
-      src/model.cpp
+      src/attachmentbutton.h
       src/filetype.cpp
       src/filetype.h
       src/ls.cpp
       src/ls.h
-      src/attachmentbutton.h
+      src/model.cpp
       )
 
 qt_add_resources(nped "qmls"
       FILES qtquickcontrols2.conf
       )
-qt_add_resources(nped "mages"
+qt_add_resources(nped "res"
+      FILES
+            res/diff.html
+            res/diff2html.min.css
+            res/js/diff2html.min.js
+            res/js/diff2html-ui.min.js      )
+qt_add_resources(nped "images"
       FILES images/Git-Icon-1788C.svg
       images/configure.svg
       images/configure_white.svg
@@ -148,16 +153,11 @@ qt_add_qml_module(nped
         qml/ColorConfigItem.qml
       )
 
-qt_add_resources(nped files
-      FILES
-      src/dark.qss
-      src/light.qss
-      )
-# Alias for main.cpp
 qt_add_resources(nped style
       PREFIX "/"
       FILES
       src/light.qss
+      src/dark.qss
       )
 
 target_link_libraries(nped PRIVATE

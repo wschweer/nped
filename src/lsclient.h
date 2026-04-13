@@ -52,6 +52,8 @@ class LSclient : public QObject
       Q_OBJECT
       Q_DISABLE_COPY_MOVE(LSclient)
 
+      static constexpr int maxCompletions { 10 };
+
       std::string _name;
       std::string _path;
       int id{1}; // current id
@@ -90,6 +92,7 @@ class LSclient : public QObject
       void notificationReceived(json msg);
       void responseReceived(int id, json msg);
       void symbolSearchResult(const std::string& result);
+      void referencesSearchResult(const std::string& result);
       void isRunning();
 
    public slots:
@@ -108,7 +111,6 @@ class LSclient : public QObject
       void renameRequest(Kontext*, const QString&, int, int);
 
       void completionRequest(Kontext*);
-      void astRequest(File* file);
       void formattingRequest(Kontext*);
 
       bool didOpenNotification(File* file);
@@ -122,6 +124,9 @@ class LSclient : public QObject
       void gotoImplementation(File* file, const Pos& cursor);
       void hover(File* file, const Pos& cursor);
       void symbolRequest(const QString& symbol);
+      void documentSymbolRequest(File*);
+      void referencesRequest(const QString& file, int line, int col);
+      void indentRequest(const File*, int line);
 
       static LSclient* createClient(Editor* editor, const std::string& name);
       };
