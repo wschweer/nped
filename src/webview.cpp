@@ -215,7 +215,15 @@ void MarkdownWebView::setMarkdown(const QString& _markdown, int cursorLine) {
       if (cursorLine >= 0) {
             QStringList lines = _processedMarkdown.split('\n');
             if (cursorLine < lines.size()) {
-                  lines[cursorLine].prepend("<span id=\"nped-cursor-pos\"></span>");
+                  QString& line = lines[cursorLine];
+                  QRegularExpression blockMarkersRe("^(\\s*(?:#{1,6}\\s+|[-*+]\\s+|\\d+\\.\\s+|>+\\s*))(.*)$");
+                  if (auto match = blockMarkersRe.match(line); match.hasMatch()) {
+                        line = match.captured(1) + "<span id=\"nped-cursor-pos\"></span>" + match.captured(2);
+                  } else if (line.trimmed().startsWith("```")) {
+                        lines.insert(cursorLine, "<span id=\"nped-cursor-pos\"></span>");
+                  } else {
+                        line.prepend("<span id=\"nped-cursor-pos\"></span>");
+                  }
                   _processedMarkdown = lines.join('\n');
                   }
             }

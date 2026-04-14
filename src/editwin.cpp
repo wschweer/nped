@@ -353,6 +353,7 @@ void EditWidget::paintLine(DrawingContext& dc, int fileRow, int y) {
       //    paint text
       //*************************************************************
 
+      auto style = TextStyle::NonText;
       for (const auto& m : l.marks()) {
             if ((m.col2 - dc.xo) <= 0) // tag is left of visible area
                   continue;
@@ -368,14 +369,16 @@ void EditWidget::paintLine(DrawingContext& dc, int fileRow, int y) {
                   n -= dc.visibleColumns - (col1 - dc.xo + n);
 
             QString ts = l.mid(col1, n);
-            auto md    = editor->textStyle(m.type);
-
-            int x     = dc.lb + (col1 - dc.xo) * dc.fw;
-            auto font = editor->font();
-            font.setItalic(md.italic);
-            font.setBold(md.bold);
-            dc.painter->setPen(md.fg);
-            dc.painter->setFont(font);
+            if (style != m.type) {
+                  style = m.type;
+                  auto md = editor->textStyle(style);
+                  auto font = editor->font();
+                  font.setItalic(md.italic);
+                  font.setBold(md.bold);
+                  dc.painter->setPen(md.fg);
+                  dc.painter->setFont(font);
+                  }
+            int x = dc.lb + (col1 - dc.xo) * dc.fw;
             dc.painter->drawText(x, y, ts);
             }
       }
@@ -428,7 +431,9 @@ void EditWidget::paintEvent(QPaintEvent* e) {
             }
 
       //*************************************************************
-      //    draw text from cursor position to start of screen
+      //    Draw text from cursor position to start of screen.
+      //    This allows for easy skipping of folded text parts by
+      //    calling kontext->previousRow(row).
       //*************************************************************
 
       int fileRow = cursor.fileRow();
@@ -461,9 +466,13 @@ void EditWidget::paintEvent(QPaintEvent* e) {
       // draw cursor
       //*************************************************************
 
+      auto scol = [&] (int col) {
+            return col * dc.fw + EditWidget::BORDER + lm;
+            };
+
       if (k->showCursor() && hasFocus()) {
             // draw cursor
-            int cx = k->screenCol() * dc.fw + EditWidget::BORDER + lm;
+            int cx = scol(k->screenCol());
             int cy = k->screenRow() * dc.fh + EditWidget::BORDER;
             QRect rr(cx, cy, dc.fw + 1, dc.fh + 1);
             painter.fillRect(rr, editor->textStyle(TextStyle::Cursor).bg);
