@@ -341,7 +341,7 @@ class Agent : public QWidget
       QAction* showThoughtsAction     = nullptr;
       HistoryManager* historyManager;
 
-      bool filterToolMessages = false;
+      bool filterToolMessages = true;
       bool filterThoughts = false;
       std::string getManifest();
 
