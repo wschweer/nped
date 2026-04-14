@@ -2206,7 +2206,7 @@ void TabBar::modifiedChanged() {
             bool readOnly = kontext->readOnly();
             TextStyle ts  = kontext->editor->textStyle(TextStyle::Normal);
             bool modified = kontext->file()->modified();
-            color         = readOnly ? QColor("blue") : (modified ? QColor("red") : ts.fg);
+            color         = readOnly ? QColor("#b0c0ff") : (modified ? QColor("#ffbcbc") : ts.fg);
             setTabTextColor(i, color);
             }
       }

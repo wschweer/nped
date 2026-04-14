@@ -22,6 +22,8 @@
 
 Kontext::Kontext(Editor* e, File* f) : _file(f), editor(e) {
       _selection.mode = SelectionMode::NoSelect;
+      if (f->languageId() == "image")
+            _viewMode = ViewMode::WebView;
       _file->reference();
       }
 
