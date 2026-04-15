@@ -31,6 +31,7 @@ find_package(Qt6 REQUIRED COMPONENTS
       QuickControls2
       QuickWidgets
       DBus
+      PrintSupport
       )
 
 qt_policy(SET QTP0001 NEW)
@@ -172,6 +173,7 @@ target_link_libraries(nped PRIVATE
       Qt::QuickControls2
       Qt::QuickWidgets
       Qt::DBus
+      Qt::PrintSupport
       pthread
       git2
       md4c-html

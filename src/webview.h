@@ -17,8 +17,6 @@
 #include <QString>
 #include <string>
 #include <vector>
-#include <format>
-#include <iostream>
 #include <QUrl>
 
 #include "logger.h"
@@ -74,7 +72,6 @@ class MarkdownWebView : public QWebEngineView
 
     public slots:
       virtual void setDarkMode(bool);
-
       Editor* getEditor() const { return editor; }
 
     public:

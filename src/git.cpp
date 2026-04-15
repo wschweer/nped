@@ -299,7 +299,7 @@ void Editor::updateGitHistory() {
             return;
       QDir dir(projectRoot());
       QString fileName = dir.relativeFilePath(kontext()->file()->path());
-      Debug("<{}>", fileName);
+//      Debug("<{}>", fileName);
       _git.getHistory(fileName, kontext()->file()->gitHistory());
       gitList.set(kontext()->file()->gitHistory());
 //      gitListView->setCurrentIndex(gitList.index(kontext()->file()->currentGitHistory(), 0));

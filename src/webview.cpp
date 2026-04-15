@@ -26,6 +26,9 @@
 
 #include <QDesktopServices>
 #include <QWebEnginePage>
+#include <QPrintDialog>
+#include <QPrinter>
+#include <QScopedPointer>
 #include <QTimer>
 
 //---------------------------------------------------------
@@ -88,13 +91,35 @@ bool MarkdownWebPage::acceptNavigationRequest(const QUrl& url, NavigationType ty
 MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_parent), editor(e) {
       setPage(new MarkdownWebPage(e, this));
       settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
+      settings()->setAttribute(QWebEngineSettings::PdfViewerEnabled, true);
+      settings()->setAttribute(QWebEngineSettings::PluginsEnabled, true);
+      if (!settings()->testAttribute(QWebEngineSettings::PdfViewerEnabled))
+            Warning("PDF-Viewer konnte in QWebEngineSettings nicht aktiviert werden!");
       _darkMode = e->darkMode();
       // Set initial background color to prevent white flash
       page()->setBackgroundColor(_darkMode ? QColor("#222222") : Qt::white);
+      connect(page(), &QWebEnginePage::printRequested, this, [this]() {
+            QPrinter* printer = new QPrinter(QPrinter::HighResolution);
+            QPrintDialog printDialog(printer, this);
+            printDialog.setWindowTitle(tr("Dokument drucken"));
+            if (printDialog.exec() == QDialog::Accepted) {
+                  connect(
+                      this, &QWebEngineView::printFinished, this,
+                      [printer](bool success) {
+                            if (!success)
+                                  qWarning() << "Fehler beim Drucken aufgetreten.";
+                            delete printer;
+                            },
+                      Qt::SingleShotConnection);
+                  this->print(printer);
+                  }
+            else {
+                  delete printer;
+                  }
+            });
 
       textActions = {
          Action(e->getSC(Cmd::CMD_QUIT), [this] { editor->quitCmd(); }),
-         Action(e->getSC(Cmd::CMD_SAVE_QUIT), [this] { editor->saveQuitCmd(); }),
 
          Action(e->getSC(Cmd::CMD_LINE_UP), [this] { scrollLineUp(); }),
          Action(e->getSC(Cmd::CMD_LINE_DOWN), [this] { scrollLineDown(); }),
@@ -216,14 +241,14 @@ void MarkdownWebView::setMarkdown(const QString& _markdown, int cursorLine) {
             QStringList lines = _processedMarkdown.split('\n');
             if (cursorLine < lines.size()) {
                   QString& line = lines[cursorLine];
-                  QRegularExpression blockMarkersRe("^(\\s*(?:#{1,6}\\s+|[-*+]\\s+|\\d+\\.\\s+|>+\\s*))(.*)$");
-                  if (auto match = blockMarkersRe.match(line); match.hasMatch()) {
+                  QRegularExpression blockMarkersRe(
+                      "^(\\s*(?:#{1,6}\\s+|[-*+]\\s+|\\d+\\.\\s+|>+\\s*))(.*)$");
+                  if (auto match = blockMarkersRe.match(line); match.hasMatch())
                         line = match.captured(1) + "<span id=\"nped-cursor-pos\"></span>" + match.captured(2);
-                  } else if (line.trimmed().startsWith("```")) {
+                  else if (line.trimmed().startsWith("```"))
                         lines.insert(cursorLine, "<span id=\"nped-cursor-pos\"></span>");
-                  } else {
+                  else
                         line.prepend("<span id=\"nped-cursor-pos\"></span>");
-                  }
                   _processedMarkdown = lines.join('\n');
                   }
             }
@@ -344,7 +369,7 @@ QString MarkdownWebView::getKaTexJs() const {
     onload="renderMathInElement(document.body, {
         delimiters: [ {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true} ],
         throwOnError: false
-                                  });"></script>)HTML");
+                                        });"></script>)HTML");
       }
 
 //---------------------------------------------------------

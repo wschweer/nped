@@ -737,7 +737,7 @@ MarkdownWebView* Editor::mdWidget() {
                   btnForward->setEnabled(_mdWidget->page()->history()->canGoForward());
                   };
             connect(_mdWidget, &QWebEngineView::loadFinished, this,
-                    [updateButtons](bool ok) { updateButtons(); });
+                    [updateButtons] { updateButtons(); });
             updateButtons();
 
             connect(btnForward, &QToolButton::clicked, _mdWidget, &QWebEngineView::forward);

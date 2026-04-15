@@ -322,21 +322,15 @@ File::File(Editor* e, const QFileInfo& fi) : _fi(fi), editor(e) {
       // lookup fileType:
 
       QString filename = _fi.fileName();
-      bool found = false;
       for (const auto& ft : editor->fileTypes()) {
             QRegularExpression wildcard(ft.extensions);
             auto match = wildcard.match(filename);
             if (match.hasMatch()) {
                   // Debug("found filetype <{}> for <{}>", ft.languageId, filename);
                   fileType = ft;
-                  found = true;
                   break;
                   }
-            // else
-                  // Debug("noMatch: <{}> <{}> <{}>", ft.languageId, ft.extensions, filename);
             }
-//      if (!found)
-//            Critical("no filetype for <{}>", filename);
       QString ls = fileType.languageServer;
       setLSclient(e->getLSclient(ls));
       }
