@@ -67,7 +67,7 @@ void FileTypes::reset() {
          FileType(".*\\.qml$", "qml", "qmlls", 4, false, false),
          FileType(".*\\.md$", "markdown", "none", 6, false, false),
          FileType("Makefile$", "makefile", "none", 6, false, true),
-         FileType(".*\\.jpg$; .*\\.jpeg$; .*\\.png$; .*\\.gif$;.*\\.svg$;.*\\.webp$", "image", "none", 6, false, false)
+         FileType(".*\\.(jpg|jpeg|png|gif|svg|webp|pdf)$", "image", "none", 6, false, false)
             }) {
             push_back(ft);
             }
