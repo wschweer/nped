@@ -18,7 +18,7 @@
 #include "ollama.h"
 #include "agent.h"
 #include "chatdisplay.h"
-#include "historymanager.h"
+#include "session.h"
 
 //---------------------------------------------------------
 //   OllamaClient
@@ -98,7 +98,7 @@ json OllamaClient::prompt(QNetworkRequest* request) {
       jmanifest["role"]    = "system";
       history.push_back(jmanifest);
 
-      for (const auto& msg : agent->historyManager->getActiveEntries()) {
+      for (const auto& msg : agent->session()->getActiveEntries()) {
             json jmsg;
             if (msg.contains("role"))
                   jmsg["role"] = msg["role"];
@@ -178,6 +178,7 @@ void OllamaClient::processJsonItem(const json& item) {
                                  std::string("</thought>").find(_buffer) != 0 &&
                                  std::string("<channel|>").find(_buffer) != 0) {
                               thinkChunk      += _buffer;
+                              currentContent  += _buffer;
                               currentThinking += _buffer;
                               _buffer.clear();
                               }
@@ -187,7 +188,6 @@ void OllamaClient::processJsonItem(const json& item) {
                         agent->chatDisplay->handleIncomingChunk(thinkChunk, textChunk);
                   }
             }
-
 
       if (message.contains("thinking") && message["thinking"].is_string()) {
             std::string thinkingStr = message["thinking"].get<std::string>();
@@ -240,7 +240,7 @@ void OllamaClient::processTools() {
                   // Don't leak 'function' field to Ollama prompt if it doesn't need it
                   // Wait, prompt() only copies what it needs (role, content, tool_calls, name).
                   // So we can leave it in msg.
-                  agent->historyManager->addRequest(msg, 0);
+                  agent->session()->addRequest(msg, 0);
                   }
             }
       catch (const json::parse_error& e) {
@@ -286,11 +286,11 @@ void OllamaClient::dataFinished() {
       size_t totalTokens = 0;
 
       if (_currentToolCalls.empty()) {
-            agent->historyManager->addResult(responseContent, totalTokens);
+            agent->session()->addResult(responseContent, totalTokens);
             agent->enableInput(true);
             }
       else {
-            agent->historyManager->addRequest(responseContent, totalTokens);
+            agent->session()->addRequest(responseContent, totalTokens);
             processTools();
             }
       }

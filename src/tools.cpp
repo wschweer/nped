@@ -179,13 +179,13 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
       // ==========================================================
 
       if (functionName == "run_build_command") {
-            if (!arguments.contains("command"))
+            if (!arguments.contains("command") || !arguments["command"].is_string())
                   return "Error: Parameter 'command' missing.";
             QString cmd = QString::fromStdString(arguments["command"].get<std::string>());
             return runBuildCommand(cmd);
             }
       else if (functionName == "fetch_web_documentation") {
-            if (!arguments.contains("url"))
+            if (!arguments.contains("url") || !arguments["url"].is_string())
                   return "Error: Parameter 'url' missing.";
             QString url = QString::fromStdString(arguments["url"].get<std::string>());
             return fetchWebDocumentation(url);
@@ -194,15 +194,15 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             return getGitStatus();
             }
       else if (functionName == "get_git_diff") {
-            QString p = arguments.contains("path") ? QString::fromStdString(arguments["path"].get<std::string>()) : "";
+            QString p = (arguments.contains("path") && arguments["path"].is_string()) ? QString::fromStdString(arguments["path"].get<std::string>()) : "";
             return getGitDiff(p);
             }
       else if (functionName == "get_git_log") {
-            int limit = arguments.contains("limit") ? arguments["limit"].get<int>() : 5;
+            int limit = (arguments.contains("limit") && arguments["limit"].is_number()) ? arguments["limit"].get<int>() : 5;
             return getGitLog(limit);
             }
       else if (functionName == "create_git_commit") {
-            if (!arguments.contains("message"))
+            if (!arguments.contains("message") || !arguments["message"].is_string())
                   return "Error: Parameter 'message' missing.";
             QString msg = QString::fromStdString(arguments["message"].get<std::string>());
             return createGitCommit(msg);
@@ -213,21 +213,21 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
       //==========================================================
 
       else if (functionName == "search_project") {
-            if (!arguments.contains("query"))
+            if (!arguments.contains("query") || !arguments["query"].is_string())
                   return "Error: Parameter 'query' missing.";
             QString query = QString::fromStdString(arguments["query"].get<std::string>());
             QString pattern =
-                arguments.contains("file_pattern") ? QString::fromStdString(arguments["file_pattern"].get<std::string>()) : "";
+                (arguments.contains("file_pattern") && arguments["file_pattern"].is_string()) ? QString::fromStdString(arguments["file_pattern"].get<std::string>()) : "";
             return searchProject(query, pattern);
             }
       else if (functionName == "find_symbol") {
-            if (!arguments.contains("symbol"))
+            if (!arguments.contains("symbol") || !arguments["symbol"].is_string())
                   return "Error: Parameter 'symbol' missing.";
             QString symbol = QString::fromStdString(arguments["symbol"].get<std::string>());
             return findSymbol(symbol);
             }
 
-      if (!arguments.contains("path"))
+      if (!arguments.contains("path") || !arguments["path"].is_string())
             return "Error: Parameter 'path' missing for local file tool: " + functionName;
 
       QString path = QString::fromStdString(arguments["path"].get<std::string>());
@@ -244,7 +244,7 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             return getDiagnostics(path);
             }
       else if (functionName == "find_references") {
-            if (!arguments.contains("line") || !arguments.contains("column"))
+            if (!arguments.contains("line") || !arguments["line"].is_number() || !arguments.contains("column") || !arguments["column"].is_number())
                   return "Error: Parameters 'line' and 'column' are missing.";
             int line   = arguments["line"].get<int>();
             int column = arguments["column"].get<int>();
@@ -259,8 +259,8 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             // [startLine, endLine] is a closed interval
             // we must transform it to a half closed interval: [startLine, endLine)
 
-            int startLine = arguments.contains("start_line") ? arguments["start_line"].get<int>() - 1 : 0;
-            int endLine   = arguments.contains("end_line") ? arguments["end_line"].get<int>() : lines.size();
+            int startLine = (arguments.contains("start_line") && arguments["start_line"].is_number()) ? arguments["start_line"].get<int>() - 1 : 0;
+            int endLine   = (arguments.contains("end_line") && arguments["end_line"].is_number()) ? arguments["end_line"].get<int>() : lines.size();
             int n         = lines.size();
 
             if (startLine < 0 || startLine >= n)
@@ -284,7 +284,7 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             }
 
       else if (functionName == "write_file") {
-            if (!arguments.contains("content"))
+            if (!arguments.contains("content") || !arguments["content"].is_string())
                   return "Error: Parameter 'content' missing.";
             QString content = QString::fromStdString(arguments["content"].get<std::string>());
             return writeFile(path, content);
@@ -293,12 +293,12 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             return listFilesRecursive(path);
             }
       else if (functionName == "replace_lines") {
-            if (!arguments.contains("start_line"))
+            if (!arguments.contains("start_line") || !arguments["start_line"].is_number())
                   return "Error: Parameter 'start_line' missing.";
             int startLine     = arguments["start_line"].get<int>();
-            int linesToDelete = arguments.contains("lines_to_delete") ? arguments["lines_to_delete"].get<int>() : 0;
+            int linesToDelete = (arguments.contains("lines_to_delete") && arguments["lines_to_delete"].is_number()) ? arguments["lines_to_delete"].get<int>() : 0;
             QString replaceText;
-            if (arguments.contains("replace_lines"))
+            if (arguments.contains("replace_lines") && arguments["replace_lines"].is_string())
                   replaceText = QString::fromStdString(arguments["replace_lines"].get<std::string>());
             return replaceLines(path, startLine, linesToDelete, replaceText);
             }

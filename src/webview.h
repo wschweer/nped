@@ -65,6 +65,7 @@ class MarkdownWebView : public QWebEngineView
       bool _darkMode{false};
       bool isLoaded{true};
       // Hilft uns, das interne Chromium-Widget zu finden
+      QWebEngineView* createWindow(QWebEnginePage::WebWindowType type) override;
       void childEvent(QChildEvent* event) override;
       void installFilterOnProxy();
       std::string getGithubCss() const;

@@ -19,7 +19,6 @@
 #include <QDropEvent>
 #include <QMimeData>
 #include <QUrl>
-#include <QDateTime>
 #include <QImage>
 #include <map>
 #include <QQuickWidget>
@@ -48,9 +47,23 @@ class QTimer;
 class QAction;
 class LLMClient;
 class ChatDisplay;
-class HistoryManager;
+class Session;
 class QEventLoop;
 class ScreenshotHelper;
+
+//---------------------------------------------------------
+//   AgentRole
+//---------------------------------------------------------
+
+class AgentRole
+      {
+    public:
+      std::string name;
+      std::string manifest;
+      bool rw; // true: read/write, false: read only
+      };
+
+using AgentRoles = std::vector<AgentRole>;
 
 //---------------------------------------------------------
 //   MCPToolBuilder
@@ -69,7 +82,8 @@ class MCPToolBuilder
             tool["inputSchema"]["required"]   = json::array();
             }
       // Fügt einen Parameter hinzu, der für Gemini optimiert ist
-      MCPToolBuilder& add_parameter(const std::string& name, const std::string& type, const std::string& description, bool required = true,
+      MCPToolBuilder& add_parameter(const std::string& name, const std::string& type,
+                                    const std::string& description, bool required = true,
                                     const std::vector<std::string>& enums = {}) {
             json param = {
                      {       "type",        type},
@@ -87,16 +101,6 @@ class MCPToolBuilder
       };
 
 //---------------------------------------------------------
-//   SessionInfo
-//---------------------------------------------------------
-
-struct SessionInfo {
-      QString fileName;
-      int lastNumber = 0;
-      QDate lastDate;
-      };
-
-//---------------------------------------------------------
 //   DropAwarePlainTextEdit
 //   A QPlainTextEdit that intercepts image drag-and-drop
 //   at the virtual-function level and emits imageDropped()
@@ -106,10 +110,9 @@ struct SessionInfo {
 class DropAwarePlainTextEdit : public QPlainTextEdit
       {
       Q_OBJECT
-    public:
-      explicit DropAwarePlainTextEdit(QWidget* parent = nullptr)
-            : QPlainTextEdit(parent) {}
 
+    public:
+      explicit DropAwarePlainTextEdit(QWidget* parent = nullptr) : QPlainTextEdit(parent) {}
     signals:
       void imageDropped(const QImage& image);
 
@@ -117,14 +120,12 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
       void dragEnterEvent(QDragEnterEvent* e) override {
             const QMimeData* m = e->mimeData();
             qDebug() << "[DropAware] dragEnterEvent — hasImage:" << m->hasImage()
-                     << "hasUrls:" << m->hasUrls()
-                     << "formats:" << m->formats();
+                     << "hasUrls:" << m->hasUrls() << "formats:" << m->formats();
             if (m->hasImage() || (m->hasUrls() && !m->urls().isEmpty()))
                   e->acceptProposedAction();
             else
                   QPlainTextEdit::dragEnterEvent(e);
             }
-
       void dragMoveEvent(QDragMoveEvent* e) override {
             const QMimeData* m = e->mimeData();
             qDebug() << "[DropAware] dragMoveEvent — hasImage:" << m->hasImage()
@@ -134,11 +135,9 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
             else
                   QPlainTextEdit::dragMoveEvent(e);
             }
-
       void dropEvent(QDropEvent* e) override {
             const QMimeData* m = e->mimeData();
-            qDebug() << "[DropAware] dropEvent — hasImage:" << m->hasImage()
-                     << "hasUrls:" << m->hasUrls()
+            qDebug() << "[DropAware] dropEvent — hasImage:" << m->hasImage() << "hasUrls:" << m->hasUrls()
                      << "formats:" << m->formats();
             QImage image;
             if (m->hasImage()) {
@@ -150,8 +149,12 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
                         qDebug() << "[DropAware] dropEvent — trying URL:" << url.toString().left(80);
                         if (url.isLocalFile()) {
                               QImage loaded(url.toLocalFile());
-                              qDebug() << "[DropAware] dropEvent — loaded local file, null:" << loaded.isNull();
-                              if (!loaded.isNull()) { image = loaded; break; }
+                              qDebug()
+                                  << "[DropAware] dropEvent — loaded local file, null:" << loaded.isNull();
+                              if (!loaded.isNull()) {
+                                    image = loaded;
+                                    break;
+                                    }
                               }
                         else {
                               // Handle data: URIs dragged from a browser (e.g. "data:image/jpeg;base64,...")
@@ -159,10 +162,12 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
                               if (urlStr.startsWith("data:image/")) {
                                     const int commaPos = urlStr.indexOf(',');
                                     if (commaPos != -1) {
-                                          const QByteArray raw = QByteArray::fromBase64(
-                                                urlStr.mid(commaPos + 1).toUtf8());
+                                          const QByteArray raw =
+                                              QByteArray::fromBase64(urlStr.mid(commaPos + 1).toUtf8());
                                           if (image.loadFromData(raw)) {
-                                                qDebug() << "[DropAware] dropEvent — decoded data: URI image, size:" << image.size();
+                                                qDebug() << "[DropAware] dropEvent — decoded data: URI "
+                                                            "image, size:"
+                                                         << image.size();
                                                 break;
                                                 }
                                           }
@@ -210,38 +215,38 @@ class Agent : public QWidget
       QComboBox* modelMenu;
       QToolButton* statusLabel;
       QToolButton* stopButton;
-      QToolButton* modeButton;
+      QComboBox* agentRoleCombo;
       QToolButton* configButton;
       QToolButton* screenshotButton;
       QToolButton* button1;
       QToolButton* button2;
       QToolButton* button3;
-      QWidget* buttonPanel{nullptr};          ///< narrow vertical icon panel left of prompt input
-      QWidget* dataPanel{nullptr};          ///< narrow vertical icon panel right of prompt input
-      QHBoxLayout*  dataPanelLayout{nullptr};
-      QWidget* promptActionPanel{nullptr};
-      void updateDataPanel();               ///< rebuilds thumbnail labels for all pending images
+      QWidget* buttonPanel {nullptr}; ///< narrow vertical icon panel left of prompt input
+      QWidget* dataPanel {nullptr};   ///< narrow vertical icon panel right of prompt input
+      QHBoxLayout* dataPanelLayout {nullptr};
+      QWidget* promptActionPanel {nullptr};
+      void updateDataPanel(); ///< rebuilds thumbnail labels for all pending images
 
       QTimer* spinnerTimer;
-      int spinnerFrame{0};
+      int spinnerFrame {0};
 
       // Screenshot
-      ScreenshotHelper* screenshotHelper{nullptr};
-      QList<Attachment> _attachments;       ///< pending files attached to prompt
+      ScreenshotHelper* screenshotHelper {nullptr};
+      QList<Attachment> _attachments;                  ///< pending files attached to prompt
       QList<AttachmentButton*> _attachmentIconButtons; ///< one thumbnail button per pending attachment
 
       // Netzwerk & Status
       QNetworkAccessManager* networkManager;
-      QNetworkReply* currentReply{nullptr};
+      QNetworkReply* currentReply {nullptr};
       Model model;
-      LLMClient* llm{nullptr};
+      LLMClient* llm {nullptr};
 
-      bool _isExecuteMode{true};
-      bool isRetrying{false};
-      bool _stopRequested{false};
-      int retryPause{2000};
-      int currentRetryCount{0};
-      const int maxRetries{5};
+      AgentRole* agentRole {nullptr};
+      bool isRetrying {false};
+      bool _stopRequested {false};
+      int retryPause {2000};
+      int currentRetryCount {0};
+      const int maxRetries {5};
       QDateTime rateLimitResetTime;
 
       bool _manifestsLoaded = false;
@@ -251,15 +256,10 @@ class Agent : public QWidget
       // Hilfsfunktionen
       void processData();
       std::vector<json> getMCPTools() const;
-      QString currentSessionFileName;
       QString pendingModelName;
-      size_t savedEntries{0};
-      //      bool commitGitChanges(const QString& commitMessage);
+      Session* _session;
       void reinitSystemPrompt(); // Punkt 4: implementiert
-      void updateChatDisplay();
       QString truncateOutput(const QString& text, int maxChars);
-      SessionInfo getSessionInfo() const;
-      QString sessionName(bool getNext) const;
 
       QString handleRunBuildCommand(const json& args);
       QString handleFetchWebDocumentation(const json& args);
@@ -305,7 +305,6 @@ class Agent : public QWidget
 
     protected:
       bool eventFilter(QObject* obj, QEvent* event) override;
-      void updateSessionList();
 
     private slots:
       void fetchModels();
@@ -330,7 +329,6 @@ class Agent : public QWidget
 
     signals:
       void modelChanged();
-//      void modelsChanged();
 
     public:
       explicit Agent(Editor* e, QWidget* parent = nullptr);
@@ -338,21 +336,15 @@ class Agent : public QWidget
 
       ChatDisplay* chatDisplay;
       QAction* showToolMessageAction = nullptr;
-      QAction* showThoughtsAction     = nullptr;
-      HistoryManager* historyManager;
+      QAction* showThoughtsAction    = nullptr;
 
       bool filterToolMessages = true;
-      bool filterThoughts = false;
-      std::string getManifest();
-
+      bool filterThoughts     = false;
+      std::string getManifest() { return agentRole->manifest; }
       static QString configPath();
       QString currentModel() const { return model.name; }
       void setCurrentModel(const QString& s, bool clearChat = true);
-      bool isExecuteMode() const { return _isExecuteMode; }
-      void setExecuteMode(bool);
-
-      void saveStatus();
-      void loadStatus(const QString& sessionPath = QString());
+      bool isExecuteMode() const { return agentRole->rw; }
       bool isWorking() const;
       void logContent(const json& part, std::string& text, std::string& thought);
       std::string formatToolCall(const std::string& name, const json& args, const std::string& result = "");
@@ -360,11 +352,16 @@ class Agent : public QWidget
       void enableInput(bool);
 
       // Output-Limits für LLM-Context-Window (Punkt 11)
-      static constexpr int kBuildLogMaxChars   = 20000*10;
+      static constexpr int kBuildLogMaxChars   = 20000 * 10;
       static constexpr int kWebFetchMaxChars   = 80000;
       static constexpr int kGitDiffMaxChars    = 10000;
       static constexpr int kSearchMaxChars     = 10000;
       static constexpr int kChatResultMaxChars = 20000;
       static constexpr int kChatMaxMessages    = 40;
       std::string truncateOutput(const std::string& text, int maxChars);
+      Editor* editor() const { return _editor; }
+      Session* session() const { return _session; }
+      void updateSessionList();
+      void updateChatDisplay(bool scrollToBottom = false);
+      void addMessage(const std::string& role, const std::string& text);
       };

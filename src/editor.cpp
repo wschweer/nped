@@ -49,6 +49,7 @@
 #include "webview.h"
 #include "completion.h"
 #include "textstyle.h"
+#include "session.h"
 // #include "screenshot.h"
 
 #include <nlohmann/json.hpp>
@@ -1167,7 +1168,7 @@ void Editor::endCmd() {
 void Editor::quitCmd() {
       saveStatus();
       if (_agent)
-            agent()->saveStatus();
+            agent()->session()->save();
       close();
       }
 
@@ -1223,6 +1224,8 @@ void Editor::initFont() {
       colLabel->setFont(f);
       _keyLabel->setFont(f);
       completionsPopup->setListFont(f);
+      if (_mdWidget)
+            _mdWidget->setFont(f);
       qApp->setFont(f);
       emit fontChanged(f);
       }

@@ -18,7 +18,7 @@
 #include "gemini.h"
 #include "agent.h"
 #include "chatdisplay.h"
-#include "historymanager.h"
+#include "session.h"
 
 //---------------------------------------------------------
 //   GeminiClient
@@ -98,7 +98,7 @@ json GeminiClient::prompt(QNetworkRequest* request) {
                   }
             };
 
-      for (auto msg : agent->historyManager->getActiveEntries()) {
+      for (auto msg : agent->session()->getActiveEntries()) {
             if (msg.contains("role") && msg["role"] == "assistant")
                   msg["role"] = "model";
 
@@ -237,7 +237,7 @@ void GeminiClient::processTools() {
 
       // put on history
       // Assume tool call token count is negligible or fixed; for now use 0
-      agent->historyManager->addRequest(msg, 0);
+      agent->session()->addRequest(msg, 0);
       _currentToolCalls.clear();
       agent->sendMessage2();
       }
@@ -257,12 +257,12 @@ void GeminiClient::dataFinished() {
 
       if (_currentToolCalls.empty()) {
             // No tools: this is a final turn or a summary request
-            agent->historyManager->addResult(responseContent, totalTokens);
+            agent->session()->addResult(responseContent, totalTokens);
             agent->enableInput(true);
             }
       else {
             // Tool calls detected: Add the assistant's call to history first
-            agent->historyManager->addRequest(responseContent, totalTokens);
+            agent->session()->addRequest(responseContent, totalTokens);
 
             // processTools() will execute the tools and internally call sendMessage2()
             // to send the results back to the LLM.

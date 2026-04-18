@@ -77,16 +77,21 @@ bool MarkdownWebPage::acceptNavigationRequest(const QUrl& url, NavigationType ty
                   return false;
                   }
             }
-      else if (url.scheme() == "http" || url.scheme() == "https") {
-            QDesktopServices::openUrl(url);
-            return false;
-            }
       return QWebEnginePage::acceptNavigationRequest(url, type, isMainFrame);
       }
 
 //---------------------------------------------------------
 //   MarkdownWebView
 //---------------------------------------------------------
+//---------------------------------------------------------
+//   createWindow
+//---------------------------------------------------------
+
+QWebEngineView* MarkdownWebView::createWindow(QWebEnginePage::WebWindowType /*type*/) {
+      return this;
+      }
+
+
 
 MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_parent), editor(e) {
       setPage(new MarkdownWebPage(e, this));
@@ -201,9 +206,13 @@ void MarkdownWebView::installFilterOnProxy() {
 
 void MarkdownWebView::setHtml(const QString& _html, const QUrl& _baseUrl) {
       isLoaded = false;
-      QWebEngineView::setHtml(_html, _baseUrl);
+      QUrl baseUrl = _baseUrl;
+      if (baseUrl.isEmpty() && editor && editor->kontext() && editor->kontext()->file()) {
+            QFileInfo fi(editor->kontext()->file()->path());
+            baseUrl = QUrl::fromLocalFile(fi.absoluteDir().absolutePath() + "/");
+            }
+      QWebEngineView::setHtml(_html, baseUrl);
       }
-
 //---------------------------------------------------------
 //   setDarkMode
 //---------------------------------------------------------

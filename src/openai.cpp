@@ -18,7 +18,7 @@
 #include "openai.h"
 #include "agent.h"
 #include "chatdisplay.h"
-#include "historymanager.h"
+#include "session.h"
 
 //---------------------------------------------------------
 //   OpenAiClient
@@ -79,7 +79,7 @@ json OpenAiClient::prompt(QNetworkRequest* request) {
       jmanifest["role"]    = "system";
       history.push_back(jmanifest);
 
-      for (const auto& msg : agent->historyManager->getActiveEntries()) {
+      for (const auto& msg : agent->session()->getActiveEntries()) {
             json jmsg;
             if (msg.contains("role"))
                   jmsg["role"] = msg["role"];
@@ -216,7 +216,7 @@ void OpenAiClient::processTools() {
                   agent->logContent(msg, text, thinking);
                   agent->chatDisplay->handleIncomingChunk(thinking, text);
 
-                  agent->historyManager->addRequest(msg, 0);
+                  agent->session()->addRequest(msg, 0);
                   }
             }
       catch (const json::parse_error& e) {
@@ -258,11 +258,11 @@ void OpenAiClient::dataFinished() {
       size_t totalTokens = 0;
 
       if (_currentToolCalls.empty()) {
-            agent->historyManager->addResult(responseContent, totalTokens);
+            agent->session()->addResult(responseContent, totalTokens);
             agent->enableInput(true);
             }
       else {
-            agent->historyManager->addRequest(responseContent, totalTokens);
+            agent->session()->addRequest(responseContent, totalTokens);
             processTools();
             }
       }

@@ -1,5 +1,10 @@
 # TODO
 
+## Fehler
+In einer Session mit ollama stelle ich fest, das die Kommunikation mit
+dem Modell in der Datei Sessionxxx richtig geloggt wird.
+Im WebView des Chat Verlaufs ist jedoch das Ergebnis des Models nicht zu sehen. Was läuft da falsch?
+
 ## Splitter Persistenz
 - [x] Der Splitter des Main-Windows besteht aus EditWin Ai-Panel und Git-Panel. Die beiden letzten können bei bedarf ein/aus geschaltet
 werden und haben dann ausgschaltet die Breite Null. Die Breite der Ai und Git PAnels im sichtbaren mode soll permanent gespeichert werden

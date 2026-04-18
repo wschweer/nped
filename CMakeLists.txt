@@ -85,7 +85,7 @@ qt_add_executable(nped
       src/anthropic.cpp
       src/openai.cpp
       src/chatdisplay.cpp
-      src/historymanager.cpp
+      src/session.cpp
       src/screenshot.cpp
       src/dashboard.cpp
       src/dashboard.h

@@ -84,5 +84,5 @@ void Dashboard::addAction(QAction* action, int row) {
 //---------------------------------------------------------
 
 void Dashboard::setTokenCount(size_t tokens) {
-      tokenLabel->setText(QString("Tokens: %1").arg(tokens));
+      tokenLabel->setText(QString("Tokens: %1 k").arg(tokens / 1000));
       }

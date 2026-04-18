@@ -18,7 +18,10 @@
 #include "anthropic.h"
 #include "agent.h"
 #include "chatdisplay.h"
-#include "historymanager.h"
+#include "session.h"
+
+// static const int maxThinkingBudget = 1024;
+static const int maxThinkingBudget = 512;
 
 //---------------------------------------------------------
 //   AnthropicClient
@@ -86,7 +89,7 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
 
       if (extendedThinking) {
             // Budget must be strictly less than max_tokens.
-            const int thinkingBudget     = std::max(1024, maxTokens - 1000);
+            const int thinkingBudget     = std::max(maxThinkingBudget, maxTokens - 1000);
             anthropicRequest["thinking"] = {
                      {         "type",      "enabled"},
                      {"budget_tokens", thinkingBudget}
@@ -105,7 +108,7 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
       // Anthropic only requires the thinking block (with its signature) from the
       // immediately preceding assistant message.  Keeping older thinking blocks
       // wastes thousands of tokens per turn without any benefit.
-      const json activeHistory        = agent->historyManager->getActiveEntries();
+      const json activeHistory        = agent->session()->getActiveEntries();
       size_t lastThinkingAssistantIdx = SIZE_MAX;
       for (size_t i = 0; i < activeHistory.size(); ++i) {
             const auto& h = activeHistory[i];
@@ -214,12 +217,14 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                   if (item.contains("tool_calls") && item["tool_calls"].is_array()) {
                         for (const auto& tc : item["tool_calls"]) {
                               json toolUse;
-                              toolUse["type"]  = "tool_use";
-                              toolUse["id"]    = tc.value("id", "");
-                              toolUse["name"]  = tc.contains("function") ? tc["function"].value("name", "") : "";
-                              toolUse["input"] = tc.contains("function") && tc["function"].contains("arguments")
-                                                     ? tc["function"]["arguments"]
-                                                     : json::object();
+                              toolUse["type"] = "tool_use";
+                              toolUse["id"]   = tc.value("id", "");
+                              toolUse["name"] =
+                                  tc.contains("function") ? tc["function"].value("name", "") : "";
+                              toolUse["input"] =
+                                  tc.contains("function") && tc["function"].contains("arguments")
+                                      ? tc["function"]["arguments"]
+                                      : json::object();
                               contentArray.push_back(toolUse);
                               }
                         }
@@ -242,7 +247,8 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                   if (cleaned.contains("content") && cleaned["content"].is_array()) {
                         const auto& arr = cleaned["content"];
                         // Check if all elements are plain strings – then flatten.
-                        bool allStrings = std::all_of(arr.begin(), arr.end(), [](const json& p) { return p.is_string(); });
+                        bool allStrings =
+                            std::all_of(arr.begin(), arr.end(), [](const json& p) { return p.is_string(); });
                         if (allStrings) {
                               std::string s;
                               for (const auto& part : arr)
@@ -369,19 +375,21 @@ void AnthropicClient::processJsonItem(const json& item) {
                   // Extended Thinking: stream thought text; accumulate into block object.
                   std::string thought = delta.value("thinking", "");
                   agent->chatDisplay->handleIncomingChunk(thought, "");
-                  currentThinkingBlock["thinking"] = currentThinkingBlock["thinking"].get<std::string>() + thought;
+                  currentThinkingBlock["thinking"] =
+                      currentThinkingBlock["thinking"].get<std::string>() + thought;
                   }
             else if (dtype == "signature_delta") {
                   // The API streams the cryptographic signature of the thinking block.
                   // It must be sent back verbatim in subsequent turns.
-                  currentThinkingBlock["signature"] = currentThinkingBlock["signature"].get<std::string>() + delta.value("signature", "");
+                  currentThinkingBlock["signature"] =
+                      currentThinkingBlock["signature"].get<std::string>() + delta.value("signature", "");
                   }
             else if (dtype == "input_json_delta") {
                   // Accumulate streamed JSON fragments for the current tool call.
                   if (!_currentToolCalls.empty() && delta.contains("partial_json")) {
-                        auto& currentCall = _currentToolCalls.back();
-                        currentCall["arguments_str"] =
-                            currentCall["arguments_str"].get<std::string>() + delta["partial_json"].get<std::string>();
+                        auto& currentCall            = _currentToolCalls.back();
+                        currentCall["arguments_str"] = currentCall["arguments_str"].get<std::string>() +
+                                                       delta["partial_json"].get<std::string>();
                         }
                   }
             }
@@ -414,7 +422,8 @@ void AnthropicClient::processTools(json resolvedToolCalls) {
                   // Truncate oversized tool results before they enter the history.
                   if (result.size() > maxToolResultChars) {
                         result.resize(maxToolResultChars);
-                        result += "\n...[output truncated to " + std::to_string(maxToolResultChars) + " chars]";
+                        result +=
+                            "\n...[output truncated to " + std::to_string(maxToolResultChars) + " chars]";
                         }
 
                   json msg;
@@ -436,7 +445,7 @@ void AnthropicClient::processTools(json resolvedToolCalls) {
                   // Previously every tool result was stored with 0 tokens, hiding their
                   // true footprint from the rolling-window and summary logic.
                   const size_t toolTokens = (result.size() + functionName.size()) / 4;
-                  agent->historyManager->addRequest(msg, toolTokens);
+                  agent->session()->addRequest(msg, toolTokens);
                   }
             }
       catch (const json::parse_error& e) {
@@ -464,7 +473,6 @@ void AnthropicClient::dataFinished() {
       // The block is stored as a JSON object so prompt() can pass it back verbatim.
       if (!currentThinkingBlock.empty() && !currentThinkingBlock.value("thinking", "").empty())
             responseContent["thinking"] = currentThinkingBlock;
-
       // Parse arguments_str → JSON object and build the standard tool_calls array
       // that prompt() can later convert back to the Anthropic wire format.
       json resolvedToolCalls = json::array();
@@ -472,11 +480,22 @@ void AnthropicClient::dataFinished() {
             if (call.contains("arguments_str")) {
                   std::string argsStr = call["arguments_str"].get<std::string>();
                   try {
-                        call["function"]["arguments"] = argsStr.empty() ? json::object() : json::parse(argsStr);
+                        call["function"]["arguments"] =
+                            argsStr.empty() ? json::object() : json::parse(argsStr);
                         }
                   catch (const json::parse_error& e) {
                         Critical("Failed to parse tool arguments: {}", e.what());
-                        call["function"]["arguments"] = json::object();
+
+                        std::string warning =
+                            "\n\n[System Error: The tool call was truncated and could not be parsed. You "
+                            "likely hit the max_tokens limit. Please try again, but split your work into "
+                            "smaller steps. For example, use replace_lines instead of write_file.]";
+                        currentContent += warning;
+                        agent->chatDisplay->handleIncomingChunk("", warning);
+
+                        // Skip this broken tool call completely so it doesn't pollute the history
+                        // or trigger a failed execution with empty arguments.
+                        continue;
                         }
                   call.erase("arguments_str");
                   }
@@ -495,7 +514,7 @@ void AnthropicClient::dataFinished() {
 
       if (resolvedToolCalls.empty()) {
             // Plain text response — let the history manager decide whether a summary is needed.
-            agent->historyManager->addResult(responseContent, totalTokens);
+            agent->session()->addResult(responseContent, totalTokens);
             agent->enableInput(true);
             }
       else {
@@ -503,7 +522,7 @@ void AnthropicClient::dataFinished() {
             // processTools() receives the fully resolved list by value so it is independent
             // of _currentToolCalls, which has already been cleared above.
             responseContent["tool_calls"] = resolvedToolCalls;
-            agent->historyManager->addRequest(responseContent, totalTokens);
+            agent->session()->addRequest(responseContent, totalTokens);
             processTools(std::move(resolvedToolCalls));
             }
       }
