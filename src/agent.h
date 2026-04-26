@@ -21,8 +21,8 @@
 #include <QUrl>
 #include <QImage>
 #include <map>
-#include <QQuickWidget>
 #include <QVBoxLayout>
+#include <QDateTime>
 
 #include "logger.h"
 #include "types.h"
@@ -55,15 +55,25 @@ class ScreenshotHelper;
 //   AgentRole
 //---------------------------------------------------------
 
-class AgentRole
+struct AgentRole
       {
+      Q_GADGET
+      Q_PROPERTY(QString name MEMBER name)
+      Q_PROPERTY(QString manifest MEMBER manifest)
+      Q_PROPERTY(bool rw MEMBER rw)
     public:
-      std::string name;
-      std::string manifest;
+      QString name;
+      QString manifest;
       bool rw; // true: read/write, false: read only
+
+      bool operator==(const AgentRole& other) const = default;
       };
 
-using AgentRoles = std::vector<AgentRole>;
+using AgentRoles = QList<AgentRole>;
+
+Q_DECLARE_METATYPE(AgentRole)
+Q_DECLARE_METATYPE(AgentRoles)
+
 
 //---------------------------------------------------------
 //   MCPToolBuilder
@@ -194,8 +204,6 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
 class Agent : public QWidget
       {
       Q_OBJECT
-      QML_ELEMENT
-      QML_UNCREATABLE("no")
 
       Q_PROPERTY(bool filterToolMessages MEMBER filterToolMessages)
       Q_PROPERTY(bool filterThoughts MEMBER filterThoughts)
@@ -215,7 +223,8 @@ class Agent : public QWidget
       QComboBox* modelMenu;
       QToolButton* statusLabel;
       QToolButton* stopButton;
-      QComboBox* agentRoleCombo;
+
+
       QToolButton* configButton;
       QToolButton* screenshotButton;
       QToolButton* button1;
@@ -235,16 +244,21 @@ class Agent : public QWidget
       QList<Attachment> _attachments;                  ///< pending files attached to prompt
       QList<AttachmentButton*> _attachmentIconButtons; ///< one thumbnail button per pending attachment
 
+      QComboBox* agentRoleCombo { nullptr };
+
       // Netzwerk & Status
       QNetworkAccessManager* networkManager;
       QNetworkReply* currentReply {nullptr};
       Model model;
       LLMClient* llm {nullptr};
 
-      AgentRole* agentRole {nullptr};
+      QString _agentRoleName;
       bool isRetrying {false};
       bool _stopRequested {false};
       int retryPause {2000};
+      QToolButton* addAttachmentButton {nullptr}; ///< "+" button to add attachments
+      void addAttachment();                        ///< opens file dialog to attach any file
+      QList<QToolButton*> _attachmentButtons;      ///< all attachment buttons (images and other files)
       int currentRetryCount {0};
       const int maxRetries {5};
       QDateTime rateLimitResetTime;
@@ -284,7 +298,7 @@ class Agent : public QWidget
       std::string getDiagnostics(const QString& file);
       std::string findReferences(const QString& file, int line, int column);
       string listDirectory(const QString& path);
-      string listFilesRecursive(const QString& path);
+      string listFilesRecursive(const QString& path, int depth);
       string searchProject(const QString& query, const QString& filePattern);
       string findSymbol(const QString& symbol);
       string fetchWebDocumentation(const QString& urlString);
@@ -329,6 +343,7 @@ class Agent : public QWidget
 
     signals:
       void modelChanged();
+      void attachmentClicked(int);
 
     public:
       explicit Agent(Editor* e, QWidget* parent = nullptr);
@@ -338,13 +353,15 @@ class Agent : public QWidget
       QAction* showToolMessageAction = nullptr;
       QAction* showThoughtsAction    = nullptr;
 
+      void onAttachmentClicked();
+      void onAttachmentSelected(int index);
       bool filterToolMessages = true;
       bool filterThoughts     = false;
-      std::string getManifest() { return agentRole->manifest; }
+      std::string getManifest() { return agentRole()->manifest.toStdString(); }
       static QString configPath();
       QString currentModel() const { return model.name; }
       void setCurrentModel(const QString& s, bool clearChat = true);
-      bool isExecuteMode() const { return agentRole->rw; }
+      bool isExecuteMode() const { return agentRole()->rw; }
       bool isWorking() const;
       void logContent(const json& part, std::string& text, std::string& thought);
       std::string formatToolCall(const std::string& name, const json& args, const std::string& result = "");
@@ -355,6 +372,8 @@ class Agent : public QWidget
       static constexpr int kBuildLogMaxChars   = 20000 * 10;
       static constexpr int kWebFetchMaxChars   = 80000;
       static constexpr int kGitDiffMaxChars    = 10000;
+      static constexpr int kMaxAttachmentSize = 1024 * 1024 * 2; // 2MB limit
+
       static constexpr int kSearchMaxChars     = 10000;
       static constexpr int kChatResultMaxChars = 20000;
       static constexpr int kChatMaxMessages    = 40;
@@ -364,4 +383,5 @@ class Agent : public QWidget
       void updateSessionList();
       void updateChatDisplay(bool scrollToBottom = false);
       void addMessage(const std::string& role, const std::string& text);
+      const AgentRole* agentRole() const;
       };

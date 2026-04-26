@@ -29,6 +29,7 @@ class ChatDisplay : public MarkdownWebView
       QString getChatDarkCss() const;
       bool mustStartMessage { false };
       std::string role;
+      void safeRunJs(const QString& call);
 
     public slots:
       void handleIncomingChunk(const std::string& thoughtChunk, const std::string& textChunk);

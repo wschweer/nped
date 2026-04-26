@@ -38,16 +38,8 @@ struct TextStyle {
             Search, SearchHit, Gutter, MarkedLine, NonText};
       };
 
-//---------------------------------------------------------
-//   TextStyles
-//---------------------------------------------------------
 
-class TextStyles : public QList<TextStyle> {
-   public:
-      using QList<TextStyle>::QList;
-      QJsonArray toJson() const;
-      void fromJson(const QJsonArray& array);
-      };
+using TextStyles = QList<TextStyle>;
 
 Q_DECLARE_METATYPE(TextStyle)
 Q_DECLARE_METATYPE(TextStyles)

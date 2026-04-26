@@ -31,7 +31,7 @@ class KeyLogger;
 class MarkdownWebPage : public QWebEnginePage
       {
       Q_OBJECT
-      Editor* editor;
+      Editor* _editor;
 
     protected:
       bool acceptNavigationRequest(const QUrl& url, NavigationType type, bool isMainFrame) override;
@@ -56,7 +56,7 @@ class MarkdownWebView : public QWebEngineView
       std::vector<Action> textActions;
       QString _pendingDiff;
       QString _currentDiff;
-      Editor* editor;
+      Editor* _editor;
       KeyLogger* kl{nullptr};
       // Hilfsmethode für JS-Injection
       void executeScroll(int pixelsY);
@@ -73,7 +73,7 @@ class MarkdownWebView : public QWebEngineView
 
     public slots:
       virtual void setDarkMode(bool);
-      Editor* getEditor() const { return editor; }
+      Editor* editor() const { return _editor; }
 
     public:
       explicit MarkdownWebView(Editor*, QWidget* parent = nullptr);

@@ -7,10 +7,11 @@
     min-height: 32px;
 }
 
-#deleteSessionButton:hover {
+QToolButton#deleteSessionButton:hover {
     border: 1px solid #888;
+    background-color: #444;
+    border-radius: 4px;
 }
-
 /* #dashboardWidget {
     border: 1px solid #444;
     border-radius: 8px;

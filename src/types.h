@@ -12,6 +12,7 @@
 #pragma once
 
 #include <QPoint>
+#include <QString>
 #include <nlohmann/json.hpp>
 
 class File;
@@ -120,7 +121,7 @@ struct Range {
 //   Attachment
 //---------------------------------------------------------
 
-enum class AttachmentType { Image, Text, Audio };
+enum class AttachmentType { Image, Text, Audio, Other };
 
 struct Attachment {
     AttachmentType type;

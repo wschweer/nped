@@ -54,89 +54,122 @@ std::vector<json> Agent::getMCPTools() const {
 
             // 1. File Operations
             if (isExecuteMode()) {
-                  tools.push_back(MCPToolBuilder("replace_lines", "Replaces, deletes, or inserts lines in a file. If lines_to_delete is 0, "
-                                                                  "it inserts. If replace_lines is empty, it deletes.")
-                                      .add_parameter("path", "string", "The path to the file.")
-                                      .add_parameter("start_line", "integer", "The line number where the operation starts (1-indexed).")
-                                      .add_parameter("lines_to_delete", "integer", "Number of lines to delete (default: 0).", false)
-                                      .add_parameter("replace_lines", "string", "The text to insert (default: empty).", false)
-                                      .build());
-
-                  tools.push_back(MCPToolBuilder("read_file", "Reads a file or a specific range of lines from a file.")
-                                      .add_parameter("path", "string", "The path to the file.")
-                                      .add_parameter("start_line", "integer", "The first line to read (1-indexed).", false)
-                                      .add_parameter("end_line", "integer", "The last line to read.", false)
-                                      .build());
+                  tools.push_back(
+                      MCPToolBuilder(
+                          "insert_lines",
+                          "Inserts lines in a file at the specified line number.")
+                          .add_parameter("path", "string", "The path to the file.")
+                          .add_parameter("start_line", "integer",
+                                         "The line number where the operation starts (1-indexed).")
+                          .add_parameter("insert_text", "string", "The text to insert.")
+                          .build());
 
                   tools.push_back(
-                      MCPToolBuilder("write_file",
-                                     "Completely overwrites an existing file with new content or creates a new file with content")
+                      MCPToolBuilder(
+                          "remove_lines",
+                          "Removes a specific number of lines in a file starting at a given line number.")
                           .add_parameter("path", "string", "The path to the file.")
-                          .add_parameter("content", "string", "The content for the file.")
+                          .add_parameter("start_line", "integer",
+                                         "The line number where the operation starts (1-indexed).")
+                          .add_parameter("lines_to_delete", "integer",
+                                         "Number of lines to delete.")
                           .build());
+                  tools.push_back(
+                      MCPToolBuilder("read_file", "Reads a file or a specific range of lines from a file.")
+                          .add_parameter("path", "string", "The path to the file.")
+                          .add_parameter("start_line", "integer", "The first line to read (1-indexed).",
+                                         false)
+                          .add_parameter("end_line", "integer", "The last line to read (1-indexed).", false)
+                          .build());
+
+                  tools.push_back(MCPToolBuilder("write_file",
+                                                 "Completely overwrites an existing file with new content "
+                                                 "or creates a new file with content")
+                                      .add_parameter("path", "string", "The path to the file.")
+                                      .add_parameter("content", "string", "The content for the file.")
+                                      .build());
                   }
 
             // 2. Navigation & Search
-            tools.push_back(MCPToolBuilder("list_files_recursive", "Lists all files and subdirectories recursively in a tree structure.")
-                                .add_parameter("path", "string", "The directory path to inspect.")
-                                .build());
+            tools.push_back(
+                MCPToolBuilder("list_files_recursive",
+                               "Lists all files and subdirectories recursively in a tree structure.")
+                    .add_parameter("path", "string", "The directory path to inspect.")
+                    .add_parameter("depth", "integer", "Optional recursion depth, default is 2. Unlimited is 0.",
+                                   false)
+                    .build());
 
-            tools.push_back(MCPToolBuilder("search_project",
-                                           "Searches for a text query across all files in the project, including unsaved editor buffers.")
+            tools.push_back(MCPToolBuilder("search_project", "Searches for a text query across all files in "
+                                                             "the project, including unsaved editor buffers.")
                                 .add_parameter("query", "string", "The text to search for.")
-                                .add_parameter("file_pattern", "string", "Optional glob pattern to filter files (e.g., '*.cpp').", false)
+                                .add_parameter("file_pattern", "string",
+                                               "Optional glob pattern to filter files (e.g., '*.cpp').",
+                                               false)
                                 .build());
 
             tools.push_back(
-                MCPToolBuilder("find_symbol", "Uses the Language Server (LSP) to find the definition of a symbol like a class or function.")
+                MCPToolBuilder("find_symbol", "Uses the Language Server (LSP) to find the definition of a "
+                                              "symbol like a class or function.")
                     .add_parameter("symbol", "string", "The name of the symbol to locate (e.g., 'MyClass').")
                     .build());
 
+            tools.push_back(MCPToolBuilder("get_file_outline",
+                                           "Uses the Language Server (LSP) to get a hierarchical "
+                                           "outline of classes, methods, and functions in a file.")
+                                .add_parameter("path", "string", "The path to the file to analyze.")
+                                .build());
+
             tools.push_back(
-                MCPToolBuilder("get_file_outline",
-                               "Uses the Language Server (LSP) to get a hierarchical outline of classes, methods, and functions in a file.")
-                    .add_parameter("path", "string", "The path to the file to analyze.")
+                MCPToolBuilder("get_diagnostics",
+                               "Retrieve Language Server diagnostics (errors, warnings) for a file.")
+                    .add_parameter("path", "string", "The path to the file to get diagnostics for.")
                     .build());
 
-            tools.push_back(MCPToolBuilder("get_diagnostics", "Retrieve Language Server diagnostics (errors, warnings) for a file.")
-                                .add_parameter("path", "string", "The path to the file to get diagnostics for.")
-                                .build());
-
-            tools.push_back(MCPToolBuilder("find_references",
-                                           "Uses the Language Server to find all references to a symbol at a specific file and position.")
-                                .add_parameter("path", "string", "The path to the file containing the symbol.")
-                                .add_parameter("line", "integer", "The 1-based line number of the symbol.")
-                                .add_parameter("column", "integer", "The 1-based column number of the symbol.")
-                                .build());
+            tools.push_back(
+                MCPToolBuilder("find_references", "Uses the Language Server to find all references to a "
+                                                  "symbol at a specific file and position.")
+                    .add_parameter("path", "string", "The path to the file containing the symbol.")
+                    .add_parameter("line", "integer", "The 1-based line number of the symbol.")
+                    .add_parameter("column", "integer", "The 1-based column number of the symbol.")
+                    .build());
 
             // 3. System & External
-            tools.push_back(
-                MCPToolBuilder("fetch_web_documentation",
-                               "Downloads content from a URL via HTTP GET. Use this to read external API docs or technical references.")
-                    .add_parameter("url", "string", "The full URL starting with http or https.")
-                    .build());
-
-            tools.push_back(MCPToolBuilder("run_build_command",
-                                           "Executes a shell command (like 'make' or 'cmake') within the project's build directory.")
-                                .add_parameter("command", "string", "The build command to execute.")
+            tools.push_back(MCPToolBuilder("fetch_web_documentation",
+                                           "Downloads content from a URL via HTTP GET. Use this to read "
+                                           "external API docs or technical references.")
+                                .add_parameter("url", "string", "The full URL starting with http or https.")
                                 .build());
+
+            tools.push_back(
+                MCPToolBuilder(
+                    "run_build_command",
+                    "Executes a shell command (like 'make' or 'cmake') within the project's build directory.")
+                    .add_parameter("command", "string", "The build command to execute.")
+                    .build());
 
             // 4. Git Integration
             tools.push_back(
-                MCPToolBuilder("get_git_status", "Returns the current git status of the repository. No parameters needed.").build());
+                MCPToolBuilder("get_git_status",
+                               "Returns the current git status of the repository. No parameters needed.")
+                    .build());
 
-            tools.push_back(MCPToolBuilder("get_git_diff", "Shows uncommitted changes as a diff. Helps review edits before committing.")
-                                .add_parameter("path", "string", "Optional: path to a specific file to diff.", false)
-                                .build());
+            tools.push_back(
+                MCPToolBuilder("get_git_diff",
+                               "Shows uncommitted changes as a diff. Helps review edits before committing.")
+                    .add_parameter("path", "string", "Optional: path to a specific file to diff.", false)
+                    .build());
 
-            tools.push_back(MCPToolBuilder("get_git_log", "Displays the recent git commit history.")
-                                .add_parameter("limit", "integer", "Number of commits to retrieve (default: 5).", false)
-                                .build());
+            tools.push_back(
+                MCPToolBuilder("get_git_log", "Displays the recent git commit history.")
+                    .add_parameter("limit", "integer", "Number of commits to retrieve (default: 5).", false)
+                    .build());
 
             if (isExecuteMode()) {
-                  tools.push_back(MCPToolBuilder("create_git_commit", "Stages all current changes (git add .) and creates a new commit.")
-                                      .add_parameter("message", "string", "A clear and concise commit message.")
-                                      .build());
+                  tools.push_back(
+                      MCPToolBuilder("create_git_commit",
+                                     "Stages all current changes (git add .) and creates a new commit.")
+                          .add_parameter("message", "string", "A clear and concise commit message.")
+                          .build());
                   }
             return tools;
             }
@@ -151,21 +184,28 @@ std::vector<json> Agent::getMCPTools() const {
 //---------------------------------------------------------
 
 std::string Agent::executeTool(const std::string& functionName, const json& arguments) {
-      Debug("<{}>", functionName);
+      if (functionName == "read_file") {
+            std::string p = arguments.contains("path") ? arguments["path"] : "??";
+            Debug("{}: <{}>", functionName, p);
+            }
+      else
+            Debug("<{}>", functionName);
 
       // Hilfsfunktion: Limitiert die Zeilenlänge des Feedbacks im chatDisplay
 #if 0
       auto trim = [](const QString& s, int maxLen = 80) {
             QString res = s.length() > maxLen ? s.left(maxLen - 3) + "..." : s;
             return res.toHtmlEscaped(); // Gleichzeitig HTML Sonderzeichen maskieren
-                                                                                                      };
+                                                                                                                                    };
 #endif
       // 1. Definiere, welche Tools harmlos sind (Nur-Lese-Zugriff)
       bool isReadOnlyTool =
           (functionName == "read_file" || functionName == "search_project" || functionName == "find_symbol" ||
-           functionName == "get_file_outline" || functionName == "get_diagnostics" || functionName == "find_references" ||
-           functionName == "list_files_recursive" || functionName == "fetch_web_documentation" || functionName == "get_git_status" ||
-           functionName == "get_git_diff" || functionName == "get_git_log" || functionName == "run_build_command");
+           functionName == "get_file_outline" || functionName == "get_diagnostics" ||
+           functionName == "find_references" || functionName == "list_files_recursive" ||
+           functionName == "fetch_web_documentation" || functionName == "get_git_status" ||
+           functionName == "get_git_diff" || functionName == "get_git_log" ||
+           functionName == "run_build_command");
 
       // 2. Entwurfs-Modus Check
       if (!isExecuteMode() && !isReadOnlyTool) {
@@ -194,11 +234,15 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             return getGitStatus();
             }
       else if (functionName == "get_git_diff") {
-            QString p = (arguments.contains("path") && arguments["path"].is_string()) ? QString::fromStdString(arguments["path"].get<std::string>()) : "";
+            QString p = (arguments.contains("path") && arguments["path"].is_string())
+                            ? QString::fromStdString(arguments["path"].get<std::string>())
+                            : "";
             return getGitDiff(p);
             }
       else if (functionName == "get_git_log") {
-            int limit = (arguments.contains("limit") && arguments["limit"].is_number()) ? arguments["limit"].get<int>() : 5;
+            int limit = (arguments.contains("limit") && arguments["limit"].is_number())
+                            ? arguments["limit"].get<int>()
+                            : 5;
             return getGitLog(limit);
             }
       else if (functionName == "create_git_commit") {
@@ -215,9 +259,10 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
       else if (functionName == "search_project") {
             if (!arguments.contains("query") || !arguments["query"].is_string())
                   return "Error: Parameter 'query' missing.";
-            QString query = QString::fromStdString(arguments["query"].get<std::string>());
-            QString pattern =
-                (arguments.contains("file_pattern") && arguments["file_pattern"].is_string()) ? QString::fromStdString(arguments["file_pattern"].get<std::string>()) : "";
+            QString query   = QString::fromStdString(arguments["query"].get<std::string>());
+            QString pattern = (arguments.contains("file_pattern") && arguments["file_pattern"].is_string())
+                                  ? QString::fromStdString(arguments["file_pattern"].get<std::string>())
+                                  : "";
             return searchProject(query, pattern);
             }
       else if (functionName == "find_symbol") {
@@ -244,7 +289,8 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             return getDiagnostics(path);
             }
       else if (functionName == "find_references") {
-            if (!arguments.contains("line") || !arguments["line"].is_number() || !arguments.contains("column") || !arguments["column"].is_number())
+            if (!arguments.contains("line") || !arguments["line"].is_number() ||
+                !arguments.contains("column") || !arguments["column"].is_number())
                   return "Error: Parameters 'line' and 'column' are missing.";
             int line   = arguments["line"].get<int>();
             int column = arguments["column"].get<int>();
@@ -259,8 +305,12 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             // [startLine, endLine] is a closed interval
             // we must transform it to a half closed interval: [startLine, endLine)
 
-            int startLine = (arguments.contains("start_line") && arguments["start_line"].is_number()) ? arguments["start_line"].get<int>() - 1 : 0;
-            int endLine   = (arguments.contains("end_line") && arguments["end_line"].is_number()) ? arguments["end_line"].get<int>() : lines.size();
+            int startLine = (arguments.contains("start_line") && arguments["start_line"].is_number())
+                                ? arguments["start_line"].get<int>() - 1
+                                : 0;
+            int endLine   = (arguments.contains("end_line") && arguments["end_line"].is_number())
+                                ? arguments["end_line"].get<int>()
+                                : lines.size();
             int n         = lines.size();
 
             if (startLine < 0 || startLine >= n)
@@ -276,7 +326,7 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             json result = {
                      {    "status",      "success"},
                      { "startLine",  startLine + 1},
-                     {   "endLine",    endLine + 1},
+                     {   "endLine",    endLine    },
                      {     "lines", extractedLines},
                      {"totalLines",   lines.size()}
                   };
@@ -290,17 +340,28 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             return writeFile(path, content);
             }
       else if (functionName == "list_files_recursive") {
-            return listFilesRecursive(path);
+            int depth = 2; // this is the default recursion depth of the search
+            if (arguments.contains("depth") && arguments["depth"].is_number())
+                  depth = arguments["depth"];
+            return listFilesRecursive(path, depth);
             }
-      else if (functionName == "replace_lines") {
+      else if (functionName == "insert_lines") {
             if (!arguments.contains("start_line") || !arguments["start_line"].is_number())
                   return "Error: Parameter 'start_line' missing.";
-            int startLine     = arguments["start_line"].get<int>();
-            int linesToDelete = (arguments.contains("lines_to_delete") && arguments["lines_to_delete"].is_number()) ? arguments["lines_to_delete"].get<int>() : 0;
-            QString replaceText;
-            if (arguments.contains("replace_lines") && arguments["replace_lines"].is_string())
-                  replaceText = QString::fromStdString(arguments["replace_lines"].get<std::string>());
-            return replaceLines(path, startLine, linesToDelete, replaceText);
+            if (!arguments.contains("insert_text") || !arguments["insert_text"].is_string())
+                  return "Error: Parameter 'insert_text' missing.";
+            int startLine = arguments["start_line"].get<int>();
+            QString replaceText = QString::fromStdString(arguments["insert_text"].get<std::string>());
+            return replaceLines(path, startLine, 0, replaceText);
+            }
+      else if (functionName == "remove_lines") {
+            if (!arguments.contains("start_line") || !arguments["start_line"].is_number())
+                  return "Error: Parameter 'start_line' missing.";
+            if (!arguments.contains("lines_to_delete") || !arguments["lines_to_delete"].is_number())
+                  return "Error: Parameter 'lines_to_delete' missing.";
+            int startLine = arguments["start_line"].get<int>();
+            int linesToDelete = arguments["lines_to_delete"].get<int>();
+            return replaceLines(path, startLine, linesToDelete, "");
             }
       return "Error: Unknown tool (" + functionName + ").";
       }
@@ -397,7 +458,7 @@ string Agent::searchProject(const QString& query, const QString& filePattern) {
       if (result.length() > 4000) {
             result.resize(4000);
             result += "\n... [Too many results, output truncated]";
-                                                      }
+                                                                                    }
 #endif
       return result;
       }
@@ -555,8 +616,9 @@ string Agent::fetchWebDocumentation(const QString& urlString) {
       // sprengt das sofort das "Context Window" von Ollama und es stürzt ab.
       // Wir kappen die Antwort sicherheitshalber bei 8000 Zeichen.
       if (content.length() > kWebFetchMaxChars) {
-            content  = content.substr(content.length() - kWebFetchMaxChars);
-            content += "\n\n... [ATTENTION SYSTEM: Documentation was truncated here because it was too large.]";
+            content = content.substr(content.length() - kWebFetchMaxChars);
+            content +=
+                "\n\n... [ATTENTION SYSTEM: Documentation was truncated here because it was too large.]";
             }
 
       return content;
@@ -566,83 +628,41 @@ string Agent::fetchWebDocumentation(const QString& urlString) {
 //   replaceLines
 //---------------------------------------------------------
 
-string Agent::replaceLines(const QString& ipath, int startLine, int linesToDelete, const QString& replaceText) {
+string Agent::replaceLines(const QString& ipath, int startLine, int linesToDelete,
+                           const QString& replaceText) {
       QString path = normalizePath(ipath);
       if (!QFile::exists(path)) {
             Debug("File <{}> ipath <{}> does not exist", path, ipath);
             return "Error: File does not exist.";
             }
-      int startIdx = startLine - 1;
+      startLine -= 1; // index is zero based
 
-      File* f = _editor->findFile(path);
-      if (f) {
-            if (startIdx < 0)
-                  return "Error: start_line out of bounds.";
-            if (startIdx > f->fileRows())
-                  startIdx = f->fileRows(); // append if beyond end
+      if (startLine < 0)
+            return "Error: start_line out of bounds.";
+      if (linesToDelete < 0)
+            return "Error: lines_to_delete must be >= 0";
 
-            Pos startPos(0, startIdx);
-            int charsToRemove = 0;
-            for (int i = 0; i < linesToDelete; ++i) {
-                  int currIdx = startIdx + i;
-                  if (currIdx < f->fileRows()) {
-                        charsToRemove += f->fileText(currIdx).size();
-                        if (currIdx < f->fileRows() - 1)
-                              charsToRemove += 1; // count the newline
-                        }
-                  }
+      int endLine = startLine + linesToDelete;
 
-            // If deleting to the very end of file, and we are not deleting the only line,
-            // also remove the preceding newline to avoid leaving trailing empty lines.
-            // But if we are inserting replacement text, we might not need this. Keep it simple.
-            if (startIdx + linesToDelete >= f->fileRows() && startIdx > 0 && linesToDelete > 0 && replaceText.isEmpty()) {
-                  startPos       = Pos(f->fileText(startIdx - 1).size(), startIdx - 1);
-                  charsToRemove += 1;
-                  }
-            else if (startIdx == f->fileRows() && f->fileRows() > 0) {
-                  startPos = Pos(f->fileText(f->fileRows() - 1).size(), f->fileRows() - 1);
-                  }
+      Kontext* kontext = _editor->lookupKontext(path);
+      File* f          = kontext->file();
+      if (startLine > f->fileRows())
+            startLine = f->fileRows(); // append if beyond end
+      if (endLine > f->fileRows())
+            endLine = f->fileRows();
 
-            QString insertStr = replaceText;
-            if (!insertStr.isEmpty() && startIdx < f->fileRows() && linesToDelete == 0)
-                  insertStr += "\n";
-            else if (startIdx == f->fileRows() && f->fileRows() > 0 && !insertStr.isEmpty())
-                  insertStr = "\n" + insertStr;
+      Pos start(0, startLine);
+      Pos end(0, endLine);
+      int charsToRemove = f->distance(start, end);
+      QString insertStr = replaceText;
+      if (!insertStr.isEmpty())
+            insertStr += "\n";
 
-            f->undo()->beginMacro();
-            f->undo()->push(new Patch(f, startPos, charsToRemove, insertStr, Cursor(), Cursor()));
-            f->undo()->endMacro();
-            }
-      else {
-            QFile file(path);
-            if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-                  return std::format("Error: Could not open file for reading: {}", file.errorString().toStdString());
-            QString content = QTextStream(&file).readAll();
-            file.close();
-
-            QStringList lines = content.split('\n');
-            if (startIdx < 0)
-                  return "Error: start_line out of bounds.";
-            if (startIdx > lines.size())
-                  startIdx = lines.size();
-
-            for (int i = 0; i < linesToDelete; ++i)
-                  if (startIdx < lines.size())
-                        lines.removeAt(startIdx);
-
-            if (!replaceText.isEmpty()) {
-                  QStringList newLines = replaceText.split('\n');
-                  for (int i = 0; i < newLines.size(); ++i)
-                        lines.insert(startIdx + i, newLines[i]);
-                  }
-
-            if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
-                  return std::format("Error: Could not open file for writing: {}", file.errorString().toStdString());
-            QTextStream out(&file);
-            out << lines.join('\n');
-            file.close();
-            }
-      return std::format("success: replaced {} lines at line {} in {}.", linesToDelete, startLine, path.toStdString());
+      f->undo()->beginMacro();
+      f->undo()->push(new Patch(f, start, charsToRemove, insertStr, Cursor(), Cursor()));
+      f->undo()->endMacro();
+      return std::format("success: replaced {} lines at line {} in {}.", endLine - startLine, startLine + 1,
+                         path);
       }
 
 //---------------------------------------------------------
@@ -687,8 +707,9 @@ string Agent::getGitDiff(const QString& path) {
 
       // SICHERHEITS-LIMIT: Diffs können gigantisch werden!
       if (result.length() > kGitDiffMaxChars) {
-            result  = result.substr(result.length() - kGitDiffMaxChars);
-            result += "\n\n... [ATTENTION SYSTEM: Diff truncated because it was too large for the context window.]";
+            result = result.substr(result.length() - kGitDiffMaxChars);
+            result +=
+                "\n\n... [ATTENTION SYSTEM: Diff truncated because it was too large for the context window.]";
             }
       return result;
       }
@@ -719,7 +740,8 @@ string Agent::getGitLog(int limit) {
 string Agent::createGitCommit(const QString& message) {
       // Wenn der Agent im Entwurfs-Modus ist, blockieren wir Schreibvorgänge
       if (!isExecuteMode())
-            return std::format("Plan Mode Active: Commit '{}' was NOT executed. This is a read-only simulation. No commit was created.",
+            return std::format("Plan Mode Active: Commit '{}' was NOT executed. This is a read-only "
+                               "simulation. No commit was created.",
                                message);
 
       saveAll();
@@ -738,7 +760,8 @@ string Agent::createGitCommit(const QString& message) {
       std::string err(process.readAllStandardError());
       std::string out(process.readAllStandardOutput());
 
-      if (!err.empty() && !QString::fromStdString(err).contains("master")) // Git nutzt stderr oft für Warnungen
+      if (!err.empty() &&
+          !QString::fromStdString(err).contains("master")) // Git nutzt stderr oft für Warnungen
             return std::format("Warning/Error during commit: {}", err);
 
       return std::format("Commit successful: {}", out);
@@ -766,9 +789,7 @@ string Agent::runBuildCommand(const QString& command) {
       QString projRoot = QDir::cleanPath(_editor->projectRoot());
       QString buildDir = projRoot + "/build";
 
-      if (isExecuteMode()) {
-            saveAll();
-            }
+      saveAll();
 
       // 1. Prüfen und Erzeugen des "build" Verzeichnisses
       QDir dir(buildDir);
@@ -780,7 +801,8 @@ string Agent::runBuildCommand(const QString& command) {
                         }
                   }
             else {
-                  return "Plan Mode Active: Build directory does not exist and cannot be created in read-only mode.";
+                  return "Plan Mode Active: Build directory does not exist and cannot be created in "
+                         "read-only mode.";
                   }
             }
 
@@ -804,7 +826,8 @@ string Agent::runBuildCommand(const QString& command) {
             args << "-u" << "ai" << "-n" << "bwrap";
             }
 
-      args << "--ro-bind" << "/" << "/" << (isExecuteMode() ? "--bind" : "--ro-bind") << projRoot << projRoot << "--dev" << "/dev"
+      args << "--ro-bind" << "/" << "/" << (isExecuteMode() ? "--bind" : "--ro-bind") << projRoot << projRoot
+           << "--dev" << "/dev"
            << "--proc" << "/proc"
            << "--tmpfs" << "/tmp"
            << "--unshare-all"
@@ -849,14 +872,14 @@ string Agent::runBuildCommand(const QString& command) {
 //   listFilesRecursive
 //--------------------------------------------------------------------
 
-string Agent::listFilesRecursive(const QString& ipath) {
+string Agent::listFilesRecursive(const QString& ipath, int depth) {
       QString path = normalizePath(ipath);
       QDir dir(path);
       if (!dir.exists())
             return std::format("Error: The directory {} does not exist.", path);
 
       // Recursive lambda to build the tree
-      std::function<json(const QDir&)> scanDir = [&](const QDir& currentDir) -> json {
+      std::function<json(const QDir&, int)> scanDir = [&](const QDir& currentDir, int level) -> json {
             json node        = json::object();
             node["name"]     = currentDir.dirName().toStdString();
             node["type"]     = "directory";
@@ -866,23 +889,28 @@ string Agent::listFilesRecursive(const QString& ipath) {
             for (const QFileInfo& info : list) {
                   if (info.fileName().startsWith("."))
                         continue;
+                  std::string fn = info.fileName().toStdString();
+                  json fileNode;
+                  fileNode["name"] = fn;
+                  fileNode["size"] = info.size();
                   if (info.isDir()) {
                         QDir subDir(info.absoluteFilePath());
-                        node["children"].push_back(scanDir(subDir));
+                        if (level >= depth) {
+                              fileNode["type"] = "directory";
+                              node["children"].push_back(fileNode);
+                              }
+                        else
+                              node["children"].push_back(scanDir(subDir, ++level));
                         }
                   else {
-                        json fileNode = {
-                                 {"name", info.fileName().toStdString()},
-                                 {"type",                        "file"},
-                                 {"size",                   info.size()}
-                              };
+                        fileNode["type"] = "file";
                         node["children"].push_back(fileNode);
                         }
                   }
             return node;
             };
 
-      json result        = scanDir(dir);
+      json result        = scanDir(dir, 0);
       result["rootPath"] = path.toStdString();
       return result.dump(2);
       }
@@ -900,9 +928,7 @@ string Agent::getFileOutline(const QString& file) {
 
       QEventLoop loop;
 
-      auto connection = connect(f, &File::symbolsReady, [&]() {
-            loop.quit();
-            });
+      auto connection = connect(f, &File::symbolsReady, [&]() { loop.quit(); });
 
       QTimer timer;
       timer.setSingleShot(true);

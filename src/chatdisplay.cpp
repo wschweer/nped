@@ -147,11 +147,25 @@ void ChatDisplay::setup() {
             document.body.removeChild(ta);
       }
 
+      function notifyEditor(text) {
+            window._npedCopyBuffer = text;
+            const a = document.createElement('a');
+            a.href = 'nped://copy-code';
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+      }
+
       function copyCode(btn) {
             const codeBlock = btn.parentElement.nextElementSibling.querySelector('code');
             const text = codeBlock.innerText;
             const originalHTML = btn.innerHTML;
-            const ok = () => { btn.innerHTML = '&#10003;'; setTimeout(() => btn.innerHTML = originalHTML, 2000); };
+            const ok = () => {
+                  btn.innerHTML = '&#10003;';
+                  setTimeout(() => btn.innerHTML = originalHTML, 2000);
+                  notifyEditor(text);
+                  };
             if (navigator.clipboard) {
                   navigator.clipboard.writeText(text).then(ok).catch(() => { fallbackCopy(text); ok(); });
             } else {
@@ -329,6 +343,25 @@ void ChatDisplay::setDarkMode(bool enabled) {
       }
 
 //---------------------------------------------------------
+//   safeRunJs
+//       Guards against calling JS functions before the page
+//       has finished loading (e.g. during session restore).
+//---------------------------------------------------------
+
+void ChatDisplay::safeRunJs(const QString& call) {
+      // Extract function name (everything before the first '(')
+      int paren = call.indexOf('(');
+      QString funcName = (paren > 0) ? call.left(paren) : call;
+      QString js = QString(
+          "if(typeof %1 === 'function') { %2 } else { "
+          "  setTimeout(function() { if(typeof %1 === 'function') { %2 } "
+          "  else { console.error('%1 not found!'); } }, 100);"
+          "}")
+          .arg(funcName, call);
+      page()->runJavaScript(js, [](const QVariant& res) { (void)res; });
+      }
+
+//---------------------------------------------------------
 //   startMessage
 //---------------------------------------------------------
 
@@ -336,7 +369,7 @@ void ChatDisplay::startMessage() {
       currentStreamingThought.clear();
       currentStreamingText.clear();
       auto s = std::format("startNewStreamingMessage('{}');", role);
-      page()->runJavaScript(QString::fromStdString(s));
+      safeRunJs(QString::fromStdString(s));
       }
 
 //---------------------------------------------------------
@@ -355,7 +388,7 @@ void ChatDisplay::handleIncomingChunk(const std::string& thoughtChunk, const std
             QString html             = renderMarkdownToHtml(currentStreamingThought);
 
             QString js = QString("updateStreamingThought(%1);").arg(quoteForJs(html));
-            page()->runJavaScript(js);
+            safeRunJs(js);
             }
 
       if (!textChunk.empty()) {
@@ -364,9 +397,10 @@ void ChatDisplay::handleIncomingChunk(const std::string& thoughtChunk, const std
 
             // JS Aufruf
             QString js = QString("updateStreamingText(%1);").arg(quoteForJs(html));
-            page()->runJavaScript(js);
+            safeRunJs(js);
             }
       }
+
 
 //---------------------------------------------------------
 //   quoteForJs

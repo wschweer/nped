@@ -1,0 +1,275 @@
+{
+      "titel": "Configuration",
+      "sections": [
+            {
+                  "type": "properties",
+                  "sequence": [
+                        "darkMode",
+                        "font"
+                  ],
+                  "darkMode": {
+                        "type": "bool",
+                        "label": "Dark Mode",
+                        "name": "darkMode"
+                  },
+                  "font": {
+                        "type": "font",
+                        "label": "Font",
+                        "name": "fontFamily"
+                  },
+                  "title": "General & GUI"
+            },
+            {
+                  "type": "list",
+                  "readOnly": true,
+                  "listName": "shortcuts",
+                  "listType": "ShortcutConfig",
+                  "listItemTitle": "ShortcutConfig.id",
+                  "listSequence": [
+                        "description",
+                        "sequence"
+                  ],
+                  "description": {
+                        "type": "string",
+                        "label": "Description",
+                        "readOnly": true
+                  },
+                  "sequence": {
+                        "type": "string",
+                        "label": "Shortcuts"
+                  },
+                  "title": "Editor Shortcuts"
+            },
+            {
+                  "type": "list",
+                  "readOnly": true,
+                  "listName": "textStylesLight",
+                  "listType": "TextStyle",
+                  "listItemTitle": "TextStyle.name",
+                  "listSequence": [
+                        "fg",
+                        "bg",
+                        "bold",
+                        "italic"
+                  ],
+                  "fg": {
+                        "type": "color",
+                        "label": "Foreground"
+                  },
+                  "bg": {
+                        "type": "color",
+                        "label": "Background"
+                  },
+                  "bold": {
+                        "type": "bool",
+                        "label": "bold"
+                  },
+                  "italic": {
+                        "type": "bool",
+                        "label": "italic"
+                  },
+                  "title": "Light Text Styles"
+            },
+            {
+                  "type": "list",
+                  "readOnly": true,
+                  "listName": "textStylesDark",
+                  "listType": "TextStyle",
+                  "listItemTitle": "TextStyle.name",
+                  "listSequence": [
+                        "fg",
+                        "bg",
+                        "bold",
+                        "italic"
+                  ],
+                  "fg": {
+                        "type": "color",
+                        "label": "Foreground"
+                  },
+                  "bg": {
+                        "type": "color",
+                        "label": "Background"
+                  },
+                  "bold": {
+                        "type": "bool",
+                        "label": "bold"
+                  },
+                  "italic": {
+                        "type": "bool",
+                        "label": "italic"
+                  },
+                  "title": "Dark Text Styles"
+            },
+            {
+                  "type": "list",
+                  "listName": "fileTypes",
+                  "listType": "FileType",
+                  "listItemTitle": "FileType.extensions",
+                  "listSequence": [
+                        "extensions",
+                        "languageId",
+                        "languageServer",
+                        "tabSize",
+                        "header",
+                        "createTabs"
+                  ],
+                  "languageId": {
+                        "type": "string",
+                        "label": "Language ID"
+                  },
+                  "languageServer": {
+                        "type": "string",
+                        "label": "Language Server"
+                  },
+                  "tabSize": {
+                        "type": "int",
+                        "label": "Tab Size",
+                        "min": 1,
+                        "max": 16
+                  },
+                  "readOnly": false,
+                  "extensions": {
+                        "type": "string",
+                        "label": "Extensions (Regex)"
+                  },
+                  "header": {
+                        "type": "bool",
+                        "label": "Is Header File"
+                  },
+                  "createTabs": {
+                        "type": "bool",
+                        "label": "Create Tabs"
+                  },
+                  "title": "File Types"
+            },
+            {
+                  "name": {
+                        "type": "string",
+                        "label": "Name"
+                  },
+                  "type": "list",
+                  "listName": "languageServersConfig",
+                  "listType": "LanguageServerConfig",
+                  "listItemTitle": "LanguageServerConfig.name",
+                  "listSequence": [
+                        "name",
+                        "command",
+                        "args"
+                  ],
+                  "command": {
+                        "type": "string",
+                        "label": "Command"
+                  },
+                  "args": {
+                        "type": "string",
+                        "label": "Arguments"
+                  },
+                  "readOnly": false,
+                  "title": "Language Servers"
+            },
+            {
+                  "name": {
+                        "type": "string",
+                        "label": "Name"
+                  },
+                  "type": "list",
+                  "listName": "models",
+                  "listType": "Model",
+                  "listItemTitle": "Model.name",
+                  "listSequence": [
+                        "name",
+                        "modelIdentifier",
+                        "api",
+                        "baseUrl",
+                        "apiKey",
+                        "supportsThinking",
+                        "stream"
+                  ],
+                  "modelIdentifier": {
+                        "type": "string",
+                        "label": "Model Identifier"
+                  },
+                  "baseUrl": {
+                        "type": "string",
+                        "label": "Base URL"
+                  },
+                  "apiKey": {
+                        "type": "string",
+                        "label": "API Key"
+                  },
+                  "api": {
+                        "type": "enum",
+                        "label": "API",
+                        "options": [
+                              "ollama",
+                              "gemini",
+                              "anthropic",
+                              "openai"
+                        ]
+                  },
+                  "supportThinking": {
+                        "type": "string",
+                        "label": "Support Thinking"
+                  },
+                  "temperature": {
+                        "type": "string",
+                        "label": "Temperature"
+                  },
+                  "topP": {
+                        "type": "string",
+                        "label": "topP"
+                  },
+                  "topK": {
+                        "type": "string",
+                        "label": "topK"
+                  },
+                  "maxTokens": {
+                        "type": "string",
+                        "label": "max Tokens"
+                  },
+                  "num_ctx": {
+                        "type": "string",
+                        "label": "num_ctx"
+                  },
+                  "numPredict": {
+                        "type": "string",
+                        "label": "num Predict"
+                  },
+                  "stream": {
+                        "type": "bool",
+                        "label": "Stream"
+                  },
+                  "readOnly": false,
+                  "supportsThinking": {
+                        "type": "bool",
+                        "label": "Supports Thinking"
+                  },
+                  "title": "AI - Models"
+            },
+            {
+                  "name": {
+                        "type": "string",
+                        "label": "Role Name"
+                  },
+                  "type": "list",
+                  "readOnly": false,
+                  "listName": "agentRoles",
+                  "listType": "AgentRole",
+                  "listItemTitle": "AgentRole.name",
+                  "listSequence": [
+                        "name",
+                        "rw",
+                        "manifest"
+                  ],
+                  "rw": {
+                        "type": "bool",
+                        "label": "Read/Write (Execute Mode)"
+                  },
+                  "manifest": {
+                        "type": "textarea",
+                        "label": "Manifest / System Prompt"
+                  },
+                  "title": "AI - Roles"
+            }
+      ]
+}

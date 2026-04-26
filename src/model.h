@@ -56,17 +56,10 @@ struct Model {
       bool operator==(const Model&) const = default;
       };
 
-//---------------------------------------------------------
-//   Models
-//---------------------------------------------------------
+using Models = QList<Model>;
 
-class Models : public QList<Model>
-      {
-    public:
-      using QList<Model>::QList;
-      void fromJson(const json& array);
-      json toJson() const;
-      };
+extern Models fromJson(const json& array);
+extern json toJson(const Models& models);
 
 Q_DECLARE_METATYPE(Model)
 Q_DECLARE_METATYPE(Models)

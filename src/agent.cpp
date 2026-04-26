@@ -40,6 +40,9 @@
 #include <QScrollBar>
 #include <QStandardPaths>
 #include <QStyle>
+#include <QFileDialog>
+#include <QImageReader>
+#include <QMimeDatabase>
 #include <QDebug>
 #include <QBuffer>
 #include <QPixmap>
@@ -48,10 +51,7 @@
 #include <QMimeData>
 #include <QInputDialog>
 #include <QMessageBox>
-#include "attachmentbutton.h"
 #include <QRegularExpression>
-// #include <iostream>
-// #include <fstream>
 
 #include <QApplication>
 #include <QGuiApplication>
@@ -69,34 +69,12 @@ using json = nlohmann::json;
 #define AI true // dump AI input/output for debugging
 
 //---------------------------------------------------------
-//   agentRoles
-//---------------------------------------------------------
-
-AgentRoles agentRoles = {
-         { "C++Coder",
-    "You are a high-performace c++ coding engine.\n"
-    "Use modern C++23. Prefer object oriented design and use modern design patterns.\n",  true       },
-         {"Architect",
-    "You are an experienced C++ developer acting as a system architect.\n"
-    "Your task is to analyze the project, read code, and create an implementation plan.\n\n"
-    "Use the provided tools to explore the file system.\n"
-    "You are currently in PLAN MODE. This means you have read-only access. "
-    "You can search and read files, but you cannot write files or execute build commands.\n"
-    "Focus on deeply understanding the problem and propose a detailed step-by-step solution. ", false},
-         {    "Agent",
-    "You are an friendly helpful agent.\n"
-    "Your task is to answer questions or help the user with anything he wants you to do.",  true     }
-      };
-
-//---------------------------------------------------------
 //   Agent (Constructor)
 //---------------------------------------------------------
 
 Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       networkManager = new QNetworkAccessManager(this);
       _session       = new Session(this, this);
-      agentRole      = &agentRoles[0];
-      mcpTools       = getMCPTools();
 
       QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
@@ -161,9 +139,23 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       connect(renameSessionButton, &QToolButton::clicked, this, &Agent::renameCurrentSession);
 
       agentRoleCombo = new QComboBox(this);
-      for (const auto& r : agentRoles)
-            agentRoleCombo->addItem(QString::fromStdString(r.name));
+      for (const auto& r : _editor->agentRoles())
+            agentRoleCombo->addItem(r.name);
       agentRoleCombo->setToolTip("Agent Role");
+      auto updateAgentRoleCombo = [this] {
+            agentRoleCombo->clear();
+            int idx = 0;
+            int currentIndex = 0;
+            for (const auto& r : _editor->agentRoles()) {
+                  agentRoleCombo->addItem(r.name);
+                  if (r.name ==  _editor->agentRoleName())
+                        currentIndex = idx;
+                  ++idx;
+                  }
+            agentRoleCombo->setCurrentIndex(currentIndex);
+            };
+      connect (_editor, &Editor::agentRolesChanged, updateAgentRoleCombo);
+      updateAgentRoleCombo();
 
       dashboard->addWidget(stopButton);
       dashboard->addWidget(statusLabel);
@@ -176,18 +168,18 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       dashboard->addWidget(modelMenu, 0);
 
       connect(agentRoleCombo, &QComboBox::activated,
-              [this](int index) {
-                    agentRole = &agentRoles[index];
+              [this] {
+                    _editor->setAgentRoleName(agentRole()->name);
                     // if we change the agent role the available tools may change
                     mcpTools = getMCPTools();
                     if (llm)
                           llm->setTools(mcpTools);
-
                     addMessage("system", std::format("<br><i>[System: Role changed to <b>{}</b>]</i>",
-                                                     agentRole->name));
+                                                     _editor->agentRoleName()));
                     }
 
       );
+      mcpTools = getMCPTools();
 
       // Filter toggle buttons (icon-only, no pulldown menu needed)
       showToolMessageAction = new QAction(this);
@@ -230,6 +222,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
 
       screenshotHelper = new ScreenshotHelper(this);
       connect(screenshotHelper, &ScreenshotHelper::screenshotReady, this, &Agent::onScreenshotReady);
+      connect(_editor, &Editor::screenshotReady, this, &Agent::onScreenshotReady);
       connect(screenshotHelper, &ScreenshotHelper::screenshotFailed, this, &Agent::onScreenshotFailed);
 
       connect(screenshotButton, &QToolButton::clicked, [this](bool) {
@@ -288,6 +281,19 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       dataPanelLayout = new QHBoxLayout(dataPanel);
       dataPanelLayout->setContentsMargins(2, 2, 2, 2);
       dataPanelLayout->setSpacing(4);
+      dataPanelLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+
+      // "+" button to add attachments
+      addAttachmentButton = new QToolButton(dataPanel);
+      addAttachmentButton->setText("+");
+      addAttachmentButton->setFixedSize(36, 36);
+      addAttachmentButton->setStyleSheet("QToolButton { border: 1px solid #555; border-radius: 4px; "
+                                         "background: transparent; font-size: 18px; }"
+                                         "QToolButton:hover { background: #3a3a3a; }");
+      addAttachmentButton->setToolTip("Add attachment");
+      connect(addAttachmentButton, &QToolButton::clicked, this, &Agent::addAttachment);
+      dataPanelLayout->addWidget(addAttachmentButton);
+
       dataPanelLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
       // 3a. Schmales vertikales Icon-Panel links neben dem Prompt-Eingabefeld
@@ -454,6 +460,7 @@ void Agent::fetchModels() {
                         m.baseUrl         = "http://localhost:11434/api/chat";
                         m.api             = "ollama";
                         m.dynamic         = true;
+                        //                        Debug("add new model <{}>", m.name);
                         _editor->models().push_back(m);
                         }
                   // Now we can select the last used model as saved in settings
@@ -493,22 +500,28 @@ void Agent::sendMessage(QString qtext) {
             msg["parts"] = json::array({{{"text", text}}});
       else // ollama / anthropic / openai
             msg["content"] = text;
-
       // Attach all pending attachments (if any)
       if (!_attachments.isEmpty()) {
+            // Handle text attachments: decode base64 content and append to user message
+            for (const auto& att : _attachments) {
+                  if (att.type == AttachmentType::Text && !att.data.isEmpty()) {
+                        text += "\n\n";
+                        text += att.data.toStdString();
+                        }
+                  }
+
+            // Collect images for the LLM clients
             json imagesArray = json::array();
-            // Assuming we only support image attachments for now with the existing API call
             for (const auto& att : _attachments)
-                  if (att.type == AttachmentType::Image)
+                  if (att.type == AttachmentType::Image && !att.data.isEmpty())
                         imagesArray.push_back(att.data.toStdString());
             if (!imagesArray.empty())
                   msg["images"] = imagesArray;
+
             _attachments.clear();
             screenshotButton->setChecked(false);
-            screenshotButton->setToolTip("Take Screenshot and attach to next prompt");
             updateDataPanel();
             }
-
       std::string logText;
       std::string thought;
       logContent(msg, logText, thought);
@@ -612,7 +625,7 @@ void Agent::handleChatReadyRead() {
             return;
             }
       QByteArray newData = currentReply->readAll();
-      CLog(AI, "{}", newData.data());
+//      CLog(AI, "{}", newData.data());
       streamBuffer.append(newData);
       processData();
       }
@@ -1219,19 +1232,21 @@ void Agent::onScreenshotReady(const QImage& image) {
       QBuffer buf(&jpegData);
       buf.open(QIODevice::WriteOnly);
       image.save(&buf, "JPEG", 70); // quality 70 – good balance between size and fidelity
+      buf.close();
 
+      if (jpegData.size() > kMaxAttachmentSize) {
+            addMessage("system", "<i>[⚠️ Screenshot too large, discarding.]</i><br>");
+            return;
+            }
       _attachments.append({AttachmentType::Image, jpegData.toBase64(), "screenshot"});
 
       const int count = _attachments.size();
       screenshotButton->setChecked(true);
       screenshotButton->setToolTip(QString("%1 attachment(s) attached. Click 📷 to discard all.").arg(count));
 
-      addMessage("system", QString("<i>[Image #%1 attached (%2×%3 px) – will be sent with next prompt. "
-                                   "Click 📷 to discard all.]</i><br>")
-                               .arg(count)
-                               .arg(image.width())
-                               .arg(image.height())
-                               .toStdString());
+      addMessage("system", std::format("<i>[Image #{} attached ({}×{} px) – will be sent with next prompt. "
+                                       "Click 📷 to discard all.]</i><br>",
+                                       count, image.width(), image.height()));
       updateDataPanel();
       }
 
@@ -1249,72 +1264,152 @@ void Agent::onScreenshotFailed(const QString& reason) {
 
 //---------------------------------------------------------
 //   updateDataPanel
-//    Rebuilds thumbnail labels in the narrow left panel next
-//    to the prompt input. Creates one 24×24 thumbnail for
-//    every image currently pending in _pendingImages.
-//    Old labels are removed from the layout and deleted.
+//   Rebuilds thumbnail/preview icons in the narrow left panel next
+//   to the prompt input. Creates one icon/button for every
+//   currently pending attachment.
+//   - Image files → thumbnail preview
+//   - Text files → first few chars as text icon
+//   - Other files → generic file icon
+//   Old buttons are removed from the layout and deleted.
 //---------------------------------------------------------
 
 void Agent::updateDataPanel() {
-      // Remove and delete all existing thumbnail labels
-      for (AttachmentButton* lbl : _attachmentIconButtons) {
-            dataPanelLayout->removeWidget(lbl);
-            delete lbl;
+      // Remove and delete all existing attachment buttons
+      for (QToolButton* btn : _attachmentButtons) {
+            dataPanelLayout->removeWidget(btn);
+            delete btn;
             }
-      _attachmentIconButtons.clear();
+      _attachmentButtons.clear();
 
-      // Remove the trailing stretch so we can re-add it after the new buttons
-      // Qt stores the stretch item at the last position; removeItem(int) works by index.
-      // The simplest approach: just remove the last item if it is a spacer.
-      int itemCount = dataPanelLayout->count();
-      if (itemCount > 0) {
+      // Create one button per pending attachment in a single loop
+      for (int i = 0; i < _attachments.size(); ++i) {
+            const auto& att        = _attachments[i];
+            const QString fileType = QFileInfo(att.label).suffix().toLower();
+
+            QToolButton* btn = new QToolButton(dataPanel);
+            btn->setParent(dataPanel);
+            btn->setCheckable(true);
+            btn->setAutoExclusive(true);
+            btn->setFixedSize(36, 36);
+            btn->setToolTip(att.label);
+            btn->setProperty("attachmentIndex", i);
+
+            // Determine icon based on attachment type
+            if (att.type == AttachmentType::Image) {
+                  // Show image thumbnail
+                  const QByteArray raw = QByteArray::fromBase64(att.data.toUtf8());
+                  QImage img;
+                  if (img.loadFromData(raw)) {
+                        QPixmap pm = QPixmap::fromImage(
+                            img.scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+                        btn->setIcon(QIcon(pm));
+                        }
+                  else {
+                        btn->setText("🖼");
+                        }
+                  }
+            else if (att.type == AttachmentType::Text) {
+                  // Show text file with document icon + extension
+                  btn->setText("📄\n" + fileType);
+                  btn->setFont(QFont("Monospace", 7));
+                  btn->setStyleSheet(
+                      "QToolButton { border: 1px solid #555; border-radius: 4px; "
+                      "background: #2d2d2d; font-size: 10px; } "
+                      "QToolButton:checked { border: 2px solid #0078d7; background: #3a3a3a; }");
+                  }
+            else if (att.type == AttachmentType::Audio) {
+                  // Audio file icon
+                  btn->setText("🔊");
+                  }
+            else {
+                  // Other file type — try to get extension from label (filename)
+                  const QString ext = fileType;
+                  QString fileIcon  = "📁";
+                  if (ext == "zip" || ext == "rar" || ext == "7z" || ext == "tar" || ext == "gz")
+                        fileIcon = "📦";
+                  else if (ext == "pdf")
+                        fileIcon = "📕";
+                  else if (ext == "exe" || ext == "dll" || ext == "bin")
+                        fileIcon = "⚙️";
+                  else if (ext == "doc" || ext == "docx" || ext == "odt")
+                        fileIcon = "📘";
+                  else if (ext == "xls" || ext == "xlsx" || ext == "csv")
+                        fileIcon = "📗";
+                  btn->setText(fileIcon);
+                  }
+
+            // Connect clicked for select/deselect logic
+            connect(btn, &QToolButton::clicked, this, &Agent::onAttachmentClicked);
+            connect(btn, &QToolButton::clicked, [this, i]() { onAttachmentSelected(i); });
+
+            dataPanelLayout->addWidget(btn);
+            _attachmentButtons.append(btn);
+            }
+
+      // Add stretch at the end if needed
+      if (dataPanelLayout->count() > 0) {
+            int itemCount     = dataPanelLayout->count();
             QLayoutItem* last = dataPanelLayout->itemAt(itemCount - 1);
             if (last && last->spacerItem()) {
                   dataPanelLayout->removeItem(last);
                   delete last;
                   }
             }
+      dataPanelLayout->addStretch(1);
+      }
 
-      // Create one thumbnail label per pending attachment
-      for (int i = 0; i < _attachments.size(); ++i) {
-            const auto& att = _attachments[i];
-            if (att.type == AttachmentType::Image) {
-                  const QByteArray raw = QByteArray::fromBase64(att.data.toUtf8());
-                  QImage img;
-                  img.loadFromData(raw, "JPEG");
+//---------------------------------------------------------
+//   onAttachmentClicked
+//---------------------------------------------------------
 
-                  AttachmentButton* lbl = new AttachmentButton(i, nullptr);
-                  lbl->setParent(dataPanel);
-                  if (!img.isNull()) {
-                        QPixmap pm = QPixmap::fromImage(img);
-                        QIcon icon(pm.scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-                        // Ensure the thumbnail is square and fits well
-                        lbl->setIcon(icon);
-                        lbl->setFixedSize(36, 36); // Slight padding
-                        lbl->setCheckable(true);
-                        lbl->setAutoExclusive(true);
-                        lbl->setStyleSheet("QToolButton { border: 1px solid #555; border-radius: 4px; } "
-                                           "QToolButton:checked { border: 2px "
-                                           "solid #0078d7; }");
-                        }
-                  else {
-                        lbl->setText("🖼");
-                        lbl->setFixedSize(36, 36);
-                        lbl->setCheckable(true);
-                        lbl->setStyleSheet("QToolButton { border: 1px solid #555; border-radius: 4px; } "
-                                           "QToolButton:checked { border: 2px "
-                                           "solid #0078d7; }");
-                        }
-                  lbl->setToolTip(QString("Image #%1 – will be sent with next prompt").arg(i + 1));
-                  lbl->setVisible(true);
-                  connect(lbl, &AttachmentButton::deleteRequested,
-                          [this](int idx) { removeAttachment(idx); });
-                  dataPanelLayout->addWidget(lbl);
-                  _attachmentIconButtons.append(lbl);
+void Agent::onAttachmentClicked() {
+      QToolButton* btn = qobject_cast<QToolButton*>(sender());
+      if (!btn)
+            return;
+      int index = btn->property("attachmentIndex").toInt();
+      if (index >= 0 && index < _attachments.size()) {
+            if (btn->isChecked()) {
+                  // If already checked, uncheck it
+                  btn->setChecked(false);
+                  }
+            else {
+                  // Uncheck all other buttons
+                  for (QToolButton* otherBtn : _attachmentButtons)
+                        otherBtn->setChecked(false);
+                  // Check this one
+                  btn->setChecked(true);
+                  }
+            emit attachmentClicked(index);
+            }
+      }
+
+//---------------------------------------------------------
+//   onAttachmentSelected
+//---------------------------------------------------------
+
+void Agent::onAttachmentSelected(int index) {
+      if (index < 0 || index >= _attachments.size())
+            return;
+      const Attachment& att = _attachments[index];
+
+      if (att.type == AttachmentType::Text) {
+            // Show text file content in chat
+            QFile file(att.label);
+            if (file.open(QIODevice::ReadOnly)) {
+                  QTextStream in(&file);
+                  QString text = in.readAll();
+                  file.close();
+                  addMessage("attachment", std::format("[%1]\n```\n%2\n```", QFileInfo(att.label).fileName(),
+                                                       truncateOutput(text.toStdString(), 5000)));
                   }
             }
-
-      dataPanelLayout->addStretch(1);
+      else if (att.type == AttachmentType::Image) {
+            addMessage("attachment", std::format("[Image: {}]", QFileInfo(att.label).fileName()));
+            }
+      else {
+            addMessage("attachment", std::format("[Attachment: {}] ({})", QFileInfo(att.label).fileName(),
+                                                 QFileInfo(att.label).size()));
+            }
       }
 
 //---------------------------------------------------------
@@ -1500,9 +1595,170 @@ void Agent::handleCannedPrompt(const QString& buttonId) {
       }
 
 //---------------------------------------------------------
+//   addAttachment
+//    Opens a file dialog to attach ANY file type.
+//    Detects the file type (Image, Text, Audio, Other) and
+//    handles it appropriately.
+//---------------------------------------------------------
+
+void Agent::addAttachment() {
+      // Filter for all files, with a note about supported types
+      const QString allFilter   = tr("All Files (*)");
+      const QString imageFilter = tr("Images (*.jpg *.jpeg *.png *.bmp *.gif *.svg *.webp)");
+      const QString textFilter  = tr("Text Files (*.txt *.md *.json *.xml *.csv *.ini *.cfg *.conf)");
+      const QString audioFilter = tr("Audio Files (*.mp3 *.wav *.ogg *.flac *.aac)");
+
+      // Use a custom filter that shows all files but highlights common types
+      QFileDialog dialog(this, tr("Attach File"), "",
+                         tr("All Files (*)") + ";;" + imageFilter + ";;" + textFilter + ";;" + audioFilter);
+      dialog.setFileMode(QFileDialog::ExistingFile);
+      dialog.setViewMode(QFileDialog::Detail);
+      dialog.setOption(QFileDialog::DontUseNativeDialog, false);
+
+      if (dialog.exec() == QDialog::Accepted) {
+            const QStringList selectedFiles = dialog.selectedFiles();
+            if (selectedFiles.isEmpty())
+                  return;
+
+            const QString filePath = selectedFiles[0];
+            QFileInfo fileInfo(filePath);
+            if (fileInfo.size() > kMaxAttachmentSize) {
+                  addMessage("system",
+                             QString("<i>[⚠️ File %1 is too large (%2 KB). Max allowed is %3 KB.]</i><br>")
+                                 .arg(fileInfo.fileName())
+                                 .arg(fileInfo.size() / 1024)
+                                 .arg(kMaxAttachmentSize / 1024)
+                                 .toStdString());
+                  return;
+                  }
+            const QString fileName      = fileInfo.fileName();
+            const QString fileExtension = fileInfo.suffix().toLower();
+
+            // Create attachment
+            Attachment attachment;
+            attachment.label = filePath; // Store full path
+
+            // Detect file type and handle accordingly
+            if (fileExtension == "jpg" || fileExtension == "jpeg" || fileExtension == "png" ||
+                fileExtension == "bmp" || fileExtension == "gif" || fileExtension == "svg" ||
+                fileExtension == "webp" || fileExtension == "tiff" || fileExtension == "tif") {
+                  // Image file
+                  attachment.type = AttachmentType::Image;
+
+                  // Load and convert to base64 JPEG
+                  QImage img;
+                  if (img.load(filePath)) {
+                        QByteArray jpegData;
+                        QBuffer buf(&jpegData);
+                        buf.open(QIODevice::WriteOnly);
+                        img.save(&buf, "JPEG", 80); // quality 80
+                        buf.close();
+                        attachment.data = jpegData.toBase64();
+
+                        addMessage("system", QString("<i>[🖼 Image #%1 attached (%2×%3 px, %4) – will be "
+                                                     "sent with next prompt.]</i><br>")
+                                                 .arg(_attachments.size() + 1)
+                                                 .arg(img.width())
+                                                 .arg(img.height())
+                                                 .arg(QByteArray::number(jpegData.size() / 1024) + " KB")
+                                                 .toStdString());
+                        }
+                  else {
+                        // Fallback if image can't be loaded
+                        attachment.type = AttachmentType::Other;
+                        addMessage("system", QString("<i>[⚠️ Could not load image %1 as attachment.]</i><br>")
+                                                 .arg(fileName)
+                                                 .toStdString());
+                        }
+                  }
+            else if (fileExtension == "mp3" || fileExtension == "wav" || fileExtension == "ogg" ||
+                     fileExtension == "flac" || fileExtension == "aac" || fileExtension == "wma" ||
+                     fileExtension == "midi") {
+                  // Audio file
+                  attachment.type = AttachmentType::Audio;
+                  attachment.data = filePath.toUtf8().toBase64(); // Store path as base64
+
+                  addMessage(
+                      "system",
+                      QString("<i>[🔊 Audio #%1 attached (%2 KB) – will be sent with next prompt.]</i><br>")
+                          .arg(_attachments.size() + 1)
+                          .arg(QByteArray::number(QFileInfo(filePath).size() / 1024) + " KB")
+                          .toStdString());
+                  }
+            else if (fileExtension == "txt" || fileExtension == "md" || fileExtension == "json" ||
+                     fileExtension == "xml" || fileExtension == "csv" || fileExtension == "ini" ||
+                     fileExtension == "cfg" || fileExtension == "conf" || fileExtension == "yaml" ||
+                     fileExtension == "yml" || fileExtension == "html" || fileExtension == "htm" ||
+                     fileExtension == "css" || fileExtension == "js" || fileExtension == "ts" ||
+                     fileExtension == "cpp" || fileExtension == "h" || fileExtension == "hpp" ||
+                     fileExtension == "py" || fileExtension == "java" || fileExtension == "c" ||
+                     fileExtension == "cc" || fileExtension == "cxx" || fileExtension == "cs" ||
+                     fileExtension == "php" || fileExtension == "rb" || fileExtension == "swift" ||
+                     fileExtension == "go" || fileExtension == "rs" || fileExtension == "sh" ||
+                     fileExtension == "bat" || fileExtension == "cmd" || fileExtension == "sql" ||
+                     fileExtension == "log" || fileExtension == "rtf") {
+                  // Text file
+                  attachment.type = AttachmentType::Text;
+
+                  // Read the content
+                  QFile file(filePath);
+                  if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                        attachment.data = file.readAll();
+                        file.close();
+
+                        addMessage("system",
+                                   std::format("<i>[📄 Text #{} attached ({} lines, {} KB) – will be "
+                                               "sent with next prompt.]</i><br>",
+                                               _attachments.size() + 1, attachment.data.count('\n') + 1,
+                                               QByteArray::number(attachment.data.size() / 1024) + " KB"));
+                        }
+                  else {
+                        // Fallback if file can't be read
+                        attachment.type = AttachmentType::Other;
+                        attachment.data = filePath.toUtf8().toBase64();
+                        addMessage("system", QString("<i>[⚠️ Could not read text file %1.]</i><br>")
+                                                 .arg(fileName)
+                                                 .toStdString());
+                        }
+                  }
+            else {
+                  // Other file type
+                  attachment.type = AttachmentType::Other;
+                  attachment.data = filePath.toUtf8().toBase64(); // Store path as base64
+
+                  addMessage(
+                      "system",
+                      QString("<i>[📁 File #%1 attached (%2 KB) – will be sent with next prompt.]</i><br>")
+                          .arg(_attachments.size() + 1)
+                          .arg(QByteArray::number(QFileInfo(filePath).size() / 1024) + " KB")
+                          .toStdString());
+                  }
+
+            _attachments.append(attachment);
+
+            // Update UI
+            const int count = _attachments.size();
+            screenshotButton->setChecked(true);
+            screenshotButton->setToolTip(
+                QString("%1 attachment(s) attached. Click 📷 to discard all.").arg(count));
+
+            updateDataPanel();
+            }
+      }
+
+//---------------------------------------------------------
 //   addMessage
 //---------------------------------------------------------
 
 void Agent::addMessage(const std::string& role, const std::string& text) {
       chatDisplay->addMessage(role, text);
+      }
+
+//---------------------------------------------------------
+//   agentRole
+//---------------------------------------------------------
+
+const AgentRole* Agent::agentRole() const {
+      int idx = agentRoleCombo->currentIndex();
+      return &_editor->agentRoles().at(idx);
       }

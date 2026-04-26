@@ -26,10 +26,6 @@ find_package(Qt6 REQUIRED COMPONENTS
       Network
       WebEngineCore
       WebEngineWidgets
-      Qml
-      Quick
-      QuickControls2
-      QuickWidgets
       DBus
       PrintSupport
       )
@@ -37,8 +33,8 @@ find_package(Qt6 REQUIRED COMPONENTS
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
 
-find_library(MD4C_LIB md4c)
-find_library(MD4C_HTML_LIB md4c-html)
+# find_library(MD4C_LIB md4c)
+# find_library(MD4C_HTML_LIB md4c-html)
 
 
 include_directories(
@@ -91,25 +87,31 @@ qt_add_executable(nped
       src/dashboard.h
       src/textstyle.cpp
       src/textstyle.h
-      src/attachmentbutton.h
       src/filetype.cpp
       src/filetype.h
       src/ls.cpp
       src/ls.h
       src/model.cpp
+      src/configwebview.cpp
+      src/configwebview.h
+      src/editor.cpp
+      src/editor.h
       )
 
-qt_add_resources(nped "qmls"
-      FILES qtquickcontrols2.conf
-      )
+
 qt_add_resources(nped "res"
       FILES
             res/diff.html
+            res/config.json
+            res/css/bootstrap.min.css
             res/diff2html.min.css
             res/js/diff2html.min.js
-            res/js/diff2html-ui.min.js      )
+            res/js/diff2html-ui.min.js
+      )
+
 qt_add_resources(nped "images"
-      FILES images/Git-Icon-1788C.svg
+      PREFIX "/"
+      FILES
       images/configure.svg
       images/configure_white.svg
       images/trash.svg
@@ -121,6 +123,8 @@ qt_add_resources(nped "images"
       images/camera.svg
       images/camera-dark.svg
       images/tool.svg
+      images/Git-Icon-1788C.svg
+      images/Git-Icon-1788C-white.svg
       images/tool-dark.svg
       images/stop.svg
       images/stop_white.svg
@@ -132,26 +136,6 @@ qt_add_resources(nped "images"
       images/reload_white.svg
       images/home.svg
       images/home_white.svg
-      )
-
-qt_add_qml_module(nped
-    URI "Nped.Config"
-    VERSION 1.0
-    SOURCES
-      src/editor.cpp
-      src/editor.h
-
-    QML_FILES
-        qml/ConfigDialog.qml
-        qml/SettingsCategory.qml
-        qml/InputRow.qml
-        qml/GuiPanel.qml
-        qml/AiConfig.qml
-        qml/FiletypeConfig.qml
-        qml/LsConfig.qml
-        qml/ShortcutConfig.qml
-        qml/TextStyleConfig.qml
-        qml/ColorConfigItem.qml
       )
 
 qt_add_resources(nped style
@@ -168,10 +152,6 @@ target_link_libraries(nped PRIVATE
       Qt::Network
       Qt::WebEngineCore
       Qt::WebEngineWidgets
-      Qt::Qml
-      Qt::Quick
-      Qt::QuickControls2
-      Qt::QuickWidgets
       Qt::DBus
       Qt::PrintSupport
       pthread

@@ -23,7 +23,6 @@
 #include <QResizeEvent>
 #include <QListView>
 #include <QTextEdit>
-#include <QQuickWidget>
 #include <QDialog>
 // #include <QFileSystemWatcher>
 #include <vector>
@@ -57,7 +56,9 @@ class Completion;
 class QProgressBar;
 class Agent;
 class MarkdownWebView;
+class ConfigWebView;
 class ScreenshotHelper;
+
 
 using Completions = std::vector<Completion>;
 
@@ -258,27 +259,26 @@ struct Action {
 class Editor : public QMainWindow
       {
       Q_OBJECT
-      QML_UNCREATABLE("no")
-      QML_NAMED_ELEMENT(nped)
 
-      Q_PROPERTY(QStringList modelsModel READ modelsModel NOTIFY modelsChanged)
-      //      Q_PROPERTY(Models models READ models WRITE setModels NOTIFY modelsChanged)
+      Q_PROPERTY(Models models READ models WRITE setModels NOTIFY modelsChanged)
+      Q_PROPERTY(AgentRoles agentRoles READ agentRoles WRITE setAgentRoles NOTIFY agentRolesChanged)
+      Q_PROPERTY(QString agentRoleName READ agentRoleName WRITE setAgentRoleName NOTIFY agentRoleNameChanged)
       Q_PROPERTY(QString fontFamily READ fontFamily WRITE setFontFamily NOTIFY fontFamilyChanged)
-      Q_PROPERTY(QList<ShortcutConfig> shortcuts READ shortcuts NOTIFY shortcutsChanged)
+      Q_PROPERTY(QList<ShortcutConfig> shortcuts READ shortcuts WRITE setShortcuts NOTIFY shortcutsChanged)
       Q_PROPERTY(QList<FileType> fileTypes READ fileTypes NOTIFY fileTypesChanged)
       Q_PROPERTY(QList<LanguageServerConfig> languageServersConfig READ languageServersConfig WRITE setLanguageServersConfig NOTIFY
                      languageServersConfigChanged)
       Q_PROPERTY(QStringList monospacedFonts READ monospacedFonts CONSTANT)
       Q_PROPERTY(bool darkMode READ darkMode WRITE setDarkMode NOTIFY darkModeChanged)
-      Q_PROPERTY(QList<TextStyle> textStylesLight READ textStylesLight NOTIFY textStylesLightChanged)
-      Q_PROPERTY(QList<TextStyle> textStylesDark READ textStylesDark NOTIFY textStylesDarkChanged)
+      Q_PROPERTY(TextStyles textStylesLight READ textStylesLight WRITE setTextStylesLight NOTIFY textStylesLightChanged)
+      Q_PROPERTY(TextStyles textStylesDark READ textStylesDark WRITE setTextStylesDark NOTIFY textStylesDarkChanged)
 
       static std::map<Cmd, ShortcutConfig> _shortcuts;
-      QList<ShortcutConfig> shortcuts() const;
 
       FileTypes _fileTypes;
       TextStyles _textStylesLight;
       TextStyles _textStylesDark;
+      QList<ShortcutConfig> _shortcutsList;
       LanguageServersConfig _languageServersConfig;
 
       std::vector<File*> files;
@@ -297,6 +297,11 @@ class Editor : public QMainWindow
       QStackedWidget* _stack;
       EditWidget* _editWidget;
       MarkdownWebView* _mdWidget{nullptr};
+      QWidget* _mdContainer{nullptr};
+      ConfigWebView* _configWebView{nullptr};
+      QWidget* _configContainer{nullptr};
+
+
       size_t _currentKontext{0};
       QLabel* urlLabel;
       QLabel* lineLabel;
@@ -314,6 +319,8 @@ class Editor : public QMainWindow
       QTimer* lsUpdateTimer;
       Agent* _agent{nullptr};
       Models _models;
+      AgentRoles _agentRoles;
+      QString _agentRoleName;
 
       static const int agentMinimumWidth{500};
       static const int gitPanelMinimumWidth{300};
@@ -384,6 +391,8 @@ class Editor : public QMainWindow
 
     public:
       void put();
+      void setPickText(const QString& text, SelectionMode mode = SelectionMode::CharSelect);
+
 
     private:
       void rowSelect();
@@ -433,6 +442,9 @@ class Editor : public QMainWindow
       void textStylesLightChanged();
       void textStylesDarkChanged();
       void modelsChanged();
+      void agentRolesChanged();
+      void agentRoleNameChanged();
+      void screenshotReady(const QImage& image);
 
     public:
       Editor(int argc, char** argv);
@@ -517,8 +529,29 @@ class Editor : public QMainWindow
                   }
             }
       FileTypes fileTypes() const { return _fileTypes; }
+      void setFileTypes(const FileTypes& ft) {
+            if (_fileTypes != ft) {
+                  _fileTypes = ft;
+                  emit fileTypesChanged();
+                  }
+            }
+
       TextStyles textStylesLight() { return _textStylesLight; }
       TextStyles textStylesDark() { return _textStylesDark; }
+
+      void setTextStylesLight(const TextStyles& v) {
+            if (v != _textStylesLight) {
+                  _textStylesLight = v;
+                  emit textStylesLightChanged();
+                  }
+            }
+      void setTextStylesDark(const TextStyles& v) {
+            if (v != _textStylesDark) {
+                  _textStylesDark = v;
+                  emit textStylesDarkChanged();
+                  }
+            }
+
       QList<LanguageServerConfig> languageServersConfig() const { return _languageServersConfig; }
       void setLanguageServersConfig(const QList<LanguageServerConfig>& l) {
             LanguageServersConfig c;
@@ -528,11 +561,16 @@ class Editor : public QMainWindow
                   _languageServersConfig = c;
                   emit languageServersConfigChanged();
                   }
-            Debug("========================????");
             }
       void loadSettings();
       void saveSettings();
       Q_INVOKABLE void resetToDefaults();
+      void updateShortcut(const QString& id, const QString& sequence);
+      void showConfig();
+      void hideConfig();
+      QList<ShortcutConfig> shortcutsList() const { return shortcuts(); }
+
+
       bool darkMode() const { return _darkMode; }
       void setDarkMode(bool v) {
             if (v != _darkMode) {
@@ -560,27 +598,17 @@ class Editor : public QMainWindow
             update();
             }
       Models& models() { return _models; }
-      Q_INVOKABLE Model model(int idx) { return _models[idx]; }
-      Q_INVOKABLE void setModel(int idx, const Model& m) {
-            _models[idx] = m;
-            emit modelsChanged();
-            }
-      Q_INVOKABLE void addModel() {
-            _models.push_back(Model());
-            emit modelsChanged();
-            }
-      Q_INVOKABLE void removeModel(const Model m) {
-            _models.removeIf([m](const Model& mm) { return mm == m; });
-            emit modelsChanged();
-            }
-      QStringList modelsModel() {
-            QStringList sl;
-            for (const auto& model : _models)
-                  sl.push_back(model.name);
-            return sl;
-            }
+      void setModels(const Models& m) { _models = m; emit modelsChanged(); }
       void showGitVersion(int row);
       QWidget* gitPanel();
+
+      AgentRoles agentRoles() const { return _agentRoles; }
+      void setAgentRoles(const AgentRoles& a) { _agentRoles = a; emit agentRolesChanged(); }
+      void setAgentRoleName(const QString& s) { _agentRoleName = s; }
+      QString agentRoleName() const { return _agentRoleName; }
+
+      QList<ShortcutConfig> shortcuts() const;
+      void setShortcuts(const QList<ShortcutConfig>& l) { _shortcutsList = l; emit shortcutsChanged(); }
       };
 
 //---------------------------------------------------------
@@ -615,7 +643,6 @@ class KeyLogger : public QObject
 class ConfigDialogWrapper : public QDialog
       {
       Q_OBJECT
-      QQuickWidget* _quickWidget;
 
     public:
       explicit ConfigDialogWrapper(Editor*, QWidget* parent = nullptr);

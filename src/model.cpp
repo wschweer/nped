@@ -16,9 +16,9 @@
 //   serialize TextStyles
 //---------------------------------------------------------
 
-json Models::toJson() const {
+json toJson(const Models& models) {
       json array = json::array();
-      for (const auto& m : *this) {
+      for (const auto& m : models) {
             if (m.dynamic)
                   continue;
             json obj;
@@ -44,8 +44,8 @@ json Models::toJson() const {
 //   fromJson
 //---------------------------------------------------------
 
-void Models::fromJson(const json& array) {
-      clear();
+Models fromJson(const json& array) {
+      Models models;
       try {
             for (const json& obj : array) {
                   Model m;
@@ -64,7 +64,7 @@ void Models::fromJson(const json& array) {
                   m.num_ctx          = obj.value("num_ctx", -1);
                   m.num_predict      = obj.value("num_predict", -1);
                   m.stream           = obj.value("stream", true);
-                  append(m);
+                  models.append(m);
                   }
             }
       catch (const json::parse_error& e) {
@@ -76,4 +76,5 @@ void Models::fromJson(const json& array) {
       catch (...) {
             Critical("Unexpected error");
             }
+      return models;
       }

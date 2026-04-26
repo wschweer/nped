@@ -14,6 +14,7 @@
 
 #include "textstyle.h"
 
+#if 0
 //---------------------------------------------------------
 //   serialize TextStyles
 //---------------------------------------------------------
@@ -23,8 +24,8 @@ QJsonArray TextStyles::toJson() const {
       for (const auto& s : *this) {
             QJsonObject o;
             o["name"] = s.name;
-            o["fg"] = s.fg.name(QColor::HexArgb);
-            o["bg"] = s.bg.name(QColor::HexArgb);
+            o["fg"] = s.fg.name(QColor::HexRgb);
+            o["bg"] = s.bg.name(QColor::HexRgb);
             o["italic"] = s.italic;
             o["bold"] = s.bold;
             array.append(o);
@@ -45,3 +46,4 @@ void TextStyles::fromJson(const QJsonArray& array) {
             append(s);
             }
       }
+#endif

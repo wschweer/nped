@@ -314,14 +314,14 @@ void AnthropicClient::processJsonItem(const json& item) {
       // message_start carries the input token count for the whole request.
       if (type == "message_start") {
             if (item.contains("message") && item["message"].contains("usage"))
-                  _inputTokens = item["message"]["usage"].value("input_tokens", size_t{0});
+                  _inputTokens = item["message"]["usage"].value("input_tokens", size_t {0});
             return;
             }
 
       // message_delta carries the cumulative output token count.
       if (type == "message_delta") {
             if (item.contains("usage"))
-                  _outputTokens = item["usage"].value("output_tokens", size_t{0});
+                  _outputTokens = item["usage"].value("output_tokens", size_t {0});
             return;
             }
 
@@ -489,7 +489,7 @@ void AnthropicClient::dataFinished() {
                         std::string warning =
                             "\n\n[System Error: The tool call was truncated and could not be parsed. You "
                             "likely hit the max_tokens limit. Please try again, but split your work into "
-                            "smaller steps. For example, use replace_lines instead of write_file.]";
+                            "smaller steps. For example, use insert_lines/remove_lines instead of write_file.]";
                         currentContent += warning;
                         agent->chatDisplay->handleIncomingChunk("", warning);
 

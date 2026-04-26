@@ -321,6 +321,7 @@ void LSclient::readerLoop() {
                   for (;;) {
                         ssize_t n = read(stderrPipe[0], buffer2, sizeof(buffer2) - 1);
                         if (n == 0) {
+                              Debug("====EOF??");
                               fds[1].fd = -1; // Stop polling stderr if EOF
                               break;
                               }
@@ -342,6 +343,7 @@ void LSclient::readerLoop() {
                   for (;;) {
                         bytesRead = read(stdoutPipe[0], buffer.data(), buffer.size() - 1);
                         if (bytesRead == 0) {
+                              Debug("read 0: EOF??");
                               running = false;
                               break;
                               }
@@ -352,7 +354,6 @@ void LSclient::readerLoop() {
                               }
                         buffer.data()[bytesRead]  = '\0';
                         message                  += buffer.data();
-                        //            Debug("{} {}", bytesRead, message.length());
                         for (;;) {
                               if (readHeader) {
                                     size_t end = message.find("\r\n\r\n");
@@ -402,7 +403,9 @@ bool LSclient::start(const std::string& path, const std::vector<string>& args) {
             return false;
             }
 
-      connect(this, &LSclient::isRunning, this, [this] { initializeRequest(); });
+      connect(this, &LSclient::isRunning, this, [this] {
+            initializeRequest();
+            });
       pid_t pid = fork();
       if (pid == -1) {
             Critical("fork failed: {}", strerror(errno));
@@ -430,7 +433,7 @@ bool LSclient::start(const std::string& path, const std::vector<string>& args) {
             execvp(path.c_str(), c_args.data());
 
             // Falls execvp fehlschlägt:
-            perror("execvp");
+            Critical("execvp {} failed: {}", path, strerror(errno));
             _exit(EXIT_FAILURE);
             }
       else { // --- ELTERNPROZESS ---
@@ -582,7 +585,8 @@ LSclient::LSclient(Editor* e, const std::string& n) {
       _name  = n;
       editor = e;
       stopFd = eventfd(0, EFD_NONBLOCK);
-      connect(this, &LSclient::notificationReceived, this, &LSclient::handleNotification, Qt::QueuedConnection);
+      connect(this, &LSclient::notificationReceived, this, &LSclient::handleNotification,
+              Qt::QueuedConnection);
       connect(this, &LSclient::responseReceived, this, &LSclient::handleResponse, Qt::QueuedConnection);
       }
 
@@ -606,7 +610,7 @@ LSclient::~LSclient() {
 void LSclient::stop() {
       if (running) {
             running = false;
-            uint64_t u{1};
+            uint64_t u {1};
             ::write(stopFd, &u, sizeof(uint64_t));
             }
       if (reader && reader->joinable())
@@ -700,7 +704,7 @@ void LSclient::handleDiagnostics(const json& params) {
                   // Debug("bad row {} rows {}", pt.y(), f->fileRows());
                   y = f->fileRows() - 1;
                   }
-            QChar marker{' '};
+            QChar marker {' '};
             QColor color;
             if (d.contains("severity")) {
                   switch (DiagnosticSeverity(d["severity"])) {
@@ -813,6 +817,23 @@ void LSclient::handleNotification(json response) {
                   editor->showProgress(percentage);
                   }
             }
+      else if (method == "window/logMessage") {
+            if (response.contains("params")) {
+                  const auto& params        = response["params"];
+                  const std::string message = params["message"];
+                  int type                  = params["type"];
+                  switch (type) {
+                        case 0: // Log
+                        case 1: // Error
+                        case 2: // Warning
+                        case 3: // Info
+                        default: break;
+                        }
+                  Debug("LogMessage type {}: {}", type, message);
+                  }
+            else
+                  Debug("params expected");
+            }
       else
             Debug("not handled: {}", response.dump(4));
       }
@@ -882,11 +903,10 @@ bool LSclient::didChangeNotification(File* file, const Patches& patches) {
 //---------------------------------------------------------
 
 void LSclient::documentSymbolRequest(File* file) {
-      callbacks[id] =
-          [file](const json& msg) {
+      callbacks[id] = [file](const json& msg) {
             if (msg.contains("result") && msg["result"].is_array())
                   file->setSymbols(msg["result"]);
-                };
+            };
 
       json params;
       params["textDocument"] = {

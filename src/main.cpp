@@ -13,7 +13,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <QApplication>
-#include <QQuickStyle>
 #include <QMessageBox>
 
 #include "editor.h"
@@ -24,7 +23,7 @@ enum Codec readCodec  = Codec::UTF8;
 enum Codec writeCodec = Codec::UTF8;
 bool persistent       = true;
 
-static const char* appName { "nped" };
+static const char* appName {"nped"};
 
 //---------------------------------------------------------
 //   printVersion
@@ -45,8 +44,7 @@ static void usage(const char* reason) {
       printf("options: -v   print version\n"
              "         -l   use iso latin1 codec\n"
              "         -u   use utf8 codec (default)\n"
-             "         -t   do not remember settings\n"
-            );
+             "         -t   do not remember settings\n");
       }
 
 //---------------------------------------------------------
@@ -59,7 +57,7 @@ int main(int argc, char** argv) {
 
       signal(SIGPIPE, SIG_IGN);
 
-      QQuickStyle::setStyle(QStringLiteral("Material"));
+      //      QQuickStyle::setStyle(QStringLiteral("Material"));
       QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
 
       QApplication app(argc, argv);
@@ -92,7 +90,7 @@ int main(int argc, char** argv) {
       if (e.getFiles().empty()) {
             QMessageBox::critical(nullptr, "nped", "Keine Dateien zum Öffnen gefunden.");
             return 1;
-      }
+            }
 
       e.show();
       return app.exec();

@@ -17,3 +17,5 @@ TODO
 .qmlls.ini
 *.bu
 LOG
+node_modules/
+*.bundle.js.map

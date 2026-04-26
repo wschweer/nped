@@ -1,53 +1,33 @@
+---
+
 # TODO
+---
+## 3. Refactoring Config GUI
+---
 
-## Fehler
-In einer Session mit ollama stelle ich fest, das die Kommunikation mit
-dem Modell in der Datei Sessionxxx richtig geloggt wird.
-Im WebView des Chat Verlaufs ist jedoch das Ergebnis des Models nicht zu sehen. Was läuft da falsch?
-
-## Splitter Persistenz
-- [x] Der Splitter des Main-Windows besteht aus EditWin Ai-Panel und Git-Panel. Die beiden letzten können bei bedarf ein/aus geschaltet
-werden und haben dann ausgschaltet die Breite Null. Die Breite der Ai und Git PAnels im sichtbaren mode soll permanent gespeichert werden
-und zwar die letzte bekannte **sichtbare** breite. Die Breiten sollen persistent gespeichert werden.
-Immer wenn ein panel aufgeklappt wird, soll es die zuletzt gespeicherte Breite bekommen.
-
-## File & Media additions
-
-## Add Stop Button
-- [x] Platziere links neben dem "Send" Button im Ai Dashboard einen Neuen Button "Stop".
-- [x] Zeichne ein Icon für den "Stop" Button in BW im handgemalten Stil der anderen Icons im Dashboard für den
-  dark and light Stil.
-- [x] Implementiere eine "Stop" Funktion, um einen Tool-Loop der AI abzubrechen und verbinde
-  ihn mit dem Stop Button.
-
-## Extend Canned prompts
-
-- [x] Restructure the configuration file .nped/agent.json: F1 F2 and F3 are changed
-      from text to object. Every object has a "name" element which is used to label
-      the corresponding "canned prompt" button. It also has a "description" elements used
-      for the button context help text. The element "text" is the text used for the
-      prompt input.
-
-## Canned prompts
-
-- [x] Locate the "Canned prompts" buttons on the left of the prompt entry widget,
-      currently named "F2" "F3" and "<mathematic sum>"
-- [x] Install an Action for every button.
-      The action should trigger on left mouse click.
-      The action reads a json file "agent.json"
-      which is located in a subdirectory ".nped" of the project home directory.
-      The text is read from the json text element "F1" "F2" and "F3" for the corresponding
-      buttons.
-- [x] If the json text file agent.json does not exist then create one with empty entries
-      for the three text elements.
-- [x] If the subdirectory ".nped" does not exist then create one.
-- [x] add another action on the three "Canned prompts" buttons. The action should
-      trigger on Ctrl + left mouse click.
-- [x] The action shall open the .nped/agent.json as an editable file in the editor so
-      that the user can configure the "canned prompts" by editing this file
+Refactor the Config GUI
+- use the Bootstrap CSS-Framework
+- create the gui with React JSONSchema Form
+- benutze das Material-Design-Theme
+- achte darauf, das alles offline laufen kann
 
 ---
-## LaTeX Integration
+## 3. Neues Config Konzept
+---
+
+- Ersetze das Configure Popup durch eine über das Editor Widget gestackte Seite
+  (MarkdownWebView)
+- Die Configurationsdaten sind JSON formatierte Daten, die als Dateien gesichert
+  werden.
+- Erstelle für die vorhandenen JSON Config Daten JSON Schemata
+- Generiere die Config GUI aus den JSON Schemata generiert (z.B. mit jdorn)
+- Die GUI wird als html erstellt und läuft auf dem MarkdownWebView
+
+---
+
+## 2. LaTeX Integration
+---
+
 - [x] Markdown should render LaTeX:
 
 Inline: $E = mc^2$.
@@ -72,7 +52,7 @@ $$
 $$
 
 ---
-## Mermaid Integration
+## 1. Mermaid Integration
 
 - [x] Markdown should render Mermaid diagrams:
 

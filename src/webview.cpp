@@ -35,7 +35,7 @@
 //   MarkdownWebPage
 //---------------------------------------------------------
 
-MarkdownWebPage::MarkdownWebPage(Editor* e, QObject* parent) : QWebEnginePage(parent), editor(e) {
+MarkdownWebPage::MarkdownWebPage(Editor* e, QObject* parent) : QWebEnginePage(parent), _editor(e) {
       }
 
 //---------------------------------------------------------
@@ -43,20 +43,33 @@ MarkdownWebPage::MarkdownWebPage(Editor* e, QObject* parent) : QWebEnginePage(pa
 //---------------------------------------------------------
 
 bool MarkdownWebPage::acceptNavigationRequest(const QUrl& url, NavigationType type, bool isMainFrame) {
+      // Handle nped:// custom scheme for JS → C++ communication
+      if (url.scheme() == "nped") {
+            if (url.host() == "copy-code") {
+                  runJavaScript(QStringLiteral("window._npedCopyBuffer || ''"),
+                                [this](const QVariant& result) {
+                                      QString text = result.toString();
+                                      if (!text.isEmpty() && _editor)
+                                            _editor->setPickText(text, SelectionMode::CharSelect);
+                                      });
+                  }
+            return false;
+            }
+
       if (type == QWebEnginePage::NavigationTypeLinkClicked) {
             if (url.scheme() == "file") {
                   QString path = url.toLocalFile();
                   // Check if it's an anchor link within the same page
                   if (!url.fragment().isEmpty()) {
                         // Let the view handle anchor links if they are for the same file
-                        if (editor && editor->kontext() && editor->kontext()->file() &&
-                            path == editor->kontext()->file()->path())
+                        if (_editor && _editor->kontext() && _editor->kontext()->file() &&
+                            path == _editor->kontext()->file()->path())
                               return true;
                         }
 
                   // For local files, open in Editor instead
-                  if (editor) {
-                        QTimer::singleShot(0, editor, [e = editor, path]() {
+                  if (_editor) {
+                        QTimer::singleShot(0, _editor, [e = _editor, path]() {
                               Kontext* k = e->addFile(path);
                               if (k) {
                                     e->setCurrentKontext(k);
@@ -81,9 +94,6 @@ bool MarkdownWebPage::acceptNavigationRequest(const QUrl& url, NavigationType ty
       }
 
 //---------------------------------------------------------
-//   MarkdownWebView
-//---------------------------------------------------------
-//---------------------------------------------------------
 //   createWindow
 //---------------------------------------------------------
 
@@ -91,11 +101,14 @@ QWebEngineView* MarkdownWebView::createWindow(QWebEnginePage::WebWindowType /*ty
       return this;
       }
 
+//---------------------------------------------------------
+//   MarkdownWebView
+//---------------------------------------------------------
 
-
-MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_parent), editor(e) {
+MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_parent), _editor(e) {
       setPage(new MarkdownWebPage(e, this));
       settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
+      settings()->setAttribute(QWebEngineSettings::JavascriptCanAccessClipboard, true);
       settings()->setAttribute(QWebEngineSettings::PdfViewerEnabled, true);
       settings()->setAttribute(QWebEngineSettings::PluginsEnabled, true);
       if (!settings()->testAttribute(QWebEngineSettings::PdfViewerEnabled))
@@ -124,7 +137,8 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
             });
 
       textActions = {
-         Action(e->getSC(Cmd::CMD_QUIT), [this] { editor->quitCmd(); }),
+         Action(e->getSC(Cmd::CMD_QUIT), [this] { _editor->quitCmd(); }),
+         Action(e->getSC(Cmd::CMD_SAVE_QUIT), [this] { _editor->saveQuitCmd(); }),
 
          Action(e->getSC(Cmd::CMD_LINE_UP), [this] { scrollLineUp(); }),
          Action(e->getSC(Cmd::CMD_LINE_DOWN), [this] { scrollLineDown(); }),
@@ -138,35 +152,35 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
          Action(e->getSC(Cmd::CMD_LINE_TOP), [] { }),
          Action(e->getSC(Cmd::CMD_LINE_BOTTOM), [] {}),
 #endif
-         Action(e->getSC(Cmd::CMD_ENTER), [this] { editor->enterCmd(); }),
-         Action(e->getSC(Cmd::CMD_SAVE), [this] { editor->kontext()->file()->save(); }),
-         Action(e->getSC(Cmd::CMD_KONTEXT_COPY), [this] { editor->copyKontext(); }),
-         Action(e->getSC(Cmd::CMD_KONTEXT_PREV), [this] { editor->prevKontext(); }),
-         Action(e->getSC(Cmd::CMD_KONTEXT_NEXT), [this] { editor->nextKontext(); }),
+         Action(e->getSC(Cmd::CMD_ENTER), [this] { _editor->enterCmd(); }),
+         Action(e->getSC(Cmd::CMD_SAVE), [this] { _editor->kontext()->file()->save(); }),
+         Action(e->getSC(Cmd::CMD_KONTEXT_COPY), [this] { _editor->copyKontext(); }),
+         Action(e->getSC(Cmd::CMD_KONTEXT_PREV), [this] { _editor->prevKontext(); }),
+         Action(e->getSC(Cmd::CMD_KONTEXT_NEXT), [this] { _editor->nextKontext(); }),
 
          Action(e->getSC(Cmd::CMD_KONTEXT_UP),
-                [this] { editor->kontext()->moveCursorRel(0, -1, MoveType::Roll); }),
+                [this] { _editor->kontext()->moveCursorRel(0, -1, MoveType::Roll); }),
          Action(e->getSC(Cmd::CMD_KONTEXT_DOWN),
-                [this] { editor->kontext()->moveCursorRel(0, 1, MoveType::Roll); }),
+                [this] { _editor->kontext()->moveCursorRel(0, 1, MoveType::Roll); }),
          Action(e->getSC(Cmd::CMD_PICK), [] {}),
-         Action(e->getSC(Cmd::CMD_PUT), [this] { editor->put(); }),
+         Action(e->getSC(Cmd::CMD_PUT), [this] { _editor->put(); }),
          Action(e->getSC(Cmd::CMD_SELECT_ROW), [] {}),
          Action(e->getSC(Cmd::CMD_SELECT_COL), [] {}),
-         Action(e->getSC(Cmd::CMD_VIEW_FUNCTIONS), [this] { editor->toggleViewMode(); }),
+         Action(e->getSC(Cmd::CMD_VIEW_FUNCTIONS), [this] { _editor->toggleViewMode(); }),
          Action(e->getSC(Cmd::CMD_SEARCH_NEXT), [] {}),
          Action(e->getSC(Cmd::CMD_SEARCH_PREV), [] {}),
          Action(e->getSC(Cmd::CMD_GIT_TOGGLE),
-                [this] { editor->gitButton()->setChecked(!editor->gitButton()->isChecked()); }),
-         Action(e->getSC(Cmd::CMD_SCREENSHOT), [this] { editor->screenshot(); }),
+                [this] { _editor->gitButton()->setChecked(!_editor->gitButton()->isChecked()); }),
+         Action(e->getSC(Cmd::CMD_SCREENSHOT), [this] { _editor->screenshot(); }),
             };
 
       kl = new KeyLogger(&textActions, this);
       connect(kl, &KeyLogger::triggered, [this](Action* a) {
-            editor->startCmd();
+            _editor->startCmd();
             a->func();
-            editor->endCmd();
+            _editor->endCmd();
             });
-      connect(kl, &KeyLogger::keyLabelChanged, [this](QString s) { editor->keyLabel()->setText(s); });
+      connect(kl, &KeyLogger::keyLabelChanged, [this](QString s) { _editor->keyLabel()->setText(s); });
       installEventFilter(kl);
       connect(this, &QWebEngineView::loadFinished, this, [this] {
             isLoaded = true;
@@ -205,14 +219,15 @@ void MarkdownWebView::installFilterOnProxy() {
 //---------------------------------------------------------
 
 void MarkdownWebView::setHtml(const QString& _html, const QUrl& _baseUrl) {
-      isLoaded = false;
+      isLoaded     = false;
       QUrl baseUrl = _baseUrl;
-      if (baseUrl.isEmpty() && editor && editor->kontext() && editor->kontext()->file()) {
-            QFileInfo fi(editor->kontext()->file()->path());
+      if (baseUrl.isEmpty() && _editor->kontext() && _editor->kontext()->file()) {
+            QFileInfo fi(_editor->kontext()->file()->path());
             baseUrl = QUrl::fromLocalFile(fi.absoluteDir().absolutePath() + "/");
             }
       QWebEngineView::setHtml(_html, baseUrl);
       }
+
 //---------------------------------------------------------
 //   setDarkMode
 //---------------------------------------------------------
@@ -301,8 +316,8 @@ void MarkdownWebView::setMarkdown(const QString& _markdown, int cursorLine) {
           _scrollScript.toStdString()));
 
       QUrl baseUrl;
-      if (editor && editor->kontext() && editor->kontext()->file()) {
-            QFileInfo fi(editor->kontext()->file()->path());
+      if (_editor && _editor->kontext() && _editor->kontext()->file()) {
+            QFileInfo fi(_editor->kontext()->file()->path());
             baseUrl = QUrl::fromLocalFile(fi.absoluteDir().absolutePath() + "/");
             }
       setHtml(_fullHtml, baseUrl);
@@ -353,11 +368,24 @@ QString MarkdownWebView::getHighlightJsAssets(bool darkMode) const {
                 try { document.execCommand('copy'); } catch(e) {}
                 document.body.removeChild(ta);
                   }
+            function notifyEditor(text) {
+                window._npedCopyBuffer = text;
+                const a = document.createElement('a');
+                a.href = 'nped://copy-code';
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                  }
             function copyCode(btn) {
                 const codeBlock = btn.parentElement.nextElementSibling.querySelector('code');
                 const text = codeBlock.innerText;
                 const originalHTML = btn.innerHTML;
-                const ok = () => { btn.innerHTML = '&#10003;'; setTimeout(() => btn.innerHTML = originalHTML, 2000); };
+                const ok = () => {
+                    btn.innerHTML = '&#10003;';
+                    setTimeout(() => btn.innerHTML = originalHTML, 2000);
+                    notifyEditor(text);
+                    };
                 if (navigator.clipboard) { navigator.clipboard.writeText(text).then(ok).catch(() => { fallbackCopy(text); ok(); });
                       } else { fallbackCopy(text); ok(); }
                   }
@@ -378,7 +406,7 @@ QString MarkdownWebView::getKaTexJs() const {
     onload="renderMathInElement(document.body, {
         delimiters: [ {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true} ],
         throwOnError: false
-                                        });"></script>)HTML");
+                                              });"></script>)HTML");
       }
 
 //---------------------------------------------------------
@@ -733,7 +761,7 @@ void MarkdownWebView::showGitDiff(const QString& diffOutput) {
             }
       // JSON-Escape für den Diff-Output
       // JSON-Escape für den Diff-Output
-      QJsonDocument doc(QJsonObject{
+      QJsonDocument doc(QJsonObject {
                { "diff",                   diffOutput},
                {"theme", _darkMode ? "dark" : "light"}
             });

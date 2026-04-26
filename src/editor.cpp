@@ -152,6 +152,7 @@ void Editor::screenshot() {
             msg("Screenshot saved to {}", path.toStdString());
       else
             msg("Screenshot save failed");
+      emit screenshotReady(image);
       }
 
 //---------------------------------------------------------
@@ -446,7 +447,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       //*****************************************
 
       _gitButton = new QToolButton();
-      _gitButton->setIcon(QIcon(":images/Git-Icon-1788C.svg"));
+      QString gitIconPath = darkMode() ? ":/images/Git-Icon-1788C-white.svg" : ":/images/Git-Icon-1788C.svg";
+      _gitButton->setIcon(QIcon(gitIconPath));
       _gitButton->setToolTip("toggle GIT panel");
       _gitButton->setCheckable(true);
       //      _gitButton->setChecked(false);
@@ -484,20 +486,23 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
 
       configButton = new QToolButton();
       configButton->setObjectName("configButton");
+      configButton->setCheckable(true);
       QString iconPath = darkMode() ? ":/images/configure_white.svg" : ":/images/configure.svg";
       configButton->setIcon(QIcon(iconPath));
       configButton->setToolTip("Configure...");
       connect(this, &Editor::darkModeChanged, [this]() {
             QString iconPath = darkMode() ? ":/images/configure_white.svg" : ":/images/configure.svg";
             configButton->setIcon(QIcon::fromTheme("preferences-system", QIcon(iconPath)));
+            QString gitIconPath = darkMode() ? ":/images/Git-Icon-1788C-white.svg" : ":/images/Git-Icon-1788C.svg";
+            _gitButton->setIcon(QIcon(gitIconPath));
             updateStyle();
             update();
             });
-      connect(configButton, &QToolButton::clicked, [this] {
-            ConfigDialogWrapper* dialog = new ConfigDialogWrapper(this, this);
-            dialog->setAttribute(Qt::WA_DeleteOnClose);
-            connect(this, &Editor::configApplied, this, &Editor::initFont);
-            dialog->show();
+      connect(configButton, &QToolButton::clicked, [this](bool checked) {
+            if (checked)
+                  showConfig();
+            else
+                  hideConfig();
             });
       hbox->addWidget(configButton, 0, Qt::AlignRight);
 
@@ -522,14 +527,10 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       branchLabel->setVisible(_projectMode);
       if (_hasGit) {
             branchLabel->setText(_currentBranchName);
-            if (_git.isClean()) {
-                  //                  Debug("git clean");
-                  branchLabel->setStyleSheet("background-color: lightgreen;");
-                  }
-            else {
-                  branchLabel->setStyleSheet("background-color: lightyellow;");
-                  //                  Debug("git dirty");
-                  }
+            if (_git.isClean())
+                  branchLabel->setStyleSheet("background-color: lightgreen; color: black");
+            else
+                  branchLabel->setStyleSheet("background-color: lightyellow; color: black");
             }
 
       sb->addWidget(branchLabel, 0);
@@ -714,12 +715,14 @@ MarkdownWebView* Editor::mdWidget() {
       if (!_mdWidget) {
             _mdWidget = new MarkdownWebView(this, this);
             _mdWidget->setZoomFactor(1.5);
-            QWidget* mdContainer  = new QWidget(this);
-            QVBoxLayout* mdLayout = new QVBoxLayout(mdContainer);
+            _mdContainer          = new QWidget(this);
+            QVBoxLayout* mdLayout = new QVBoxLayout(_mdContainer);
             mdLayout->setContentsMargins(0, 0, 0, 0);
             mdLayout->setSpacing(0);
 
-            QWidget* navBar        = new QWidget(mdContainer);
+
+            QWidget* navBar        = new QWidget(_mdContainer);
+
             QHBoxLayout* navLayout = new QHBoxLayout(navBar);
             navLayout->setContentsMargins(4, 4, 4, 4);
             navLayout->setSpacing(4);
@@ -778,7 +781,8 @@ MarkdownWebView* Editor::mdWidget() {
             mdLayout->addWidget(navBar, 0);
             mdLayout->addWidget(_mdWidget, 1);
 
-            _stack->addWidget(mdContainer);
+            _stack->addWidget(_mdContainer);
+
             // Initial style
             bool dark = darkMode();
             btnBack->setIcon(QIcon(dark ? ":/images/back_white.svg" : ":/images/back.svg"));
@@ -1261,6 +1265,7 @@ void Editor::saveStatus() {
       j["state"]       = state.toHex().toStdString();
 
       j["aiVisible"]  = _agent && _agent->isVisible();
+      j["agentRole"]  = agentRoleName().toStdString();
       j["gitVisible"] = _gitButton->isChecked();
       //      j["aiModel"]       = agent()->currentModel().toStdString();
 
@@ -1331,6 +1336,8 @@ bool Editor::loadStatus(int argc, char** argv) {
 
                   if (j.contains("aiVisible"))
                         _aiVisible = j["aiVisible"].get<bool>();
+                  if (j.contains("agentRole"))
+                        setAgentRoleName(QString::fromStdString(j["agentRole"]));
 
                   if (j.contains("gitWidth"))
                         gitWidth = j["gitWidth"].get<int>();
@@ -1742,6 +1749,16 @@ void Editor::pick() {
       cb->setText(pickText.text, QClipboard::Clipboard);
       endSelectionMode();
       }
+
+//---------------------------------------------------------
+//   setPickText
+//---------------------------------------------------------
+
+void Editor::setPickText(const QString& text, SelectionMode mode) {
+      pickText.text = text;
+      pickText.mode = mode;
+      }
+
 
 //---------------------------------------------------------
 //   put
@@ -2219,9 +2236,11 @@ void TabBar::modifiedChanged() {
 //    The main editor window is stacked:
 //          index 0:    editWidget, used for all view modes except WebView
 //          index 1:    mdWidget, used for view mode WebView
+//          index 2:    configWebView, used for the configuration page
 //    switch to the right widget
 //    call kontext->setViewMode  to setup the right content
 //-----------------------------------------------------------------------------
+
 
 void Editor::setViewMode(ViewMode viewMode) {
       switch (viewMode) {
@@ -2229,13 +2248,13 @@ void Editor::setViewMode(ViewMode viewMode) {
             case ViewMode::Outline:
             case ViewMode::SearchResults:
             case ViewMode::File:
-                  _stack->setCurrentIndex(0);
+                  _stack->setCurrentWidget(_editWidget);
                   _editWidget->setFocus();
                   vScroll->setVisible(true);
                   break;
 
             case ViewMode::GitVersion:
-                  _stack->setCurrentIndex(0);
+                  _stack->setCurrentWidget(_editWidget);
                   _editWidget->setFocus();
                   vScroll->setVisible(true);
                   break;
@@ -2246,7 +2265,7 @@ void Editor::setViewMode(ViewMode viewMode) {
                   const auto& text = kontext()->file()->gitVersion();
                   mdWidget()->showGitDiff(text.join('\n'));
                   vScroll->setVisible(false); // mdWidget has its own scroll bar
-                  _stack->setCurrentIndex(1);
+                  _stack->setCurrentWidget(_mdContainer);
                   } break;
 
             case ViewMode::WebView: {
@@ -2254,20 +2273,20 @@ void Editor::setViewMode(ViewMode viewMode) {
                   auto lid         = kontext()->file()->languageId();
                   const auto& text = kontext()->file()->plainText();
                   if (lid == "markdown") {
-                        Debug("setMarkdown <{}>", text.size());
                         mdWidget()->setMarkdown(text, kontext()->fileRow());
                         }
                   else if (lid == "html")
                         mdWidget()->setHtml(text);
                   else if (lid == "image")
                         mdWidget()->load(QUrl::fromLocalFile(kontext()->file()->path()));
-                  _stack->setCurrentIndex(1);
+                  _stack->setCurrentWidget(_mdContainer);
                   vScroll->setVisible(false); // mdWidget has its own scroll bar
                   } break;
             }
       kontext()->setViewMode(viewMode);
       tabBar->modifiedChanged(); // update readOnly marking
       }
+
 
 //---------------------------------------------------------
 //   toggleViewMode

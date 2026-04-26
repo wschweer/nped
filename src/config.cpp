@@ -26,6 +26,11 @@
 #include "kontext.h"
 #include "logger.h"
 #include "filetype.h"
+#include "configwebview.h"
+#include "editwin.h"
+
+#include <QScrollBar>
+#include <QStackedWidget>
 
 //---------------------------------------------------------
 //   loadDefaults
@@ -36,18 +41,18 @@ void Editor::resetToDefaults() {
       _languageServersConfig.reset();
 
       static const TextStyles tsLight = {
-         TextStyle("normal",        QColor("#ff000000"), QColor("#ffdcdcdc"), false, false),
-         TextStyle("selected",      QColor("#00000000"), QColor("#ffb9b9b9"), false, false),
-         TextStyle("cursor",        QColor("#ffffffff"), QColor("#ff323232"), false, false),
-         TextStyle("flow",          QColor("#ff0404fe"), QColor("#00000000"), true, false),
-         TextStyle("type",          QColor("#ff000096"), QColor("#00000000"), false, false),
-         TextStyle("comment",       QColor("#ff006400"), QColor("#00000000"), false, true),
-         TextStyle("string",        QColor("#ff960000"), QColor("#00000000"), false, false),
-         TextStyle("search",        QColor("#ff000000"), QColor("#ff000000"), false, false),
-         TextStyle("searchHit",     QColor("#ff000000"), QColor("#ffeef81b"), false, false),
-         TextStyle("gutter",        QColor("#ff000000"), QColor("#ffb2b2b2"), false, false),
-         TextStyle("marked Line",   QColor("#00000000"), QColor("#ffdde71f"), false, false),
-         TextStyle("nontext BG",    QColor("#00000000"), QColor("#ffe8e8e8"), false, false),
+         TextStyle("normal", QColor("#ff000000"), QColor("#ffdcdcdc"), false, false),
+         TextStyle("selected", QColor("#00000000"), QColor("#ffb9b9b9"), false, false),
+         TextStyle("cursor", QColor("#ffffffff"), QColor("#ff323232"), false, false),
+         TextStyle("flow", QColor("#ff0404fe"), QColor("#00000000"), true, false),
+         TextStyle("type", QColor("#ff000096"), QColor("#00000000"), false, false),
+         TextStyle("comment", QColor("#ff006400"), QColor("#00000000"), false, true),
+         TextStyle("string", QColor("#ff960000"), QColor("#00000000"), false, false),
+         TextStyle("search", QColor("#ff000000"), QColor("#ff000000"), false, false),
+         TextStyle("searchHit", QColor("#ff000000"), QColor("#ffeef81b"), false, false),
+         TextStyle("gutter", QColor("#ff000000"), QColor("#ffb2b2b2"), false, false),
+         TextStyle("marked Line", QColor("#00000000"), QColor("#ffdde71f"), false, false),
+         TextStyle("nontext BG", QColor("#00000000"), QColor("#ffe8e8e8"), false, false),
             };
       if (_textStylesLight != tsLight) {
             _textStylesLight = tsLight;
@@ -55,18 +60,18 @@ void Editor::resetToDefaults() {
             }
 
       static const TextStyles tsDark = {
-         TextStyle("normal",        QColor("#ffd3d3d3"), QColor("#ff333333"), false, false),
-         TextStyle("selected",      QColor("#05ff1d1d"), QColor("#ff575757"), false, false),
-         TextStyle("cursor",        QColor("#ff000000"), QColor("#ffffffff"), false, false),
-         TextStyle("flow",          QColor("#ff91b0f0"), QColor("#00000000"), true, false),
-         TextStyle("type",          QColor("#ff9ac864"), QColor("#00000000"), false, false),
-         TextStyle("comment",       QColor("#ff64c864"), QColor("#00000000"), false, true),
-         TextStyle("string",        QColor("#ffc86464"), QColor("#00000000"), false, false),
-         TextStyle("search",        QColor("#ffffffff"), QColor("#ff814d4d"), false, false),
-         TextStyle("searchHit",     QColor("#fff11515"), QColor("#ff9696dc"), false, false),
-         TextStyle("gutter",        QColor("#003fdcdd"), QColor("#ff7c8e8d"), false, false),
-         TextStyle("markedLine",    QColor("#ff000000"), QColor("#6ca8b201"), false, false),
-         TextStyle("nontextBG",     QColor("#ff000000"), QColor("#ff262626"), false, false),
+         TextStyle("normal", QColor("#ffd3d3d3"), QColor("#ff333333"), false, false),
+         TextStyle("selected", QColor("#05ff1d1d"), QColor("#ff575757"), false, false),
+         TextStyle("cursor", QColor("#ff000000"), QColor("#ffffffff"), false, false),
+         TextStyle("flow", QColor("#ff91b0f0"), QColor("#00000000"), true, false),
+         TextStyle("type", QColor("#ff9ac864"), QColor("#00000000"), false, false),
+         TextStyle("comment", QColor("#ff64c864"), QColor("#00000000"), false, true),
+         TextStyle("string", QColor("#ffc86464"), QColor("#00000000"), false, false),
+         TextStyle("search", QColor("#ffffffff"), QColor("#ff814d4d"), false, false),
+         TextStyle("searchHit", QColor("#fff11515"), QColor("#ff9696dc"), false, false),
+         TextStyle("gutter", QColor("#003fdcdd"), QColor("#ff7c8e8d"), false, false),
+         TextStyle("markedLine", QColor("#ff000000"), QColor("#6ca8b201"), false, false),
+         TextStyle("nontextBG", QColor("#ff000000"), QColor("#ff262626"), false, false),
             };
       if (_textStylesDark != tsDark) {
             _textStylesDark = tsDark;
@@ -88,20 +93,134 @@ void Editor::apply() {
       }
 
 //---------------------------------------------------------
+//   updateShortcut
+//---------------------------------------------------------
+
+void Editor::updateShortcut(const QString& id, const QString& sequence) {
+      for (auto& [cmd, sc] : _shortcuts) {
+            if (sc.id == id) {
+                  if (sc.sequence != sequence) {
+                        sc.sequence = sequence;
+                        emit shortcutsChanged();
+                        }
+                  return;
+                  }
+            }
+      }
+
+//---------------------------------------------------------
+//   showConfig
+//    Show the config page stacked on top of the editor.
+//    The config page is at stack index 2.
+//---------------------------------------------------------
+
+void Editor::showConfig() {
+      if (!_configWebView) {
+            _configWebView = new ConfigWebView(this, this);
+
+            _configContainer          = new QWidget(this);
+            QVBoxLayout* configLayout = new QVBoxLayout(_configContainer);
+            configLayout->setContentsMargins(0, 0, 0, 0);
+            configLayout->setSpacing(0);
+            configLayout->addWidget(_configWebView, 1);
+
+            _stack->addWidget(_configContainer);
+
+            connect(_configWebView, &ConfigWebView::configSaved, this, [this] {
+                  hideConfig();
+                  initFont();
+                  saveSettings();
+                  });
+            connect(_configWebView, &ConfigWebView::configCancelled, this, [this] { hideConfig(); });
+            connect(_configWebView, &ConfigWebView::configResetRequested, this, [this] {
+                  resetToDefaults();
+                  // Re-open config to show reset values
+                  _configWebView->openConfig();
+                  });
+            }
+      _configWebView->openConfig();
+      _stack->setCurrentWidget(_configContainer);
+      configButton->setChecked(true);
+      vScroll->setVisible(false);
+      }
+
+//---------------------------------------------------------
+//   hideConfig
+//    Return to the normal editor view.
+//---------------------------------------------------------
+
+void Editor::hideConfig() {
+      _stack->setCurrentWidget(_editWidget);
+      configButton->setChecked(false);
+      _editWidget->setFocus();
+      vScroll->setVisible(true);
+      }
+
+//---------------------------------------------------------
+//   toJson
+//---------------------------------------------------------
+
+static QJsonArray toJson(const TextStyles& ts) {
+      QJsonArray array;
+      for (const auto& s : ts) {
+            QJsonObject o;
+            o["name"] = s.name;
+            o["fg"] = s.fg.name(QColor::HexArgb);
+            o["bg"] = s.bg.name(QColor::HexArgb);
+            o["italic"] = s.italic;
+            o["bold"] = s.bold;
+            array.append(o);
+            }
+      return array;
+      }
+
+//---------------------------------------------------------
+//   tsFromJson
+//---------------------------------------------------------
+
+static TextStyles tsFromJson(const QJsonArray& array) {
+      TextStyles ts;
+      for (int i = 0; i < array.size(); ++i) {
+            QJsonObject o = array[i].toObject();
+            TextStyle s;
+            s.name = o["name"].toString();
+            s.fg   = QColor(o["fg"].toString());
+            s.bg   = QColor(o["bg"].toString());
+            s.italic = o["italic"].toBool();
+            s.bold = o["bold"].toBool();
+            ts.append(s);
+            }
+      return ts;
+      }
+
+
+//---------------------------------------------------------
 //   saveSettings
 //---------------------------------------------------------
 
 void Editor::saveSettings() {
       QJsonObject configs;
 
+      Debug("save settings");
       configs["darkMode"]        = darkMode();
-      configs["textStylesLight"] = _textStylesLight.toJson();
-      configs["textStylesDark"]  = _textStylesDark.toJson();
-      auto s                     = _models.toJson().dump();
+      configs["textStylesLight"] = toJson(_textStylesLight);
+      configs["textStylesDark"]  = toJson(_textStylesDark);
+
+      auto s                     = toJson(_models).dump();
       auto doc                   = QJsonDocument::fromJson(s.c_str());
       configs["models"]          = doc.array();
       configs["fileTypes"]       = _fileTypes.toJson();
       configs["languageServers"] = _languageServersConfig.toJson();
+
+      QJsonArray ar;
+      for (const auto& agentRole : _agentRoles) {
+            QJsonObject r;
+            r["name"]     = agentRole.name;
+            r["manifest"] = agentRole.manifest;
+            r["rw"]       = agentRole.rw;
+            ar.append(r);
+            }
+      configs["agentRoles"] = ar;
 
       QJsonArray array;
       for (const auto& [id, m] : _shortcuts) {
@@ -154,20 +273,33 @@ void Editor::loadSettings() {
                         }
                   }
             }
+      if (config.contains("agentRoles")) {
+            _agentRoles.clear();
+            QJsonArray sc = config["agentRoles"].toArray();
+            for (int i = 0; i < sc.size(); ++i) {
+                  QJsonObject obj = sc[i].toObject();
+                  AgentRole ar;
+                  ar.name     = obj["name"].toString();
+                  ar.manifest = obj["manifest"].toString();
+                  ar.rw       = obj["rw"].toBool();
+                  _agentRoles.push_back(ar);
+                  }
+            }
+
       if (config.contains("darkMode"))
             setDarkMode(config["darkMode"].toBool());
-      if (config.contains("models")) {     // hack until we converted all to lohmann json
-            auto ma = config["models"].toArray();
+      if (config.contains("models")) { // hack until we converted all to lohmann json
+            auto ma       = config["models"].toArray();
             QByteArray ba = QJsonDocument(ma).toJson();
-            json json =  json::parse(ba.data());
-            _models.fromJson(json);
+            json json     = json::parse(ba.data());
+            _models       = fromJson(json);
             }
       if (config.contains("fileTypes"))
             _fileTypes.fromJson(config["fileTypes"].toArray());
       if (config.contains("languageServers"))
             _languageServersConfig.fromJson(config["languageServers"].toArray());
       if (config.contains("textStylesLight")) {
-            _textStylesLight.fromJson(config["textStylesLight"].toArray());
+            _textStylesLight = tsFromJson(config["textStylesLight"].toArray());
             emit textStylesLightChanged();
             }
       if (config.contains("fontSize")) {
@@ -177,36 +309,17 @@ void Editor::loadSettings() {
       if (config.contains("fontFamily"))
             setFontFamily(config["fontFamily"].toString());
       if (config.contains("textStylesDark")) {
-            _textStylesDark.fromJson(config["textStylesDark"].toArray());
+            _textStylesDark = tsFromJson(config["textStylesDark"].toArray());
             emit textStylesDarkChanged();
             }
-      }
-
-//---------------------------------------------------------
-//   ConfigDialogWrapper
-//---------------------------------------------------------
-
-ConfigDialogWrapper::ConfigDialogWrapper(Editor* editor, QWidget* parent) : QDialog(parent) {
-      setModal(true);
-      setSizeGripEnabled(true);
-      _quickWidget = new QQuickWidget(this);
-      _quickWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-
-      // Layout erstellen, damit das QQuickWidget den ganzen Dialog füllt
-      auto layout = new QVBoxLayout(this);
-      layout->setContentsMargins(0, 0, 0, 0);
-      layout->addWidget(_quickWidget);
-
-      // Wichtig: Resize-Modus, damit sich QML dem Dialog anpasst
-      _quickWidget->setResizeMode(QQuickWidget::SizeRootObjectToView);
-
-      // Zugriff auf diesen Dialog für QML ermöglichen (für close/accept/reject)
-      _quickWidget->rootContext()->setContextProperty("dialog", this);
-      _quickWidget->rootContext()->setContextProperty("nped", editor);
-
-      // Lade die QML Datei aus dem Modul "Nped.Config"
-      // Hinweis: Durch die CMake Policy QTP0001 ist der Pfad standardisiert:
-      _quickWidget->setSource(QUrl("qrc:/qt/qml/Nped/Config/qml/ConfigDialog.qml"));
+      if (_agentRoles.isEmpty()) {
+            AgentRoles defaultRoles = {
+                     { "C++Coder",    "You are a high-performace c++ coding engine.\nUse modern C++23.",  true},
+                     {"Architect", "You are an experienced C++ developer acting as a system architect.", false},
+                     {    "Agent",                                  "You are a friendly helpful agent.",  true}
+                  };
+            _agentRoles = defaultRoles;
+            }
       }
 
 //---------------------------------------------------------
