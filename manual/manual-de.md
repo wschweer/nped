@@ -2,7 +2,7 @@
 
 [TOC]
 
-## Übersicht
+## 1. Übersicht
 
 NPed (Program Editor) ist ein moderner C++23 und Qt6-basierter Texteditor bzw. eine leichtgewichtige IDE.
 
@@ -108,7 +108,7 @@ Zum Beispiel das Formatieren der aktuellen Datei geschieht über die Kombination
 Zusammenfassend richtet sich nped an Entwickler, die eine puristische, hochgradig tastaturgesteuerte
 Umgebung suchen, die klassischen Editor-Flow mit modernen C++ Language Server-Funktionen verbindet.
 
-## IDE - Features
+## 2. IDE - Features
 
 Ein "Projekt" ist ein Verzeichnis, welches eine CMakeLists.txt Datei enthält. Der Editor
 kann auch in einem Projekt Unterverzeichnis gestartet werden.
@@ -241,7 +241,7 @@ die Textdarstellung zurückschalten um blitzschnell zu dieser Funktion zu navigi
       [Ctrl+H]                      CMD_SHOW_INFO
       [Enter <name> Ctrl+F]         Erzeugt leere c++ Funktion mit Namen `name`
 
-## AI Agent
+## 3. AI Agent
 ### Model
 
 LLM Modelle müssen konfiguriert werden und erscheinen dann im AI Panel Pulldown Menü "Models".
@@ -250,54 +250,45 @@ automatisch ermittelt und dem Pulldown Menü hinzugefügt.
 
 Unterstützt werden Modell von Google (Gemini), Anthropic (Claude) und Ollama.
 Ollama ist besonders interessant, da darüber lokale Modelle genutzt werden können.
-Ollama wird z.B. festverdrahtet über die Url http://localhost:11434 angesprochen.
+
+Für alle nicht lokalen Modelle ist normalerweise ein API-Key des Anbieters
+erforderlich.
 
 Reasoning wird bei geeigneten Modellen unterstützt.
 
+### Sicherheit
+
+Modelle können nur über die implementierten Tools auf dein System zugreifen. In ```Role``` kannst
+du konfigurieren, ob das Modell Schreibrechte auf deinem System bekommen soll.
+Das Modell kann auch dann nur Files schreiben die sich im oder unterhalb des aktuellen
+Projektverzeichnisses befinden.
+Eine Schwachstelle ist das Tool "build_tool", welches es dem Modell erlaubt, beliebige
+Shell-Kommandos auf deinem System auszuführen. Dieses Kommando läuft jedoch in einer
+Sandbox, was die Möglichkeiten des Modells,  auf dein System zuzugreifen stark einschränkt.
+
+
 ### Session
 
-Sessions werden automatisch auf Platte gespeichert. Es können neue Sessions angelegt und
+Sessions werden automatisch gespeichert. Es können neue Sessions angelegt und
 bestehende Sessions gelöscht werden. Über das Session Pulldown Menü im AI Panel kann
 zwischen Sessions umgeschaltet werden.
 Eine Session ist immer mit einem AI-Modell verbunden. Beim Umschalten eines Modells wird
 immer das zugehörige Modell ausgewählt. Wird das Modell gewechselt, wird die aktuelle
 Session gesichert und eine neue Session für dieses Modell angelegt.
 
-### Build/Plan Mode
+### Roles
 
-Im "Plan" Modus hat das AI-Modell nur Leserechte im System. Im "Build" Modus kann das AI-Modell
-im und unterhalb des Projektverzeichnisses auch Dateien erstellen/löschen und verändern.
+In Roles kannst du den System-Prompt des Models konfigurieren. Ausserdem kannst du festlegen,
+ob das AI-Modell Schreibrechte auf dem System haben soll.
 
-Wenn NPed nicht in einem Projekt gestartet wurde, dann kann der "Build" Modus nicht eingeschaltet
-werden.
+Du kannst neue Rollen erstellen sowie bestehende verändern oder löschen.
 
-## Installation
+
+## 4. Installation
 ### Font
-      Es gibt verschiedene Fonts, die sich speziell zum Programmieren eignen:
 
-- Fira Code
-Das Konzept hinter Fira Code ist einfach: Die monospaced Schriftart wurde entwickelt, um häufig verwendete Zeichenfolgen zu einer einzigen zusammenzufassen und so die Zeit zu verkürzen, die du brauchst, um deinen Code zu überfliegen und das Gesuchte zu finden.
-
-So wird z. B. aus dem Gleichheitszeichen (!=) ein Gleichheitszeichen mit einem Schrägstrich, die öffnenden und schließenden Symbole in HTML (</) sind enger beieinander und so weiter. Diese Ligaturen gibt es für viele Programmiersprachen.
-
-Dabei werden die zugrunde liegenden Zeichen selbst nicht verändert, so dass es keine Auswirkungen auf deinen Code hat. Es macht ihn nur einfacher zu lesen! Es gibt auch einige Zeichenvarianten, damit du die Schriftart nach deinen Wünschen anpassen kannst.
-
-Fira Code wird von den meisten Browsern unterstützt und du kannst dir in den Code-Beispielen ansehen, wie er in der Praxis aussieht.
-
-- Proggy-Schriften
-- DejaVu Sans Mono
-- Source code Pro
-- Dina
-- Terminus
-- Input
-- Hack
-- Cascadia Code
-- JetBrains Mono
-- Anonymous Pro
-- Ubuntu Mono
-- Consolas
-
-Nped kann nur Schriften verwenden, die nichtproportional (Monospace) sind.
+Nped kann nur Schriften verwenden, die nichtproportional (Monospace) sind. Dementsprechend
+zeigt die Konfigurationsseite nur monospaced Fonts.
 
 ### Language Server
 
@@ -323,5 +314,5 @@ dann:
       sudo systemctl stop apport.service
       sudo systemctl disable apport.service
 
-## Examples
+## 5. Examples
 [Examples](manual/examples.md)

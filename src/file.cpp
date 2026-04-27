@@ -201,8 +201,10 @@ QString Editor::evalPP(const QString& pdata) {
                         jsonArgs += std::format("\\\"scriptable\\\":{}", item["scriptable"]);
                         }
                   //                  jsonArgs = QString::fromStdString(jsonArgs).replace("\"", "\\\"").toStdString();
-                  result += std::format("      Property* {0}Property = PropertyMap::push_back(\"{0}\", ", name);
-                  result += std::format("new Property(this, \"{}\", [this] {{ {}Changed(); }}, {}", name, name, item["default"]);
+                  result +=
+                      std::format("      Property* {0}Property = PropertyMap::push_back(\"{0}\", ", name);
+                  result += std::format("new Property(this, \"{}\", [this] {{ {}Changed(); }}, {}", name,
+                                        name, item["default"]);
                   if (jsonArgs.empty())
                         result += "));\n";
                   else
@@ -239,13 +241,15 @@ QString Editor::evalPP(const QString& pdata) {
             result += "            QSettings settings;\n";
             for (auto& item : propertyItems)
                   if (item.contains("persistent"))
-                        result += std::format("            settings.setValue(\"Properties/{0}\", {0}());\n", item["name"]);
+                        result += std::format("            settings.setValue(\"Properties/{0}\", {0}());\n",
+                                              item["name"]);
             result += "            };\n";
             result += "      void restoreProperties() {\n";
             result += "            QSettings settings;\n";
             for (auto& item : propertyItems) {
                   if (item.contains("persistent")) {
-                        result          += std::format("            set{}(settings.value(\"Properties/{}\").", item["Name"], item["name"]);
+                        result          += std::format("            set{}(settings.value(\"Properties/{}\").",
+                                                       item["Name"], item["name"]);
                         const auto type  = item.at("type");
                         if (type == "QString")
                               result += "toString());\n";
@@ -271,12 +275,14 @@ QString Editor::evalPP(const QString& pdata) {
             if (item.contains("ro"))
                   continue;
             if (item.contains("pr") && item["pr"] == "true") {
-                  result += std::format("      void set{}({} v) {{ {}Property->setValue(QVariant::fromValue<{}>(v)); }}\n", item["Name"],
-                                        item.at("type"), item["name"], item.at("type"));
+                  result += std::format(
+                      "      void set{}({} v) {{ {}Property->setValue(QVariant::fromValue<{}>(v)); }}\n",
+                      item["Name"], item.at("type"), item["name"], item.at("type"));
                   }
             else {
-                  result += std::format("      void set{0}({1} v) {{ if (v != {2}()) {{ _{2} = v; emit {2}Changed(); }} }}\n", item["Name"],
-                                        item.at("type"), item["name"]);
+                  result += std::format(
+                      "      void set{0}({1} v) {{ if (v != {2}()) {{ _{2} = v; emit {2}Changed(); }} }}\n",
+                      item["Name"], item.at("type"), item["name"]);
                   }
             }
 
@@ -290,11 +296,12 @@ QString Editor::evalPP(const QString& pdata) {
             if (item.contains("pr") && item["pr"] == "true") {
                   // QString proto() const { return get<QString>(protoProperty->value()); }
                   //                  result += std::format("      {} {}() const {{ return get<{}>({}Property->value()); }}\n", item.at("type"), item["name"],
-                  result += std::format("      {} {}() const {{ return {}Property->value().value<{}>(); }}\n", item.at("type"),
-                                        item["name"], item["name"], item.at("type"));
+                  result += std::format("      {} {}() const {{ return {}Property->value().value<{}>(); }}\n",
+                                        item.at("type"), item["name"], item["name"], item.at("type"));
                   }
             else
-                  result += std::format("      {} {}() const {{ return _{};}}\n", item.at("type"), item["name"], item["name"]);
+                  result += std::format("      {} {}() const {{ return _{};}}\n", item.at("type"),
+                                        item["name"], item["name"]);
             }
 
       result += "\n   public:\n";
@@ -513,7 +520,8 @@ bool File::save() {
             if (!dir.exists(tmpName)) {
                   tempFile.setFileName(dir.absolutePath() + "/" + tmpName);
                   if (!tempFile.open(QIODevice::ReadWrite)) {
-                        QString s = QString("Open Temp File\n") + tempFile.fileName() + QString("\nfailed: ") + QString(strerror(errno));
+                        QString s = QString("Open Temp File\n") + tempFile.fileName() +
+                                    QString("\nfailed: ") + QString(strerror(errno));
                         Critical("Open Temp File: {} failed", s);
                         return false;
                         }
@@ -569,7 +577,8 @@ bool File::save() {
                   os << '\n';
             }
       if (tempFile.error()) {
-            QString s = QString("Write Temp File\n") + tempFile.fileName() + QString("failed: ") + tempFile.errorString();
+            QString s = QString("Write Temp File\n") + tempFile.fileName() + QString("failed: ") +
+                        tempFile.errorString();
             Critical("Ped: Write Temp: {}", s);
             return false;
             }
@@ -664,8 +673,6 @@ void File::clearLabel() {
 //---------------------------------------------------------
 
 int File::indent(const Pos& pos) const {
-      //      if (client)
-      //            client->indentRequest(this, pos.row);
       // find previous text line
       const Line* l;
       int row = pos.row - 1;
@@ -688,7 +695,8 @@ int File::indent(const Pos& pos) const {
 
       QString s       = l->qstring().simplified();
       auto mustIndent = [](const QString& s) {
-            return s.startsWith("if") || s.startsWith("for") || s.startsWith("while") || s.startsWith("do") || s.startsWith("else");
+            return s.startsWith("if") || s.startsWith("for") || s.startsWith("while") || s.startsWith("do") ||
+                   s.startsWith("else");
             };
 
       if (mustIndent(s))
@@ -739,7 +747,7 @@ void File::patch(Patches& items) {
                   /* TODO                  if (!posValid(pi.startPos)) {
                         Critical("invalid position col {} line {}", pi.startPos.col, pi.startPos.row);
                         return;
-                                                }
+                                                      }
 */
                   }
             }
@@ -906,7 +914,8 @@ void File::postprocessFormat() {
             //
             // add an empty line after every top level closing "}" or "};"
             //
-            if ((l.qstring() == QString("      }") || l.qstring() == QString("      };")) && !_fileText.nextLineIsEmpty(i)) {
+            if ((l.qstring() == QString("      }") || l.qstring() == QString("      };")) &&
+                !_fileText.nextLineIsEmpty(i)) {
                   undo()->push(new Patch(this, {0, i + 1}, 0, "\n", cursor, cursor));
                   ++i;
                   }
@@ -914,7 +923,8 @@ void File::postprocessFormat() {
             // make sure there is an empty line before every comment block
             // starting with "//------"
             //
-            if (l.startsWith("//-----") && !_fileText.prevLineIsEmpty(i) && i && !_fileText[i - 1].qstring().trimmed().startsWith("//")) {
+            if (l.startsWith("//-----") && !_fileText.prevLineIsEmpty(i) && i &&
+                !_fileText[i - 1].qstring().trimmed().startsWith("//")) {
                   undo()->push(new Patch(this, {0, i}, 0, "\n", cursor, cursor));
                   ++i;
                   }
@@ -1216,8 +1226,8 @@ void File::setSymbols(const json& j) {
                                     case 22: kindStr = "Struct"; break;
                                     }
                               res += std::format("{}[Line {}] {}: {}\n", indent, line, kindStr, name);
-                              const QString& s = fileText().at(line-1).qstring();
-                              map.push_back(s, Pos(0, line-1));
+                              const QString& s = fileText().at(line - 1).qstring();
+                              map.push_back(s, Pos(0, line - 1));
                               }
                         if (item.contains("children") && item["children"].is_array())
                               for (const auto& child : item["children"])

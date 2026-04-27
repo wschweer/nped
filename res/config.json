@@ -270,6 +270,45 @@
                         "label": "Manifest / System Prompt"
                   },
                   "title": "AI - Roles"
+            },
+            {
+                  "name": {
+                        "type": "string",
+                        "label": "ID"
+                  },
+                  "type": "list",
+                  "listName": "mcpServersConfig",
+                  "listType": "McpServerConfig",
+                  "listItemTitle": "McpServerConfig.id",
+                  "listSequence": [
+                        "id",
+                        "command",
+                        "args",
+                        "env",
+                        "enabled"
+                  ],
+                  "id": {
+                        "type": "string",
+                        "label": "ID"
+                  },
+                  "command": {
+                        "type": "string",
+                        "label": "Command"
+                  },
+                  "args": {
+                        "type": "string",
+                        "label": "Arguments"
+                  },
+                  "env": {
+                        "type": "string",
+                        "label": "Env Variables (KEY=VAL,KEY=VAL)"
+                  },
+                  "enabled": {
+                        "type": "bool",
+                        "label": "Enabled"
+                  },
+                  "readOnly": false,
+                  "title": "MCP Servers"
             }
       ]
 }

@@ -18,43 +18,31 @@
 #include <QTimer>
 #include <QUrlQuery>
 #include <QFontDatabase>
+#include <QWebChannel>
 
 #include "configwebview.h"
+#include "mcp.h"
 #include <QMetaProperty>
 #include <QMetaSequence>
 
 #include "editor.h"
 #include "logger.h"
 #include "filetype.h"
+#include "ls.h"
 
 //---------------------------------------------------------
-//   ConfigWebPage  –  intercepts nped:// navigation
+//   ConfigApi
 //---------------------------------------------------------
 
-class ConfigWebPage : public QWebEnginePage
+class ConfigApi : public QObject
       {
       Q_OBJECT
       ConfigWebView* _view;
 
     public:
-      explicit ConfigWebPage(ConfigWebView* view, QObject* parent = nullptr)
-          : QWebEnginePage(parent), _view(view) {}
-
-    protected:
-      bool acceptNavigationRequest(const QUrl& url, NavigationType type, bool isMainFrame) override;
-      };
-
-//---------------------------------------------------------
-//   acceptNavigationRequest
-//---------------------------------------------------------
-
-bool ConfigWebPage::acceptNavigationRequest(const QUrl& url, NavigationType type, bool isMainFrame) {
-      if (url.scheme() != "nped" || url.host() != "config")
-            return QWebEnginePage::acceptNavigationRequest(url, type, isMainFrame);
-
-      if (url.path() == "/save") {
-            QUrlQuery query(url);
-            QString jsonData  = query.queryItemValue("data");
+      explicit ConfigApi(ConfigWebView* view, QObject* parent = nullptr) : QObject(parent), _view(view) {}
+    public slots:
+      void saveConfig(const QString& jsonData) {
             QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromPercentEncoding(jsonData.toUtf8()));
             QJsonObject obj   = doc.object();
 
@@ -62,15 +50,13 @@ bool ConfigWebPage::acceptNavigationRequest(const QUrl& url, NavigationType type
                   _view->setProperty(it.key(), it.value().toVariant());
             emit _view->configSaved();
             }
-      else if (url.path() == "/cancel") {
-            emit _view->configCancelled();
-            }
-      else if (url.path() == "/reset") {
-            emit _view->configResetRequested();
-            }
-      else if (url.path() == "/list-add") {
-            QUrlQuery query(url);
-            QString listName = query.queryItemValue("list");
+      void cancelConfig() { emit _view->configCancelled(); }
+      void resetConfig() { emit _view->configResetRequested(); }
+      //---------------------------------------------------------
+      //   listAdd
+      //---------------------------------------------------------
+
+      void listAdd(const QString& listName) {
             if (listName == "fileTypes") {
                   FileTypes ft = _view->editor()->fileTypes();
                   ft.append(FileType(".*\\.new$", "new", "none", 4, false, false));
@@ -97,10 +83,7 @@ bool ConfigWebPage::acceptNavigationRequest(const QUrl& url, NavigationType type
                   _view->openConfig();
                   }
             else if (listName == "languageServersConfig") {
-                  QList<LanguageServerConfig> lsc_list = _view->editor()->languageServersConfig();
-                  LanguageServersConfig lsc;
-                  for (auto& i : lsc_list)
-                        lsc.append(i);
+                  auto lsc = _view->editor()->languageServersConfig();
                   LanguageServerConfig newLsc;
                   newLsc.name    = "new_ls";
                   newLsc.command = "ls_cmd";
@@ -109,13 +92,23 @@ bool ConfigWebPage::acceptNavigationRequest(const QUrl& url, NavigationType type
                   _view->editor()->setLanguageServersConfig(lsc);
                   _view->openConfig();
                   }
-            else
+            else if (listName == "mcpServersConfig") {
+                  McpServerConfigs mcp_list = _view->editor()->mcpServersConfig();
+                  McpServerConfig newMcp;
+                  newMcp.id = "new_mcp";
+                  mcp_list.append(newMcp);
+                  _view->editor()->setMcpServersConfig(mcp_list);
+                  _view->openConfig();
+                  }
+            else {
                   Critical("unknown list <{}>", listName);
+                  }
             }
-      else if (url.path() == "/list-remove") {
-            QUrlQuery query(url);
-            QString listName = query.queryItemValue("list");
-            int index        = query.queryItemValue("index").toInt();
+      //---------------------------------------------------------
+      //   listRemove
+      //---------------------------------------------------------
+
+      void listRemove(const QString& listName, int index) {
             if (listName == "fileTypes") {
                   FileTypes ft = _view->editor()->fileTypes();
                   if (index >= 0 && index < ft.size()) {
@@ -141,28 +134,37 @@ bool ConfigWebPage::acceptNavigationRequest(const QUrl& url, NavigationType type
                         }
                   }
             else if (listName == "languageServersConfig") {
-                  QList<LanguageServerConfig> lsc_list = _view->editor()->languageServersConfig();
-                  LanguageServersConfig lsc;
-                  for (auto& i : lsc_list)
-                        lsc.append(i);
+                  auto lsc = _view->editor()->languageServersConfig();
                   if (index >= 0 && index < lsc.size()) {
                         lsc.removeAt(index);
                         _view->editor()->setLanguageServersConfig(lsc);
                         _view->openConfig();
                         }
                   }
+            else if (listName == "mcpServersConfig") {
+                  McpServerConfigs mcp = _view->editor()->mcpServersConfig();
+                  if (index >= 0 && index < mcp.size()) {
+                        mcp.removeAt(index);
+                        _view->editor()->setMcpServersConfig(mcp);
+                        _view->openConfig();
+                        }
+                  }
             }
-      return false;
-      }
+      };
 
 //---------------------------------------------------------
 //   ConfigWebView
 //---------------------------------------------------------
 
 ConfigWebView::ConfigWebView(Editor* editor, QWidget* parent) : MarkdownWebView(editor, parent) {
-      // Replace the page with our custom ConfigWebPage
-      auto* configPage = new ConfigWebPage(this, this);
-      setPage(configPage);
+      // 1. Setup WebChannel
+      QWebChannel* channel = new QWebChannel(page());
+      ConfigApi* api       = new ConfigApi(this, channel);
+
+      // 2. Register C++ api
+      channel->registerObject(QStringLiteral("configApi"), api);
+      page()->setWebChannel(channel);
+
       settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
 
       // Set background to match theme
@@ -216,11 +218,7 @@ void ConfigWebView::setProperty(const QString& name, const QVariant& value) {
                         auto list = editor()->fileTypes();
                         if (index >= 0 && index < list.size()) {
                               QVariant item = QVariant::fromValue(list[index]);
-                              int pidx      = item.metaType().metaObject()->indexOfProperty(
-                                  propName.toUtf8().constData());
-                              if (pidx >= 0)
-                                    item.metaType().metaObject()->property(pidx).writeOnGadget(item.data(),
-                                                                                               value);
+                              setVariant(item, propName, value);
                               list[index] = item.value<FileType>();
                               editor()->setFileTypes(list);
                               return;
@@ -230,11 +228,7 @@ void ConfigWebView::setProperty(const QString& name, const QVariant& value) {
                         auto list = editor()->models();
                         if (index >= 0 && index < list.size()) {
                               QVariant item = QVariant::fromValue(list[index]);
-                              int pidx      = item.metaType().metaObject()->indexOfProperty(
-                                  propName.toUtf8().constData());
-                              if (pidx >= 0)
-                                    item.metaType().metaObject()->property(pidx).writeOnGadget(item.data(),
-                                                                                               value);
+                              setVariant(item, propName, value);
                               list[index] = item.value<Model>();
                               editor()->setModels(list);
                               return;
@@ -244,11 +238,7 @@ void ConfigWebView::setProperty(const QString& name, const QVariant& value) {
                         auto list = editor()->agentRoles();
                         if (index >= 0 && index < list.size()) {
                               QVariant item = QVariant::fromValue(list[index]);
-                              int pidx      = item.metaType().metaObject()->indexOfProperty(
-                                  propName.toUtf8().constData());
-                              if (pidx >= 0)
-                                    item.metaType().metaObject()->property(pidx).writeOnGadget(item.data(),
-                                                                                               value);
+                              setVariant(item, propName, value);
                               list[index] = item.value<AgentRole>();
                               editor()->setAgentRoles(list);
                               return;
@@ -263,8 +253,6 @@ void ConfigWebView::setProperty(const QString& name, const QVariant& value) {
                               editor()->setTextStylesDark(list);
                               return;
                               }
-                        else
-                              Critical("bad index");
                         }
                   else if (listName == "textStylesLight") {
                         auto list = editor()->textStylesLight();
@@ -276,15 +264,21 @@ void ConfigWebView::setProperty(const QString& name, const QVariant& value) {
                               return;
                               }
                         }
+                  else if (listName == "mcpServersConfig") {
+                        auto list = editor()->mcpServersConfig();
+                        if (index >= 0 && index < list.size()) {
+                              QVariant item = QVariant::fromValue(list[index]);
+                              setVariant(item, propName, value);
+                              list[index] = item.value<McpServerConfig>();
+                              editor()->setMcpServersConfig(list);
+                              return;
+                              }
+                        }
                   else if (listName == "languageServersConfig") {
                         auto list = editor()->languageServersConfig();
                         if (index >= 0 && index < list.size()) {
                               QVariant item = QVariant::fromValue(list[index]);
-                              int pidx      = item.metaType().metaObject()->indexOfProperty(
-                                  propName.toUtf8().constData());
-                              if (pidx >= 0)
-                                    item.metaType().metaObject()->property(pidx).writeOnGadget(item.data(),
-                                                                                               value);
+                              setVariant(item, propName, value);
                               list[index] = item.value<LanguageServerConfig>();
                               editor()->setLanguageServersConfig(list);
                               return;
@@ -294,11 +288,7 @@ void ConfigWebView::setProperty(const QString& name, const QVariant& value) {
                         auto list = editor()->shortcuts();
                         if (index >= 0 && index < list.size()) {
                               QVariant item = QVariant::fromValue(list[index]);
-                              int pidx      = item.metaType().metaObject()->indexOfProperty(
-                                  propName.toUtf8().constData());
-                              if (pidx >= 0)
-                                    item.metaType().metaObject()->property(pidx).writeOnGadget(item.data(),
-                                                                                               value);
+                              setVariant(item, propName, value);
                               list[index] = item.value<ShortcutConfig>();
                               editor()->setShortcuts(list);
                               return;
@@ -341,6 +331,7 @@ void ConfigWebView::openConfig() {
                   "<link rel=\"stylesheet\" "
                   "href=\"https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/classic.min.css\"/>"
                   "<script src=\"https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js\"></script>"
+                  "<script src=\"qrc:///qtwebchannel/qwebchannel.js\"></script>"
                   "<style>"
                   "body { background-color: %1; color: %2; height: 100vh; display: flex; flex-direction: "
                   "column; overflow: hidden; margin: 0; font-family: sans-serif; }"
@@ -429,8 +420,8 @@ void ConfigWebView::openConfig() {
                   QString titleProp       = listItemTitle.split(".").last();
                   QJsonArray listSequence = secObj["listSequence"].toArray();
 
-                  QVariant listVar                 = getProperty(listName);
-                  QMetaSequence::Iterable iterable = listVar.value<QMetaSequence::Iterable>();
+                  QVariant listVar  = getProperty(listName);
+                  QVariantList list = listVar.toList();
 
                   html += "<div class=\"d-flex\" style=\"height: calc(100vh - 120px);\">";
                   html += "<div class=\"list-group w-25\" style=\"overflow-y: auto;\">";
@@ -438,7 +429,7 @@ void ConfigWebView::openConfig() {
                   QString detailsHtml = "<div class=\"w-75 p-3\" style=\"overflow-y: auto;\">";
                   int itemIdx         = 0;
 
-                  for (const QVariant& item : iterable) {
+                  for (const QVariant& item : list) {
                         const QMetaObject* meta = item.metaType().metaObject();
                         if (!meta)
                               continue;
@@ -565,16 +556,14 @@ void ConfigWebView::openConfig() {
                   detailsHtml       += "</div>"; // end details pane
                   html              += detailsHtml;
                   if (!listReadOnly) {
-                        QUrlQuery q(QString("nped://config/list-add?list=%1").arg(listName));
-
                         html += QString("<div class=\"d-flex justify-content-end gap-2\" style=\"position: "
                                         "absolute; bottom: 80px; right: 20px;\">"
-                                        "<a href=\"%1\" class=\"btn "
-                                        "btn-success\" style=\"width: 100px;\">Add</a>"
+                                        "<button onclick=\"if(backend) backend.listAdd('%1')\" class=\"btn "
+                                        "btn-success\" style=\"width: 100px;\">Add</button>"
                                         "<button onclick=\"removeCurrentListItem('%1', %2)\" class=\"btn "
                                         "btn-danger\" style=\"width: 100px;\">Remove</button>"
                                         "</div>")
-                                    .arg(q.query(QUrl::FullyEncoded))
+                                    .arg(listName)
                                     .arg(i);
                         }
                   html += "</div>"; // end d-flex
@@ -587,49 +576,59 @@ void ConfigWebView::openConfig() {
 
       html += "</div></div>"; // end content, main-content
 
-      html += "<div class=\"footer\">"
-              "<a href=\"nped://config/reset\" class=\"btn btn-warning\">Reset</a>"
-              "<a href=\"nped://config/cancel\" class=\"btn btn-secondary\">Cancel</a>"
-              "<button onclick=\"saveConfig()\" class=\"btn btn-primary\">Save</button>"
-              "</div>";
+      html +=
+          "<div class=\"footer\">"
+          "<button onclick=\"if(backend) backend.resetConfig()\" class=\"btn btn-warning\">Reset</button>"
+          "<button onclick=\"if(backend) backend.cancelConfig()\" class=\"btn btn-secondary\">Cancel</button>"
+          "<button onclick=\"saveConfig()\" class=\"btn btn-primary\">Save</button>"
+          "</div>";
 
       html +=
           R"(<script>
+      var backend = null;
+      new QWebChannel(qt.webChannelTransport, function (channel) {
+            backend = channel.objects.configApi;
+      });
+
       function showSection(idx) {
             document.querySelectorAll('.section-panel').forEach(p => p.classList.add('d-none'));
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
             document.getElementById('section-' + idx).classList.remove('d-none');
             document.getElementById('nav-' + idx).classList.add('active');
-            }
+      }
+
       function showListItem(sectionIdx, itemIdx) {
             document.querySelectorAll('.list-item-panel-' + sectionIdx).forEach(p => p.classList.add('d-none'));
             document.querySelectorAll('.nav-list-' + sectionIdx).forEach(l => l.classList.remove('active'));
             document.getElementById('list-item-' + sectionIdx + '-' + itemIdx).classList.remove('d-none');
             document.getElementById('list-nav-' + sectionIdx + '-' + itemIdx).classList.add('active');
-            }
+      }
+
       function saveConfig() {
             let data = {};
             document.querySelectorAll('input, select, textarea').forEach(el => {
                   if (el.name) {
                         if (el.type === 'checkbox') {
                               data[el.name] = el.checked;
-                              }
+                        }
                         else {
                               data[el.name] = el.value;
-                              }
                         }
-                  });
+                  }
+            });
             let jsonString = JSON.stringify(data);
-            window.location.href = 'nped://config/save?data=' + encodeURIComponent(jsonString);
-            }
+            if(backend) backend.saveConfig(encodeURIComponent(jsonString));
+      }
+
       function removeCurrentListItem(listName, sectionIdx) {
             let activeEl = document.querySelector('.nav-list-' + sectionIdx + '.active');
             if (activeEl) {
                   let idParts = activeEl.id.split('-');
                   let itemIdx = idParts[idParts.length - 1];
-                  window.location.href = 'nped://config/list-remove?list=' + listName + '&index=' + itemIdx;
-                  }
+                  if(backend) backend.listRemove(listName, parseInt(itemIdx));
             }
+      }
+
       // Initialize Pickr
       document.querySelectorAll('.color-picker').forEach(el => {
             const hiddenInput = document.getElementById(el.getAttribute('data-input'));
@@ -642,13 +641,13 @@ void ConfigWebView::openConfig() {
                         opacity: true,
                         hue: true,
                         interaction: { hex: true, rgba: true, input: true, save: true }
-                        }
-                  });
+                  }
+            });
             pickr.on('save', (color) => {
                   hiddenInput.value = color.toRGBA().toString();
                   pickr.hide();
-                  });
             });
+      });
       </script>
       </body></html>)";
 

@@ -1,6 +1,9 @@
 ---
-
 # TODO
+---
+## MCP Debugging
+---
+
 ---
 ## 3. Refactoring Config GUI
 ---

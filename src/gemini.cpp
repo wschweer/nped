@@ -133,11 +133,12 @@ json GeminiClient::prompt(QNetworkRequest* request) {
 
       requestJson["contents"]         = contents;
       requestJson["generationConfig"] = {
-               {"thinking_config", {{"include_thoughts", true}, {"thinking_level", "MEDIUM"}}}, // LOW, MINIMAL, MEDIUM, HIGH
-                                                                                          //               {"temperature",  0.2},
-                                                                                          //               { "candidateCount", 1 },
-               {    "temperature",                                                        1.0}, // Reasoning-Modelle profitieren oft von etwas höherer Temperatur
-               {           "topP",                                                       0.95}
+               {"thinking_config",
+                {{"include_thoughts", true}, {"thinking_level", "MEDIUM"}}}, // LOW, MINIMAL, MEDIUM, HIGH
+                                                                       //               {"temperature",  0.2},
+         //               { "candidateCount", 1 },
+               {    "temperature",                                     1.0}, // Reasoning-Modelle profitieren oft von etwas höherer Temperatur
+               {           "topP",                                    0.95}
             };
 
       currentContent.clear();
@@ -206,8 +207,14 @@ void GeminiClient::processTools() {
                         Critical("ToolCall does not contain <functionCall>");
                         continue;
                         }
-                  json fc            = call["functionCall"];
-                  json args          = fc["args"];
+                  json fc = call["functionCall"];
+                  if (!fc.is_object() || !fc.contains("name") || !fc["name"].is_string()) {
+                        Critical("ToolCall does not contain valid <name>");
+                        continue;
+                        }
+                  json args = (fc.contains("args") && fc["args"].is_object()) ? fc["args"] : json::object();
+
+
                   std::string result = agent->executeTool(fc["name"], args);
 
                   msg["parts"].push_back({

@@ -23,6 +23,7 @@
 
 #include "webview.h"
 #include "kontext.h"
+#include "editor.h"
 
 #include <QDesktopServices>
 #include <QWebEnginePage>
@@ -79,9 +80,7 @@ bool MarkdownWebPage::acceptNavigationRequest(const QUrl& url, NavigationType ty
                                         ext == "png" || ext == "gif" || ext == "svg" || ext == "webp" ||
                                         ext == "html" || ext == "htm") {
                                           if (k->viewMode() != ViewMode::WebView) {
-                                                k->editor->toggleViewMode();
-                                                //TODO                                                k->toggleViewMode();
-                                                //TODO                                                e->updateViewMode();
+                                                e->setViewMode(ViewMode::WebView);
                                                 }
                                           }
                                     }
@@ -473,7 +472,7 @@ QString MarkdownWebView::renderMarkdownToHtml(const std::string& _stdMarkdown) {
             QString code = match.captured(3);
 
             if (lang.toLower() == "mermaid") {
-                  // Gib Mermaid-Blöcke unverändert (aber als div class="mermaid") aus, damit sie gerendert werden können.
+                  // Gib Mermaid-Blöcke unverändert (aber als div class=\"mermaid\") aus, damit sie gerendert werden können.
                   // Wir dekorieren sie nicht mit Copy-Button oder Code-Header.
 
                   result += QString(R"X(<div class="mermaid">%1</div>)X").arg(code);
@@ -738,19 +737,54 @@ void MarkdownWebView::scrollToBottom() {
 
 const std::string& MarkdownWebView::getAnchorJs() const {
       static const std::string s =
-          R"(<script>document.addEventListener("DOMContentLoaded", function() { /* ... */ });</script>)";
+          R"raw(<script>document.addEventListener("DOMContentLoaded", function() {
+    const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    headings.forEach((heading, index) => {
+        if (!heading.id) {
+            heading.id = 'heading-' + index;
+        }
+        const anchor = document.createElement('a');
+        anchor.className = 'anchor';
+        anchor.href = '#' + heading.id;
+        anchor.innerHTML = '<svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg>';
+        heading.insertBefore(anchor, heading.firstChild);
+    });
+});</script>)raw";
       return s;
       }
 
 const std::string& MarkdownWebView::getTocJs() const {
       static const std::string s =
-          R"(<script>document.addEventListener("DOMContentLoaded", function() { /* ... */ });</script>)";
+          R"raw(<script>document.addEventListener("DOMContentLoaded", function() {
+    const tocContainer = document.getElementById('table-of-contents');
+    if (!tocContainer) return;
+
+    const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    if (headings.length === 0) return;
+
+    const tocList = document.createElement('ul');
+    tocList.className = 'toc-list';
+    tocContainer.appendChild(tocList);
+
+    headings.forEach((heading, index) => {
+        if (!heading.id) {
+            heading.id = 'heading-' + index;
+        }
+
+        const li = document.createElement('li');
+        li.className = 'toc-item toc-' + heading.tagName.toLowerCase();
+
+        const a = document.createElement('a');
+        a.href = '#' + heading.id;
+        a.textContent = heading.textContent;
+
+        li.appendChild(a);
+        tocList.appendChild(li);
+    });
+});</script>)raw";
       return s;
       }
 
-void MarkdownWebView::append(const QString& s) {
-      setMarkdown(_currentRawMarkdown + s);
-      }
 
 void MarkdownWebView::showGitDiff(const QString& diffOutput) {
       _currentDiff = diffOutput;
@@ -765,6 +799,7 @@ void MarkdownWebView::showGitDiff(const QString& diffOutput) {
                { "diff",                   diffOutput},
                {"theme", _darkMode ? "dark" : "light"}
             });
+
       QString safeScript = QString("if(typeof renderDiff === 'function') renderDiff(%1);")
                                .arg(QString::fromUtf8(doc.toJson()));
       this->page()->runJavaScript(safeScript);

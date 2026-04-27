@@ -28,7 +28,12 @@ OllamaClient::OllamaClient(Agent* a, Model* m, const std::vector<json>& mcps) : 
       setTools(mcps);
       }
 
+//---------------------------------------------------------
+//   setTools
+//---------------------------------------------------------
+
 void OllamaClient::setTools(const std::vector<json>& mcps) {
+      Debug("mcps {}", mcps.size());
       try {
             tools = json::array();
             for (auto& tool : mcps) {
@@ -72,7 +77,7 @@ json OllamaClient::prompt(QNetworkRequest* request) {
       if (model->num_ctx > 0)
             options["num_ctx"] = model->num_ctx;
       if (model->num_predict > 0)
-            options["num_predict"] = model->num_predict;    // -1 = infinite
+            options["num_predict"] = model->num_predict; // -1 = infinite
       if (model->temperature >= 0.0)
             options["temperature"] = model->temperature;
       if (model->topP >= 0.0)
@@ -113,11 +118,10 @@ json OllamaClient::prompt(QNetworkRequest* request) {
             if (msg.contains("tool_call_id"))
                   jmsg["tool_call_id"] = msg["tool_call_id"];
             // Embed screenshot: Ollama multimodal uses "images" array with base64 strings
-            if (msg.contains("images") && msg["images"].is_array()) {
+            if (msg.contains("images") && msg["images"].is_array())
                   jmsg["images"] = msg["images"];
-            } else if (msg.contains("image")) {
+            else if (msg.contains("image"))
                   jmsg["images"] = json::array({msg["image"].get<std::string>()});
-            }
             history.push_back(jmsg);
             }
       requestJson["messages"] = history;
@@ -136,7 +140,8 @@ json OllamaClient::prompt(QNetworkRequest* request) {
 
 void OllamaClient::processJsonItem(const json& item) {
       if (item.contains("error")) {
-            std::string err = item["error"].is_string() ? item["error"].get<std::string>() : item["error"].dump();
+            std::string err =
+                item["error"].is_string() ? item["error"].get<std::string>() : item["error"].dump();
             agent->chatDisplay->handleIncomingChunk("", "\n**Error:** " + err + "\n");
             currentContent += "\nError: " + err + "\n";
             return;
@@ -156,7 +161,8 @@ void OllamaClient::processJsonItem(const json& item) {
                   for (char c : s) {
                         _buffer += c;
                         if (!_isThinking) {
-                              if ("<think>" == _buffer || "<thought>" == _buffer || "<|channel>thought" == _buffer) {
+                              if ("<think>" == _buffer || "<thought>" == _buffer ||
+                                  "<|channel>thought" == _buffer) {
                                     _isThinking     = true;
                                     currentContent += _buffer;
                                     _buffer.clear();
@@ -169,7 +175,8 @@ void OllamaClient::processJsonItem(const json& item) {
                                     _buffer.clear();
                                     }
                               }
-                        else if ("</think>" == _buffer || "</thought>" == _buffer || "<channel|>" == _buffer) {
+                        else if ("</think>" == _buffer || "</thought>" == _buffer ||
+                                 "<channel|>" == _buffer) {
                               _isThinking     = false;
                               currentContent += _buffer;
                               _buffer.clear();
@@ -215,7 +222,8 @@ void OllamaClient::processTools() {
                         continue;
                         }
                   json fc   = call["function"];
-                  json args = fc["arguments"];
+                  json args = (fc.contains("arguments") && fc["arguments"].is_object()) ? fc["arguments"]
+                                                                                        : json::object();
                   if (args.is_string())
                         args = json::parse(args.get<std::string>());
                   fc["arguments"]          = args;

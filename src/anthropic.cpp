@@ -22,37 +22,34 @@
 
 // static const int maxThinkingBudget = 1024;
 static const int maxThinkingBudget = 512;
-
 //---------------------------------------------------------
 //   AnthropicClient
 //---------------------------------------------------------
 
 AnthropicClient::AnthropicClient(Agent* a, Model* m, const std::vector<json>& mcps) : LLMClient(a, m) {
       setTools(mcps);
-      }
-
+}
 void AnthropicClient::setTools(const std::vector<json>& mcps) {
       try {
             tools = json::array();
             for (auto& tool : mcps) {
                   tools.push_back({
-                           {        "name",        tool["name"]},
-                           { "description", tool["description"]},
-                           {"input_schema", tool["inputSchema"]}  // Anthropic expects input_schema
-                        });
-                  }
-            }
-      catch (const json::parse_error& e) {
-            Debug("Parse Error: {}", e.what());
-            }
-      catch (const json::type_error& e) {
-            Debug("TypeError: {}", e.what());
-            }
-      catch (...) {
-            Critical("Unexpected error");
+                     {        "name",        tool["name"]},
+                     { "description", tool["description"]},
+                     {"input_schema", tool["inputSchema"]}  // Anthropic expects input_schema
+                  });
             }
       }
-
+      catch (const json::parse_error& e) {
+            Debug("Parse Error: {}", e.what());
+      }
+      catch (const json::type_error& e) {
+            Debug("TypeError: {}", e.what());
+      }
+      catch (...) {
+            Critical("Unexpected error");
+      }
+}
 //---------------------------------------------------------
 //   prompt
 //    prepare prompt for Anthropic
@@ -91,10 +88,10 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
             // Budget must be strictly less than max_tokens.
             const int thinkingBudget     = std::max(maxThinkingBudget, maxTokens - 1000);
             anthropicRequest["thinking"] = {
-                     {         "type",      "enabled"},
-                     {"budget_tokens", thinkingBudget}
-                  };
-            }
+               {         "type",      "enabled"},
+               {"budget_tokens", thinkingBudget}
+            };
+      }
 
       // Reset token counters for this new request
       _inputTokens  = 0;
@@ -114,7 +111,7 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
             const auto& h = activeHistory[i];
             if (h.value("role", "") == "assistant" && h.contains("thinking"))
                   lastThinkingAssistantIdx = i;
-            }
+      }
 
       // We will build anthropicMessages by ensuring consecutive messages of the same role are merged.
       auto addMessage = [&anthropicMessages](const json& newMsg) {
@@ -126,25 +123,25 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                   json lastContent = lastMsg.contains("content") ? lastMsg["content"] : json::array();
                   if (!lastContent.is_array()) {
                         lastContent = json::array({
-                                 {{"type", "text"}, {"text", lastContent}}
-                              });
-                        }
+                           {{"type", "text"}, {"text", lastContent}}
+                        });
+                  }
 
                   json newContent = newMsg.contains("content") ? newMsg["content"] : json::array();
                   if (!newContent.is_array()) {
                         newContent = json::array({
-                                 {{"type", "text"}, {"text", newContent}}
-                              });
-                        }
+                           {{"type", "text"}, {"text", newContent}}
+                        });
+                  }
 
                   for (const auto& item : newContent)
                         lastContent.push_back(item);
                   lastMsg["content"] = lastContent;
-                  }
+            }
             else {
                   anthropicMessages.push_back(newMsg);
-                  }
-            };
+            }
+      };
 
       size_t historyIdx = 0;
       for (const auto& item : activeHistory) {
@@ -154,7 +151,7 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
             if (role == "system") {
                   // system messages are not allowed in messages array for Anthropic, they are in system prompt
                   continue;
-                  }
+            }
             else if (role == "tool") {
                   json toolMsg;
                   toolMsg["role"]           = "user";
@@ -166,7 +163,7 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                   contentArray.push_back(toolResult);
                   toolMsg["content"] = contentArray;
                   addMessage(toolMsg);
-                  }
+            }
             else if (role == "assistant") {
                   json contentArray = json::array();
 
@@ -184,34 +181,34 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                         if (th.is_object()) {
                               // Stored as full block {type, thinking, signature} – pass through.
                               contentArray.push_back(th);
-                              }
+                        }
                         else if (th.is_string() && !th.get<std::string>().empty()) {
                               // Legacy: stored as plain string (no signature available).
                               json thinkingBlock;
                               thinkingBlock["type"]     = "thinking";
                               thinkingBlock["thinking"] = th.get<std::string>();
                               contentArray.push_back(thinkingBlock);
-                              }
                         }
+                  }
 
                   // ── Text block ───────────────────────────────────────────────────
                   if (item.contains("content")) {
                         std::string text;
                         if (item["content"].is_string()) {
                               text = item["content"].get<std::string>();
-                              }
+                        }
                         else if (item["content"].is_array()) {
                               for (const auto& part : item["content"])
                                     if (part.is_string())
                                           text += part.get<std::string>();
-                              }
+                        }
                         if (!text.empty()) {
                               json textBlock;
                               textBlock["type"] = "text";
                               textBlock["text"] = text;
                               contentArray.push_back(textBlock);
-                              }
                         }
+                  }
 
                   // ── Tool-use blocks ──────────────────────────────────────────────
                   if (item.contains("tool_calls") && item["tool_calls"].is_array()) {
@@ -226,19 +223,19 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                                       ? tc["function"]["arguments"]
                                       : json::object();
                               contentArray.push_back(toolUse);
-                              }
                         }
+                  }
 
                   if (!contentArray.empty()) {
                         json converted;
                         converted["role"]    = "assistant";
                         converted["content"] = contentArray;
                         addMessage(converted);
-                        }
+                  }
                   else {
                         addMessage(item);
-                        }
                   }
+            }
             else {
                   // User role: Anthropic accepts either a plain string or a content-block array.
                   // If the stored content is an array of strings (legacy), flatten it.
@@ -254,9 +251,9 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                               for (const auto& part : arr)
                                     s += part.get<std::string>();
                               cleaned["content"] = s;
-                              }
-                        // Otherwise keep the structured array as-is (e.g. text+image blocks).
                         }
+                        // Otherwise keep the structured array as-is (e.g. text+image blocks).
+                  }
 
                   // Embed screenshot if present as an Anthropic image content block
                   if (cleaned.contains("image")) {
@@ -266,9 +263,9 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                         // Build a content block array: image block first, then text
                         json contentArray = json::array();
                         contentArray.push_back({
-                                 {  "type",                                                           "image"},
-                                 {"source", {{"type", "base64"}, {"media_type", "image/jpeg"}, {"data", b64}}}
-                              });
+                           {  "type",                                                           "image"},
+                           {"source", {{"type", "base64"}, {"media_type", "image/jpeg"}, {"data", b64}}}
+                        });
 
                         // Extract existing text content (may be string or array)
                         std::string textContent;
@@ -279,26 +276,25 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                                     for (const auto& p : cleaned["content"])
                                           if (p.is_string())
                                                 textContent += p.get<std::string>();
-                                    }
                               }
-                        contentArray.push_back({
-                                 {"type",      "text"},
-                                 {"text", textContent}
-                              });
-                        cleaned["content"] = contentArray;
                         }
+                        contentArray.push_back({
+                           {"type",      "text"},
+                           {"text", textContent}
+                        });
+                        cleaned["content"] = contentArray;
+                  }
 
                   addMessage(cleaned);
-                  }
             }
+      }
 
       anthropicRequest["messages"] = anthropicMessages;
       currentContent.clear();
       currentThinkingBlock = json::object();
       _currentToolCalls.clear();
       return anthropicRequest;
-      }
-
+}
 //---------------------------------------------------------
 //   processJsonItem
 //    Hilfsfunktion für die Verarbeitung eines einzelnen JSON-Items
@@ -316,14 +312,14 @@ void AnthropicClient::processJsonItem(const json& item) {
             if (item.contains("message") && item["message"].contains("usage"))
                   _inputTokens = item["message"]["usage"].value("input_tokens", size_t {0});
             return;
-            }
+      }
 
       // message_delta carries the cumulative output token count.
       if (type == "message_delta") {
             if (item.contains("usage"))
                   _outputTokens = item["usage"].value("output_tokens", size_t {0});
             return;
-            }
+      }
 
       // message_stop – nothing to do, dataFinished() is called by the network layer.
       if (type == "message_stop")
@@ -341,21 +337,21 @@ void AnthropicClient::processJsonItem(const json& item) {
                   toolCall["id"]       = block.value("id", "");
                   toolCall["type"]     = "tool_use";
                   toolCall["function"] = {
-                           {"name", block.value("name", "")},
-                           {"arguments", json::object()}
-                        };
+                     {"name", block.value("name", "")},
+                     {"arguments", json::object()}
+                  };
                   toolCall["arguments_str"] = "";
                   _currentToolCalls.push_back(toolCall);
-                  }
+            }
             else if (btype == "thinking") {
                   // Start a fresh thinking block; signature arrives via signature_delta.
                   currentThinkingBlock              = json::object();
                   currentThinkingBlock["type"]      = "thinking";
                   currentThinkingBlock["thinking"]  = "";
                   currentThinkingBlock["signature"] = "";
-                  }
-            return;
             }
+            return;
+      }
 
       if (type == "content_block_stop")
             return; // no state change needed
@@ -370,31 +366,30 @@ void AnthropicClient::processJsonItem(const json& item) {
                   std::string text = delta.value("text", "");
                   agent->chatDisplay->handleIncomingChunk("", text);
                   currentContent += text;
-                  }
+            }
             else if (dtype == "thinking_delta") {
                   // Extended Thinking: stream thought text; accumulate into block object.
                   std::string thought = delta.value("thinking", "");
                   agent->chatDisplay->handleIncomingChunk(thought, "");
                   currentThinkingBlock["thinking"] =
                       currentThinkingBlock["thinking"].get<std::string>() + thought;
-                  }
+            }
             else if (dtype == "signature_delta") {
                   // The API streams the cryptographic signature of the thinking block.
                   // It must be sent back verbatim in subsequent turns.
                   currentThinkingBlock["signature"] =
                       currentThinkingBlock["signature"].get<std::string>() + delta.value("signature", "");
-                  }
+            }
             else if (dtype == "input_json_delta") {
                   // Accumulate streamed JSON fragments for the current tool call.
                   if (!_currentToolCalls.empty() && delta.contains("partial_json")) {
                         auto& currentCall            = _currentToolCalls.back();
                         currentCall["arguments_str"] = currentCall["arguments_str"].get<std::string>() +
                                                        delta["partial_json"].get<std::string>();
-                        }
                   }
             }
       }
-
+}
 //---------------------------------------------------------
 //   processTools
 //    receives the already-resolved tool calls (arguments already parsed as JSON
@@ -415,7 +410,10 @@ void AnthropicClient::processTools(json resolvedToolCalls) {
 
                   // Arguments have been parsed from arguments_str by dataFinished()
                   // and are stored in call["function"]["arguments"] as a JSON object.
-                  json args = call["function"]["arguments"];
+                  json args =
+                      (call["function"].contains("arguments") && call["function"]["arguments"].is_object())
+                          ? call["function"]["arguments"]
+                          : json::object();
 
                   std::string result = agent->executeTool(functionName, args);
 
@@ -424,7 +422,7 @@ void AnthropicClient::processTools(json resolvedToolCalls) {
                         result.resize(maxToolResultChars);
                         result +=
                             "\n...[output truncated to " + std::to_string(maxToolResultChars) + " chars]";
-                        }
+                  }
 
                   json msg;
                   msg["role"]    = "tool";
@@ -446,21 +444,20 @@ void AnthropicClient::processTools(json resolvedToolCalls) {
                   // true footprint from the rolling-window and summary logic.
                   const size_t toolTokens = (result.size() + functionName.size()) / 4;
                   agent->session()->addRequest(msg, toolTokens);
-                  }
             }
+      }
       catch (const json::parse_error& e) {
             Critical("Parse Error: {}", e.what());
-            }
+      }
       catch (const json::type_error& e) {
             Critical("TypeError: {}", e.what());
-            }
+      }
       catch (...) {
             Critical("Unexpected error");
-            }
-
-      agent->sendMessage2();
       }
 
+      agent->sendMessage2();
+}
 //---------------------------------------------------------
 //   dataFinished
 //---------------------------------------------------------
@@ -482,28 +479,29 @@ void AnthropicClient::dataFinished() {
                   try {
                         call["function"]["arguments"] =
                             argsStr.empty() ? json::object() : json::parse(argsStr);
-                        }
+                  }
                   catch (const json::parse_error& e) {
                         Critical("Failed to parse tool arguments: {}", e.what());
 
                         std::string warning =
                             "\n\n[System Error: The tool call was truncated and could not be parsed. You "
                             "likely hit the max_tokens limit. Please try again, but split your work into "
-                            "smaller steps. For example, use insert_lines/remove_lines instead of write_file.]";
+                            "smaller steps. For example, use insert_lines/remove_lines instead of "
+                            "write_file.]";
                         currentContent += warning;
                         agent->chatDisplay->handleIncomingChunk("", warning);
 
                         // Skip this broken tool call completely so it doesn't pollute the history
                         // or trigger a failed execution with empty arguments.
                         continue;
-                        }
-                  call.erase("arguments_str");
                   }
+                  call.erase("arguments_str");
+            }
             // Ensure "type" field is present for round-trip conversion in prompt()
             if (!call.contains("type"))
                   call["type"] = "tool_use";
             resolvedToolCalls.push_back(call);
-            }
+      }
 
       currentContent.clear();
       currentThinkingBlock = json::object();
@@ -516,7 +514,7 @@ void AnthropicClient::dataFinished() {
             // Plain text response — let the history manager decide whether a summary is needed.
             agent->session()->addResult(responseContent, totalTokens);
             agent->enableInput(true);
-            }
+      }
       else {
             // Store the assistant turn (with tool_calls) and immediately execute the tools.
             // processTools() receives the fully resolved list by value so it is independent
@@ -524,5 +522,5 @@ void AnthropicClient::dataFinished() {
             responseContent["tool_calls"] = resolvedToolCalls;
             agent->session()->addRequest(responseContent, totalTokens);
             processTools(std::move(resolvedToolCalls));
-            }
       }
+}

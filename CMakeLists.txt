@@ -26,6 +26,7 @@ find_package(Qt6 REQUIRED COMPONENTS
       Network
       WebEngineCore
       WebEngineWidgets
+      WebChannel
       DBus
       PrintSupport
       )
@@ -96,6 +97,8 @@ qt_add_executable(nped
       src/configwebview.h
       src/editor.cpp
       src/editor.h
+      src/mcp.cpp
+      src/mcp.h
       )
 
 
@@ -152,6 +155,7 @@ target_link_libraries(nped PRIVATE
       Qt::Network
       Qt::WebEngineCore
       Qt::WebEngineWidgets
+      Qt::WebChannel
       Qt::DBus
       Qt::PrintSupport
       pthread

@@ -25,7 +25,7 @@
 #include "completion.h"
 
 // Conditional Trace:
-#define IO true
+#define IO false
 enum DiagnosticSeverity { Error = 1, Warning, Information, Hint };
 //
 //---------------------------------------------------------
@@ -403,9 +403,7 @@ bool LSclient::start(const std::string& path, const std::vector<string>& args) {
             return false;
             }
 
-      connect(this, &LSclient::isRunning, this, [this] {
-            initializeRequest();
-            });
+      connect(this, &LSclient::isRunning, this, [this] { initializeRequest(); });
       pid_t pid = fork();
       if (pid == -1) {
             Critical("fork failed: {}", strerror(errno));
@@ -641,13 +639,14 @@ void LSclient::formattingRequest(Kontext* kontext) {
                   pi.toRemove = file->distance(pi.startPos, range.end);
                   patch->add(pi);
                   }
-            editor->startCmd();
+            file->undo()->beginMacro();
             if (!patch->empty())
                   file->undo()->push(patch);
             else
                   delete patch;
             file->postprocessFormat(); // hack
-            editor->endCmd();
+            file->undo()->endMacro();
+            emit formatCompleted();
             };
       File* file = kontext->file();
       json textDocument;
@@ -979,38 +978,4 @@ void LSclient::symbolRequest(const QString& symbol) {
       json params;
       params["query"] = symbol.toStdString();
       request("workspace/symbol", params);
-      }
-
-//---------------------------------------------------------
-//   indentRequest
-//---------------------------------------------------------
-
-void LSclient::indentRequest(const File* file, int line) {
-      callbacks[id] = [](const json& msg) {
-            std::string res;
-            if (msg.contains("result"))
-                  json n = msg["result"];
-            };
-
-      json textDocument;
-      textDocument["uri"]     = "file://" + file->path().toStdString();
-      textDocument["version"] = file->version();
-      json params;
-      params["textDocument"] = textDocument;
-
-      json range;
-      json start;
-      start["line"]      = line - 1;
-      start["character"] = 0;
-      json end;
-      end["line"]      = line - 1;
-      end["character"] = file->fileText(line - 1).size();
-      range["start"]   = start;
-      range["end"]     = end;
-      json options;
-      options["tabSize"]      = 4;
-      options["insertSpaces"] = true;
-      params["range"]         = range;
-      params["options"]       = options;
-      request("textDocument/rangeFormatting", params);
       }

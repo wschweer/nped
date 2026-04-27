@@ -47,6 +47,7 @@
 #include <QBuffer>
 #include <QPixmap>
 #include <QDragEnterEvent>
+#include "mcp.h"
 #include <QDropEvent>
 #include <QMimeData>
 #include <QInputDialog>
@@ -176,9 +177,13 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
                           llm->setTools(mcpTools);
                     addMessage("system", std::format("<br><i>[System: Role changed to <b>{}</b>]</i>",
                                                      _editor->agentRoleName()));
-                    }
-
-      );
+                    });
+      McpManager* mcpM = &McpManager::instance();
+      connect (mcpM, &McpManager::toolsChanged, [this] {
+            mcpTools = getMCPTools();
+            if (llm)
+                  llm->setTools(mcpTools);
+            });
       mcpTools = getMCPTools();
 
       // Filter toggle buttons (icon-only, no pulldown menu needed)

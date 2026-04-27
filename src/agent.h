@@ -76,41 +76,6 @@ Q_DECLARE_METATYPE(AgentRoles)
 
 
 //---------------------------------------------------------
-//   MCPToolBuilder
-//---------------------------------------------------------
-
-class MCPToolBuilder
-      {
-      json tool;
-
-    public:
-      MCPToolBuilder(const std::string& name, const std::string& description) {
-            tool["name"]                      = name;
-            tool["description"]               = description;
-            tool["inputSchema"]["type"]       = "object"; // MCP liefert "inputSchema"
-            tool["inputSchema"]["properties"] = json::object();
-            tool["inputSchema"]["required"]   = json::array();
-            }
-      // Fügt einen Parameter hinzu, der für Gemini optimiert ist
-      MCPToolBuilder& add_parameter(const std::string& name, const std::string& type,
-                                    const std::string& description, bool required = true,
-                                    const std::vector<std::string>& enums = {}) {
-            json param = {
-                     {       "type",        type},
-                     {"description", description}
-                  };
-            if (!enums.empty())
-                  param["enum"] = enums;
-            tool["inputSchema"]["properties"][name] = param;
-
-            if (required)
-                  tool["inputSchema"]["required"].push_back(name);
-            return *this;
-            }
-      json build() { return tool; }
-      };
-
-//---------------------------------------------------------
 //   DropAwarePlainTextEdit
 //   A QPlainTextEdit that intercepts image drag-and-drop
 //   at the virtual-function level and emits imageDropped()
@@ -260,7 +225,7 @@ class Agent : public QWidget
       void addAttachment();                        ///< opens file dialog to attach any file
       QList<QToolButton*> _attachmentButtons;      ///< all attachment buttons (images and other files)
       int currentRetryCount {0};
-      const int maxRetries {5};
+      const int maxRetries {12};
       QDateTime rateLimitResetTime;
 
       bool _manifestsLoaded = false;
@@ -280,6 +245,7 @@ class Agent : public QWidget
       QString handleGetGitStatus(const json& args);
       QString handleGetGitDiff(const json& args);
       QString handleGetGitLog(const json& args);
+      string formatSource(const QString& path);
       QString handleCreateGitCommit(const json& args);
       QString handleSearchProject(const json& args);
       QString handleFindSymbol(const json& args);
@@ -302,7 +268,9 @@ class Agent : public QWidget
       string searchProject(const QString& query, const QString& filePattern);
       string findSymbol(const QString& symbol);
       string fetchWebDocumentation(const QString& urlString);
-      string runBuildCommand(const QString& command);
+      std::string runValgrindCommand(const QString& executable, const QString& tool, const QString& args);
+      std::string compressValgrindOutput(const QString& xmlPath);
+      string runBashCommand(const QString& command);
       string replaceLines(const QString& path, int startLine, int linesToDelete, const QString& replaceText);
       string getGitStatus();
       string getGitDiff(const QString& path = "");
@@ -377,6 +345,7 @@ class Agent : public QWidget
       static constexpr int kSearchMaxChars     = 10000;
       static constexpr int kChatResultMaxChars = 20000;
       static constexpr int kChatMaxMessages    = 40;
+      std::string compressBuildLog(const std::string& rawLog);
       std::string truncateOutput(const std::string& text, int maxChars);
       Editor* editor() const { return _editor; }
       Session* session() const { return _session; }

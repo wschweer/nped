@@ -39,6 +39,15 @@
 void Editor::resetToDefaults() {
       _fileTypes.reset();
       _languageServersConfig.reset();
+      _mcpServersConfig.clear();
+            {
+            McpServerConfig githubConfig;
+            githubConfig.id      = "github";
+            githubConfig.command = "npx";
+            githubConfig.args    = "-y @modelcontextprotocol/server-github";
+            githubConfig.enabled = true;
+            _mcpServersConfig.append(githubConfig);
+            }
 
       static const TextStyles tsLight = {
          TextStyle("normal", QColor("#ff000000"), QColor("#ffdcdcdc"), false, false),
@@ -164,11 +173,11 @@ static QJsonArray toJson(const TextStyles& ts) {
       QJsonArray array;
       for (const auto& s : ts) {
             QJsonObject o;
-            o["name"] = s.name;
-            o["fg"] = s.fg.name(QColor::HexArgb);
-            o["bg"] = s.bg.name(QColor::HexArgb);
+            o["name"]   = s.name;
+            o["fg"]     = s.fg.name(QColor::HexArgb);
+            o["bg"]     = s.bg.name(QColor::HexArgb);
             o["italic"] = s.italic;
-            o["bold"] = s.bold;
+            o["bold"]   = s.bold;
             array.append(o);
             }
       return array;
@@ -183,16 +192,15 @@ static TextStyles tsFromJson(const QJsonArray& array) {
       for (int i = 0; i < array.size(); ++i) {
             QJsonObject o = array[i].toObject();
             TextStyle s;
-            s.name = o["name"].toString();
-            s.fg   = QColor(o["fg"].toString());
-            s.bg   = QColor(o["bg"].toString());
+            s.name   = o["name"].toString();
+            s.fg     = QColor(o["fg"].toString());
+            s.bg     = QColor(o["bg"].toString());
             s.italic = o["italic"].toBool();
-            s.bold = o["bold"].toBool();
+            s.bold   = o["bold"].toBool();
             ts.append(s);
             }
       return ts;
       }
-
 
 //---------------------------------------------------------
 //   saveSettings
@@ -211,6 +219,8 @@ void Editor::saveSettings() {
       configs["models"]          = doc.array();
       configs["fileTypes"]       = _fileTypes.toJson();
       configs["languageServers"] = _languageServersConfig.toJson();
+      auto mcp_s                 = mcpServerConfigsToJson(_mcpServersConfig).dump();
+      configs["mcpServers"]      = QJsonDocument::fromJson(mcp_s.c_str()).array();
 
       QJsonArray ar;
       for (const auto& agentRole : _agentRoles) {
@@ -298,6 +308,12 @@ void Editor::loadSettings() {
             _fileTypes.fromJson(config["fileTypes"].toArray());
       if (config.contains("languageServers"))
             _languageServersConfig.fromJson(config["languageServers"].toArray());
+      if (config.contains("mcpServers")) {
+            auto mcp_arr = config["mcpServers"].toArray();
+            _mcpServersConfig =
+                mcpServerConfigsFromJson(json::parse(QJsonDocument(mcp_arr).toJson().toStdString()));
+            McpManager::instance().applyConfigs(_mcpServersConfig);
+            }
       if (config.contains("textStylesLight")) {
             _textStylesLight = tsFromJson(config["textStylesLight"].toArray());
             emit textStylesLightChanged();
@@ -312,6 +328,7 @@ void Editor::loadSettings() {
             _textStylesDark = tsFromJson(config["textStylesDark"].toArray());
             emit textStylesDarkChanged();
             }
+
       if (_agentRoles.isEmpty()) {
             AgentRoles defaultRoles = {
                      { "C++Coder",    "You are a high-performace c++ coding engine.\nUse modern C++23.",  true},

@@ -25,14 +25,14 @@
 //---------------------------------------------------------
 
 struct LScapabilities {
-      bool astProvider{false};
-      bool documentFormattingProvider{false};
-      bool renameProvider{false};
-      bool hoverProvider{false};
-      bool definitionProvider{false};
-      bool completionProvider{false};
+      bool astProvider {false};
+      bool documentFormattingProvider {false};
+      bool renameProvider {false};
+      bool hoverProvider {false};
+      bool definitionProvider {false};
+      bool completionProvider {false};
       void read(const json& cap) {
-            astProvider                = cap.value("astProvider", false);
+            astProvider = cap.value("astProvider", false);
 #if 0
             documentFormattingProvider = cap.value("documentFormattingProvider", false);
             renameProvider             = cap.value("renameProvider", false);
@@ -52,24 +52,24 @@ class LSclient : public QObject
       Q_OBJECT
       Q_DISABLE_COPY_MOVE(LSclient)
 
-      static constexpr int maxCompletions { 10 };
+      static constexpr int maxCompletions {10};
 
       std::string _name;
       std::string _path;
-      int id{1}; // current id
+      int id {1}; // current id
 
       std::map<int, Callback> callbacks;
 
       int stdinPipe[2], stdoutPipe[2], stderrPipe[2];
       int stopFd;
       std::thread* reader;
-      std::atomic<bool> running{false};
+      std::atomic<bool> running {false};
 
       LScapabilities scap; // server capabilities
       LScapabilities ccap; // client capabilities
 
       Editor* editor;
-      bool _initialized{false};
+      bool _initialized {false};
 
       void readerLoop();
       bool processMessage(const std::string& message);
@@ -90,12 +90,13 @@ class LSclient : public QObject
     signals:
       void initializedChanged();
       void notificationReceived(json msg);
+      void formatCompleted();
       void responseReceived(int id, json msg);
       void symbolSearchResult(const std::string& result);
       void referencesSearchResult(const std::string& result);
       void isRunning();
 
-   public slots:
+    public slots:
       bool initializeRequest();
 
     public:
@@ -126,7 +127,6 @@ class LSclient : public QObject
       void symbolRequest(const QString& symbol);
       void documentSymbolRequest(File*);
       void referencesRequest(const QString& file, int line, int col);
-      void indentRequest(const File*, int line);
 
       static LSclient* createClient(Editor* editor, const std::string& name);
       };
