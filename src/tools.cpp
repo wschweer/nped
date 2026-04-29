@@ -57,53 +57,12 @@ std::vector<json> Agent::getMCPTools() const {
             std::vector<json> tools = json::array();
 
             // 1. File Operations
-            if (isExecuteMode()) {
-                  tools.push_back(
-                      MCPToolBuilder("insert_lines", "Inserts lines in a file at the specified line number.")
-                          .add_parameter("path", "string", "The path to the file.")
-                          .add_parameter("start_line", "integer",
-                                         "The line number where the operation starts (1-indexed).")
-                          .add_parameter("insert_text", "string", "The text to insert.")
-                          .build());
-
-                  tools.push_back(
-                      MCPToolBuilder(
-                          "remove_lines",
-                          "Removes a specific number of lines in a file starting at a given line number.")
-                          .add_parameter("path", "string", "The path to the file.")
-                          .add_parameter("start_line", "integer",
-                                         "The line number where the operation starts (1-indexed).")
-                          .add_parameter("lines_to_delete", "integer", "Number of lines to delete.")
-                          .build());
-                  tools.push_back(
-                      MCPToolBuilder("read_file", "Reads a file or a specific range of lines from a file.")
-                          .add_parameter("path", "string", "The path to the file.")
-                          .add_parameter("start_line", "integer", "The first line to read (1-indexed).",
-                                         false)
-                          .add_parameter("end_line", "integer", "The last line to read (1-indexed).", false)
-                          .build());
-
-                  tools.push_back(MCPToolBuilder("write_file",
-                                                 "Completely overwrites an existing file with new content "
-                                                 "or creates a new file with content")
-                                      .add_parameter("path", "string", "The path to the file.")
-                                      .add_parameter("content", "string", "The content for the file.")
-                                      .build());
-                  tools.push_back(
+            tools.push_back(
                       MCPToolBuilder("format_source", "Formats a source file using the Language Server.")
                           .add_parameter("path", "string", "The path to the file to format.")
                           .build());
-                  }
 
             // 2. Navigation & Search
-            tools.push_back(
-                MCPToolBuilder("list_files_recursive",
-                               "Lists all files and subdirectories recursively in a tree structure.")
-                    .add_parameter("path", "string", "The directory path to inspect.")
-                    .add_parameter("depth", "integer",
-                                   "Optional recursion depth, default is 2. Unlimited is 0.", false)
-                    .build());
-
             tools.push_back(MCPToolBuilder("search_project", "Searches for a text query across all files in "
                                                              "the project, including unsaved editor buffers.")
                                 .add_parameter("query", "string", "The text to search for.")
@@ -134,7 +93,7 @@ std::vector<json> Agent::getMCPTools() const {
             for (const auto& config : _editor->mcpServersConfig()) {
                   if (!config.enabled)
                         continue;
-                  McpServer* server = McpManager::instance().getServer(config.id);
+                  McpServer* server = _mcpManager->getServer(config.id);
                   if (server) {
                         for (const auto& tool : server->getTools()) {
                               json jtool           = json::object();
@@ -167,12 +126,6 @@ std::vector<json> Agent::getMCPTools() const {
                     .build());
 
             // 3. System & External
-            tools.push_back(MCPToolBuilder("fetch_web_documentation",
-                                           "Downloads content from a URL via HTTP GET. Use this to read "
-                                           "external API docs or technical references.")
-                                .add_parameter("url", "string", "The full URL starting with http or https.")
-                                .build());
-
             tools.push_back(
                 MCPToolBuilder("bash_command", "Executes a shell command. Use this for general bash tasks.")
                     .add_parameter("command", "string", "The bash command to execute.")
@@ -225,7 +178,7 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
       for (const auto& config : _editor->mcpServersConfig()) {
             if (!config.enabled)
                   continue;
-            McpServer* server = McpManager::instance().getServer(config.id);
+            McpServer* server = _mcpManager->getServer(config.id);
             if (server) {
                   for (const auto& tool : server->getTools()) {
                         if (tool.name == functionName) {
@@ -240,46 +193,6 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
                               }
                         }
                   }
-            }
-
-      if (functionName == "read_file") {
-            std::string p =
-                (arguments.is_object() && arguments.contains("path") && arguments["path"].is_string())
-                    ? arguments["path"].get<std::string>()
-                    : "??";
-            Debug("{}: <{}>", functionName, p);
-            }
-      if (functionName == "bash_command") {
-            std::string p =
-                (arguments.is_object() && arguments.contains("command") && arguments["command"].is_string())
-                    ? arguments["command"].get<std::string>()
-                    : "??";
-            Debug("{}: <{}>", functionName, p);
-            }
-      else
-            Debug("<{}>", functionName);
-
-      // Hilfsfunktion: Limitiert die Zeilenlänge des Feedbacks im chatDisplay
-#if 0
-      auto trim = [](const QString& s, int maxLen = 80) {
-            QString res = s.length() > maxLen ? s.left(maxLen - 3) + "..." : s;
-            return res.toHtmlEscaped(); // Gleichzeitig HTML Sonderzeichen maskieren
-                                                                                                                                                                              };
-#endif
-      // 1. Definiere, welche Tools harmlos sind (Nur-Lese-Zugriff)
-      bool isReadOnlyTool =
-          (functionName == "read_file" || functionName == "search_project" || functionName == "find_symbol" ||
-           functionName == "get_file_outline" || functionName == "get_diagnostics" ||
-           functionName == "find_references" || functionName == "list_files_recursive" ||
-           functionName == "fetch_web_documentation" || functionName == "get_git_status" ||
-           functionName == "get_git_diff" || functionName == "get_git_log" ||
-           functionName == "bash_command" || functionName == "build_project");
-
-      // 2. Entwurfs-Modus Check
-      if (!isExecuteMode() && !isReadOnlyTool) {
-            // Schreib-Tools simulieren, um den Denkprozess der KI nicht zu unterbrechen
-            return "Plan Mode Active: The tool '" + functionName +
-                   "' was NOT executed. This is a read-only simulation. Changes were NOT saved to disk.";
             }
 
       // ==========================================================
@@ -311,12 +224,6 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
                                      ? QString::fromStdString(arguments["tool"].get<std::string>())
                                      : "memcheck";
             return runValgrindCommand(executable, tool, args);
-            }
-      else if (functionName == "fetch_web_documentation") {
-            if (!arguments.contains("url") || !arguments["url"].is_string())
-                  return "Error: Parameter 'url' missing.";
-            QString url = QString::fromStdString(arguments["url"].get<std::string>());
-            return fetchWebDocumentation(url);
             }
       else if (functionName == "get_git_status") {
             return getGitStatus();
@@ -370,12 +277,10 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             }
 
       // Lokale Datei-Operationen ausführen
-      if (functionName == "get_file_outline") {
+      if (functionName == "get_file_outline")
             return getFileOutline(path);
-            }
-      else if (functionName == "get_diagnostics") {
+      else if (functionName == "get_diagnostics")
             return getDiagnostics(path);
-            }
       else if (functionName == "find_references") {
             if (!arguments.contains("line") || !arguments["line"].is_number() ||
                 !arguments.contains("column") || !arguments["column"].is_number())
@@ -384,75 +289,8 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             int column = arguments["column"].get<int>();
             return findReferences(path, line, column);
             }
-      else if (functionName == "read_file") {
-            QString content;
-            if (!readFile(path, content))
-                  return errorResponse(content.toStdString());
-            QStringList lines = content.split('\n');
-
-            // [startLine, endLine] is a closed interval
-            // we must transform it to a half closed interval: [startLine, endLine)
-
-            int startLine = (arguments.contains("start_line") && arguments["start_line"].is_number())
-                                ? arguments["start_line"].get<int>() - 1
-                                : 0;
-            int endLine   = (arguments.contains("end_line") && arguments["end_line"].is_number())
-                                ? arguments["end_line"].get<int>()
-                                : lines.size();
-            int n         = lines.size();
-
-            if (startLine < 0 || startLine >= n)
-                  return errorResponse("start_line is outside of valid range");
-            if (endLine < 0 || endLine > n)
-                  return errorResponse("end_line is outside of valid range");
-            startLine = std::clamp(startLine, 0, n);
-            endLine   = std::clamp(endLine, 0, n);
-
-            std::vector<std::string> extractedLines;
-            for (int i = startLine; i < endLine; ++i)
-                  extractedLines.push_back(lines[i].toStdString());
-            json result = {
-                     {    "status",      "success"},
-                     { "startLine",  startLine + 1},
-                     {   "endLine",        endLine},
-                     {     "lines", extractedLines},
-                     {"totalLines",   lines.size()}
-                  };
-            return result.dump();
-            }
-
-      else if (functionName == "write_file") {
-            if (!arguments.contains("content") || !arguments["content"].is_string())
-                  return "Error: Parameter 'content' missing.";
-            QString content = QString::fromStdString(arguments["content"].get<std::string>());
-            return writeFile(path, content);
-            }
       else if (functionName == "format_source") {
             return formatSource(path);
-            }
-      else if (functionName == "list_files_recursive") {
-            int depth = 2; // this is the default recursion depth of the search
-            if (arguments.contains("depth") && arguments["depth"].is_number())
-                  depth = arguments["depth"];
-            return listFilesRecursive(path, depth);
-            }
-      else if (functionName == "insert_lines") {
-            if (!arguments.contains("start_line") || !arguments["start_line"].is_number())
-                  return "Error: Parameter 'start_line' missing.";
-            if (!arguments.contains("insert_text") || !arguments["insert_text"].is_string())
-                  return "Error: Parameter 'insert_text' missing.";
-            int startLine       = arguments["start_line"].get<int>();
-            QString replaceText = QString::fromStdString(arguments["insert_text"].get<std::string>());
-            return replaceLines(path, startLine, 0, replaceText);
-            }
-      else if (functionName == "remove_lines") {
-            if (!arguments.contains("start_line") || !arguments["start_line"].is_number())
-                  return "Error: Parameter 'start_line' missing.";
-            if (!arguments.contains("lines_to_delete") || !arguments["lines_to_delete"].is_number())
-                  return "Error: Parameter 'lines_to_delete' missing.";
-            int startLine     = arguments["start_line"].get<int>();
-            int linesToDelete = arguments["lines_to_delete"].get<int>();
-            return replaceLines(path, startLine, linesToDelete, "");
             }
       return "Error: Unknown tool (" + functionName + ").";
       }
@@ -761,7 +599,6 @@ string Agent::replaceLines(const QString& ipath, int startLine, int linesToDelet
 //---------------------------------------------------------
 
 string Agent::getGitStatus() {
-      saveAll();
       QString projRoot = QDir::cleanPath(_editor->projectRoot());
       QProcess process;
       process.setWorkingDirectory(projRoot);
@@ -779,7 +616,6 @@ string Agent::getGitStatus() {
 //---------------------------------------------------------
 
 string Agent::getGitDiff(const QString& path) {
-      saveAll();
       QString projRoot = QDir::cleanPath(_editor->projectRoot());
       QProcess process;
       process.setWorkingDirectory(projRoot);
@@ -835,7 +671,6 @@ string Agent::createGitCommit(const QString& message) {
                                "simulation. No commit was created.",
                                message);
 
-      saveAll();
       QString projRoot = QDir::cleanPath(_editor->projectRoot());
       QProcess process;
       process.setWorkingDirectory(projRoot);
@@ -856,20 +691,6 @@ string Agent::createGitCommit(const QString& message) {
             return std::format("Warning/Error during commit: {}", err);
 
       return std::format("Commit successful: {}", out);
-      }
-
-//---------------------------------------------------------
-//   saveAll
-//    write back all dirty files to synchronize external
-//    tools
-//---------------------------------------------------------
-
-void Agent::saveAll() {
-      for (auto f : _editor->getFiles()) {
-            f->undo()->beginMacro();
-            f->save();
-            f->undo()->endMacro();
-            }
       }
 
 //---------------------------------------------------------
@@ -992,8 +813,6 @@ std::string Agent::compressBuildLog(const std::string& rawLog) {
 string Agent::runBashCommand(const QString& command) {
       QString projRoot = QDir::cleanPath(_editor->projectRoot());
       QString buildDir = projRoot + "/build";
-
-      saveAll();
 
       // 1. Prüfen und Erzeugen des "build" Verzeichnisses
       QDir dir(buildDir);
@@ -1259,7 +1078,6 @@ std::string Agent::compressValgrindOutput(const QString& xmlPath) {
 //---------------------------------------------------------
 
 std::string Agent::runValgrindCommand(const QString& executable, const QString& tool, const QString& args) {
-      saveAll();
       QString projRoot = QDir::cleanPath(_editor->projectRoot());
       QString xmlFile  = projRoot + "/build/valgrind_out.xml";
 

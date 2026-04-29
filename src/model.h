@@ -54,6 +54,9 @@ struct Model {
       int num_predict                     = -1;
       bool stream                         = true;
       bool operator==(const Model&) const = default;
+      json toJson() const;
+      Model() {}
+      Model(const json&);
       };
 
 using Models = QList<Model>;

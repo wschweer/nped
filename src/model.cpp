@@ -13,6 +13,28 @@
 #include "model.h"
 
 //---------------------------------------------------------
+//   toJson
+//---------------------------------------------------------
+
+json Model::toJson() const {
+      json obj;
+      obj["name"]             = name.toStdString();
+      obj["url"]              = baseUrl.toStdString();
+      obj["key"]              = apiKey.toStdString();
+      obj["modelId"]          = modelIdentifier.toStdString();
+      obj["api"]              = api.toStdString();
+      obj["supportsThinking"] = supportsThinking;
+      obj["temperature"]      = temperature;
+      obj["topP"]             = topP;
+      obj["topK"]             = topK;
+      obj["maxTokens"]        = maxTokens;
+      obj["num_ctx"]          = num_ctx;
+      obj["num_predict"]      = num_predict;
+      obj["stream"]           = stream;
+      return obj;
+      }
+
+//---------------------------------------------------------
 //   serialize TextStyles
 //---------------------------------------------------------
 
@@ -21,21 +43,7 @@ json toJson(const Models& models) {
       for (const auto& m : models) {
             if (m.dynamic)
                   continue;
-            json obj;
-            obj["name"]             = m.name.toStdString();
-            obj["url"]              = m.baseUrl.toStdString();
-            obj["key"]              = m.apiKey.toStdString();
-            obj["modelId"]          = m.modelIdentifier.toStdString();
-            obj["api"]              = m.api.toStdString();
-            obj["supportsThinking"] = m.supportsThinking;
-            obj["temperature"]      = m.temperature;
-            obj["topP"]             = m.topP;
-            obj["topK"]             = m.topK;
-            obj["maxTokens"]        = m.maxTokens;
-            obj["num_ctx"]          = m.num_ctx;
-            obj["num_predict"]      = m.num_predict;
-            obj["stream"]           = m.stream;
-            array.push_back(obj);
+            array.push_back(m.toJson());
             }
       return array;
       }
@@ -44,28 +52,23 @@ json toJson(const Models& models) {
 //   fromJson
 //---------------------------------------------------------
 
-Models fromJson(const json& array) {
-      Models models;
+Model::Model(const json& obj) {
       try {
-            for (const json& obj : array) {
-                  Model m;
-                  m.name            = QString::fromStdString(obj["name"]);
-                  m.baseUrl         = QString::fromStdString(obj["url"]);
-                  m.apiKey          = QString::fromStdString(obj["key"]);
-                  m.modelIdentifier = QString::fromStdString(obj["modelId"]);
-                  m.api             = QString::fromStdString(obj["api"]);
+            name            = QString::fromStdString(obj["name"]);
+            baseUrl         = QString::fromStdString(obj["url"]);
+            apiKey          = QString::fromStdString(obj["key"]);
+            modelIdentifier = QString::fromStdString(obj["modelId"]);
+            api             = QString::fromStdString(obj["api"]);
 
-                  // Optional fields – graceful fallback to struct defaults if absent
-                  m.supportsThinking = obj.value("supportsThinking", false);
-                  m.temperature      = obj.value("temperature", -1.0);
-                  m.topP             = obj.value("topP", -1.0);
-                  m.topK             = obj.value("topK", -1.0);
-                  m.maxTokens        = obj.value("maxTokens", -1);
-                  m.num_ctx          = obj.value("num_ctx", -1);
-                  m.num_predict      = obj.value("num_predict", -1);
-                  m.stream           = obj.value("stream", true);
-                  models.append(m);
-                  }
+            // Optional fields – graceful fallback to struct defaults if absent
+            supportsThinking = obj.value("supportsThinking", false);
+            temperature      = obj.value("temperature", -1.0);
+            topP             = obj.value("topP", -1.0);
+            topK             = obj.value("topK", -1.0);
+            maxTokens        = obj.value("maxTokens", -1);
+            num_ctx          = obj.value("num_ctx", -1);
+            num_predict      = obj.value("num_predict", -1);
+            stream           = obj.value("stream", true);
             }
       catch (const json::parse_error& e) {
             Debug("Parse Error: {}", e.what());
@@ -75,6 +78,14 @@ Models fromJson(const json& array) {
             }
       catch (...) {
             Critical("Unexpected error");
+            }
+      }
+
+extern Models fromJson(const json& array)
+      {
+      Models models;
+      for (const auto& m : array) {
+            models.push_back(Model(m));
             }
       return models;
       }

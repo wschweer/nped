@@ -21,7 +21,8 @@
 //   CompletionsPopup
 //---------------------------------------------------------
 
-CompletionsPopup::CompletionsPopup(QWidget* parent) : QFrame(parent, Qt::ToolTip | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint) {
+CompletionsPopup::CompletionsPopup(QWidget* parent)
+    : QFrame(parent, Qt::ToolTip | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint) {
       setFrameStyle(QFrame::Box | QFrame::Plain);
       setAttribute(Qt::WA_ShowWithoutActivating);
       setLineWidth(0);
@@ -32,12 +33,11 @@ CompletionsPopup::CompletionsPopup(QWidget* parent) : QFrame(parent, Qt::ToolTip
       list                = new QListWidget(nullptr);
       list->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding));
       layout->addWidget(list);
-      layout->setSpacing(6);  // default
+      layout->setSpacing(6); // default
       setMinimumWidth(10);
       setMinimumHeight(10);
-      connect(list, &QListWidget::itemActivated, [this] (QListWidgetItem* item) {
-            emit applyCompletion(list->row(item));
-            });
+      connect(list, &QListWidget::itemActivated,
+              [this](QListWidgetItem* item) { emit applyCompletion(list->row(item)); });
       }
 
 //---------------------------------------------------------
@@ -75,7 +75,7 @@ void CompletionsPopup::up() {
 
 void Editor::requestCompletions() {
       if (completionsPopup->isVisible()) {
-            int idx                = completionsPopup->currentIndex();
+            int idx = completionsPopup->currentIndex();
             applyCompletion(idx);
             }
       else
@@ -86,13 +86,12 @@ void Editor::requestCompletions() {
 //   applyCompletion
 //---------------------------------------------------------
 
-void Editor::applyCompletion(int idx)
-      {
+void Editor::applyCompletion(int idx) {
       const PatchItem& item  = completions[idx].patch;
       Pos p2                 = item.startPos;
       p2.col                += item.insertText.size();
-      Cursor c1 = kontext()->cursor();    // current cursor position
-      Cursor c2(p2, Pos(p2.col, -1));     // cursor after insert operation
+      Cursor c1              = kontext()->cursor(); // current cursor position
+      Cursor c2(p2, Pos(p2.col, -1));               // cursor after insert operation
       undoPatch(item.startPos, item.toRemove, item.insertText, c2, c1);
       hideCompletions();
       }
@@ -115,7 +114,7 @@ void Editor::showCompletions(const Completions& l) {
       for (const auto& s : completions)
             w = std::max(w, fm.horizontalAdvance(s.label));
       auto cm = 12 + 30;
-      completionsPopup->setGeometry(k.x(), k.y(), int(w) + cm, (_fh+1) * l.size() + cm);
+      completionsPopup->setGeometry(k.x(), k.y(), int(w) + cm, (_fh + 1) * l.size() + cm);
       completionsPopup->show();
       editWidget()->setFocus();
       }

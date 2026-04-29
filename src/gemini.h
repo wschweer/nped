@@ -28,6 +28,8 @@ class GeminiClient : public LLMClient
       bool isRetrying{false};
       int maxRetries{12};
 
+      void sanitizeSchemaRecursive(json& schema, bool isRoot);
+
       void processData();
       void processTools();
 

@@ -486,7 +486,12 @@ void Kontext::moveCursorAbs(int col, int row) {
       if (row >= 0) {
             file()->unfold(row);
             _cursor.filePos.row = row;
-
+            int screenRow = _cursor.screenPos.row;
+            if (row == 0)     // goto start of file
+                  screenRow = 0;
+            else if (row == rows()-1)    // goto end of file
+                  screenRow = std::min(screenRows(), rows()-1);
+            _cursor.screenPos.row = screenRow;
             // We want to move the cursor without scrolling the screen
             // if possible.
             }

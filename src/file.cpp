@@ -450,6 +450,111 @@ bool File::load() {
       }
 
 //---------------------------------------------------------
+//   release
+//---------------------------------------------------------
+
+void File::release() {
+      save();
+      lcClose();
+      if (!_readOnly) {
+            // unlock file
+            struct flock fl;
+            fl.l_type   = F_UNLCK;
+            fl.l_whence = SEEK_SET;
+            fl.l_start  = 0;
+            fl.l_pid    = getpid();
+            int fd      = f.handle();
+            if (fcntl(fd, F_SETLK, &fl) == -1) {
+                  if (errno == EACCES || errno == EAGAIN) {
+                        Debug("File is unlocked");
+                        _readOnly = true;
+                        }
+                  else
+                        Debug("F_SETLK: Ioctl error fd {}: {}", fd, strerror(errno));
+                  }
+            }
+      }
+
+//---------------------------------------------------------
+//   restore
+//---------------------------------------------------------
+
+bool File::restore() {
+      if (_readOnly) {
+            if (!f.open(QIODevice::ReadOnly)) {
+                  // file is new
+                  _readOnly = false;
+                  _fileText.push_back(Line());
+                  return false;
+                  }
+            }
+      else {
+            if (!f.open(QIODevice::ReadWrite)) {
+                  _fileText.push_back(Line());
+                  return false;
+                  }
+            // lock file
+            struct flock fl;
+            fl.l_type   = F_WRLCK;
+            fl.l_whence = SEEK_SET;
+            fl.l_start  = 0;
+            fl.l_pid    = getpid();
+            int fd      = f.handle();
+            if (fcntl(fd, F_SETLK, &fl) == -1) {
+                  if (errno == EACCES || errno == EAGAIN) {
+                        // Debug("File is locked");
+                        editor->msg("File is locked");
+                        _readOnly = true;
+                        }
+                  else {
+                        Debug("F_SETLK: Ioctl error fd {}: {}", fd, strerror(errno));
+                        return false;
+                        }
+                  }
+            }
+
+      if (languageId() == "image") {
+            _fileText = Lines(QString("[Image File: %1]").arg(_fi.fileName()));
+            _readOnly = true;
+            created   = false;
+            return true;
+            }
+
+      QTextStream os(&f);
+      QString s = os.readAll();
+      _fileText = Lines(s);
+      for (auto& l : _fileText) {
+            if (l.contains('\t')) {
+                  int col = 0;
+                  QString r;
+                  for (const auto& c : l) {
+                        if (c == '\t') {
+                              r += ' ';
+                              ++col;
+                              while (col % tab()) {
+                                    r += ' ';
+                                    ++col;
+                                    }
+                              }
+                        else {
+                              r += c;
+                              ++col;
+                              }
+                        }
+                  l = r;
+                  }
+            }
+      if (_fileText.empty())
+            _fileText.push_back(Line());
+
+      markExpansion();
+      makePretty();
+      lcOpen(); // notify language server
+      mode = f.permissions();
+      return true;
+      }
+
+//---------------------------------------------------------
 //   lcOpen
 //---------------------------------------------------------
 
@@ -471,6 +576,15 @@ void File::lcOpen() {
                       },
                 Qt::SingleShotConnection);
             }
+      }
+
+//---------------------------------------------------------
+//   lcClose
+//---------------------------------------------------------
+
+void File::lcClose() {
+      if (client && client->initialized())
+            client->didCloseNotification(this);
       }
 
 //---------------------------------------------------------

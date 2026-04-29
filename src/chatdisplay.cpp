@@ -29,7 +29,7 @@ pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5p
 //---------------------------------------------------------
 
 QString ChatDisplay::getHighlightJsDarkCss() const {
-//      return R"(pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}.hljs{color:#c9d1d9;background:#0d1117})";
+      //      return R"(pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}.hljs{color:#c9d1d9;background:#0d1117})";
       // blue codeblock
       return R"(pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}.hljs{color:#c9d1d9;background:#313144})";
       }
@@ -41,7 +41,7 @@ QString ChatDisplay::getHighlightJsDarkCss() const {
 //---------------------------------------------------------
 
 QString ChatDisplay::getChatCss() const {
-      auto md = _editor->textStyle(TextStyle::Normal);
+      auto md        = _editor->textStyle(TextStyle::Normal);
       std::string fg = md.fg.name().toStdString();
       std::string bg = md.bg.name().toStdString();
 
@@ -86,7 +86,9 @@ QString ChatDisplay::getChatCss() const {
           border-top: 1px solid #d0d7de;
           font-style: italic;
           }}
-    )", bg, fg)) + getScrollbarCss(false);
+    )",
+                                                bg, fg)) +
+             getScrollbarCss(false);
       }
 
 //---------------------------------------------------------
@@ -95,7 +97,7 @@ QString ChatDisplay::getChatCss() const {
 //---------------------------------------------------------
 
 QString ChatDisplay::getChatDarkCss() const {
-      auto md = _editor->textStyle(TextStyle::Normal);
+      auto md        = _editor->textStyle(TextStyle::Normal);
       std::string fg = md.fg.name().toStdString();
       std::string bg = md.bg.name().toStdString();
       return QString::fromStdString(std::format(R"(
@@ -105,10 +107,12 @@ QString ChatDisplay::getChatDarkCss() const {
         .ai      {{ background: rgba(255,255,255,0.05); border-left: 4px solid {1}; align-self: flex-start; width: 100%; }}
         .user    {{ background: rgba(255,255,255,0.1); border-right: 4px solid {1}; align-self: flex-end; width: 96%; }}
         code {{ background-color: rgba(230,230,230,0.15); border-radius: 10px; padding: 2px 4px; }}
-    )",  bg, fg)) + getScrollbarCss(true);
+    )",
+                                                bg, fg)) +
+             getScrollbarCss(true);
       }
 
- //---------------------------------------------------------
+//---------------------------------------------------------
 //   setup
 //---------------------------------------------------------
 
@@ -350,14 +354,13 @@ void ChatDisplay::setDarkMode(bool enabled) {
 
 void ChatDisplay::safeRunJs(const QString& call) {
       // Extract function name (everything before the first '(')
-      int paren = call.indexOf('(');
+      int paren        = call.indexOf('(');
       QString funcName = (paren > 0) ? call.left(paren) : call;
-      QString js = QString(
-          "if(typeof %1 === 'function') { %2 } else { "
-          "  setTimeout(function() { if(typeof %1 === 'function') { %2 } "
-          "  else { console.error('%1 not found!'); } }, 100);"
-          "}")
-          .arg(funcName, call);
+      QString js       = QString("if(typeof %1 === 'function') { %2 } else { "
+                                 "  setTimeout(function() { if(typeof %1 === 'function') { %2 } "
+                                 "  else { console.error('%1 not found!'); } }, 100);"
+                                 "}")
+                             .arg(funcName, call);
       page()->runJavaScript(js, [](const QVariant& res) { (void)res; });
       }
 
@@ -401,7 +404,6 @@ void ChatDisplay::handleIncomingChunk(const std::string& thoughtChunk, const std
             }
       }
 
-
 //---------------------------------------------------------
 //   quoteForJs
 //---------------------------------------------------------
@@ -409,7 +411,7 @@ void ChatDisplay::handleIncomingChunk(const std::string& thoughtChunk, const std
 QString ChatDisplay::quoteForJs(const QString& str) {
       if (str.isEmpty())
             return "''";
-      QByteArray json = QJsonDocument(QJsonArray{str}).toJson(QJsonDocument::Compact);
+      QByteArray json = QJsonDocument(QJsonArray {str}).toJson(QJsonDocument::Compact);
       return QString::fromUtf8(json.mid(1, json.length() - 2));
       }
 
@@ -417,12 +419,15 @@ QString ChatDisplay::quoteForJs(const QString& str) {
 //   appendStaticHtml
 //---------------------------------------------------------
 
-void ChatDisplay::appendStaticHtml(const QString& role, const QString& html, const QString& thoughtHtml, bool isActive) {
+void ChatDisplay::appendStaticHtml(const QString& role, const QString& html, const QString& thoughtHtml,
+                                   bool isActive) {
       QString js =
-          QString("if(typeof appendStaticMessage === 'function') { appendStaticMessage(%1, %2, %3, %4); } else { "
-                  "  setTimeout(function() { if(typeof appendStaticMessage === 'function') { appendStaticMessage(%1, %2, %3, %4); } "
-                  "else { console.error('appendStaticMessage not found!'); } }, 100);"
-                  "}")
+          QString(
+              "if(typeof appendStaticMessage === 'function') { appendStaticMessage(%1, %2, %3, %4); } else { "
+              "  setTimeout(function() { if(typeof appendStaticMessage === 'function') { "
+              "appendStaticMessage(%1, %2, %3, %4); } "
+              "else { console.error('appendStaticMessage not found!'); } }, 100);"
+              "}")
               .arg(quoteForJs(role), quoteForJs(html), quoteForJs(thoughtHtml), isActive ? "true" : "false");
       page()->runJavaScript(js, [](const QVariant& res) { (void)res; });
       }

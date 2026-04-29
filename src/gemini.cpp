@@ -1,4 +1,4 @@
-//=============================================================================
+//============================================================================="
 //  nped Program Editor
 //
 //  Copyright (C) 2025-2026 Werner Schweer
@@ -7,7 +7,8 @@
 //  it under the terms of the GNU General Public License version 2
 //  as published by the Free Software Foundation and appearing in
 //  the file LICENCE.GPL
-//=============================================================================
+//==============================================================================
+#include <algorithm>
 
 #include <QNetworkRequest>
 #include <QNetworkReply>
@@ -36,10 +37,12 @@ void GeminiClient::setTools(const std::vector<json>& mcps) {
       try {
             json fd = json::array();
             for (auto& tool : mcps) {
+                  json schema = tool["inputSchema"];
+                  sanitizeSchemaRecursive(schema, true);
                   fd.push_back({
                            {       "name",        tool["name"]},
                            {"description", tool["description"]},
-                           { "parameters", tool["inputSchema"]}
+                           { "parameters",              schema}
                         });
                   }
             tools = json::array({{{"function_declarations", fd}}});
@@ -52,6 +55,42 @@ void GeminiClient::setTools(const std::vector<json>& mcps) {
             }
       catch (...) {
             Critical("Unexpected error");
+            }
+      }
+
+void GeminiClient::sanitizeSchemaRecursive(json& schema, bool isRoot) {
+      if (!schema.is_object())
+            return;
+
+      // Gemini wants the root of the tool's parameters to be an object.
+      if (isRoot && schema["type"] != "object") {
+            // We'll leave it, but the API might still reject it.
+            }
+
+      if (schema.contains("type") && schema["type"] == "object") {
+            if (schema.contains("properties"))
+                  for (auto it = schema["properties"].begin(); it != schema["properties"].end(); ++it)
+                        sanitizeSchemaRecursive(it.value(), false);
+            }
+      else if (schema.contains("type") && schema["type"] == "array") {
+            if (schema.contains("items"))
+                  sanitizeSchemaRecursive(schema["items"], false);
+            }
+
+      // We only keep what's strictly necessary for a function declaration.
+      std::vector<std::string> allowedKeys = {"type",     "description", "properties",
+                                              "required", "items",       "enum"};
+      for (auto it = schema.begin(); it != schema.end();) {
+            if (it.value().is_null()) {
+                  it = schema.erase(it);
+                  }
+            else if (!it.key().empty() &&
+                     std::find(allowedKeys.begin(), allowedKeys.end(), it.key()) == allowedKeys.end()) {
+                  it = schema.erase(it);
+                  }
+            else {
+                  ++it;
+                  }
             }
       }
 
@@ -135,8 +174,6 @@ json GeminiClient::prompt(QNetworkRequest* request) {
       requestJson["generationConfig"] = {
                {"thinking_config",
                 {{"include_thoughts", true}, {"thinking_level", "MEDIUM"}}}, // LOW, MINIMAL, MEDIUM, HIGH
-                                                                       //               {"temperature",  0.2},
-         //               { "candidateCount", 1 },
                {    "temperature",                                     1.0}, // Reasoning-Modelle profitieren oft von etwas höherer Temperatur
                {           "topP",                                    0.95}
             };
@@ -144,7 +181,7 @@ json GeminiClient::prompt(QNetworkRequest* request) {
       currentContent.clear();
       _lastUsageMetadata.clear();
       return requestJson;
-      };
+      }
 
 //---------------------------------------------------------
 //   processJsonItem
@@ -197,7 +234,9 @@ void GeminiClient::processJsonItem(const json& item) {
 void GeminiClient::processTools() {
       json msg; // tool answer message
       try {
+
             agent->chatDisplay->startNewStreamingMessage("model");
+
             msg["role"]  = "user";
             msg["parts"] = json::array();
 
@@ -214,7 +253,6 @@ void GeminiClient::processTools() {
                         }
                   json args = (fc.contains("args") && fc["args"].is_object()) ? fc["args"] : json::object();
 
-
                   std::string result = agent->executeTool(fc["name"], args);
 
                   msg["parts"].push_back({
@@ -224,7 +262,17 @@ void GeminiClient::processTools() {
                         displayMsg += agent->formatToolCall(fc["name"], args);
                   }
 
-            // agent->chatDisplay->handleIncomingChunk("", displayMsg);
+            // show on display
+            std::string thinking;
+            std::string text;
+            agent->logContent(msg, text, thinking);
+            agent->chatDisplay->startNewStreamingMessage("tool");
+            agent->chatDisplay->handleIncomingChunk(thinking, text);
+
+            // put on history
+            agent->session()->addRequest(msg, 0);
+            _currentToolCalls.clear();
+            agent->sendMessage2();
             }
       catch (const json::parse_error& e) {
             Critical("Parse Error: {}", e.what());
@@ -235,18 +283,6 @@ void GeminiClient::processTools() {
       catch (...) {
             Critical("Unexpected error");
             }
-      // show on display
-      std::string thinking;
-      std::string text;
-      agent->logContent(msg, text, thinking);
-      agent->chatDisplay->startNewStreamingMessage("tool");
-      agent->chatDisplay->handleIncomingChunk(thinking, text);
-
-      // put on history
-      // Assume tool call token count is negligible or fixed; for now use 0
-      agent->session()->addRequest(msg, 0);
-      _currentToolCalls.clear();
-      agent->sendMessage2();
       }
 
 //---------------------------------------------------------
@@ -265,7 +301,7 @@ void GeminiClient::dataFinished() {
       if (_currentToolCalls.empty()) {
             // No tools: this is a final turn or a summary request
             agent->session()->addResult(responseContent, totalTokens);
-            agent->enableInput(true);
+            agent->stopAgent();
             }
       else {
             // Tool calls detected: Add the assistant's call to history first

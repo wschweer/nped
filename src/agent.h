@@ -50,6 +50,7 @@ class ChatDisplay;
 class Session;
 class QEventLoop;
 class ScreenshotHelper;
+class McpManager;
 
 //---------------------------------------------------------
 //   AgentRole
@@ -177,6 +178,7 @@ class Agent : public QWidget
       static const QString kPlanStyle;
       static const QString kBuildStyle;
 
+      McpManager* _mcpManager;
       QByteArray streamBuffer;
       std::vector<json> mcpTools;
       Editor* _editor;
@@ -277,7 +279,6 @@ class Agent : public QWidget
       string getGitLog(int limit = 5);
       string createGitCommit(const QString& message);
       QString normalizePath(const QString& path) const;
-      void saveAll();
 
       void setInputEnabled(bool enabled);
       DropAwarePlainTextEdit* userInput;
@@ -315,7 +316,7 @@ class Agent : public QWidget
 
     public:
       explicit Agent(Editor* e, QWidget* parent = nullptr);
-      ~Agent();
+      ~Agent() {}
 
       ChatDisplay* chatDisplay;
       QAction* showToolMessageAction = nullptr;
@@ -334,7 +335,6 @@ class Agent : public QWidget
       void logContent(const json& part, std::string& text, std::string& thought);
       std::string formatToolCall(const std::string& name, const json& args, const std::string& result = "");
       std::string executeTool(const std::string& functionName, const json& arguments);
-      void enableInput(bool);
 
       // Output-Limits für LLM-Context-Window (Punkt 11)
       static constexpr int kBuildLogMaxChars   = 20000 * 10;
@@ -353,4 +353,7 @@ class Agent : public QWidget
       void updateChatDisplay(bool scrollToBottom = false);
       void addMessage(const std::string& role, const std::string& text);
       const AgentRole* agentRole() const;
+      McpManager* mcpManager() const { return _mcpManager; }
+      void startAgent();
+      void stopAgent();
       };

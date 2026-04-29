@@ -23,6 +23,8 @@ struct FileType {
       Q_PROPERTY(QString languageId MEMBER languageId)
       Q_PROPERTY(QString languageServer MEMBER languageServer)
       Q_PROPERTY(int tabSize MEMBER tabSize)
+      Q_PROPERTY(bool header MEMBER header)
+      Q_PROPERTY(bool createTabs MEMBER createTabs)
 
    public:
       QString extensions;

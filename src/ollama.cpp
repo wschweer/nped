@@ -295,7 +295,7 @@ void OllamaClient::dataFinished() {
 
       if (_currentToolCalls.empty()) {
             agent->session()->addResult(responseContent, totalTokens);
-            agent->enableInput(true);
+            agent->stopAgent();
             }
       else {
             agent->session()->addRequest(responseContent, totalTokens);

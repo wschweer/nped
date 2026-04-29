@@ -63,6 +63,7 @@
 #include "chatdisplay.h"
 #include "session.h"
 #include "screenshot.h"
+#include "undo.h"
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -75,6 +76,7 @@ using json = nlohmann::json;
 
 Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       networkManager = new QNetworkAccessManager(this);
+      _mcpManager    = new McpManager(_editor, this);
       _session       = new Session(this, this);
 
       QVBoxLayout* mainLayout = new QVBoxLayout(this);
@@ -145,17 +147,17 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       agentRoleCombo->setToolTip("Agent Role");
       auto updateAgentRoleCombo = [this] {
             agentRoleCombo->clear();
-            int idx = 0;
+            int idx          = 0;
             int currentIndex = 0;
             for (const auto& r : _editor->agentRoles()) {
                   agentRoleCombo->addItem(r.name);
-                  if (r.name ==  _editor->agentRoleName())
+                  if (r.name == _editor->agentRoleName())
                         currentIndex = idx;
                   ++idx;
                   }
             agentRoleCombo->setCurrentIndex(currentIndex);
             };
-      connect (_editor, &Editor::agentRolesChanged, updateAgentRoleCombo);
+      connect(_editor, &Editor::agentRolesChanged, updateAgentRoleCombo);
       updateAgentRoleCombo();
 
       dashboard->addWidget(stopButton);
@@ -168,18 +170,16 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       dashboard->addWidget(sessionComboBox, 0);
       dashboard->addWidget(modelMenu, 0);
 
-      connect(agentRoleCombo, &QComboBox::activated,
-              [this] {
-                    _editor->setAgentRoleName(agentRole()->name);
-                    // if we change the agent role the available tools may change
-                    mcpTools = getMCPTools();
-                    if (llm)
-                          llm->setTools(mcpTools);
-                    addMessage("system", std::format("<br><i>[System: Role changed to <b>{}</b>]</i>",
-                                                     _editor->agentRoleName()));
-                    });
-      McpManager* mcpM = &McpManager::instance();
-      connect (mcpM, &McpManager::toolsChanged, [this] {
+      connect(agentRoleCombo, &QComboBox::activated, [this] {
+            _editor->setAgentRoleName(agentRole()->name);
+            // if we change the agent role the available tools may change
+            mcpTools = getMCPTools();
+            if (llm)
+                  llm->setTools(mcpTools);
+            addMessage("system", std::format("<br><i>[System: Role changed to <b>{}</b>]</i>",
+                                             _editor->agentRoleName()));
+            });
+      connect(_mcpManager, &McpManager::toolsChanged, [this] {
             mcpTools = getMCPTools();
             if (llm)
                   llm->setTools(mcpTools);
@@ -373,14 +373,8 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       spinnerTimer = new QTimer(this);
       connect(spinnerTimer, &QTimer::timeout, this, &Agent::updateSpinner);
 
+      _mcpManager->applyConfigs(_editor->mcpServersConfig());
       updateCannedPrompts();
-      }
-
-//---------------------------------------------------------
-//   Agent
-//---------------------------------------------------------
-
-Agent::~Agent() {
       }
 
 //---------------------------------------------------------
@@ -465,8 +459,7 @@ void Agent::fetchModels() {
                         m.baseUrl         = "http://localhost:11434/api/chat";
                         m.api             = "ollama";
                         m.dynamic         = true;
-                        //                        Debug("add new model <{}>", m.name);
-                        _editor->models().push_back(m);
+                        _editor->addModel(m);
                         }
                   // Now we can select the last used model as saved in settings
 
@@ -582,7 +575,7 @@ void Agent::stop() {
       // If there is an active local event loop from a tool (e.g., ask_user), it needs to be exited.
       // But typically ask_user blocks processTools, and since tools are run sequentially,
       // an abort of network is mostly enough, but let's allow enableInput on stop
-      enableInput(true);
+      stopAgent();
       }
 
 //---------------------------------------------------------
@@ -592,10 +585,10 @@ void Agent::stop() {
 void Agent::sendMessage2() {
       if (_stopRequested) {
             _stopRequested = false;
-            enableInput(true);
+            startAgent();
             return;
             }
-      setInputEnabled(false);
+      startAgent();
       retryPause = 2000;
 
       streamBuffer.clear();
@@ -630,7 +623,7 @@ void Agent::handleChatReadyRead() {
             return;
             }
       QByteArray newData = currentReply->readAll();
-//      CLog(AI, "{}", newData.data());
+      //      CLog(AI, "{}", newData.data());
       streamBuffer.append(newData);
       processData();
       }
@@ -722,7 +715,7 @@ void Agent::handleChatFinished() {
             currentReply->deleteLater();
             currentReply = nullptr;
 
-            enableInput(true);
+            stopAgent();
             return;
             }
       QByteArray newData = currentReply->readAll();
@@ -961,24 +954,6 @@ bool Agent::isWorking() const {
       }
 
 //---------------------------------------------------------
-//   setInputEnabled
-//---------------------------------------------------------
-
-void Agent::setInputEnabled(bool enabled) {
-      userInput->setEnabled(enabled);
-      if (enabled) {
-            spinnerTimer->stop();
-            statusLabel->setText(">");
-            statusLabel->setStyleSheet("color: normal; font-weight: bold;");
-            }
-      else {
-            spinnerFrame = 0;
-            spinnerTimer->start(100);
-            statusLabel->setStyleSheet("color: #ff8800; font-weight: bold;");
-            }
-      }
-
-//---------------------------------------------------------
 //   updateSpinner
 //---------------------------------------------------------
 
@@ -1212,16 +1187,6 @@ void Agent::updateChatDisplay(bool scrollToBottom) {
             }
       if (scrollToBottom)
             chatDisplay->scrollToBottom();
-      }
-
-//---------------------------------------------------------
-//   enableInput
-//---------------------------------------------------------
-
-void Agent::enableInput(bool flag) {
-      setInputEnabled(flag);
-      if (flag)
-            userInput->setFocus();
       }
 
 //---------------------------------------------------------
@@ -1766,4 +1731,42 @@ void Agent::addMessage(const std::string& role, const std::string& text) {
 const AgentRole* Agent::agentRole() const {
       int idx = agentRoleCombo->currentIndex();
       return &_editor->agentRoles().at(idx);
+      }
+
+//---------------------------------------------------------
+//   startAgent
+//    Called before the agent starts.
+//    - write back all dirty files to synchronize external
+//      tools
+//---------------------------------------------------------
+
+void Agent::startAgent() {
+      userInput->setEnabled(false);
+      spinnerFrame = 0;
+      spinnerTimer->start(100);
+      statusLabel->setStyleSheet("color: #ff8800; font-weight: bold;");
+      for (auto f : _editor->getFiles()) {
+            f->undo()->beginMacro();
+            f->release();
+            f->undo()->endMacro();
+            }
+      }
+
+//---------------------------------------------------------
+//   stopAgent
+//    This is called after the agent stops.
+//    - restore all files (potentially modified from agent)
+//---------------------------------------------------------
+
+void Agent::stopAgent() {
+      for (auto f : _editor->getFiles()) {
+            f->undo()->beginMacro();
+            f->load();
+            f->undo()->endMacro();
+            }
+      userInput->setEnabled(true);
+      spinnerTimer->stop();
+      statusLabel->setText(">");
+      statusLabel->setStyleSheet("color: normal; font-weight: bold;");
+      userInput->setFocus();
       }

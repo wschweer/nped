@@ -67,6 +67,7 @@ class File : public QObject
 
       int toOffset(const Pos&);
       void lcOpen();
+      void lcClose();
       void markExpansion();
 
     signals:
@@ -87,6 +88,8 @@ class File : public QObject
       bool modified() const;
       bool load();
       bool save();
+      bool restore();
+      void release();
       bool dereference() { return --referenceCount <= 0; }
       void reference() { referenceCount += 1; }
       QString path() const { return _fi.absoluteFilePath(); }

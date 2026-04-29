@@ -5,7 +5,8 @@
                   "type": "properties",
                   "sequence": [
                         "darkMode",
-                        "font"
+                        "font",
+                        "fontDemo"
                   ],
                   "darkMode": {
                         "type": "bool",
@@ -16,6 +17,11 @@
                         "type": "font",
                         "label": "Font",
                         "name": "fontFamily"
+                  },
+                  "fontDemo": {
+                        "type": "string",
+                        "label": "Font Demo",
+                        "name": "fontDemo"
                   },
                   "title": "General & GUI"
             },
@@ -183,7 +189,14 @@
                         "baseUrl",
                         "apiKey",
                         "supportsThinking",
-                        "stream"
+                        "stream",
+                        "temperature",
+                        "topP",
+                        "topK",
+                        "maxTokens",
+                        "num_ctx",
+                        "num_predict",
+                        "minP"
                   ],
                   "modelIdentifier": {
                         "type": "string",
@@ -285,7 +298,8 @@
                         "command",
                         "args",
                         "env",
-                        "enabled"
+                        "enabled",
+                        "url"
                   ],
                   "id": {
                         "type": "string",
@@ -308,7 +322,11 @@
                         "label": "Enabled"
                   },
                   "readOnly": false,
-                  "title": "MCP Servers"
+                  "title": "MCP Servers",
+                  "url": {
+                        "type": "string",
+                        "label": "Server URL (Network SSE)"
+                  }
             }
       ]
 }

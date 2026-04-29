@@ -47,7 +47,8 @@ class ConfigApi : public QObject
             QJsonObject obj   = doc.object();
 
             for (auto it = obj.begin(); it != obj.end(); ++it)
-                  _view->setProperty(it.key(), it.value().toVariant());
+                  _view->setProperty(it.key(), it.value());
+
             emit _view->configSaved();
             }
       void cancelConfig() { emit _view->configCancelled(); }
@@ -61,7 +62,7 @@ class ConfigApi : public QObject
                   FileTypes ft = _view->editor()->fileTypes();
                   ft.append(FileType(".*\\.new$", "new", "none", 4, false, false));
                   _view->editor()->setFileTypes(ft);
-                  _view->openConfig();
+                  _view->openConfig(listName, ft.size() - 1);
                   }
             else if (listName == "models") {
                   Models m = _view->editor()->models();
@@ -70,7 +71,7 @@ class ConfigApi : public QObject
                   newModel.api  = "openai";
                   m.append(newModel);
                   _view->editor()->setModels(m);
-                  _view->openConfig();
+                  _view->openConfig(listName, m.size() - 1);
                   }
             else if (listName == "agentRoles") {
                   AgentRoles ar = _view->editor()->agentRoles();
@@ -80,7 +81,7 @@ class ConfigApi : public QObject
                   newRole.rw       = true;
                   ar.append(newRole);
                   _view->editor()->setAgentRoles(ar);
-                  _view->openConfig();
+                  _view->openConfig(listName, ar.size() - 1);
                   }
             else if (listName == "languageServersConfig") {
                   auto lsc = _view->editor()->languageServersConfig();
@@ -90,7 +91,7 @@ class ConfigApi : public QObject
                   newLsc.args    = "";
                   lsc.append(newLsc);
                   _view->editor()->setLanguageServersConfig(lsc);
-                  _view->openConfig();
+                  _view->openConfig(listName, lsc.size() - 1);
                   }
             else if (listName == "mcpServersConfig") {
                   McpServerConfigs mcp_list = _view->editor()->mcpServersConfig();
@@ -98,7 +99,7 @@ class ConfigApi : public QObject
                   newMcp.id = "new_mcp";
                   mcp_list.append(newMcp);
                   _view->editor()->setMcpServersConfig(mcp_list);
-                  _view->openConfig();
+                  _view->openConfig(listName, mcp_list.size() - 1);
                   }
             else {
                   Critical("unknown list <{}>", listName);
@@ -114,7 +115,7 @@ class ConfigApi : public QObject
                   if (index >= 0 && index < ft.size()) {
                         ft.removeAt(index);
                         _view->editor()->setFileTypes(ft);
-                        _view->openConfig();
+                        _view->openConfig(listName, qMax(0, index - 1));
                         }
                   }
             else if (listName == "models") {
@@ -122,7 +123,7 @@ class ConfigApi : public QObject
                   if (index >= 0 && index < m.size()) {
                         m.removeAt(index);
                         _view->editor()->setModels(m);
-                        _view->openConfig();
+                        _view->openConfig(listName, qMax(0, index - 1));
                         }
                   }
             else if (listName == "agentRoles") {
@@ -130,7 +131,7 @@ class ConfigApi : public QObject
                   if (index >= 0 && index < ar.size()) {
                         ar.removeAt(index);
                         _view->editor()->setAgentRoles(ar);
-                        _view->openConfig();
+                        _view->openConfig(listName, qMax(0, index - 1));
                         }
                   }
             else if (listName == "languageServersConfig") {
@@ -138,7 +139,7 @@ class ConfigApi : public QObject
                   if (index >= 0 && index < lsc.size()) {
                         lsc.removeAt(index);
                         _view->editor()->setLanguageServersConfig(lsc);
-                        _view->openConfig();
+                        _view->openConfig(listName, qMax(0, index - 1));
                         }
                   }
             else if (listName == "mcpServersConfig") {
@@ -146,7 +147,7 @@ class ConfigApi : public QObject
                   if (index >= 0 && index < mcp.size()) {
                         mcp.removeAt(index);
                         _view->editor()->setMcpServersConfig(mcp);
-                        _view->openConfig();
+                        _view->openConfig(listName, qMax(0, index - 1));
                         }
                   }
             }
@@ -184,7 +185,7 @@ QVariant ConfigWebView::getProperty(const QString& name) const {
 //   setVariant
 //---------------------------------------------------------
 
-void setVariant(QVariant item, const QString& propName, QVariant value) {
+static void setVariant(QVariant& item, const QString& propName, QVariant value) {
       int pidx = item.metaType().metaObject()->indexOfProperty(propName.toUtf8().constData());
       if (pidx >= 0) {
             QMetaProperty p   = item.metaType().metaObject()->property(pidx);
@@ -204,7 +205,8 @@ void setVariant(QVariant item, const QString& propName, QVariant value) {
 //   setProperty
 //---------------------------------------------------------
 
-void ConfigWebView::setProperty(const QString& name, const QVariant& value) {
+void ConfigWebView::setProperty(const QString& name, const QJsonValue& jsonValue) {
+      QVariant value = jsonValue.toVariant();
       if (name.contains('[')) {
             int b1  = name.indexOf('[');
             int b2  = name.indexOf(']');
@@ -221,28 +223,20 @@ void ConfigWebView::setProperty(const QString& name, const QVariant& value) {
                               setVariant(item, propName, value);
                               list[index] = item.value<FileType>();
                               editor()->setFileTypes(list);
-                              return;
                               }
+                        else
+                              Critical("bad index {}", index);
                         }
                   else if (listName == "models") {
-                        auto list = editor()->models();
-                        if (index >= 0 && index < list.size()) {
-                              QVariant item = QVariant::fromValue(list[index]);
-                              setVariant(item, propName, value);
-                              list[index] = item.value<Model>();
-                              editor()->setModels(list);
-                              return;
-                              }
+                        QVariant item = QVariant::fromValue(editor()->model(index));
+                        setVariant(item, propName, value);
+                        editor()->setModel(index, item.value<Model>());
                         }
                   else if (listName == "agentRoles") {
-                        auto list = editor()->agentRoles();
-                        if (index >= 0 && index < list.size()) {
-                              QVariant item = QVariant::fromValue(list[index]);
-                              setVariant(item, propName, value);
-                              list[index] = item.value<AgentRole>();
-                              editor()->setAgentRoles(list);
-                              return;
-                              }
+                        QVariant item = QVariant::fromValue(editor()->agentRole(index));
+                        setVariant(item, propName, value);
+                        AgentRole r = item.value<AgentRole>();
+                        editor()->setAgentRole(index, r);
                         }
                   else if (listName == "textStylesDark") {
                         auto list = editor()->textStylesDark();
@@ -251,8 +245,9 @@ void ConfigWebView::setProperty(const QString& name, const QVariant& value) {
                               setVariant(item, propName, value);
                               list[index] = item.value<TextStyle>();
                               editor()->setTextStylesDark(list);
-                              return;
                               }
+                        else
+                              Critical("bad index {}", index);
                         }
                   else if (listName == "textStylesLight") {
                         auto list = editor()->textStylesLight();
@@ -261,8 +256,9 @@ void ConfigWebView::setProperty(const QString& name, const QVariant& value) {
                               setVariant(item, propName, value);
                               list[index] = item.value<TextStyle>();
                               editor()->setTextStylesLight(list);
-                              return;
                               }
+                        else
+                              Critical("bad index {}", index);
                         }
                   else if (listName == "mcpServersConfig") {
                         auto list = editor()->mcpServersConfig();
@@ -271,8 +267,9 @@ void ConfigWebView::setProperty(const QString& name, const QVariant& value) {
                               setVariant(item, propName, value);
                               list[index] = item.value<McpServerConfig>();
                               editor()->setMcpServersConfig(list);
-                              return;
                               }
+                        else
+                              Critical("bad index {}", index);
                         }
                   else if (listName == "languageServersConfig") {
                         auto list = editor()->languageServersConfig();
@@ -281,8 +278,9 @@ void ConfigWebView::setProperty(const QString& name, const QVariant& value) {
                               setVariant(item, propName, value);
                               list[index] = item.value<LanguageServerConfig>();
                               editor()->setLanguageServersConfig(list);
-                              return;
                               }
+                        else
+                              Critical("bad index {}", index);
                         }
                   else if (listName == "shortcuts") {
                         auto list = editor()->shortcuts();
@@ -291,21 +289,25 @@ void ConfigWebView::setProperty(const QString& name, const QVariant& value) {
                               setVariant(item, propName, value);
                               list[index] = item.value<ShortcutConfig>();
                               editor()->setShortcuts(list);
-                              return;
                               }
+                        else
+                              Critical("bad index {}", index);
                         }
                   else
                         Critical("unknown list <{}>", listName);
                   }
+            else
+                  Critical("bad property <{}>", name);
             }
-      editor()->setProperty(name.toUtf8().constData(), value);
+      else
+            editor()->setProperty(name.toUtf8().constData(), value);
       }
 
 //---------------------------------------------------------
 //   openConfig  –  load page & inject data
 //---------------------------------------------------------
 
-void ConfigWebView::openConfig() {
+void ConfigWebView::openConfig(const QString& activeListName, int activeListItem) {
       QFile file(":/res/config.json");
       if (!file.open(QIODevice::ReadOnly)) {
             qWarning() << "Could not open config.json";
@@ -315,18 +317,20 @@ void ConfigWebView::openConfig() {
       QJsonDocument doc = QJsonDocument::fromJson(data);
       QJsonObject obj   = doc.object();
 
-      QString title       = obj["titel"].toString();
-      QJsonArray sections = obj["sections"].toArray();
-
-      bool dark           = editor()->darkMode();
-      QString bgColor     = dark ? "#222222" : "#f5f5f5";
-      QString fgColor     = dark ? "#eeeeee" : "#111111";
-      QString borderColor = dark ? "#444" : "#ccc";
-      QString activeBg    = dark ? "#555" : "#ddd";
-      QString listBg      = dark ? "#333" : "#fff";
+      QString title        = obj["titel"].toString();
+      QJsonArray sections  = obj["sections"].toArray();
+      bool dark            = editor()->darkMode();
+      QString bsTheme      = dark ? "dark" : "light";
+      QString bgColor      = dark ? "#222222" : "#f5f5f5";
+      QString fgColor      = dark ? "#eeeeee" : "#111111";
+      QString borderColor  = dark ? "#444444" : "#cccccc";
+      QString activeBg     = dark ? "#444444" : "#dddddd";
+      QString listBg       = dark ? "#2a2a2a" : "#ffffff";
+      QString inputBg      = dark ? "#333333" : "#ffffff";
+      QString inputFocusBg = dark ? "#444444" : "#ffffff";
 
       QString html =
-          QString("<!DOCTYPE html><html><head><meta charset=\"utf-8\">"
+          QString("<!DOCTYPE html><html data-bs-theme=\"%8\"><head><meta charset=\"utf-8\">"
                   "<link href=\"qrc:/res/css/bootstrap.min.css\" rel=\"stylesheet\">"
                   "<link rel=\"stylesheet\" "
                   "href=\"https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/classic.min.css\"/>"
@@ -334,7 +338,7 @@ void ConfigWebView::openConfig() {
                   "<script src=\"qrc:///qtwebchannel/qwebchannel.js\"></script>"
                   "<style>"
                   "body { background-color: %1; color: %2; height: 100vh; display: flex; flex-direction: "
-                  "column; overflow: hidden; margin: 0; font-family: sans-serif; }"
+                  "column; overflow: hidden; margin: 0; font-family: sans-serif; } "
                   ".header { padding: 10px 20px; font-size: 24px; border-bottom: 1px solid %3; } "
                   ".main-content { display: flex; flex: 1; overflow: hidden; } "
                   ".sidebar { width: 250px; border-right: 1px solid %3; overflow-y: auto; } "
@@ -344,7 +348,9 @@ void ConfigWebView::openConfig() {
                   ".nav-link { color: %2; cursor: pointer; padding: 10px 15px; text-decoration: none; "
                   "display: block; } "
                   ".nav-link.active { font-weight: bold; background-color: %4; } "
-                  ".form-control, .form-select { background-color: %1; color: %2; border: 1px solid %3; } "
+                  ".form-control, .form-select { background-color: %7; color: %2; border: 1px solid %3; } "
+                  ".form-control:focus, .form-select:focus { background-color: %9; color: %2; border-color: "
+                  "%3; box-shadow: 0 0 0 0.2rem rgba(136, 136, 136, 0.25); outline: 0; } "
                   ".list-group-item { background-color: %6; color: %2; border: 1px solid %3; } "
                   ".list-group-item.active { background-color: %4; border-color: %3; } "
                   "</style>"
@@ -353,11 +359,21 @@ void ConfigWebView::openConfig() {
                   "<div class=\"main-content\">"
                   "<div class=\"sidebar\">"
                   "<ul class=\"nav flex-column\">")
-              .arg(bgColor, fgColor, borderColor, activeBg, title, listBg);
+              .arg(bgColor, fgColor, borderColor, activeBg, title)
+              .arg(listBg, inputBg, bsTheme, inputFocusBg);
+      int activeSectionIdx = 0;
+      if (!activeListName.isEmpty()) {
+            for (int i = 0; i < sections.size(); ++i) {
+                  if (sections[i].toObject()["listName"].toString() == activeListName) {
+                        activeSectionIdx = i;
+                        break;
+                        }
+                  }
+            }
 
       for (int i = 0; i < sections.size(); ++i) {
             QString name         = sections[i].toObject()["title"].toString();
-            QString activeClass  = (i == 0) ? " active" : "";
+            QString activeClass  = (i == activeSectionIdx) ? " active" : "";
             html                += QString("<li class=\"nav-item\"><a class=\"nav-link%1\" id=\"nav-%2\" "
                                            "onclick=\"showSection(%2)\">%3</a></li>")
                                        .arg(activeClass)
@@ -371,7 +387,7 @@ void ConfigWebView::openConfig() {
             QJsonObject secObj = sections[i].toObject();
             QString name       = secObj["title"].toString();
             QString type       = secObj["type"].toString();
-            QString dNone      = (i == 0) ? "" : " d-none";
+            QString dNone      = (i == activeSectionIdx) ? "" : " d-none";
 
             html += QString("<div id=\"section-%1\" class=\"section-panel%2\"><h2>%3</h2>")
                         .arg(i)
@@ -390,8 +406,9 @@ void ConfigWebView::openConfig() {
 
                         QVariant currentValue = getProperty(propName);
 
-                        html += "<div class=\"form-group mb-3\">";
-                        html += "<label>" + propLabel + "</label>";
+                        html += "<div class=\"d-flex align-items-center mb-2\">";
+                        html += "<label class=\"me-2 mb-0\" style=\"width: 200px; flex-shrink: 0;\">" +
+                                propLabel + "</label>";
 
                         if (propType == "bool") {
                               QString checked = currentValue.toBool() ? "checked" : "";
@@ -401,7 +418,10 @@ void ConfigWebView::openConfig() {
                                           .arg(checked);
                               }
                         else if (propType == "font") {
-                              html += QString("<select class=\"form-select\" name=\"%1\">").arg(propName);
+                              html +=
+                                  QString(
+                                      "<select class=\"form-select form-select-sm\" id=\"%1\" name=\"%1\">")
+                                      .arg(propName);
                               QStringList families = QFontDatabase::families();
                               for (const QString& f : families) {
                                     QString selected = (f == currentValue.toString()) ? "selected" : "";
@@ -409,6 +429,53 @@ void ConfigWebView::openConfig() {
                                         QString("<option value=\"%1\" %2>%1</option>").arg(f).arg(selected);
                                     }
                               html += "</select>";
+                              }
+                        else if (propType == "string") {
+                              if (propName == "fontDemo") {
+                                    QString cppSnippet = "// Example C++ Code\n"
+                                                         "#include <iostream>\n"
+                                                         "\n"
+                                                         "class Demo {\n"
+                                                         "public:\n"
+                                                         "    void print(const std::string& msg) {\n"
+                                                         "        std::cout << msg << std::endl;\n"
+                                                         "    }\n"
+                                                         "};\n"
+                                                         "\n"
+                                                         "int main() {\n"
+                                                         "    Demo d;\n"
+                                                         "    d.print(\"Hello, World!\");\n"
+                                                         "    return 0;\n"
+                                                         "}";
+
+                                    QString fontFamily = getProperty("fontFamily").toString();
+                                    QString previewId  = "fontDemoPreview";
+                                    html +=
+                                        QString("<div class=\"p-3 flex-grow-1\" id=\"%1\" "
+                                                "style=\"font-family: '%2'; font-size: 14px; background: "
+                                                "%3; color: %4; border-radius: 4px; white-space: pre-wrap; "
+                                                "word-break: break-all; overflow-x: auto;\">%5</div>")
+                                            .arg(previewId)
+                                            .arg(fontFamily)
+                                            .arg(dark ? "#2d2d2d" : "#f5f5f5")
+                                            .arg(dark ? "#cccccc" : "#333333")
+                                            .arg(cppSnippet.toHtmlEscaped());
+                                    // Add Javascript to update preview when font family changes
+                                    html += QString("<script>") +
+                                            "document.getElementById('fontFamily').addEventListener('change',"
+                                            " function() {" +
+                                            "  var preview = document.getElementById('fontDemoPreview');" +
+                                            "  if (preview) preview.style.fontFamily = this.value;" + "});" +
+                                            "</script>";
+                                    }
+                              else {
+                                    html +=
+                                        QString("<input type=\"text\" class=\"form-control form-control-sm "
+                                                "me-2\" "
+                                                "style=\"width: 250px;\" id=\"%1\" name=\"%1\" value=\"%2\">")
+                                            .arg(propName)
+                                            .arg(currentValue.toString().toHtmlEscaped());
+                                    }
                               }
                         html += "</div>";
                         }
@@ -428,6 +495,7 @@ void ConfigWebView::openConfig() {
 
                   QString detailsHtml = "<div class=\"w-75 p-3\" style=\"overflow-y: auto;\">";
                   int itemIdx         = 0;
+                  int targetItemIdx   = (activeListItem >= 0) ? activeListItem : 0;
 
                   for (const QVariant& item : list) {
                         const QMetaObject* meta = item.metaType().metaObject();
@@ -442,7 +510,7 @@ void ConfigWebView::openConfig() {
                                     }
                               }
 
-                        QString activeClass = (itemIdx == 0) ? " active" : "";
+                        QString activeClass = (itemIdx == targetItemIdx) ? " active" : "";
                         html +=
                             QString(
                                 "<a href=\"#\" class=\"list-group-item list-group-item-action%1 "
@@ -452,7 +520,7 @@ void ConfigWebView::openConfig() {
                                 .arg(itemIdx)
                                 .arg(titleValue);
 
-                        QString dNone = (itemIdx == 0) ? "" : " d-none";
+                        QString dNone = (itemIdx == targetItemIdx) ? "" : " d-none";
                         detailsHtml += QString("<div id=\"list-item-%1-%2\" class=\"list-item-panel-%1%3\">")
                                            .arg(i)
                                            .arg(itemIdx)
@@ -473,19 +541,22 @@ void ConfigWebView::openConfig() {
                                           }
                                     }
 
-                              detailsHtml += "<div class=\"form-group mb-3\">";
-                              detailsHtml += "<label>" + propLabel + "</label>";
+                              detailsHtml += "<div class=\"d-flex align-items-center mb-2\">";
+                              detailsHtml +=
+                                  "<label class=\"me-2 mb-0\" style=\"width: 200px; flex-shrink: 0;\">" +
+                                  propLabel + "</label>";
 
                               QString readonlyAttr = propReadOnly ? "readonly" : "";
                               QString inputName =
                                   QString("%1[%2].%3").arg(listName).arg(itemIdx).arg(propKey);
 
                               if (propType == "string") {
-                                    detailsHtml += QString("<input type=\"text\" class=\"form-control mt-1\" "
-                                                           "name=\"%1\" value=\"%2\" %3>")
-                                                       .arg(inputName)
-                                                       .arg(currentValue.toString().toHtmlEscaped())
-                                                       .arg(readonlyAttr);
+                                    detailsHtml +=
+                                        QString("<input type=\"text\" class=\"form-control form-control-sm\" "
+                                                "name=\"%1\" value=\"%2\" %3>")
+                                            .arg(inputName)
+                                            .arg(currentValue.toString().toHtmlEscaped())
+                                            .arg(readonlyAttr);
                                     }
                               else if (propType == "bool") {
                                     QString checked = currentValue.toBool() ? "checked" : "";
@@ -512,7 +583,8 @@ void ConfigWebView::openConfig() {
                                     }
                               else if (propType == "enum") {
                                     detailsHtml +=
-                                        QString("<select class=\"form-select mt-1\" name=\"%1\" %2>")
+                                        QString(
+                                            "<select class=\"form-select form-select-sm\" name=\"%1\" %2>")
                                             .arg(inputName)
                                             .arg(readonlyAttr);
                                     QJsonArray options = propObj["options"].toArray();
@@ -527,7 +599,7 @@ void ConfigWebView::openConfig() {
                                     detailsHtml += "</select>";
                                     }
                               else if (propType == "textarea") {
-                                    detailsHtml += QString("<textarea class=\"form-control mt-1\" "
+                                    detailsHtml += QString("<textarea class=\"form-control form-control-sm\" "
                                                            "name=\"%1\" rows=\"5\" %2>%3</textarea>")
                                                        .arg(inputName)
                                                        .arg(readonlyAttr)
@@ -537,7 +609,8 @@ void ConfigWebView::openConfig() {
                                     int minVal = propObj["min"].toVariant().toInt();
                                     int maxVal = propObj["max"].toVariant().toInt();
                                     detailsHtml +=
-                                        QString("<input type=\"number\" class=\"form-control mt-1\" "
+                                        QString("<input type=\"number\" class=\"form-control "
+                                                "form-control-sm\" style=\"width: 100px;\" "
                                                 "name=\"%1\" value=\"%2\" min=\"%3\" max=\"%4\" %5>")
                                             .arg(inputName)
                                             .arg(currentValue.toInt())
@@ -559,9 +632,9 @@ void ConfigWebView::openConfig() {
                         html += QString("<div class=\"d-flex justify-content-end gap-2\" style=\"position: "
                                         "absolute; bottom: 80px; right: 20px;\">"
                                         "<button onclick=\"if(backend) backend.listAdd('%1')\" class=\"btn "
-                                        "btn-success\" style=\"width: 100px;\">Add</button>"
+                                        "btn-secondary btn-sm\" style=\"width: 66px; font-size: 0.85em; padding: 4px;\">Add</button>"
                                         "<button onclick=\"removeCurrentListItem('%1', %2)\" class=\"btn "
-                                        "btn-danger\" style=\"width: 100px;\">Remove</button>"
+                                        "btn-secondary btn-sm\" style=\"width: 66px; font-size: 0.85em; padding: 4px;\">Remove</button>"
                                         "</div>")
                                     .arg(listName)
                                     .arg(i);
@@ -578,9 +651,9 @@ void ConfigWebView::openConfig() {
 
       html +=
           "<div class=\"footer\">"
-          "<button onclick=\"if(backend) backend.resetConfig()\" class=\"btn btn-warning\">Reset</button>"
-          "<button onclick=\"if(backend) backend.cancelConfig()\" class=\"btn btn-secondary\">Cancel</button>"
-          "<button onclick=\"saveConfig()\" class=\"btn btn-primary\">Save</button>"
+          "<button onclick=\"if(backend) backend.resetConfig()\" class=\"btn btn-secondary btn-sm\" style=\"font-size: 0.85em; padding: 4px 16px;\">RESET</button>"
+          "<button onclick=\"if(backend) backend.cancelConfig()\" class=\"btn btn-secondary btn-sm\" style=\"font-size: 0.85em; padding: 4px 16px;\">CANCEL</button>"
+          "<button onclick=\"saveConfig()\" class=\"btn btn-primary btn-sm\" style=\"font-size: 0.85em; padding: 4px 16px;\">SAVE</button>"
           "</div>";
 
       html +=

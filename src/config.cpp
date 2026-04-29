@@ -139,6 +139,7 @@ void Editor::showConfig() {
                   hideConfig();
                   initFont();
                   saveSettings();
+                  emit configApplied(); //??
                   });
             connect(_configWebView, &ConfigWebView::configCancelled, this, [this] { hideConfig(); });
             connect(_configWebView, &ConfigWebView::configResetRequested, this, [this] {
@@ -245,6 +246,7 @@ void Editor::saveSettings() {
       configs["shortcuts"]  = array;
       configs["fontFamily"] = fontFamily();
       configs["fontSize"]   = fontSize();
+      configs["fontDemo"]   = fontDemo();
 
       QString path = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
       QDir().mkpath(path);
@@ -312,7 +314,6 @@ void Editor::loadSettings() {
             auto mcp_arr = config["mcpServers"].toArray();
             _mcpServersConfig =
                 mcpServerConfigsFromJson(json::parse(QJsonDocument(mcp_arr).toJson().toStdString()));
-            McpManager::instance().applyConfigs(_mcpServersConfig);
             }
       if (config.contains("textStylesLight")) {
             _textStylesLight = tsFromJson(config["textStylesLight"].toArray());
@@ -324,6 +325,8 @@ void Editor::loadSettings() {
             }
       if (config.contains("fontFamily"))
             setFontFamily(config["fontFamily"].toString());
+      if (config.contains("fontDemo"))
+            setFontDemo(config["fontDemo"].toString());
       if (config.contains("textStylesDark")) {
             _textStylesDark = tsFromJson(config["textStylesDark"].toArray());
             emit textStylesDarkChanged();

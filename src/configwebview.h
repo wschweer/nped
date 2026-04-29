@@ -28,16 +28,16 @@ class ConfigWebView : public MarkdownWebView
       {
       Q_OBJECT
 
-    public:
-      explicit ConfigWebView(Editor* editor, QWidget* parent = nullptr);
-
-      QVariant getProperty(const QString& name) const;
-      void setProperty(const QString& name, const QVariant& value);
-      /// Load the config.html page and inject current data
-      void openConfig();
-
     signals:
       void configSaved();
       void configCancelled();
       void configResetRequested();
+
+    public:
+      explicit ConfigWebView(Editor* editor, QWidget* parent = nullptr);
+
+      QVariant getProperty(const QString& name) const;
+      void setProperty(const QString& name, const QJsonValue& value);
+      /// Load the config.html page and inject current data
+      void openConfig(const QString& activeListName = QString(), int activeListItem = -1);
       };
