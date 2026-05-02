@@ -41,11 +41,20 @@ json Model::toJson() const {
 json toJson(const Models& models) {
       json array = json::array();
       for (const auto& m : models) {
-            if (m.dynamic)
-                  continue;
+            // if (m.dynamic)
+            //      continue;
             array.push_back(m.toJson());
             }
       return array;
+      }
+
+extern Models fromJson(const json& array)
+      {
+      Models models;
+      for (const auto& m : array) {
+            models.push_back(Model(m));
+            }
+      return models;
       }
 
 //---------------------------------------------------------
@@ -79,13 +88,4 @@ Model::Model(const json& obj) {
       catch (...) {
             Critical("Unexpected error");
             }
-      }
-
-extern Models fromJson(const json& array)
-      {
-      Models models;
-      for (const auto& m : array) {
-            models.push_back(Model(m));
-            }
-      return models;
       }

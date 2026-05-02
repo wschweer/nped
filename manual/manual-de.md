@@ -10,13 +10,17 @@ Hier ist eine Übersicht der zentralen Funktionen und Architekturmerkmale des Pr
 
 #### Kernfunktionen des Editors
   * Multifile-Verwaltung: Öffnen und Bearbeiten mehrerer Dateien in Tabs (TabBar). Tabs visualisieren den Dateistatus farblich (z. B. rot für modifiziert, blau für schreibgeschützt).
-  * Kontext-Management: Jeder Tab und jede geöffnete Datei wird in einem Kontext verwaltet, der u.a. die Cursor-Position und den Verlauf (History) speichert. Dies ermöglicht einfaches Navigieren (Vor/Zurück) im Code.
-  * Standard-Editing: Undo/Redo-Stack (undo.cpp), Suche & Ersetzen mit Regulären Ausdrücken (search.cpp), Code Folding, sowie zeilen- und spaltenweises Auswählen (Pick/Put).
+  * Kontext-Management: Jeder Tab und jede geöffnete Datei wird in einem Kontext verwaltet,
+  der u.a. die Cursor-Position und den Verlauf (History) speichert.
+  Dies ermöglicht einfaches Navigieren (Vor/Zurück) im Code. Eine Datei kann mehrere Kontexte haben.
+  * Standard-Editing: Undo/Redo-Stack (undo.cpp), Suche & Ersetzen mit Regulären Ausdrücken (search.cpp),
+    sowie zeilen- und spaltenweises Auswählen (Pick/Put).
   * Syntax-Highlighting & Formatting: Automatisiertes Formatieren und Pretty-Printing des Codes (pretty.cpp).
 
 ### Language Server Protocol (LSP) Integration
 
-Über den eingebauten LSclient kann der Editor mit Sprachservern kommunizieren (z.B. clangd für C/C++). Daraus resultieren fortgeschrittene IDE-Funktionen:
+Über den eingebauten LSclient kann der Editor mit Sprachservern kommunizieren (z.B. clangd für C/C++).
+Daraus resultieren fortgeschrittene IDE-Funktionen:
 
   * Code Navigation: Go to Definition, Go to Type Definition, Go to Implementation.
   * Autovervollständigung: Request Completions via LSP mit einem grafischen Popup (completion.cpp).
@@ -27,30 +31,28 @@ Hier ist eine Übersicht der zentralen Funktionen und Architekturmerkmale des Pr
 
 Das wohl herausstechendste Merkmal ist die enge Integration eines KI-Agenten, der aktiv in die Entwicklung eingreifen kann:
 
-  * Modell-Unterstützung: Kompatibel mit lokalen Modellen (via Ollama) sowie Cloud-Modellen (Gemini, Anthropic).
-  * Werkzeuge (Tool-Calling): Der Agent hat direkten Lese- und Schreibzugriff auf das Projekt. Er kann Dateien lesen, ändern und erstellen (handleReadFile, handleModifyFile), Verzeichnisse auflisten, oder das Projekt nach Texten und Symbolen durchsuchen (handleSearchProject, handleFindSymbol).
-  * Projekt-Builds: Der Agent kann Build-Kommandos im Projekt ausführen (runBuildCommand), um z. B. CMake oder Make anzustoßen.
-  * Web-Recherche: Der Agent kann gezielt Web-Dokumentationen abrufen (fetchWebDocumentation).
+  * Modell-Unterstützung: Kompatibel mit lokalen Modellen (via Ollama) sowie Cloud-Modellen (Gemini, Anthropic, OpenAI).
+  * Werkzeuge (Tool-Calling): Der Agent implementiert lokale Werkzeuge sowie eine Schnittstelle zu MCP Servern, die
+  weitere Werkzeuge zur Verfügung stellen.
 
 ### Git-Integration
 Der Editor hat native Git-Unterstützung integriert (basierend auf libgit2 in git.cpp):
 
   * Abrufen von Git-Status, Diffs und Logs.
   * Grafisches Git-Panel und Git-History-Ansicht im Editorfenster.
-  * Der KI-Agent selbst kann automatisiert Commits erstellen (createGitCommit), sobald er Aufgaben erledigt hat.
 
 ### Architektur und Technik
   * C++23 & CMake: Modernes C++ gepaart mit einem CMake-Buildsystem.
   * Qt6: Verwendet für die grafische Benutzeroberfläche (Widgets, Splitter, Menüs). Styling erfolgt auch über Qt Stylesheets (style.qss).
-  * Bibliotheken: Nutzt nlohmann::json stark für das Parsen und Erzeugen von LSP-Nachrichten, LLM-Prompts/Tool-Calls und das Speichern von Settings/Sitzungen.
+  * Bibliotheken: Nutzt nlohmann::json stark für das Parsen und Erzeugen von LSP-Nachrichten,
+  LLM-Prompts/Tool-Calls und das Speichern von Settings/Sitzungen.
 
-Zusammenfassend ist nped also ein intelligenter Code-Editor, der LSP für präzise statische Code-Analyse mit LLM-basierten KI-Agenten kombiniert, um Entwicklungsaufgaben zu automatisieren.
-NPed ist ein Source-Code Editor mit speziellen Features für C und C++.
-Wer bevorzugt auf der Kommandozeile arbeitet, für den ist Ped so eine Art Mini-IDE.
+Zusammenfassend ist NPed also ein intelligenter Code-Editor, der LSP für präzise statische Code-Analyse mit
+LLM-basierten KI-Agenten kombiniert, um Entwicklungsaufgaben zu automatisieren.
 
 ### Bedien-Konzept
 
-Das Bedienkonzept von **nped** orientiert sich stark an der Effizienz für Vielschreiber
+Das Bedienkonzept von **NPed** orientiert sich stark an der Effizienz für Vielschreiber
 und Entwickler, die bevorzugt ohne Mauseinsatz programmieren. Es ist als eine
 Art "Mini-IDE für die Kommandozeile, aber mit GUI" konzipiert.
 
@@ -242,29 +244,39 @@ die Textdarstellung zurückschalten um blitzschnell zu dieser Funktion zu navigi
       [Enter <name> Ctrl+F]         Erzeugt leere c++ Funktion mit Namen `name`
 
 ## 3. AI Agent
-### Model
+### AI-Models
 
-LLM Modelle müssen konfiguriert werden und erscheinen dann im AI Panel Pulldown Menü "Models".
-Läuft auf dem Rechner ein Ollama-Server dann werden die verfügbaren Ollama-Modelle
-automatisch ermittelt und dem Pulldown Menü hinzugefügt.
+AI Modelle musst du konfigurieren damit sie dann im AI Panel Pulldown Menü "Models" ausgewählt werden
+können.
+Läuft auf dem Rechner ein Ollama-Server, dann werden die verfügbaren Ollama-Modelle
+automatisch ermittelt und im "Models" Menü angezeigt.
 
-Unterstützt werden Modell von Google (Gemini), Anthropic (Claude) und Ollama.
-Ollama ist besonders interessant, da darüber lokale Modelle genutzt werden können.
+Du kannst Modelle von Google (Gemini), Anthropic (Claude) und Ollama konfigurieren.
+Ollama ist besonders interessant, da du darüber lokale Modelle nutzen kannst.
 
-Für alle nicht lokalen Modelle ist normalerweise ein API-Key des Anbieters
-erforderlich.
+Für alle nicht lokalen Modelle benötigst du normalerweise einen API-Key des Anbieters,
 
 Reasoning wird bei geeigneten Modellen unterstützt.
 
-### Sicherheit
+### MCP Server
+
+MCP ("Model Context Protocol") ist ein offener Standard, der es KI-Modellen ermöglicht, nahtlos auf
+Daten und Werkzeuge aus verschiedenen Quellen zuzugreifen.
+
+Für ein sinnvolles Arbeiten mit NPed und AI-Modellen musst du einige MCP-Server konfiguriere:
+
+- rust-mcp-filesystem
+- mcp-server-git
+- server-github
+- websearch-mcp
 
 Modelle können nur über die implementierten Tools auf dein System zugreifen. In ```Role``` kannst
 du konfigurieren, ob das Modell Schreibrechte auf deinem System bekommen soll.
 Das Modell kann auch dann nur Files schreiben die sich im oder unterhalb des aktuellen
 Projektverzeichnisses befinden.
-Eine Schwachstelle ist das Tool "build_tool", welches es dem Modell erlaubt, beliebige
+Eine Schwachstelle ist das Tool "bash", welches es dem Modell erlaubt, beliebige
 Shell-Kommandos auf deinem System auszuführen. Dieses Kommando läuft jedoch in einer
-Sandbox, was die Möglichkeiten des Modells,  auf dein System zuzugreifen stark einschränkt.
+Sandbox, was die Möglichkeiten des Modells, auf dein System zuzugreifen stark einschränkt.
 
 
 ### Session

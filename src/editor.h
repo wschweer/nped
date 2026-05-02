@@ -51,7 +51,10 @@ class QTimer;
 class HistoryLineEdit;
 class QSplitter;
 class QToolButton;
-class QListWidget;
+class QTreeView;
+class QComboBox;
+class QFileSystemModel;
+class QModelIndex;
 class CompletionsPopup;
 class Completion;
 class QProgressBar;
@@ -129,6 +132,7 @@ enum class Cmd {
       CMD_FOLD_TOGGLE,
       CMD_FUNCTION_HEADER,
       CMD_GIT_TOGGLE,
+      CMD_TOGGLE_PROJECT,
       CMD_ENTER_ADD_FILE,
       CMD_ENTER_SEARCH,
       CMD_ENTER_CREATE_FUNCTION,
@@ -137,7 +141,8 @@ enum class Cmd {
       // Web-Navigation:
       CMD_LINK_BACK,
       CMD_LINK_FORWARD
-};
+      };
+
 //---------------------------------------------------------
 //   ShortcutConfig
 //---------------------------------------------------------
@@ -161,9 +166,10 @@ struct ShortcutConfig {
       QString buildin;
       QString sequence;
       bool operator==(const ShortcutConfig& other) const = default;
-};
+      };
 
 Q_DECLARE_METATYPE(ShortcutConfig)
+
 //---------------------------------------------------------
 //   Match
 //---------------------------------------------------------
@@ -172,18 +178,19 @@ struct Match {
       int line;
       int col1;
       int col2;
-};
+      };
+
 //---------------------------------------------------------
 //   TabBar
 //---------------------------------------------------------
 
 class TabBar : public QTabBar
-{
+      {
       Q_OBJECT
       void tabInserted(int idx) override {
             QTabBar::tabInserted(idx);
             updateGeometry(); // without this horizontal size is not reliable set
-      }
+            }
 
     protected:
       bool ro {false};
@@ -196,19 +203,21 @@ class TabBar : public QTabBar
       TabBar(QWidget* parent = nullptr) : QTabBar(parent) {
             setMovable(true);
             //            connect(this, &TabBar::currentChanged, this, &TabBar::modifiedChanged);
-      }
-};
+            }
+      };
+
 //---------------------------------------------------------
 //   Vector
 //---------------------------------------------------------
 
 template <typename T> class Vector : public std::vector<T>
-{
+      {
     public:
       void remove(int index) { std::vector<T>::erase(std::vector<T>::begin() + index); }
       void insert(int index, const T& k) { std::vector<T>::insert(std::vector<T>::begin() + index, k); }
       void erase(int index) { std::vector<T>::erase(std::vector<T>::begin() + index); }
-};
+      };
+
 //---------------------------------------------------------
 //   History
 //---------------------------------------------------------
@@ -217,8 +226,10 @@ struct HistoryRecord {
       Kontext* kontext;
       Pos cursor;
       Pos screenPosition;
-};
+      };
+
 using History = std::vector<HistoryRecord>;
+
 //---------------------------------------------------------
 //   HoverKontext
 //---------------------------------------------------------
@@ -227,7 +238,8 @@ struct HoverKontext {
       File* file {nullptr};
       Pos cursor;
       bool operator==(const HoverKontext& k) const { return k.file == file && k.cursor == cursor; }
-};
+      };
+
 //---------------------------------------------------------
 //   Action
 //---------------------------------------------------------
@@ -240,17 +252,19 @@ struct Action {
             for (auto s : sl) {
                   auto ks = QKeySequence::fromString(s);
                   seq.push_back(ks);
+                  }
             }
-      }
-};
+      };
+
 //---------------------------------------------------------
 //   Editor
 //---------------------------------------------------------
 
 class Editor : public QMainWindow
-{
+      {
       Q_OBJECT
 
+      Q_PROPERTY(QStringList projects READ projects WRITE setProjects NOTIFY projectsChanged)
       Q_PROPERTY(Models models READ models WRITE setModels NOTIFY modelsChanged)
       Q_PROPERTY(AgentRoles agentRoles READ agentRoles WRITE setAgentRoles NOTIFY agentRolesChanged)
       Q_PROPERTY(QString agentRoleName READ agentRoleName WRITE setAgentRoleName NOTIFY agentRoleNameChanged)
@@ -270,6 +284,8 @@ class Editor : public QMainWindow
           TextStyles textStylesDark READ textStylesDark WRITE setTextStylesDark NOTIFY textStylesDarkChanged)
 
       static std::map<Cmd, ShortcutConfig> _shortcuts;
+
+      QStringList _projects;
 
       FileTypes _fileTypes;
       TextStyles _textStylesLight;
@@ -327,6 +343,18 @@ class Editor : public QMainWindow
       bool gitDiff {false};
       GitList gitList;
 
+      static const int projectPanelMinimumWidth {300};
+      int projectWidth {projectPanelMinimumWidth};
+      QWidget* _projectPanel {nullptr};
+      QComboBox* _projectComboBox {nullptr};
+      void switchProject(const QString& path);
+      QTreeView* _projectTreeView {nullptr};
+      QFileSystemModel* _projectModel {nullptr};
+      QToolButton* _projectButton {nullptr};
+      bool _projectVisible {false};
+
+      void updateProjectPanel();
+
       QSplitter* splitter;
       QToolButton* aiButton;
       QToolButton* _gitButton;
@@ -371,6 +399,7 @@ class Editor : public QMainWindow
       bool enterActive {false};
 
       void initFont();
+      void updateProjectTreeColors();
       void saveStatus();
       bool loadStatus(int argc, char** argv);
       void initEnterWidget();
@@ -444,6 +473,7 @@ class Editor : public QMainWindow
       void agentRolesChanged();
       void agentRoleNameChanged();
       void screenshotReady(const QImage& image);
+      void projectsChanged();
 
     public:
       Editor(int argc, char** argv);
@@ -460,7 +490,7 @@ class Editor : public QMainWindow
             if (_currentKontext >= _kontextList.size())
                   return nullptr;
             return _kontextList[_currentKontext];
-      }
+            }
       const Kontext* kontext() const { return _kontextList.at(_currentKontext); }
       QFont font() { return _font; }
       qreal fh() const { return _fh; }
@@ -483,7 +513,7 @@ class Editor : public QMainWindow
       template <typename... Args> void msg(std::string_view rt_fmt_str, Args&&... args) {
             auto s = QString::fromStdString(std::vformat(rt_fmt_str, std::make_format_args(args...)));
             statusBar()->showMessage(s, 20000);
-      }
+            }
       bool initProject();
       LSclient* lclient();
       File* findFile(QString path);
@@ -525,36 +555,36 @@ class Editor : public QMainWindow
             if (_fontFamily != v) {
                   _fontFamily = v;
                   emit fontFamilyChanged();
+                  }
             }
-      }
       QString fontDemo() const { return _fontDemo; }
       void setFontDemo(const QString& v) {
             if (_fontDemo != v) {
                   _fontDemo = v;
                   emit fontDemoChanged();
+                  }
             }
-      }
       FileTypes fileTypes() const { return _fileTypes; }
       void setFileTypes(const FileTypes& ft) {
             if (_fileTypes != ft) {
                   _fileTypes = ft;
                   emit fileTypesChanged();
+                  }
             }
-      }
       TextStyles textStylesLight() { return _textStylesLight; }
       TextStyles textStylesDark() { return _textStylesDark; }
       void setTextStylesLight(const TextStyles& v) {
             if (v != _textStylesLight) {
                   _textStylesLight = v;
                   emit textStylesLightChanged();
+                  }
             }
-      }
       void setTextStylesDark(const TextStyles& v) {
             if (v != _textStylesDark) {
                   _textStylesDark = v;
                   emit textStylesDarkChanged();
+                  }
             }
-      }
       QList<LanguageServerConfig> languageServersConfig() const { return _languageServersConfig; }
       McpServerConfigs mcpServersConfig() const { return _mcpServersConfig; }
       void setMcpServersConfig(const McpServerConfigs& c) {
@@ -562,8 +592,8 @@ class Editor : public QMainWindow
                   _mcpServersConfig = c;
                   agent()->mcpManager()->applyConfigs(c);
                   emit configChanged();
+                  }
             }
-      }
       void setLanguageServersConfig(const QList<LanguageServerConfig>& l) {
             LanguageServersConfig c;
             for (const auto& cfg : l) // ugh!
@@ -571,8 +601,8 @@ class Editor : public QMainWindow
             if (_languageServersConfig != c) {
                   _languageServersConfig = c;
                   emit languageServersConfigChanged();
+                  }
             }
-      }
       void loadSettings();
       void saveSettings();
       Q_INVOKABLE void resetToDefaults();
@@ -585,8 +615,8 @@ class Editor : public QMainWindow
             if (v != _darkMode) {
                   _darkMode = v;
                   emit darkModeChanged(_darkMode);
+                  }
             }
-      }
       void showCompletions(const Completions&);
       void hideCompletions();
       //       QFileSystemWatcher* getFileWatcher() const { return fileWatcher; }
@@ -594,22 +624,22 @@ class Editor : public QMainWindow
       Q_DECLARE_FLAGS(UpdateFlags, UpdateFlag)
       const TextStyle& textStyle(TextStyle::Style style) {
             return darkMode() ? _textStylesDark[int(style)] : _textStylesLight[int(style)];
-      }
+            }
       Q_INVOKABLE TextStyle textStyle(bool dark, int style) {
             return dark ? _textStylesDark[int(style)] : _textStylesLight[int(style)];
-      }
+            }
       Q_INVOKABLE void setTextStyle(const TextStyle& s, bool dark, int style) {
             Debug("dark {} style {}", dark, style);
             if (dark) {
                   _textStylesDark[style] = s;
                   // emit textStylesDarkChanged();
-            }
+                  }
             else {
                   _textStylesLight[style] = s;
                   // emit textStylesLightChanged();
-            }
+                  }
             update();
-      }
+            }
       Model model(int idx) { return _models.at(idx); }
       void setModel(int idx, const Model& m) { _models[idx] = m; }
       void addModel(const Model& m) { _models.push_back(m); }
@@ -618,8 +648,8 @@ class Editor : public QMainWindow
             if (_models != m) {
                   _models = m;
                   emit modelsChanged();
+                  }
             }
-      }
       void showGitVersion(int row);
       QWidget* gitPanel();
       AgentRole agentRole(int idx) { return _agentRoles[idx]; }
@@ -630,22 +660,30 @@ class Editor : public QMainWindow
             if (_agentRoles != a) {
                   _agentRoles = a;
                   emit agentRolesChanged();
+                  }
             }
-      }
       void setAgentRoleName(const QString& s) { _agentRoleName = s; }
       QString agentRoleName() const { return _agentRoleName; }
       QList<ShortcutConfig> shortcuts() const;
       void setShortcuts(const QList<ShortcutConfig>& l) {
             _shortcutsList = l;
             emit shortcutsChanged();
-      }
-};
+            }
+      QStringList projects() const { return _projects; }
+      void setProjects(const QStringList& v) {
+            if (v != _projects) {
+                  _projects = v;
+                  emit projectsChanged();
+                  }
+            }
+      };
+
 //---------------------------------------------------------
 //   KeyLogger
 //---------------------------------------------------------
 
 class KeyLogger : public QObject
-{
+      {
       Q_OBJECT
       std::array<QKeyCombination, 4> keys;
       int n;
@@ -663,16 +701,17 @@ class KeyLogger : public QObject
       std::vector<Action> _pedActions;
       KeyLogger(std::vector<Action>* a, QObject* parent = nullptr) : QObject(parent), actions(a) { clear(); }
       void clear();
-};
+      };
+
 //---------------------------------------------------------
 //   ConfigDialogWrapper
 //---------------------------------------------------------
 
 class ConfigDialogWrapper : public QDialog
-{
+      {
       Q_OBJECT
 
     public:
       explicit ConfigDialogWrapper(Editor*, QWidget* parent = nullptr);
       ~ConfigDialogWrapper() override = default;
-};
+      };

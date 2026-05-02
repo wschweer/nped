@@ -10,6 +10,9 @@
 //=============================================================================
 
 #include <QApplication>
+#include <QTreeView>
+#include <QFileSystemModel>
+#include <QHeaderView>
 #include <QMainWindow>
 #include <QBoxLayout>
 #include <QToolBar>
@@ -17,6 +20,7 @@
 #include <QCompleter>
 #include <QDir>
 #include <QFile>
+#include <QComboBox>
 #include <QLabel>
 #include <QScrollBar>
 #include <QShortcut>
@@ -56,6 +60,10 @@
 using json = nlohmann::json;
 
 extern bool persistent;
+
+//---------------------------------------------------------
+//   _shortcuts
+//---------------------------------------------------------
 
 std::map<Cmd, ShortcutConfig> Editor::_shortcuts = {
          {                 Cmd::CMD_QUIT,                    {"CMD_QUIT", "Quit", "Ctrl + K, Ctrl + Q; Shift+F1"}},
@@ -120,6 +128,7 @@ std::map<Cmd, ShortcutConfig> Editor::_shortcuts = {
          {          Cmd::CMD_FOLD_TOGGLE,                          {"CMD_FOLD_TOGGLE", "Fold Toggle", "Ctrl + <"}},
          {      Cmd::CMD_FUNCTION_HEADER,          {"CMD_FUNCTION_HEADER", "Create Header", "Ctrl + O, Ctrl + H"}},
          {           Cmd::CMD_GIT_TOGGLE,              {"CMD_GIT_TOGGLE", "Show Git Panel", "Ctrl + O, Ctrl + G"}},
+         {       Cmd::CMD_TOGGLE_PROJECT,      {"CMD_TOGGLE_PROJECT", "Show Project Panel", "Ctrl + O, Ctrl + P"}},
          {       Cmd::CMD_ENTER_ADD_FILE,                                {"CMD_ENTER_ADD_FILE", "Add File", "F3"}},
          {         Cmd::CMD_ENTER_SEARCH,                            {"CMD_ENTER_SEARCH", "Search/Replace", "F7"}},
          {Cmd::CMD_ENTER_CREATE_FUNCTION,              {"CMD_ENTER_CREATE_FUNCTION", "Create Function", "Ctrl+F"}},
@@ -216,6 +225,10 @@ const ShortcutConfig& Editor::getSC(Cmd cmd) {
       return _shortcuts[cmd];
       }
 
+//---------------------------------------------------------
+//   shortcuts
+//---------------------------------------------------------
+
 QList<ShortcutConfig> Editor::shortcuts() const {
       QList<ShortcutConfig> l;
       for (const auto& [key, val] : _shortcuts)
@@ -246,6 +259,19 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             Critical("init project failed");
       resetToDefaults();
       loadSettings();
+
+      bool found = false;
+      for (const auto& project : _projects) {
+            Debug("{} {}", _projectRoot, project);
+            if (_projectRoot == project) {
+                  found = true;
+                  break;
+                  }
+            }
+      if (!found) {
+            _projects.push_front(_projectRoot);
+            saveSettings();
+            }
 
       // Associate a KeySequence with a function which performs an editor action.
       // The function is surrounded by an startCmd() and an endCmd() call.
@@ -345,6 +371,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
          Action(getSC(Cmd::CMD_COMPLETIONS), [this] { requestCompletions(); }),
          Action(getSC(Cmd::CMD_FUNCTION_HEADER), [this] { kontext()->createFunctionHeader(); }),
          Action(getSC(Cmd::CMD_GIT_TOGGLE), [this] { _gitButton->setChecked(!_gitButton->isChecked()); }),
+         Action(getSC(Cmd::CMD_TOGGLE_PROJECT),
+                [this] { _projectButton->setChecked(!_projectButton->isChecked()); }),
          Action(getSC(Cmd::CMD_FOLD_ALL), [this] { foldAll(); }),
          Action(getSC(Cmd::CMD_UNFOLD_ALL), [this] { unfoldAll(); }),
          Action(getSC(Cmd::CMD_FOLD_TOGGLE), [this] { foldToggle(); }),
@@ -385,6 +413,39 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       hbox->addWidget(tabBar, 10, Qt::AlignLeft);
 
       //*****************************************
+      //    ProjectButton
+      //*****************************************
+
+      _projectButton = new QToolButton();
+      _projectButton->setText("P");
+      _projectButton->setCheckable(true);
+      _projectButton->setToolTip("toggle Project panel");
+      hbox->addWidget(_projectButton, 0, Qt::AlignRight);
+      connect(_projectButton, &QToolButton::toggled, [this] {
+            bool visible = _projectButton->isChecked();
+            int pIndex   = splitter->indexOf(_projectPanel);
+            if (!visible && this->isVisible())
+                  projectWidth = splitter->sizes()[pIndex];
+            _projectPanel->setVisible(visible);
+            if (visible)
+                  updateProjectPanel();
+            if (!this->isVisible())
+                  return;
+
+            int newWidth = width();
+            if (visible) {
+                  QList<int> sizes = splitter->sizes();
+                  sizes[pIndex]    = projectWidth;
+                  splitter->setSizes(sizes);
+                  newWidth += projectWidth + splitter->handleWidth();
+                  }
+            else {
+                  newWidth += -(projectWidth + splitter->handleWidth());
+                  }
+            resize(newWidth, height());
+            });
+
+      //*****************************************
       //    AiButton
       //*****************************************
 
@@ -397,15 +458,13 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       connect(aiButton, &QToolButton::toggled, [this] {
             bool visible   = aiButton->isChecked();
             int agentIndex = splitter->indexOf(agent());
-            if (!visible) {
-                  // The panel is visible and will be switched to invisible.
-                  // Save the actual width before switching.
+            if (!visible && this->isVisible())
                   agentWidth = splitter->sizes()[agentIndex];
-                  }
-            // Try to adjust the main window so that the edit widget does
-            // not change in width.
-            int newWidth = width();
             agent()->setVisible(visible);
+            if (!this->isVisible())
+                  return;
+
+            int newWidth = width();
             if (visible) {
                   QList<int> sizes  = splitter->sizes();
                   sizes[agentIndex] = agentWidth;
@@ -438,6 +497,39 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
 
       grid->setRowStretch(1, 500);
       grid->setColumnStretch(0, 500);
+      _projectPanel = new QWidget(box);
+      _projectPanel->setObjectName("projectPanel");
+      _projectPanel->setMinimumWidth(projectPanelMinimumWidth);
+      _projectPanel->setVisible(false);
+      QVBoxLayout* projectLayout = new QVBoxLayout(_projectPanel);
+      projectLayout->setContentsMargins(0, 0, 0, 0);
+      projectLayout->setSpacing(0);
+
+      _projectComboBox = new QComboBox(_projectPanel);
+      projectLayout->addWidget(_projectComboBox);
+      connect(_projectComboBox, &QComboBox::activated, this, [this](int index) {
+            switchProject(_projectComboBox->itemText(index));
+      });
+      _projectTreeView = new QTreeView(_projectPanel);
+      _projectModel    = new QFileSystemModel(this);
+      _projectModel->setFilter(QDir::NoDotAndDotDot | QDir::AllEntries);
+
+      _projectTreeView->setModel(_projectModel);
+      _projectTreeView->setHeaderHidden(true);
+      for (int i = 1; i < _projectModel->columnCount(); ++i)
+            _projectTreeView->hideColumn(i);
+      projectLayout->addWidget(_projectTreeView);
+      connect(_projectTreeView, &QTreeView::doubleClicked, [this](const QModelIndex& index) {
+            QString path = _projectModel->filePath(index);
+            QFileInfo fi(path);
+            if (fi.isFile() && !path.isEmpty()) {
+                  addFile(path);
+                  setCurrentKontext(_kontextList.size() - 1);
+                  }
+            });
+      splitter->addWidget(_projectPanel);
+      int pIndex = splitter->indexOf(_projectPanel);
+      splitter->setCollapsible(pIndex, false);
       splitter->addWidget(w);
       int wIndex = splitter->indexOf(w);
       splitter->setStretchFactor(wIndex, 100);
@@ -446,7 +538,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       //    Git
       //*****************************************
 
-      _gitButton = new QToolButton();
+      _gitButton          = new QToolButton();
       QString gitIconPath = darkMode() ? ":/images/Git-Icon-1788C-white.svg" : ":/images/Git-Icon-1788C.svg";
       _gitButton->setIcon(QIcon(gitIconPath));
       _gitButton->setToolTip("toggle GIT panel");
@@ -458,16 +550,14 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             updateGitHistory();
             bool visible = _gitButton->isChecked();
 
-            if (!visible) {
-                  // The panel is visible and will be switched to invisible.
-                  // Save the actual width before switching.
+            if (!visible && this->isVisible())
                   gitWidth = splitter->sizes()[splitter->indexOf(gitPanel())];
-                  }
-            // Try to adjust the main window so that the edit widget does
-            // not change in width.
+            gitPanel()->setVisible(visible);
+            if (!this->isVisible())
+                  return;
+
             auto sz      = size();
             int newWidth = sz.width();
-            gitPanel()->setVisible(visible);
             if (visible) {
                   QList<int> sizes = splitter->sizes();
                   int gitIndex     = splitter->indexOf(gitPanel());
@@ -493,7 +583,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       connect(this, &Editor::darkModeChanged, [this]() {
             QString iconPath = darkMode() ? ":/images/configure_white.svg" : ":/images/configure.svg";
             configButton->setIcon(QIcon::fromTheme("preferences-system", QIcon(iconPath)));
-            QString gitIconPath = darkMode() ? ":/images/Git-Icon-1788C-white.svg" : ":/images/Git-Icon-1788C.svg";
+            QString gitIconPath =
+                darkMode() ? ":/images/Git-Icon-1788C-white.svg" : ":/images/Git-Icon-1788C.svg";
             _gitButton->setIcon(QIcon(gitIconPath));
             updateStyle();
             update();
@@ -588,7 +679,40 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       //    Initialize from .nped
       //*****************************************
 
+      gitPanel();
+      agent();
       loadStatus(argc, argv);
+
+            {
+            const QSignalBlocker blocker(_projectButton);
+            _projectButton->setChecked(_projectVisible);
+            _projectPanel->setVisible(_projectVisible);
+            if (_projectVisible) {
+                  QList<int> sizes                        = splitter->sizes();
+                  sizes[splitter->indexOf(_projectPanel)] = projectWidth;
+                  splitter->setSizes(sizes);
+                  }
+            }
+            {
+            const QSignalBlocker blocker(aiButton);
+            aiButton->setChecked(_aiVisible);
+            _agent->setVisible(_aiVisible);
+            if (_aiVisible) {
+                  QList<int> sizes                 = splitter->sizes();
+                  sizes[splitter->indexOf(_agent)] = agentWidth;
+                  splitter->setSizes(sizes);
+                  }
+            }
+            {
+            const QSignalBlocker blocker(_gitButton);
+            _gitButton->setChecked(_gitVisible);
+            _gitPanel->setVisible(_gitVisible);
+            if (_gitVisible) {
+                  QList<int> sizes                    = splitter->sizes();
+                  sizes[splitter->indexOf(_gitPanel)] = gitWidth;
+                  splitter->setSizes(sizes);
+                  }
+            }
 
       cursorTimer = new QTimer(this);
       connect(cursorTimer, &QTimer::timeout, [this] { unsetCursor(); });
@@ -599,8 +723,14 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       _editWidget->setFocus();
       _editWidget->installEventFilter(kl);
       initFont();
+      updateProjectTreeColors();
       updateGitHistory();
+      updateProjectPanel();
       connect(this, &Editor::fontFamilyChanged, [this] { initFont(); });
+      connect(this, &Editor::darkModeChanged, this, &Editor::updateProjectTreeColors);
+      connect(this, &Editor::textStylesLightChanged, this, &Editor::updateProjectTreeColors);
+      connect(this, &Editor::textStylesDarkChanged, this, &Editor::updateProjectTreeColors);
+
       }
 
 Editor::~Editor() {
@@ -640,11 +770,6 @@ Agent* Editor::agent() {
                   _agent->setVisible(_aiVisible);
                   const QSignalBlocker blocker(aiButton);
                   aiButton->setChecked(_aiVisible);
-
-                  QList<int> sizes  = splitter->sizes();
-                  sizes[0]          = width();
-                  sizes[agentIndex] = agentWidth;
-                  splitter->setSizes(sizes);
                   }
             }
       return _agent;
@@ -687,11 +812,6 @@ QWidget* Editor::gitPanel() {
                   _gitPanel->setVisible(_gitVisible);
                   const QSignalBlocker blocker(_gitButton);
                   _gitButton->setChecked(_gitVisible);
-
-                  QList<int> sizes = splitter->sizes();
-                  sizes[0]         = width();
-                  sizes[gitIndex]  = gitWidth;
-                  splitter->setSizes(sizes);
                   }
             gitListView = new QListView(_gitPanel);
             gitListView->setModel(&gitList);
@@ -720,8 +840,7 @@ MarkdownWebView* Editor::mdWidget() {
             mdLayout->setContentsMargins(0, 0, 0, 0);
             mdLayout->setSpacing(0);
 
-
-            QWidget* navBar        = new QWidget(_mdContainer);
+            QWidget* navBar = new QWidget(_mdContainer);
 
             QHBoxLayout* navLayout = new QHBoxLayout(navBar);
             navLayout->setContentsMargins(4, 4, 4, 4);
@@ -740,8 +859,7 @@ MarkdownWebView* Editor::mdWidget() {
                   btnBack->setEnabled(_mdWidget->page()->history()->canGoBack());
                   btnForward->setEnabled(_mdWidget->page()->history()->canGoForward());
                   };
-            connect(_mdWidget, &QWebEngineView::loadFinished, this,
-                    [updateButtons] { updateButtons(); });
+            connect(_mdWidget, &QWebEngineView::loadFinished, this, [updateButtons] { updateButtons(); });
             updateButtons();
 
             connect(btnForward, &QToolButton::clicked, _mdWidget, &QWebEngineView::forward);
@@ -990,6 +1108,7 @@ void Editor::setCurrentKontext(size_t idx) {
       //      update();
       updateGitHistory();
       updateCursor();
+      updateProjectPanel();
       }
 
 void Editor::setCurrentKontext(Kontext* k) {
@@ -1201,6 +1320,21 @@ void Editor::saveQuitCmd() {
       }
 
 //---------------------------------------------------------
+//   updateProjectTreeColors
+//---------------------------------------------------------
+
+void Editor::updateProjectTreeColors() {
+      auto style = textStyle(TextStyle::Normal);
+      QString css = QString("background-color: %1; color: %2;").arg(style.bg.name(), style.fg.name());
+      if (_projectTreeView) {
+            _projectTreeView->setStyleSheet(css);
+      }
+      if (_projectComboBox) {
+            _projectComboBox->setStyleSheet(css);
+      }
+}
+
+//---------------------------------------------------------
 //   initFont
 //---------------------------------------------------------
 
@@ -1228,6 +1362,9 @@ void Editor::initFont() {
       colLabel->setFont(f);
       _keyLabel->setFont(f);
       completionsPopup->setListFont(f);
+      _projectTreeView->setFont(f);
+      if (_projectComboBox)
+            _projectComboBox->setFont(f);
       if (_mdWidget)
             _mdWidget->setFont(f);
       qApp->setFont(f);
@@ -1264,9 +1401,13 @@ void Editor::saveStatus() {
       QByteArray state = saveState();
       j["state"]       = state.toHex().toStdString();
 
-      j["aiVisible"]  = _agent && _agent->isVisible();
-      j["agentRole"]  = agentRoleName().toStdString();
-      j["gitVisible"] = _gitButton->isChecked();
+      QByteArray splitterState = splitter->saveState();
+      j["splitterState"]       = splitterState.toHex().toStdString();
+
+      j["aiVisible"]      = _agent && _agent->isVisible();
+      j["agentRole"]      = agentRoleName().toStdString();
+      j["gitVisible"]     = _gitButton->isChecked();
+      j["projectVisible"] = _projectButton->isChecked();
       //      j["aiModel"]       = agent()->currentModel().toStdString();
 
       //      j["aiExecuteMode"] = agent()->isExecuteMode();
@@ -1275,14 +1416,17 @@ void Editor::saveStatus() {
 
       if (_gitPanel && _gitPanel->isVisible())
             gitWidth = splitter->sizes()[splitter->indexOf(_gitPanel)];
+      if (_projectPanel && _projectPanel->isVisible())
+            projectWidth = splitter->sizes()[splitter->indexOf(_projectPanel)];
       if (_agent && _agent->isVisible())
             agentWidth = splitter->sizes()[splitter->indexOf(_agent)];
 
-      j["gitWidth"]   = gitWidth;
-      j["agentWidth"] = agentWidth;
+      j["gitWidth"]     = gitWidth;
+      j["projectWidth"] = projectWidth;
+      j["agentWidth"]   = agentWidth;
 
       json kontexte = json::array();
-      for (const auto k : _kontextList) {
+      for (const auto& k : _kontextList) {
             json jk;
             jk["file"]     = k->file()->path().toStdString();
             jk["x"]        = k->fileCol();
@@ -1333,6 +1477,8 @@ bool Editor::loadStatus(int argc, char** argv) {
                         idx = j["currentKontext"].get<int>();
                   if (j.contains("gitVisible"))
                         _gitVisible = j["gitVisible"].get<bool>();
+                  if (j.contains("projectVisible"))
+                        _projectVisible = j["projectVisible"].get<bool>();
 
                   if (j.contains("aiVisible"))
                         _aiVisible = j["aiVisible"].get<bool>();
@@ -1341,6 +1487,8 @@ bool Editor::loadStatus(int argc, char** argv) {
 
                   if (j.contains("gitWidth"))
                         gitWidth = j["gitWidth"].get<int>();
+                  if (j.contains("projectWidth"))
+                        projectWidth = j["projectWidth"].get<int>();
                   if (j.contains("agentWidth"))
                         agentWidth = j["agentWidth"].get<int>();
 
@@ -1357,10 +1505,13 @@ bool Editor::loadStatus(int argc, char** argv) {
                         restoreState(state);
                         }
 
-                  if (_aiVisible)
-                        agent();
-                  if (_gitVisible)
-                        gitPanel();
+                  if (j.contains("splitterState")) {
+                        QByteArray sState = QByteArray::fromHex(
+                            QByteArray::fromStdString(j["splitterState"].get<std::string>()));
+                        splitter->restoreState(sState);
+                        }
+
+                  // panels already created before loadStatus
 
                   if (loadFiles && j.contains("kontexte") && j["kontexte"].is_array()) {
                         for (const auto& jk : j["kontexte"]) {
@@ -1715,7 +1866,7 @@ void Editor::insertTab() {
       //
       // insert spaces
       //
-      QString insert{" "};
+      QString insert {" "};
       int x = cursor.fileCol();
       for (int i = 1; i < tab(); ++i) {
             if (((x + i) % tab()) == 0)
@@ -1758,7 +1909,6 @@ void Editor::setPickText(const QString& text, SelectionMode mode) {
       pickText.text = text;
       pickText.mode = mode;
       }
-
 
 //---------------------------------------------------------
 //   put
@@ -2080,7 +2230,7 @@ void Editor::gotoImplementation() {
 //---------------------------------------------------------
 
 void Editor::gotoKontext(const QString& path, const Pos& pos) {
-      HistoryRecord r{kontext(), kontext()->filePos(), kontext()->screenPos()};
+      HistoryRecord r {kontext(), kontext()->filePos(), kontext()->screenPos()};
       Kontext* k = nullptr;
       File* f    = findFile(path);
       if (!f) {
@@ -2241,7 +2391,6 @@ void TabBar::modifiedChanged() {
 //    call kontext->setViewMode  to setup the right content
 //-----------------------------------------------------------------------------
 
-
 void Editor::setViewMode(ViewMode viewMode) {
       switch (viewMode) {
             case ViewMode::Annotations:
@@ -2272,9 +2421,8 @@ void Editor::setViewMode(ViewMode viewMode) {
                   mdWidget()->setFocus();
                   auto lid         = kontext()->file()->languageId();
                   const auto& text = kontext()->file()->plainText();
-                  if (lid == "markdown") {
+                  if (lid == "markdown")
                         mdWidget()->setMarkdown(text, kontext()->fileRow());
-                        }
                   else if (lid == "html")
                         mdWidget()->setHtml(text);
                   else if (lid == "image")
@@ -2286,7 +2434,6 @@ void Editor::setViewMode(ViewMode viewMode) {
       kontext()->setViewMode(viewMode);
       tabBar->modifiedChanged(); // update readOnly marking
       }
-
 
 //---------------------------------------------------------
 //   toggleViewMode
@@ -2355,5 +2502,65 @@ void Editor::showGitVersion(int row) {
                   kontext()->file()->setGitVersion(lines);
                   setViewMode(ViewMode::GitVersion);
                   }
+            }
+      }
+
+//---------------------------------------------------------
+//   updateProjectPanel
+//---------------------------------------------------------
+
+void Editor::updateProjectPanel() {
+      if (!_projectButton || !_projectButton->isChecked() || !_projectPanel)
+            return;
+
+      QString rootPath = projectRoot();
+
+      if (_projectComboBox) {
+            bool blocked = _projectComboBox->blockSignals(true);
+            _projectComboBox->clear();
+            for (const auto& p : _projects) {
+                  _projectComboBox->addItem(p);
+            }
+            if (!_projects.contains(rootPath)) {
+                  _projectComboBox->addItem(rootPath);
+            }
+            _projectComboBox->setCurrentText(rootPath);
+            _projectComboBox->blockSignals(blocked);
+      }
+
+      // Set the root path if not set correctly yet
+      if (_projectModel->rootPath() != rootPath) {
+            QModelIndex rootIndex = _projectModel->setRootPath(rootPath);
+            _projectTreeView->setRootIndex(rootIndex);
+            }
+
+      Kontext* k = kontext();
+      if (k && k->file()) {
+            QString currentPath = k->file()->path();
+            // Expand and select current file
+            QModelIndex currentIndex = _projectModel->index(currentPath);
+            if (currentIndex.isValid()) {
+                  _projectTreeView->setCurrentIndex(currentIndex);
+                  _projectTreeView->scrollTo(currentIndex);
+                  }
+            }
+      }
+
+//---------------------------------------------------------
+//   switchProject
+//---------------------------------------------------------
+
+void Editor::switchProject(const QString& path) {
+      if (_projectRoot == path) return;
+      _projectRoot = path;
+      _git.init();
+      _hasGit = _git.isInitialized();
+      if (_hasGit) {
+            _currentBranchName = _git.getCurrentBranch();
+            }
+      updateProjectPanel();
+      updateGitHistory();
+      if (!_projects.contains(path)) {
+            _projects.push_front(path);
             }
       }

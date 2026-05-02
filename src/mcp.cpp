@@ -17,7 +17,6 @@
 
 // Conditional Trace:
 #define IO true
-
 //---------------------------------------------------------
 //   mcpServerConfigsFromJson
 //---------------------------------------------------------
@@ -35,10 +34,9 @@ McpServerConfigs mcpServerConfigsFromJson(const json& array) {
             config.enabled = item.value("enabled", true);
             config.url     = QString::fromStdString(item.value("url", ""));
             configs.append(config);
-            }
-      return configs;
       }
-
+      return configs;
+}
 //---------------------------------------------------------
 //   mcpServerConfigsToJson
 //---------------------------------------------------------
@@ -54,10 +52,9 @@ json mcpServerConfigsToJson(const McpServerConfigs& configs) {
             item["enabled"] = config.enabled;
             item["url"]     = config.url.toStdString();
             array.push_back(item);
-            }
-      return array;
       }
-
+      return array;
+}
 //---------------------------------------------------------
 //   McpServer
 //---------------------------------------------------------
@@ -73,8 +70,7 @@ McpServer::McpServer(const McpServerConfig& config, Editor* e, QObject* parent)
 
       m_nam   = new QNetworkAccessManager(this);
       _editor = e;
-      }
-
+}
 //---------------------------------------------------------
 //   connectSse
 //---------------------------------------------------------
@@ -84,15 +80,14 @@ void McpServer::connectSse() {
             m_sseReply->abort();
             m_sseReply->deleteLater();
             m_sseReply = nullptr;
-            }
+      }
       QNetworkRequest request(_url);
       request.setRawHeader("Accept", "text/event-stream");
       m_sseReply = m_nam->get(request);
       connect(m_sseReply, &QNetworkReply::readyRead, this, &McpServer::handleSseReadyRead);
       connect(m_sseReply, &QNetworkReply::errorOccurred, this, &McpServer::handleSseError);
       Debug("MCP Server <{}> connecting to URL {}", _id, _url);
-      }
-
+}
 //---------------------------------------------------------
 //   disconnectSse
 //---------------------------------------------------------
@@ -102,10 +97,9 @@ void McpServer::disconnectSse() {
             m_sseReply->abort();
             m_sseReply->deleteLater();
             m_sseReply = nullptr;
-            }
-      m_postEndpoint.clear();
       }
-
+      m_postEndpoint.clear();
+}
 //---------------------------------------------------------
 //   start
 //---------------------------------------------------------
@@ -135,8 +129,8 @@ bool McpServer::start() {
                   QStringList kv = e.split("=");
                   if (kv.size() == 2)
                         qenv.insert(kv[0].trimmed(), kv[1].trimmed());
-                  }
             }
+      }
 
       m_process->setProgram(program);
       m_process->setArguments(argsList);
@@ -150,15 +144,14 @@ bool McpServer::start() {
             if (hasUrl) {
                   m_sseRetryCount = 0;
                   QTimer::singleShot(1000, this, &McpServer::connectSse);
-                  }
+            }
             else {
                   initialize();
-                  }
-            });
+            }
+      });
       m_process->start();
       return true;
-      }
-
+}
 //---------------------------------------------------------
 //   stop
 //---------------------------------------------------------
@@ -168,14 +161,16 @@ void McpServer::stop() {
             m_sseReply->abort();
             m_sseReply->deleteLater();
             m_sseReply = nullptr;
-            }
+      }
       if (m_process->state() != QProcess::NotRunning) {
-            m_process->terminate();
-            if (!m_process->waitForFinished(3000))
-                  m_process->kill();
+            m_process->closeWriteChannel();
+            if (!m_process->waitForFinished(3000)) {
+                  m_process->terminate();
+                  if (!m_process->waitForFinished(3000))
+                        m_process->kill();
             }
       }
-
+}
 //---------------------------------------------------------
 //   initialize
 //---------------------------------------------------------
@@ -183,10 +178,10 @@ void McpServer::stop() {
 void McpServer::initialize() {
       // Declare our capabilities, including roots (listChanged=true).
       json params = {
-               {"protocolVersion",                                                       "2024-11-05"},
-               {     "clientInfo",                {{"name", "nped-mcp-client"}, {"version", "1.0.0"}}},
-               {   "capabilities", {{"roots", {{"listChanged", true}}}, {"sampling", json::object()}}}
-            };
+         {"protocolVersion",                                                       "2024-11-05"},
+         {     "clientInfo",                {{"name", "nped-mcp-client"}, {"version", "1.0.0"}}},
+         {   "capabilities", {{"roots", {{"listChanged", true}}}, {"sampling", json::object()}}}
+      };
 
       sendRequest("initialize", params, [this](const json& response) {
             Debug("MCP Server <{}> initialized", _id);
@@ -201,7 +196,7 @@ void McpServer::initialize() {
                         auto roots = caps["roots"];
                         if (roots.contains("listChanged") && roots["listChanged"].is_boolean())
                               handleRoot = roots["listChanged"];
-                        }
+                  }
 
                   if (caps.contains("tools")) {
                         sendRequest("tools/list", json::object(), [this](const json& toolResponse) {
@@ -210,9 +205,9 @@ void McpServer::initialize() {
                                     for (const auto& t : toolResponse["tools"])
                                           m_tools.push_back(t.get<McpTool>());
                                     emit toolsChanged();
-                                    }
-                              });
-                        }
+                              }
+                        });
+                  }
 
                   if (caps.contains("resources")) {
                         sendRequest("resources/list", json::object(), [this](const json& resResponse) {
@@ -221,18 +216,17 @@ void McpServer::initialize() {
                                     for (const auto& r : resResponse["resources"])
                                           m_resources.push_back(r.get<McpResource>());
                                     emit resourcesChanged();
-                                    }
-                              });
-                        }
+                              }
+                        });
                   }
+            }
             else {
                   Debug("=== no caps in response");
-                  }
+            }
             sendRequest("notifications/initialized", json::object(), nullptr);
             initialized = true;
-            });
-      }
-
+      });
+}
 //---------------------------------------------------------
 //   callTool
 //    Sends a tool call using the MCP 'tools/call' method.
@@ -243,15 +237,15 @@ void McpServer::initialize() {
 void McpServer::callTool(const std::string& toolName, const json& arguments,
                          std::function<void(const json&)> callback) {
       json request = {
-               {"jsonrpc",                                               "2.0"},
-               { "method",                                        "tools/call"},
-               { "params", json {{"name", toolName}, {"arguments", arguments}}}
-            };
+         {"jsonrpc",                                               "2.0"},
+         { "method",                                        "tools/call"},
+         { "params", json {{"name", toolName}, {"arguments", arguments}}}
+      };
 
       if (callback) {
             request["id"]                        = m_nextRequestId;
             m_pendingRequests[m_nextRequestId++] = callback;
-            }
+      }
 
       if (!_url.isEmpty() && !m_postEndpoint.isEmpty()) {
             QNetworkRequest req(m_postEndpoint);
@@ -260,12 +254,11 @@ void McpServer::callTool(const std::string& toolName, const json& arguments,
             QNetworkReply* reply = m_nam->post(req, data);
             connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
             return;
-            }
+      }
       std::string msg = request.dump() + "\n";
       m_process->write(msg.c_str());
       CLog(IO, "write: {} <{}>", _id, request.dump(3));
-      }
-
+}
 //---------------------------------------------------------
 //   sendRequest
 //---------------------------------------------------------
@@ -273,15 +266,15 @@ void McpServer::callTool(const std::string& toolName, const json& arguments,
 void McpServer::sendRequest(const std::string& method, const json& params,
                             std::function<void(const json&)> callback) {
       json request = {
-               {"jsonrpc",  "2.0"},
-               { "method", method},
-               { "params", params}
-            };
+         {"jsonrpc",  "2.0"},
+         { "method", method},
+         { "params", params}
+      };
 
       if (callback) {
             request["id"]                        = m_nextRequestId;
             m_pendingRequests[m_nextRequestId++] = callback;
-            }
+      }
 
       std::string msg = request.dump() + "\n";
       m_process->write(msg.c_str());
@@ -293,9 +286,8 @@ void McpServer::sendRequest(const std::string& method, const json& params,
             QNetworkReply* reply = m_nam->post(req, data);
             connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
             return;
-            }
       }
-
+}
 //---------------------------------------------------------
 //   addRoot
 //---------------------------------------------------------
@@ -305,8 +297,7 @@ void McpServer::addRoot(const McpRoot& root) {
       //      emit rootsChanged();
       // Notify the server if it has advertised roots capability
       sendRootsChanged();
-      }
-
+}
 //---------------------------------------------------------
 //   removeRoot
 //---------------------------------------------------------
@@ -318,10 +309,9 @@ void McpServer::removeRoot(const std::string& uri) {
                   //                  emit rootsChanged();
                   sendRootsChanged();
                   return;
-                  }
             }
       }
-
+}
 //---------------------------------------------------------
 //   sendRootsChanged
 //    Sends "notifications/roots/list_changed" to the MCP server.
@@ -338,14 +328,14 @@ void McpServer::sendRootsChanged() {
             if (!root.name.empty())
                   rootObj["name"] = root.name;
             rootsArray.push_back(rootObj);
-            }
+      }
 
       // Send the notification (no response expected)
       json notification = {
-               {"jsonrpc",                              "2.0"},
-               { "method", "notifications/roots/list_changed"},
-               { "params",            {{"roots", rootsArray}}}
-            };
+         {"jsonrpc",                              "2.0"},
+         { "method", "notifications/roots/list_changed"},
+         { "params",            {{"roots", rootsArray}}}
+      };
 
       std::string msg = notification.dump() + "\n";
       CLog(IO, "write roots changed: <{}> <{}>", _id, notification.dump(3));
@@ -358,9 +348,8 @@ void McpServer::sendRootsChanged() {
             QNetworkReply* reply = m_nam->post(req, data);
             connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
             return;
-            }
       }
-
+}
 //---------------------------------------------------------
 //   handleReadyReadStandardOutput
 //---------------------------------------------------------
@@ -374,9 +363,8 @@ void McpServer::handleReadyReadStandardOutput() {
             m_buffer.erase(0, pos + 1);
             if (!message.empty())
                   parseMessage(message);
-            }
       }
-
+}
 //---------------------------------------------------------
 //   handleReadyReadStandardError
 //---------------------------------------------------------
@@ -384,8 +372,7 @@ void McpServer::handleReadyReadStandardOutput() {
 void McpServer::handleReadyReadStandardError() {
       QString data = m_process->readAllStandardError();
       Debug("MCP Server STDERR [{}]: {}", _id, data);
-      }
-
+}
 //---------------------------------------------------------
 //   parseMessage
 //---------------------------------------------------------
@@ -405,15 +392,35 @@ void McpServer::parseMessage(const std::string& message) {
                         else if (response.contains("error"))
                               Warning("MCP RPC Error: {}", response["error"].dump());
                         m_pendingRequests.erase(it);
+                  }
+                  else if (response.contains("method") && response["method"] == "roots/list") {
+                        json rootsArray = json::array();
+                        for (const auto& r : m_roots) {
+                              json jRoot;
+                              jRoot["uri"]  = r.uri;
+                              jRoot["name"] = r.name;
+                              rootsArray.push_back(jRoot);
                         }
-                  else {
-                        if (response.contains("method") && response["method"] == "roots/list") {
-                              addRoot({_editor->projectRoot().toStdString(), "projectRoot"});
-                              }
-                        else
-                              Critical("unhandled", id);
+                        json reply = {
+                           {"jsonrpc",                   "2.0"},
+                           {     "id",                      id},
+                           { "result", {{"roots", rootsArray}}}
+                        };
+                        std::string msg = reply.dump() + "\n";
+                        if (m_process)
+                              m_process->write(msg.c_str());
+                        CLog(IO, "write: {} <{}>", _id, reply.dump(3));
+                        if (!_url.isEmpty() && !m_postEndpoint.isEmpty()) {
+                              QNetworkRequest req(m_postEndpoint);
+                              req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+                              QByteArray data     = reply.dump().c_str();
+                              QNetworkReply* rply = m_nam->post(req, data);
+                              connect(rply, &QNetworkReply::finished, rply, &QObject::deleteLater);
                         }
                   }
+                  else
+                        Critical("unhandled", id);
+            }
             // 2) Handle notifications (has "method", no "id")
             else if (response.contains("method")) {
                   const std::string& method = response["method"].get<std::string>();
@@ -430,24 +437,23 @@ void McpServer::parseMessage(const std::string& message) {
                                     if (rootItem.contains("name") && rootItem["name"].is_string())
                                           root.name = rootItem["name"].get<std::string>();
                                     m_roots.append(root);
-                                    }
-                              Debug("MCP Server <{}> roots list changed: {} roots", _id, m_roots.size());
                               }
+                              Debug("MCP Server <{}> roots list changed: {} roots", _id, m_roots.size());
                         }
+                  }
                   else {
                         // Unknown notification - just log it
                         Debug("<{}> received notification: {}", _id, method);
-                        }
                   }
+            }
             else {
                   Debug("{}: unknown message", _id);
-                  }
-            }
-      catch (const std::exception& e) {
-            Warning("Failed to parse MCP response: {}", e.what());
             }
       }
-
+      catch (const std::exception& e) {
+            Warning("Failed to parse MCP response: {}", e.what());
+      }
+}
 //---------------------------------------------------------
 //   handleProcessError
 //---------------------------------------------------------
@@ -455,16 +461,14 @@ void McpServer::parseMessage(const std::string& message) {
 void McpServer::handleProcessError(QProcess::ProcessError error) {
       const char* em[] = {"FailedToStart", "Crashed", "Timedout", "ReadError", "WriteError", "UnknownError"};
       Warning("MCP Server <{}> process error: {}", _id, em[int(error)]);
-      }
-
+}
 //---------------------------------------------------------
 //   handleProcessFinished
 //---------------------------------------------------------
 
 void McpServer::handleProcessFinished(int, QProcess::ExitStatus) {
       // Debug("MCP Server process finished [{}]: with exit code {}", m_config.id, exitCode);
-      }
-
+}
 //---------------------------------------------------------
 //   applyConfigs
 //---------------------------------------------------------
@@ -490,9 +494,8 @@ void McpManager::applyConfigs(const McpServerConfigs& configs) {
       for (auto& [id, server] : m_servers) {
             server->addRoot(root);
             server->sendRootsChanged();
-            }
       }
-
+}
 //---------------------------------------------------------
 //   startAll
 //---------------------------------------------------------
@@ -505,9 +508,8 @@ void McpManager::startAll() {
             connect(s, &McpServer::toolsChanged, [this] { emit toolsChanged(); });
             connect(s, &McpServer::resourcesChanged, this, [this] { emit resourcesChanged(); });
             //            connect(s, &McpServer::rootsChanged, this, [this] { emit rootsChanged(); });
-            }
       }
-
+}
 //---------------------------------------------------------
 //   stopAll
 //---------------------------------------------------------
@@ -515,8 +517,7 @@ void McpManager::startAll() {
 void McpManager::stopAll() {
       for (auto& [id, server] : m_servers)
             server->stop();
-      }
-
+}
 //---------------------------------------------------------
 //   getServer
 //---------------------------------------------------------
@@ -524,8 +525,7 @@ void McpManager::stopAll() {
 McpServer* McpManager::getServer(const QString& id) {
       auto it = m_servers.find(id);
       return it != m_servers.end() ? it->second.get() : nullptr;
-      }
-
+}
 //---------------------------------------------------------
 //   handleSseReadyRead
 //---------------------------------------------------------
@@ -548,29 +548,28 @@ void McpServer::handleSseReadyRead() {
 
             if (line.rfind("event: ", 0) == 0) {
                   eventType = line.substr(7);
-                  }
+            }
             else if (line.rfind("data: ", 0) == 0) {
                   std::string data = line.substr(6);
                   if (eventType == "endpoint") {
                         QString endpoint = QString::fromStdString(data);
                         if (endpoint.startsWith("http")) {
                               m_postEndpoint = endpoint;
-                              }
+                        }
                         else {
                               QUrl baseUrl(_url);
                               m_postEndpoint = baseUrl.resolved(QUrl(endpoint)).toString();
-                              }
+                        }
                         Debug("MCP Server <{}> SSE endpoint received: {}", _id, m_postEndpoint);
                         initialize();
-                        }
+                  }
                   else {
                         parseMessage(data);
-                        }
-                  eventType = "";
                   }
+                  eventType = "";
             }
       }
-
+}
 //---------------------------------------------------------
 //   handleSseError
 //---------------------------------------------------------
@@ -584,20 +583,20 @@ void McpServer::handleSseError(QNetworkReply::NetworkError error) {
             if (m_process->state() == QProcess::NotRunning) {
                   Warning("MCP Server <{}> process is not running. Exit code: {}, Error: {}", _id,
                           m_process->exitCode(), m_process->errorString());
-                  }
+            }
             else {
                   Warning("MCP Server <{}> process is in state: {}", _id, (int)m_process->state());
-                  }
             }
+      }
 
       if (hasCommand && error == QNetworkReply::ConnectionRefusedError) {
             if (m_sseRetryCount < 10) {
                   m_sseRetryCount++;
                   Debug("MCP Server <{}> retrying SSE connection ({}/10)...", _id, m_sseRetryCount);
                   QTimer::singleShot(1000, this, &McpServer::connectSse);
-                  }
+            }
             else {
                   Warning("MCP Server <{}> SSE connection retries exhausted.", _id);
-                  }
             }
       }
+}

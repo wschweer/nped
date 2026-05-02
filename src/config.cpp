@@ -248,6 +248,18 @@ void Editor::saveSettings() {
       configs["fontSize"]   = fontSize();
       configs["fontDemo"]   = fontDemo();
 
+      QJsonArray projects;
+      int i = 0;
+      for (const auto& p : _projects) {
+            QJsonObject project;
+            project["path"] = p;
+            projects.append(project);
+            ++i;
+            if (i == 5)             // save only last 5 project names
+                  break;
+            }
+      configs["projects"] = projects;
+
       QString path = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
       QDir().mkpath(path);
       path += "/nped.json";
@@ -285,6 +297,15 @@ void Editor::loadSettings() {
                         }
                   }
             }
+      if (config.contains("projects")) {
+            QJsonArray sc = config["projects"].toArray();
+            for (int i = 0; i < sc.size(); ++i) {
+                  QJsonObject obj  = sc[i].toObject();
+                  QString path       = obj["path"].toString();
+                  _projects.push_back(path);
+                  }
+            }
+
       if (config.contains("agentRoles")) {
             _agentRoles.clear();
             QJsonArray sc = config["agentRoles"].toArray();

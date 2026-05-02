@@ -136,7 +136,7 @@ std::vector<json> Agent::getMCPTools() const {
                     "Builds the project. An optional parameter can be given to build a specific target.")
                     .add_parameter("target", "string", "The optional target to build.", false)
                     .build());
-
+#if 0
             // 4. Git Integration
             tools.push_back(
                 MCPToolBuilder("get_git_status",
@@ -161,6 +161,7 @@ std::vector<json> Agent::getMCPTools() const {
                           .add_parameter("message", "string", "A clear and concise commit message.")
                           .build());
                   }
+#endif
             return tools;
             }
       catch (const json::parse_error& e) {
@@ -225,6 +226,7 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
                                      : "memcheck";
             return runValgrindCommand(executable, tool, args);
             }
+#if 0
       else if (functionName == "get_git_status") {
             return getGitStatus();
             }
@@ -246,7 +248,7 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             QString msg = QString::fromStdString(arguments["message"].get<std::string>());
             return createGitCommit(msg);
             }
-
+#endif
       //==========================================================
       // Tools MIT lokalem Datei-Pfad Argument
       //==========================================================
