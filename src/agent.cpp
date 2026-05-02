@@ -249,15 +249,18 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       connect(session(), &Session::tokensChanged,
               [this](size_t tokens) { dashboard->setTokenCount(tokens); });
 
-      connect(_editor, &Editor::darkModeChanged, [this]() {
-            showThoughtsAction->setIcon(
-                QIcon(_editor->darkMode() ? ":images/thinking-dark.svg" : ":images/thinking.svg"));
-            showToolMessageAction->setIcon(
-                QIcon(_editor->darkMode() ? ":images/tool-dark.svg" : ":images/tool.svg"));
-            screenshotButton->setIcon(
-                QIcon(_editor->darkMode() ? ":images/camera-dark.svg" : ":images/camera.svg"));
-            stopButton->setIcon(QIcon(_editor->darkMode() ? ":images/stop_white.svg" : ":images/stop.svg"));
-            });
+      auto updateIcons = [this]() {
+            QColor fg = _editor->textStyle(TextStyle::Normal).fg;
+            showThoughtsAction->setIcon(Editor::createStatefulIcon(":images/thinking.svg", fg, fg, fg));
+            showToolMessageAction->setIcon(Editor::createStatefulIcon(":images/tool.svg", fg, fg, fg));
+            screenshotButton->setIcon(Editor::createStatefulIcon(":images/camera.svg", fg, fg, fg));
+            stopButton->setIcon(Editor::createStatefulIcon(":images/stop.svg", fg, fg, fg));
+      };
+
+      connect(_editor, &Editor::darkModeChanged, updateIcons);
+      connect(_editor, &Editor::textStylesLightChanged, updateIcons);
+      connect(_editor, &Editor::textStylesDarkChanged, updateIcons);
+      updateIcons();
 
       // --- 2. Chat Display ---
       chatDisplay = new ChatDisplay(_editor, parent);
@@ -602,11 +605,11 @@ void Agent::sendMessage2() {
       chatDisplay->startNewStreamingMessage(model.name.toStdString());
 
       if (currentReply) {
+            Critical("request already running? aborting currentReply={}", (void*)currentReply);
             currentReply->disconnect();
             currentReply->abort();
             currentReply->deleteLater();
             currentReply = nullptr;
-            Critical("request already running?");
             }
       currentReply = networkManager->post(request, payload);
       connect(currentReply, &QNetworkReply::readyRead, this, &Agent::handleChatReadyRead);

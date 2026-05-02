@@ -253,13 +253,14 @@ void GeminiClient::processTools() {
                         }
                   json args = (fc.contains("args") && fc["args"].is_object()) ? fc["args"] : json::object();
 
-                  std::string result = agent->executeTool(fc["name"], args);
+                  std::string name = fc["name"].get<std::string>();
+                  std::string result = agent->executeTool(name, args);
 
                   msg["parts"].push_back({
-                           {"functionResponse", {{"name", fc["name"]}, {"response", {{"content", result}}}}}
+                           {"functionResponse", {{"name", name}, {"response", {{"content", result}}}}}
                         });
                   if (!agent->filterToolMessages)
-                        displayMsg += agent->formatToolCall(fc["name"], args);
+                        displayMsg += agent->formatToolCall(name, args);
                   }
 
             // show on display
