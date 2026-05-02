@@ -192,11 +192,19 @@ static void setVariant(QVariant& item, const QString& propName, QVariant value) 
             QVariant valToSet = value;
 
             // Versuche, den Wert in den Zieltyp der Property zu konvertieren
-            if (valToSet.convert(p.metaType()))
+            if (valToSet.convert(p.metaType())) {
                   p.writeOnGadget(item.data(), valToSet);
-            else
+            } else if (p.metaType() == QMetaType::fromType<QColor>() && valToSet.canConvert<QString>()) {
+                  QColor color(valToSet.toString());
+                  if (color.isValid()) {
+                        p.writeOnGadget(item.data(), color);
+                  } else {
+                        Critical("Konnte Property {} (String '{}') nicht in Typ QColor konvertieren", p.name(), valToSet.toString());
+                  }
+            } else {
                   Critical("Konnte Property {} nicht in Typ {} konvertieren", p.name(), p.metaType().name());
             }
+      }
       else
             Critical("Gadget property not found");
       }
