@@ -118,7 +118,13 @@ enum class Cmd {
       CMD_DELETE_WORD,
       CMD_ENTER_WORD,
       CMD_GOTO_BACK,
-      CMD_SHOW_INFO,
+
+      CMD_TOGGLE_AI,
+      CMD_TOGGLE_GIT,
+      CMD_TOGGLE_PROJECT,
+      CMD_TOGGLE_CONFIG,
+
+      CMD_FOLD_TOGGLE,
       CMD_FORMAT,
       CMD_VIEW_FUNCTIONS,
       CMD_ANNOTATIONS,
@@ -129,10 +135,7 @@ enum class Cmd {
       CMD_COMPLETIONS,
       CMD_FOLD_ALL,
       CMD_UNFOLD_ALL,
-      CMD_FOLD_TOGGLE,
       CMD_FUNCTION_HEADER,
-      CMD_GIT_TOGGLE,
-      CMD_TOGGLE_PROJECT,
       CMD_ENTER_ADD_FILE,
       CMD_ENTER_SEARCH,
       CMD_ENTER_CREATE_FUNCTION,
@@ -338,8 +341,9 @@ class Editor : public QMainWindow
       static const int gitPanelMinimumWidth {300};
       int agentWidth {agentMinimumWidth};
       int gitWidth {gitPanelMinimumWidth};
+      QStackedWidget* _sidePanelStack {nullptr};
       QWidget* _gitPanel {nullptr};
-      QListView* gitListView;
+      QListView* gitListView {nullptr};
       bool gitDiff {false};
       GitList gitList;
 
@@ -417,6 +421,7 @@ class Editor : public QMainWindow
       void pick();
 
     public:
+      static QIcon createStatefulIcon(const QString& svgPath, const QColor& normalColor, const QColor& hoverColor = QColor(), const QColor& checkedColor = QColor());
       void put();
       void setPickText(const QString& text, SelectionMode mode = SelectionMode::CharSelect);
 
@@ -614,7 +619,10 @@ class Editor : public QMainWindow
       void setDarkMode(bool v) {
             if (v != _darkMode) {
                   _darkMode = v;
+                  updateStyle();
+                  initFont();
                   emit darkModeChanged(_darkMode);
+                  update();
                   }
             }
       void showCompletions(const Completions&);

@@ -59,6 +59,30 @@
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
+static QPixmap tintPixmap(const QPixmap& src, const QColor& color) {
+    QPixmap pixmap = src;
+    QPainter painter(&pixmap);
+    painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+    painter.fillRect(pixmap.rect(), color);
+    painter.end();
+    return pixmap;
+}
+
+QIcon Editor::createStatefulIcon(const QString& svgPath, const QColor& normalColor, const QColor& hoverColor, const QColor& checkedColor) {
+    QIcon icon;
+    QPixmap basePixmap = QIcon(svgPath).pixmap(24, 24);
+
+    icon.addPixmap(tintPixmap(basePixmap, normalColor), QIcon::Normal, QIcon::Off);
+    if (hoverColor.isValid())
+        icon.addPixmap(tintPixmap(basePixmap, hoverColor), QIcon::Active, QIcon::Off);
+    if (checkedColor.isValid())
+        icon.addPixmap(tintPixmap(basePixmap, checkedColor), QIcon::Normal, QIcon::On);
+    
+    icon.addPixmap(tintPixmap(basePixmap, Qt::gray), QIcon::Disabled, QIcon::Off);
+
+    return icon;
+}
+
 extern bool persistent;
 
 //---------------------------------------------------------
@@ -114,7 +138,6 @@ std::map<Cmd, ShortcutConfig> Editor::_shortcuts = {
          {          Cmd::CMD_DELETE_WORD,                          {"CMD_DELETE_WORD", "Delete Word", "Ctrl + T"}},
          {           Cmd::CMD_ENTER_WORD,                 {"CMD_ENTER_WORD", "Enter Word", "Ctrl + O,  Ctrl + W"}},
          {            Cmd::CMD_GOTO_BACK,                         {"CMD_GOTO_BACK", "History Back", "Ctrl + F12"}},
-         {            Cmd::CMD_SHOW_INFO,                          {"CMD_SHOW_INFO", "Show AI Panel", "Ctrl + H"}},
          {               Cmd::CMD_FORMAT,                         {"CMD_FORMAT", "Format", "Ctrl + O,  Ctrl + F"}},
          {       Cmd::CMD_VIEW_FUNCTIONS,                       {"CMD_VIEW_FUNCTIONS", "Toggle View", "Ctrl + V"}},
          {          Cmd::CMD_ANNOTATIONS,                     {"CMD_VIEW_BUGS", "View LS Annotation", "Ctrl + B"}},
@@ -127,8 +150,12 @@ std::map<Cmd, ShortcutConfig> Editor::_shortcuts = {
          {           Cmd::CMD_UNFOLD_ALL,                    {"CMD_UNFOLD_ALL", "Unfold All", "Ctrl + Shift + M"}},
          {          Cmd::CMD_FOLD_TOGGLE,                          {"CMD_FOLD_TOGGLE", "Fold Toggle", "Ctrl + <"}},
          {      Cmd::CMD_FUNCTION_HEADER,          {"CMD_FUNCTION_HEADER", "Create Header", "Ctrl + O, Ctrl + H"}},
-         {           Cmd::CMD_GIT_TOGGLE,              {"CMD_GIT_TOGGLE", "Show Git Panel", "Ctrl + O, Ctrl + G"}},
-         {       Cmd::CMD_TOGGLE_PROJECT,      {"CMD_TOGGLE_PROJECT", "Show Project Panel", "Ctrl + O, Ctrl + P"}},
+
+         {           Cmd::CMD_TOGGLE_GIT,            {"CMD_TOGGLE_GIT", "Toggle Git Panel", "Ctrl + O, Ctrl + G"}},
+         {       Cmd::CMD_TOGGLE_PROJECT,    {"CMD_TOGGLE_PROJECT", "Toggle Project Panel", "Ctrl + O, Ctrl + P"}},
+         {            Cmd::CMD_TOGGLE_AI,                        {"CMD_TOGGLE_AI", "Toggle AI Panel", "Ctrl + I"}},
+         {        Cmd::CMD_TOGGLE_CONFIG,                {"CMD_TOGGLE_CONFIG", "Toggle Config Panel", "Ctrl + C"}},
+
          {       Cmd::CMD_ENTER_ADD_FILE,                                {"CMD_ENTER_ADD_FILE", "Add File", "F3"}},
          {         Cmd::CMD_ENTER_SEARCH,                            {"CMD_ENTER_SEARCH", "Search/Replace", "F7"}},
          {Cmd::CMD_ENTER_CREATE_FUNCTION,              {"CMD_ENTER_CREATE_FUNCTION", "Create Function", "Ctrl+F"}},
@@ -366,13 +393,15 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
          Action(getSC(Cmd::CMD_GOTO_IMPLEMENTATION), [this] { gotoImplementation(); }),
          Action(getSC(Cmd::CMD_GOTO_DEFINITION), [this] { gotoDefinition(); }),
          Action(getSC(Cmd::CMD_GOTO_BACK), [this] { backKontext(); }),
-         Action(getSC(Cmd::CMD_SHOW_INFO), [this] { hover(); }),
          Action(getSC(Cmd::CMD_EXPAND_MACROS), [] {}), // dummy
          Action(getSC(Cmd::CMD_COMPLETIONS), [this] { requestCompletions(); }),
          Action(getSC(Cmd::CMD_FUNCTION_HEADER), [this] { kontext()->createFunctionHeader(); }),
-         Action(getSC(Cmd::CMD_GIT_TOGGLE), [this] { _gitButton->setChecked(!_gitButton->isChecked()); }),
+         Action(getSC(Cmd::CMD_TOGGLE_AI), [this] { hover(); }),
+         Action(getSC(Cmd::CMD_TOGGLE_GIT), [this] { _gitButton->setChecked(!_gitButton->isChecked()); }),
          Action(getSC(Cmd::CMD_TOGGLE_PROJECT),
                 [this] { _projectButton->setChecked(!_projectButton->isChecked()); }),
+         Action(getSC(Cmd::CMD_TOGGLE_CONFIG),
+                [this] { configButton->setChecked(!configButton->isChecked()); }),
          Action(getSC(Cmd::CMD_FOLD_ALL), [this] { foldAll(); }),
          Action(getSC(Cmd::CMD_UNFOLD_ALL), [this] { unfoldAll(); }),
          Action(getSC(Cmd::CMD_FOLD_TOGGLE), [this] { foldToggle(); }),
@@ -456,20 +485,34 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       aiButton->setToolTip("toggle AI panel");
       hbox->addWidget(aiButton, 0, Qt::AlignRight);
       connect(aiButton, &QToolButton::toggled, [this] {
-            bool visible   = aiButton->isChecked();
-            int agentIndex = splitter->indexOf(agent());
-            if (!visible && this->isVisible())
-                  agentWidth = splitter->sizes()[agentIndex];
-            agent()->setVisible(visible);
+            bool visible = aiButton->isChecked();
+            bool wasGitVisible = false;
+            if (visible) {
+                  wasGitVisible = _gitButton->isChecked();
+                  const QSignalBlocker blocker(_gitButton);
+                  _gitButton->setChecked(false);
+                  _sidePanelStack->setCurrentWidget(agent());
+                  }
+            int sideIndex = splitter->indexOf(_sidePanelStack);
+            if (!visible && !_gitButton->isChecked() && this->isVisible())
+                  agentWidth = splitter->sizes()[sideIndex];
+            
+            bool showStack = visible || _gitButton->isChecked();
+            _sidePanelStack->setVisible(showStack);
+            
             if (!this->isVisible())
                   return;
 
             int newWidth = width();
             if (visible) {
-                  QList<int> sizes  = splitter->sizes();
-                  sizes[agentIndex] = agentWidth;
+                  QList<int> sizes = splitter->sizes();
+                  sizes[sideIndex] = agentWidth;
                   splitter->setSizes(sizes);
-                  newWidth += agentWidth + splitter->handleWidth();
+                  if (wasGitVisible) {
+                        newWidth += agentWidth - gitWidth;
+                  } else {
+                        newWidth += agentWidth + splitter->handleWidth();
+                  }
                   }
             else
                   newWidth += -(agentWidth + splitter->handleWidth());
@@ -534,13 +577,18 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       int wIndex = splitter->indexOf(w);
       splitter->setStretchFactor(wIndex, 100);
 
+      _sidePanelStack = new QStackedWidget(box);
+      _sidePanelStack->setVisible(false);
+      splitter->addWidget(_sidePanelStack);
+      int sideIndex = splitter->indexOf(_sidePanelStack);
+      splitter->setStretchFactor(sideIndex, 0);
+      splitter->setCollapsible(sideIndex, false);
+
       //*****************************************
       //    Git
       //*****************************************
 
       _gitButton          = new QToolButton();
-      QString gitIconPath = darkMode() ? ":/images/Git-Icon-1788C-white.svg" : ":/images/Git-Icon-1788C.svg";
-      _gitButton->setIcon(QIcon(gitIconPath));
       _gitButton->setToolTip("toggle GIT panel");
       _gitButton->setCheckable(true);
       //      _gitButton->setChecked(false);
@@ -549,10 +597,21 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       connect(_gitButton, &QToolButton::toggled, [this] {
             updateGitHistory();
             bool visible = _gitButton->isChecked();
+            bool wasAIVisible = false;
+            if (visible) {
+                  wasAIVisible = aiButton->isChecked();
+                  const QSignalBlocker blocker(aiButton);
+                  aiButton->setChecked(false);
+                  _sidePanelStack->setCurrentWidget(gitPanel());
+                  }
 
-            if (!visible && this->isVisible())
-                  gitWidth = splitter->sizes()[splitter->indexOf(gitPanel())];
-            gitPanel()->setVisible(visible);
+            int sideIndex = splitter->indexOf(_sidePanelStack);
+            if (!visible && !aiButton->isChecked() && this->isVisible())
+                  gitWidth = splitter->sizes()[sideIndex];
+                  
+            bool showStack = visible || aiButton->isChecked();
+            _sidePanelStack->setVisible(showStack);
+            
             if (!this->isVisible())
                   return;
 
@@ -560,10 +619,13 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             int newWidth = sz.width();
             if (visible) {
                   QList<int> sizes = splitter->sizes();
-                  int gitIndex     = splitter->indexOf(gitPanel());
-                  sizes[gitIndex]  = gitWidth;
+                  sizes[sideIndex] = gitWidth;
                   splitter->setSizes(sizes);
-                  newWidth += gitWidth + splitter->handleWidth();
+                  if (wasAIVisible) {
+                        newWidth += gitWidth - agentWidth;
+                  } else {
+                        newWidth += gitWidth + splitter->handleWidth();
+                  }
                   }
             else
                   newWidth += -(gitWidth + splitter->handleWidth());
@@ -577,18 +639,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       configButton = new QToolButton();
       configButton->setObjectName("configButton");
       configButton->setCheckable(true);
-      QString iconPath = darkMode() ? ":/images/configure_white.svg" : ":/images/configure.svg";
-      configButton->setIcon(QIcon(iconPath));
       configButton->setToolTip("Configure...");
-      connect(this, &Editor::darkModeChanged, [this]() {
-            QString iconPath = darkMode() ? ":/images/configure_white.svg" : ":/images/configure.svg";
-            configButton->setIcon(QIcon::fromTheme("preferences-system", QIcon(iconPath)));
-            QString gitIconPath =
-                darkMode() ? ":/images/Git-Icon-1788C-white.svg" : ":/images/Git-Icon-1788C.svg";
-            _gitButton->setIcon(QIcon(gitIconPath));
-            updateStyle();
-            update();
-            });
       connect(configButton, &QToolButton::clicked, [this](bool checked) {
             if (checked)
                   showConfig();
@@ -696,20 +747,22 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             {
             const QSignalBlocker blocker(aiButton);
             aiButton->setChecked(_aiVisible);
-            _agent->setVisible(_aiVisible);
             if (_aiVisible) {
+                  _sidePanelStack->setVisible(true);
+                  _sidePanelStack->setCurrentWidget(_agent);
                   QList<int> sizes                 = splitter->sizes();
-                  sizes[splitter->indexOf(_agent)] = agentWidth;
+                  sizes[splitter->indexOf(_sidePanelStack)] = agentWidth;
                   splitter->setSizes(sizes);
                   }
             }
             {
             const QSignalBlocker blocker(_gitButton);
             _gitButton->setChecked(_gitVisible);
-            _gitPanel->setVisible(_gitVisible);
             if (_gitVisible) {
+                  _sidePanelStack->setVisible(true);
+                  _sidePanelStack->setCurrentWidget(_gitPanel);
                   QList<int> sizes                    = splitter->sizes();
-                  sizes[splitter->indexOf(_gitPanel)] = gitWidth;
+                  sizes[splitter->indexOf(_sidePanelStack)] = gitWidth;
                   splitter->setSizes(sizes);
                   }
             }
@@ -759,10 +812,7 @@ Agent* Editor::agent() {
             _agent = new Agent(this, box);
             _agent->setMinimumWidth(agentMinimumWidth);
             _agent->setVisible(false);
-            splitter->addWidget(_agent);
-            int agentIndex = splitter->indexOf(_agent);
-            splitter->setStretchFactor(agentIndex, 0);
-            splitter->setCollapsible(agentIndex, false);
+            _sidePanelStack->addWidget(_agent);
             if (!_projectMode)
                   _aiVisible = false;
 
@@ -786,7 +836,7 @@ QWidget* Editor::gitPanel() {
             _gitPanel->setMinimumWidth(gitPanelMinimumWidth);
             _gitPanel->setVisible(false);
 
-            splitter->insertWidget(1, _gitPanel);
+            _sidePanelStack->addWidget(_gitPanel);
 
             QVBoxLayout* gitLayout = new QVBoxLayout(_gitPanel);
             gitLayout->setContentsMargins(0, 0, 0, 0);
@@ -806,8 +856,7 @@ QWidget* Editor::gitPanel() {
                         }
                   });
 
-            int gitIndex = splitter->indexOf(_gitPanel);
-            splitter->setCollapsible(gitIndex, false);
+
             if (_gitVisible) {
                   _gitPanel->setVisible(_gitVisible);
                   const QSignalBlocker blocker(_gitButton);
@@ -815,7 +864,10 @@ QWidget* Editor::gitPanel() {
                   }
             gitListView = new QListView(_gitPanel);
             gitListView->setModel(&gitList);
+            gitListView->setFont(qApp->font());
             gitLayout->addWidget(gitListView);
+
+            updateProjectTreeColors();
 
             connect(gitListView, &QListView::clicked, [this](const QModelIndex& index) {
                   showGitVersion(index.row());
@@ -881,14 +933,31 @@ MarkdownWebView* Editor::mdWidget() {
 
             connect(
                 this, &Editor::darkModeChanged, [this, btnBack, btnForward, btnReload, btnHome](bool dark) {
-                      QString iconPath =
-                          darkMode() ? ":/images/configure_white.svg" : ":/images/configure.svg";
-                      btnBack->setIcon(QIcon(dark ? ":/images/back_white.svg" : ":/images/back.svg"));
-                      btnForward->setIcon(
-                          QIcon(dark ? ":/images/forward_white.svg" : ":/images/forward.svg"));
-                      btnReload->setIcon(QIcon(dark ? ":/images/reload_white.svg" : ":/images/reload.svg"));
-                      btnHome->setIcon(QIcon(dark ? ":/images/home_white.svg" : ":/images/home.svg"));
+                      auto style = textStyle(TextStyle::Normal);
+                      QColor fg = style.fg;
+                      btnBack->setIcon(createStatefulIcon(":/images/back.svg", fg, fg, fg));
+                      btnForward->setIcon(createStatefulIcon(":/images/forward.svg", fg, fg, fg));
+                      btnReload->setIcon(createStatefulIcon(":/images/reload.svg", fg, fg, fg));
+                      btnHome->setIcon(createStatefulIcon(":/images/home.svg", fg, fg, fg));
                       _mdWidget->setDarkMode(dark);
+                      });
+            connect(
+                this, &Editor::textStylesLightChanged, [this, btnBack, btnForward, btnReload, btnHome]() {
+                      auto style = textStyle(TextStyle::Normal);
+                      QColor fg = style.fg;
+                      btnBack->setIcon(createStatefulIcon(":/images/back.svg", fg, fg, fg));
+                      btnForward->setIcon(createStatefulIcon(":/images/forward.svg", fg, fg, fg));
+                      btnReload->setIcon(createStatefulIcon(":/images/reload.svg", fg, fg, fg));
+                      btnHome->setIcon(createStatefulIcon(":/images/home.svg", fg, fg, fg));
+                      });
+            connect(
+                this, &Editor::textStylesDarkChanged, [this, btnBack, btnForward, btnReload, btnHome]() {
+                      auto style = textStyle(TextStyle::Normal);
+                      QColor fg = style.fg;
+                      btnBack->setIcon(createStatefulIcon(":/images/back.svg", fg, fg, fg));
+                      btnForward->setIcon(createStatefulIcon(":/images/forward.svg", fg, fg, fg));
+                      btnReload->setIcon(createStatefulIcon(":/images/reload.svg", fg, fg, fg));
+                      btnHome->setIcon(createStatefulIcon(":/images/home.svg", fg, fg, fg));
                       });
             navLayout->addWidget(btnBack);
             navLayout->addWidget(btnForward);
@@ -902,11 +971,12 @@ MarkdownWebView* Editor::mdWidget() {
             _stack->addWidget(_mdContainer);
 
             // Initial style
-            bool dark = darkMode();
-            btnBack->setIcon(QIcon(dark ? ":/images/back_white.svg" : ":/images/back.svg"));
-            btnForward->setIcon(QIcon(dark ? ":/images/forward_white.svg" : ":/images/forward.svg"));
-            btnReload->setIcon(QIcon(dark ? ":/images/reload_white.svg" : ":/images/reload.svg"));
-            btnHome->setIcon(QIcon(dark ? ":/images/home_white.svg" : ":/images/home.svg"));
+            auto style = textStyle(TextStyle::Normal);
+            QColor fg = style.fg;
+            btnBack->setIcon(createStatefulIcon(":/images/back.svg", fg, fg, fg));
+            btnForward->setIcon(createStatefulIcon(":/images/forward.svg", fg, fg, fg));
+            btnReload->setIcon(createStatefulIcon(":/images/reload.svg", fg, fg, fg));
+            btnHome->setIcon(createStatefulIcon(":/images/home.svg", fg, fg, fg));
             }
       return _mdWidget;
       }
@@ -1325,12 +1395,22 @@ void Editor::saveQuitCmd() {
 
 void Editor::updateProjectTreeColors() {
       auto style = textStyle(TextStyle::Normal);
-      QString css = QString("background-color: %1; color: %2;").arg(style.bg.name(), style.fg.name());
+      QColor fg = style.fg;
+      QString css = QString("background-color: %1; color: %2;").arg(style.bg.name(), fg.name());
       if (_projectTreeView) {
             _projectTreeView->setStyleSheet(css);
       }
       if (_projectComboBox) {
             _projectComboBox->setStyleSheet(css);
+      }
+      if (gitListView) {
+            gitListView->setStyleSheet(css);
+      }
+      if (_gitButton) {
+            _gitButton->setIcon(createStatefulIcon(":/images/Git-Icon-1788C.svg", fg, fg, fg));
+      }
+      if (configButton) {
+            configButton->setIcon(createStatefulIcon(":/images/configure.svg", fg, fg, fg));
       }
 }
 
@@ -1367,6 +1447,8 @@ void Editor::initFont() {
             _projectComboBox->setFont(f);
       if (_mdWidget)
             _mdWidget->setFont(f);
+      if (gitListView)
+            gitListView->setFont(f);
       qApp->setFont(f);
       emit fontChanged(f);
       }
@@ -1414,12 +1496,12 @@ void Editor::saveStatus() {
       j["search"]  = searchPattern.pattern().toStdString();
       j["replace"] = replace.toStdString();
 
-      if (_gitPanel && _gitPanel->isVisible())
-            gitWidth = splitter->sizes()[splitter->indexOf(_gitPanel)];
+      if (_gitButton && _gitButton->isChecked() && _sidePanelStack->isVisible())
+            gitWidth = splitter->sizes()[splitter->indexOf(_sidePanelStack)];
       if (_projectPanel && _projectPanel->isVisible())
             projectWidth = splitter->sizes()[splitter->indexOf(_projectPanel)];
-      if (_agent && _agent->isVisible())
-            agentWidth = splitter->sizes()[splitter->indexOf(_agent)];
+      if (aiButton && aiButton->isChecked() && _sidePanelStack->isVisible())
+            agentWidth = splitter->sizes()[splitter->indexOf(_sidePanelStack)];
 
       j["gitWidth"]     = gitWidth;
       j["projectWidth"] = projectWidth;
