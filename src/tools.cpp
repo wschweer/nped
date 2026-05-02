@@ -58,9 +58,9 @@ std::vector<json> Agent::getMCPTools() const {
 
             // 1. File Operations
             tools.push_back(
-                      MCPToolBuilder("format_source", "Formats a source file using the Language Server.")
-                          .add_parameter("path", "string", "The path to the file to format.")
-                          .build());
+                MCPToolBuilder("format_source", "Formats a source file using the Language Server.")
+                    .add_parameter("path", "string", "The path to the file to format.")
+                    .build());
 
             // 2. Navigation & Search
             tools.push_back(MCPToolBuilder("search_project", "Searches for a text query across all files in "
@@ -160,7 +160,7 @@ std::vector<json> Agent::getMCPTools() const {
                                      "Stages all current changes (git add .) and creates a new commit.")
                           .add_parameter("message", "string", "A clear and concise commit message.")
                           .build());
-                  }
+                        }
 #endif
             return tools;
             }
@@ -229,25 +229,25 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
 #if 0
       else if (functionName == "get_git_status") {
             return getGitStatus();
-            }
+                  }
       else if (functionName == "get_git_diff") {
             QString p = (arguments.contains("path") && arguments["path"].is_string())
                             ? QString::fromStdString(arguments["path"].get<std::string>())
                             : "";
             return getGitDiff(p);
-            }
+                  }
       else if (functionName == "get_git_log") {
             int limit = (arguments.contains("limit") && arguments["limit"].is_number())
                             ? arguments["limit"].get<int>()
                             : 5;
             return getGitLog(limit);
-            }
+                  }
       else if (functionName == "create_git_commit") {
             if (!arguments.contains("message") || !arguments["message"].is_string())
                   return "Error: Parameter 'message' missing.";
             QString msg = QString::fromStdString(arguments["message"].get<std::string>());
             return createGitCommit(msg);
-            }
+                  }
 #endif
       //==========================================================
       // Tools MIT lokalem Datei-Pfad Argument
@@ -389,7 +389,7 @@ string Agent::searchProject(const QString& query, const QString& filePattern) {
       if (result.length() > 4000) {
             result.resize(4000);
             result += "\n... [Too many results, output truncated]";
-                                                                                                                              }
+                                                                                                                                    }
 #endif
       return result;
       }

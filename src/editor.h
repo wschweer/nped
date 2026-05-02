@@ -205,7 +205,6 @@ class TabBar : public QTabBar
     public:
       TabBar(QWidget* parent = nullptr) : QTabBar(parent) {
             setMovable(true);
-            //            connect(this, &TabBar::currentChanged, this, &TabBar::modifiedChanged);
             }
       };
 
@@ -286,6 +285,9 @@ class Editor : public QMainWindow
       Q_PROPERTY(
           TextStyles textStylesDark READ textStylesDark WRITE setTextStylesDark NOTIFY textStylesDarkChanged)
 
+      Q_PROPERTY(double fontSize READ fontSize WRITE setFontSize NOTIFY fontSizeChanged)
+      Q_PROPERTY(double scale READ scale WRITE setScale NOTIFY scaleChanged)
+
       static std::map<Cmd, ShortcutConfig> _shortcuts;
 
       QStringList _projects;
@@ -311,7 +313,7 @@ class Editor : public QMainWindow
 
       QWidget* enter;
       QStackedWidget* _stack;
-      EditWidget* _editWidget;
+      EditWidget* _editWidget = nullptr;
       MarkdownWebView* _mdWidget {nullptr};
       QWidget* _mdContainer {nullptr};
       ConfigWebView* _configWebView {nullptr};
@@ -387,6 +389,7 @@ class Editor : public QMainWindow
       QFont _font;
       QString _fontFamily {"Source Code Pro"};
       qreal _fontSize {14.0};
+      qreal _scale {1.0};
       QFont::Weight fontWeight {QFont::Normal};
       qreal _fw;
       qreal _fh;
@@ -421,7 +424,9 @@ class Editor : public QMainWindow
       void pick();
 
     public:
-      static QIcon createStatefulIcon(const QString& svgPath, const QColor& normalColor, const QColor& hoverColor = QColor(), const QColor& checkedColor = QColor());
+      static QIcon createStatefulIcon(const QString& svgPath, const QColor& normalColor,
+                                      const QColor& hoverColor   = QColor(),
+                                      const QColor& checkedColor = QColor());
       void put();
       void setPickText(const QString& text, SelectionMode mode = SelectionMode::CharSelect);
 
@@ -463,8 +468,10 @@ class Editor : public QMainWindow
       void applyCompletion(int idx);
 
     signals:
+      void scaleChanged();
       void fontFamilyChanged();
       void fontChanged(QFont);
+      void fontSizeChanged();
       void fontDemoChanged();
       void shortcutsChanged();
       void fileTypesChanged();
@@ -513,8 +520,6 @@ class Editor : public QMainWindow
       void search(const QString&);
       void rename();
       void rename(Kontext*, const QString& name, int row, int col1, int col2);
-      qreal fontSize() const { return _fontSize; }
-      void setFontSize(qreal);
       template <typename... Args> void msg(std::string_view rt_fmt_str, Args&&... args) {
             auto s = QString::fromStdString(std::vformat(rt_fmt_str, std::make_format_args(args...)));
             statusBar()->showMessage(s, 20000);
@@ -554,6 +559,8 @@ class Editor : public QMainWindow
       void copyKontext();
       QToolButton* gitButton() { return _gitButton; }
       QStackedWidget* stack() { return _stack; }
+
+
       QStringList monospacedFonts() const;
       QString fontFamily() const { return _fontFamily; }
       void setFontFamily(const QString& v) {
@@ -569,6 +576,11 @@ class Editor : public QMainWindow
                   emit fontDemoChanged();
                   }
             }
+      qreal scale() const { return _scale; }
+      void setScale(qreal v) { if (v != _scale) { _scale = v; emit scaleChanged(); } };
+      qreal fontSize() const { return _fontSize; }
+      void setFontSize(qreal v) { if (v != _fontSize) { _fontSize = v; emit fontSizeChanged(); } };
+
       FileTypes fileTypes() const { return _fileTypes; }
       void setFileTypes(const FileTypes& ft) {
             if (_fileTypes != ft) {
@@ -620,7 +632,6 @@ class Editor : public QMainWindow
             if (v != _darkMode) {
                   _darkMode = v;
                   updateStyle();
-                  initFont();
                   emit darkModeChanged(_darkMode);
                   updateProjectTreeColors();
                   update();

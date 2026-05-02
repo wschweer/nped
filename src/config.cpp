@@ -245,8 +245,8 @@ void Editor::saveSettings() {
 
       configs["shortcuts"]  = array;
       configs["fontFamily"] = fontFamily();
-//      configs["fontSize"]   = fontSize();
-      configs["fontDemo"]   = fontDemo();
+      //      configs["fontSize"]   = fontSize();
+      configs["fontDemo"] = fontDemo();
 
       QJsonArray projects;
       int i = 0;
@@ -255,7 +255,7 @@ void Editor::saveSettings() {
             project["path"] = p;
             projects.append(project);
             ++i;
-            if (i == 5)             // save only last 5 project names
+            if (i == 5) // save only last 5 project names
                   break;
             }
       configs["projects"] = projects;
@@ -300,8 +300,8 @@ void Editor::loadSettings() {
       if (config.contains("projects")) {
             QJsonArray sc = config["projects"].toArray();
             for (int i = 0; i < sc.size(); ++i) {
-                  QJsonObject obj  = sc[i].toObject();
-                  QString path       = obj["path"].toString();
+                  QJsonObject obj = sc[i].toObject();
+                  QString path    = obj["path"].toString();
                   _projects.push_back(path);
                   }
             }
@@ -340,10 +340,10 @@ void Editor::loadSettings() {
             _textStylesLight = tsFromJson(config["textStylesLight"].toArray());
             emit textStylesLightChanged();
             }
-//      if (config.contains("fontSize")) {
-//            double n  = config["fontSize"].toDouble();
-//            _fontSize = std::clamp(n, 5.0, 40.0); // sanitize value
-//            }
+      //      if (config.contains("fontSize")) {
+      //            double n  = config["fontSize"].toDouble();
+      //            _fontSize = std::clamp(n, 5.0, 40.0); // sanitize value
+      //            }
       if (config.contains("fontFamily"))
             setFontFamily(config["fontFamily"].toString());
       if (config.contains("fontDemo"))

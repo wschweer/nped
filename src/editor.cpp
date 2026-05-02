@@ -59,29 +59,38 @@
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
+//---------------------------------------------------------
+//   tintPixmap
+//---------------------------------------------------------
+
 static QPixmap tintPixmap(const QPixmap& src, const QColor& color) {
-    QPixmap pixmap = src;
-    QPainter painter(&pixmap);
-    painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
-    painter.fillRect(pixmap.rect(), color);
-    painter.end();
-    return pixmap;
-}
+      QPixmap pixmap = src;
+      QPainter painter(&pixmap);
+      painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+      painter.fillRect(pixmap.rect(), color);
+      painter.end();
+      return pixmap;
+      }
 
-QIcon Editor::createStatefulIcon(const QString& svgPath, const QColor& normalColor, const QColor& hoverColor, const QColor& checkedColor) {
-    QIcon icon;
-    QPixmap basePixmap = QIcon(svgPath).pixmap(24, 24);
+//---------------------------------------------------------
+//   createStatefulIcon
+//---------------------------------------------------------
 
-    icon.addPixmap(tintPixmap(basePixmap, normalColor), QIcon::Normal, QIcon::Off);
-    if (hoverColor.isValid())
-        icon.addPixmap(tintPixmap(basePixmap, hoverColor), QIcon::Active, QIcon::Off);
-    if (checkedColor.isValid())
-        icon.addPixmap(tintPixmap(basePixmap, checkedColor), QIcon::Normal, QIcon::On);
-    
-    icon.addPixmap(tintPixmap(basePixmap, Qt::gray), QIcon::Disabled, QIcon::Off);
+QIcon Editor::createStatefulIcon(const QString& svgPath, const QColor& normalColor, const QColor& hoverColor,
+                                 const QColor& checkedColor) {
+      QIcon icon;
+      QPixmap basePixmap = QIcon(svgPath).pixmap(24, 24);
 
-    return icon;
-}
+      icon.addPixmap(tintPixmap(basePixmap, normalColor), QIcon::Normal, QIcon::Off);
+      if (hoverColor.isValid())
+            icon.addPixmap(tintPixmap(basePixmap, hoverColor), QIcon::Active, QIcon::Off);
+      if (checkedColor.isValid())
+            icon.addPixmap(tintPixmap(basePixmap, checkedColor), QIcon::Normal, QIcon::On);
+
+      icon.addPixmap(tintPixmap(basePixmap, Qt::gray), QIcon::Disabled, QIcon::Off);
+
+      return icon;
+      }
 
 extern bool persistent;
 
@@ -485,7 +494,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       aiButton->setToolTip("toggle AI panel");
       hbox->addWidget(aiButton, 0, Qt::AlignRight);
       connect(aiButton, &QToolButton::toggled, [this] {
-            bool visible = aiButton->isChecked();
+            bool visible       = aiButton->isChecked();
             bool wasGitVisible = false;
             if (visible) {
                   wasGitVisible = _gitButton->isChecked();
@@ -496,10 +505,10 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             int sideIndex = splitter->indexOf(_sidePanelStack);
             if (!visible && !_gitButton->isChecked() && this->isVisible())
                   agentWidth = splitter->sizes()[sideIndex];
-            
+
             bool showStack = visible || _gitButton->isChecked();
             _sidePanelStack->setVisible(showStack);
-            
+
             if (!this->isVisible())
                   return;
 
@@ -508,11 +517,10 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
                   QList<int> sizes = splitter->sizes();
                   sizes[sideIndex] = agentWidth;
                   splitter->setSizes(sizes);
-                  if (wasGitVisible) {
+                  if (wasGitVisible)
                         newWidth += agentWidth - gitWidth;
-                  } else {
+                  else
                         newWidth += agentWidth + splitter->handleWidth();
-                  }
                   }
             else
                   newWidth += -(agentWidth + splitter->handleWidth());
@@ -550,9 +558,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
 
       _projectComboBox = new QComboBox(_projectPanel);
       projectLayout->addWidget(_projectComboBox);
-      connect(_projectComboBox, &QComboBox::activated, this, [this](int index) {
-            switchProject(_projectComboBox->itemText(index));
-      });
+      connect(_projectComboBox, &QComboBox::activated, this,
+              [this](int index) { switchProject(_projectComboBox->itemText(index)); });
       _projectTreeView = new QTreeView(_projectPanel);
       _projectModel    = new QFileSystemModel(this);
       _projectModel->setFilter(QDir::NoDotAndDotDot | QDir::AllEntries);
@@ -588,7 +595,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       //    Git
       //*****************************************
 
-      _gitButton          = new QToolButton();
+      _gitButton = new QToolButton();
       _gitButton->setToolTip("toggle GIT panel");
       _gitButton->setCheckable(true);
       //      _gitButton->setChecked(false);
@@ -596,7 +603,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
 
       connect(_gitButton, &QToolButton::toggled, [this] {
             updateGitHistory();
-            bool visible = _gitButton->isChecked();
+            bool visible      = _gitButton->isChecked();
             bool wasAIVisible = false;
             if (visible) {
                   wasAIVisible = aiButton->isChecked();
@@ -608,10 +615,10 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             int sideIndex = splitter->indexOf(_sidePanelStack);
             if (!visible && !aiButton->isChecked() && this->isVisible())
                   gitWidth = splitter->sizes()[sideIndex];
-                  
+
             bool showStack = visible || aiButton->isChecked();
             _sidePanelStack->setVisible(showStack);
-            
+
             if (!this->isVisible())
                   return;
 
@@ -621,11 +628,10 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
                   QList<int> sizes = splitter->sizes();
                   sizes[sideIndex] = gitWidth;
                   splitter->setSizes(sizes);
-                  if (wasAIVisible) {
+                  if (wasAIVisible)
                         newWidth += gitWidth - agentWidth;
-                  } else {
+                  else
                         newWidth += gitWidth + splitter->handleWidth();
-                  }
                   }
             else
                   newWidth += -(gitWidth + splitter->handleWidth());
@@ -750,7 +756,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             if (_aiVisible) {
                   _sidePanelStack->setVisible(true);
                   _sidePanelStack->setCurrentWidget(_agent);
-                  QList<int> sizes                 = splitter->sizes();
+                  QList<int> sizes                          = splitter->sizes();
                   sizes[splitter->indexOf(_sidePanelStack)] = agentWidth;
                   splitter->setSizes(sizes);
                   }
@@ -761,7 +767,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
             if (_gitVisible) {
                   _sidePanelStack->setVisible(true);
                   _sidePanelStack->setCurrentWidget(_gitPanel);
-                  QList<int> sizes                    = splitter->sizes();
+                  QList<int> sizes                          = splitter->sizes();
                   sizes[splitter->indexOf(_sidePanelStack)] = gitWidth;
                   splitter->setSizes(sizes);
                   }
@@ -783,7 +789,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       connect(this, &Editor::darkModeChanged, this, &Editor::updateProjectTreeColors);
       connect(this, &Editor::textStylesLightChanged, this, &Editor::updateProjectTreeColors);
       connect(this, &Editor::textStylesDarkChanged, this, &Editor::updateProjectTreeColors);
-
+      connect(this, &Editor::scaleChanged, [this] { setFontSize(_scale * 14.0); });
+      connect(this, &Editor::fontSizeChanged, [this] { initFont(); });
       }
 
 Editor::~Editor() {
@@ -856,7 +863,6 @@ QWidget* Editor::gitPanel() {
                         }
                   });
 
-
             if (_gitVisible) {
                   _gitPanel->setVisible(_gitVisible);
                   const QSignalBlocker blocker(_gitButton);
@@ -886,7 +892,8 @@ QWidget* Editor::gitPanel() {
 MarkdownWebView* Editor::mdWidget() {
       if (!_mdWidget) {
             _mdWidget = new MarkdownWebView(this, this);
-            _mdWidget->setZoomFactor(1.5);
+            connect(this, &Editor::scaleChanged, [this] { _mdWidget->setZoomFactor(1.5 * _scale); });
+            _mdWidget->setZoomFactor(1.5 * _scale);
             _mdContainer          = new QWidget(this);
             QVBoxLayout* mdLayout = new QVBoxLayout(_mdContainer);
             mdLayout->setContentsMargins(0, 0, 0, 0);
@@ -931,34 +938,32 @@ MarkdownWebView* Editor::mdWidget() {
                         }
                   });
 
-            connect(
-                this, &Editor::darkModeChanged, [this, btnBack, btnForward, btnReload, btnHome](bool dark) {
-                      auto style = textStyle(TextStyle::Normal);
-                      QColor fg = style.fg;
-                      btnBack->setIcon(createStatefulIcon(":/images/back.svg", fg, fg, fg));
-                      btnForward->setIcon(createStatefulIcon(":/images/forward.svg", fg, fg, fg));
-                      btnReload->setIcon(createStatefulIcon(":/images/reload.svg", fg, fg, fg));
-                      btnHome->setIcon(createStatefulIcon(":/images/home.svg", fg, fg, fg));
-                      _mdWidget->setDarkMode(dark);
-                      });
-            connect(
-                this, &Editor::textStylesLightChanged, [this, btnBack, btnForward, btnReload, btnHome]() {
-                      auto style = textStyle(TextStyle::Normal);
-                      QColor fg = style.fg;
-                      btnBack->setIcon(createStatefulIcon(":/images/back.svg", fg, fg, fg));
-                      btnForward->setIcon(createStatefulIcon(":/images/forward.svg", fg, fg, fg));
-                      btnReload->setIcon(createStatefulIcon(":/images/reload.svg", fg, fg, fg));
-                      btnHome->setIcon(createStatefulIcon(":/images/home.svg", fg, fg, fg));
-                      });
-            connect(
-                this, &Editor::textStylesDarkChanged, [this, btnBack, btnForward, btnReload, btnHome]() {
-                      auto style = textStyle(TextStyle::Normal);
-                      QColor fg = style.fg;
-                      btnBack->setIcon(createStatefulIcon(":/images/back.svg", fg, fg, fg));
-                      btnForward->setIcon(createStatefulIcon(":/images/forward.svg", fg, fg, fg));
-                      btnReload->setIcon(createStatefulIcon(":/images/reload.svg", fg, fg, fg));
-                      btnHome->setIcon(createStatefulIcon(":/images/home.svg", fg, fg, fg));
-                      });
+            connect(this, &Editor::darkModeChanged,
+                    [this, btnBack, btnForward, btnReload, btnHome](bool dark) {
+                          auto style = textStyle(TextStyle::Normal);
+                          QColor fg  = style.fg;
+                          btnBack->setIcon(createStatefulIcon(":/images/back.svg", fg, fg, fg));
+                          btnForward->setIcon(createStatefulIcon(":/images/forward.svg", fg, fg, fg));
+                          btnReload->setIcon(createStatefulIcon(":/images/reload.svg", fg, fg, fg));
+                          btnHome->setIcon(createStatefulIcon(":/images/home.svg", fg, fg, fg));
+                          _mdWidget->setDarkMode(dark);
+                          });
+            connect(this, &Editor::textStylesLightChanged, [this, btnBack, btnForward, btnReload, btnHome]() {
+                  auto style = textStyle(TextStyle::Normal);
+                  QColor fg  = style.fg;
+                  btnBack->setIcon(createStatefulIcon(":/images/back.svg", fg, fg, fg));
+                  btnForward->setIcon(createStatefulIcon(":/images/forward.svg", fg, fg, fg));
+                  btnReload->setIcon(createStatefulIcon(":/images/reload.svg", fg, fg, fg));
+                  btnHome->setIcon(createStatefulIcon(":/images/home.svg", fg, fg, fg));
+                  });
+            connect(this, &Editor::textStylesDarkChanged, [this, btnBack, btnForward, btnReload, btnHome]() {
+                  auto style = textStyle(TextStyle::Normal);
+                  QColor fg  = style.fg;
+                  btnBack->setIcon(createStatefulIcon(":/images/back.svg", fg, fg, fg));
+                  btnForward->setIcon(createStatefulIcon(":/images/forward.svg", fg, fg, fg));
+                  btnReload->setIcon(createStatefulIcon(":/images/reload.svg", fg, fg, fg));
+                  btnHome->setIcon(createStatefulIcon(":/images/home.svg", fg, fg, fg));
+                  });
             navLayout->addWidget(btnBack);
             navLayout->addWidget(btnForward);
             navLayout->addWidget(btnReload);
@@ -972,7 +977,7 @@ MarkdownWebView* Editor::mdWidget() {
 
             // Initial style
             auto style = textStyle(TextStyle::Normal);
-            QColor fg = style.fg;
+            QColor fg  = style.fg;
             btnBack->setIcon(createStatefulIcon(":/images/back.svg", fg, fg, fg));
             btnForward->setIcon(createStatefulIcon(":/images/forward.svg", fg, fg, fg));
             btnReload->setIcon(createStatefulIcon(":/images/reload.svg", fg, fg, fg));
@@ -1341,7 +1346,8 @@ void Editor::update(QRect r) {
 //---------------------------------------------------------
 
 void Editor::update() {
-      _editWidget->update();
+      if (_editWidget)
+            _editWidget->update();
       }
 
 //---------------------------------------------------------
@@ -1394,72 +1400,19 @@ void Editor::saveQuitCmd() {
 //---------------------------------------------------------
 
 void Editor::updateProjectTreeColors() {
-      auto style = textStyle(TextStyle::Normal);
-      QColor fg = style.fg;
+      auto style  = textStyle(TextStyle::Normal);
+      QColor fg   = style.fg;
       QString css = QString("background-color: %1; color: %2;").arg(style.bg.name(), fg.name());
-      if (_projectTreeView) {
+      if (_projectTreeView)
             _projectTreeView->setStyleSheet(css);
-      }
-      if (_projectComboBox) {
-            _projectComboBox->setStyleSheet(css);
-      }
-      if (gitListView) {
-            gitListView->setStyleSheet(css);
-      }
-      if (_gitButton) {
-            _gitButton->setIcon(createStatefulIcon(":/images/Git-Icon-1788C.svg", fg, fg, fg));
-      }
-      if (configButton) {
-            configButton->setIcon(createStatefulIcon(":/images/configure.svg", fg, fg, fg));
-      }
-}
-
-//---------------------------------------------------------
-//   initFont
-//---------------------------------------------------------
-
-void Editor::initFont() {
-      _font = QFont(_fontFamily);
-      _font.setFixedPitch(true);
-      _font.setPointSizeF(_fontSize);
-
-      //      _font.setWeight(QFont::Weight(fontWeight));
-      QFontMetricsF fm(_font, _editWidget);
-      _fw = fm.horizontalAdvance(QChar('x'));
-      _fh = fm.lineSpacing();
-      _fa = fm.ascent();
-      _fd = fm.descent();
-
-      // scale system font
-      auto f = qApp->font();
-      f.setPointSizeF(_fontSize);
-      tabBar->setFont(f);
-      aiButton->setFont(f);
-      _gitButton->setFont(f);
-      branchLabel->setFont(f);
-      urlLabel->setFont(f);
-      lineLabel->setFont(f);
-      colLabel->setFont(f);
-      _keyLabel->setFont(f);
-      completionsPopup->setListFont(f);
-      _projectTreeView->setFont(f);
       if (_projectComboBox)
-            _projectComboBox->setFont(f);
-      if (_mdWidget)
-            _mdWidget->setFont(f);
+            _projectComboBox->setStyleSheet(css);
       if (gitListView)
-            gitListView->setFont(f);
-      qApp->setFont(f);
-      emit fontChanged(f);
-      }
-
-//---------------------------------------------------------
-//   setFontSize
-//---------------------------------------------------------
-
-void Editor::setFontSize(qreal s) {
-      _fontSize = s;
-      initFont();
+            gitListView->setStyleSheet(css);
+      if (_gitButton)
+            _gitButton->setIcon(createStatefulIcon(":/images/Git-Icon-1788C.svg", fg, fg, fg));
+      if (configButton)
+            configButton->setIcon(createStatefulIcon(":/images/configure.svg", fg, fg, fg));
       }
 
 //---------------------------------------------------------
@@ -1520,6 +1473,8 @@ void Editor::saveStatus() {
             }
       j["kontexte"]       = kontexte;
       j["currentKontext"] = int(_currentKontext);
+      j["fontSize"]       = _fontSize;
+      j["scale"]          = _scale;
 
       std::ofstream fs(".nped.json");
       fs << j.dump(4);
@@ -1592,6 +1547,10 @@ bool Editor::loadStatus(int argc, char** argv) {
                             QByteArray::fromStdString(j["splitterState"].get<std::string>()));
                         splitter->restoreState(sState);
                         }
+                  if (j.contains("scale"))
+                        setScale(j["scale"].get<qreal>());
+                  if (j.contains("fontSize"))
+                        setFontSize(j["fontSize"].get<qreal>());
 
                   // panels already created before loadStatus
 
@@ -2458,7 +2417,7 @@ void TabBar::modifiedChanged() {
             bool readOnly = kontext->readOnly();
             TextStyle ts  = kontext->editor->textStyle(TextStyle::Normal);
             bool modified = kontext->file()->modified();
-            color         = readOnly ? QColor("#b0c0ff") : (modified ? QColor("#ffbcbc") : ts.fg);
+            color         = readOnly ? QColor("#b0c0ff") : (modified ? QColor("#ff4040") : ts.fg);
             setTabTextColor(i, color);
             }
       }
@@ -2491,7 +2450,6 @@ void Editor::setViewMode(ViewMode viewMode) {
                   break;
 
             case ViewMode::GitDiff: {
-                  Debug("=====git diff view");
                   mdWidget()->setFocus();
                   const auto& text = kontext()->file()->gitVersion();
                   mdWidget()->showGitDiff(text.join('\n'));
@@ -2600,15 +2558,13 @@ void Editor::updateProjectPanel() {
       if (_projectComboBox) {
             bool blocked = _projectComboBox->blockSignals(true);
             _projectComboBox->clear();
-            for (const auto& p : _projects) {
+            for (const auto& p : _projects)
                   _projectComboBox->addItem(p);
-            }
-            if (!_projects.contains(rootPath)) {
+            if (!_projects.contains(rootPath))
                   _projectComboBox->addItem(rootPath);
-            }
             _projectComboBox->setCurrentText(rootPath);
             _projectComboBox->blockSignals(blocked);
-      }
+            }
 
       // Set the root path if not set correctly yet
       if (_projectModel->rootPath() != rootPath) {
@@ -2633,16 +2589,58 @@ void Editor::updateProjectPanel() {
 //---------------------------------------------------------
 
 void Editor::switchProject(const QString& path) {
-      if (_projectRoot == path) return;
+      if (_projectRoot == path)
+            return;
       _projectRoot = path;
       _git.init();
       _hasGit = _git.isInitialized();
-      if (_hasGit) {
+      if (_hasGit)
             _currentBranchName = _git.getCurrentBranch();
-            }
       updateProjectPanel();
       updateGitHistory();
-      if (!_projects.contains(path)) {
+      if (!_projects.contains(path))
             _projects.push_front(path);
+      }
+
+//---------------------------------------------------------
+//   initFont
+//---------------------------------------------------------
+
+void Editor::initFont() {
+      _font = QFont(_fontFamily);
+      _font.setFixedPitch(true);
+      _font.setPointSizeF(_fontSize);
+
+      //      _font.setWeight(QFont::Weight(fontWeight));
+      QFontMetricsF fm(_font, _editWidget);
+      _fw = fm.horizontalAdvance(QChar('x'));
+      _fh = fm.lineSpacing();
+      _fa = fm.ascent();
+      _fd = fm.descent();
+
+      // scale system font
+      auto f = qApp->font();
+      f.setPointSizeF(_fontSize);
+
+      tabBar->setFont(f);
+      aiButton->setFont(f);
+      _projectButton->setFont(f);
+      _gitButton->setFont(f);
+      branchLabel->setFont(f);
+      urlLabel->setFont(f);
+      lineLabel->setFont(f);
+      colLabel->setFont(f);
+      _keyLabel->setFont(f);
+      completionsPopup->setListFont(f);
+      _projectTreeView->setFont(f);
+      if (_projectComboBox) {
+            // _projectComboBox->setFont(f);
+            _projectTreeView->setFont(_font);
             }
+      if (_mdWidget)
+            _mdWidget->setFont(f);
+      if (gitListView)
+            gitListView->setFont(f);
+      qApp->setFont(f);
+      emit fontChanged(f);
       }

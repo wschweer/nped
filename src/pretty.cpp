@@ -23,12 +23,14 @@
 //---------------------------------------------------------
 
 void Line::markCppToken(int col1, int col2, const QString& token) {
-      static const std::vector<const char*> flowKeywords{"if",      "else", "for",   "while",  "do",      "continue",  "break",
-                                                         "return",  "try",  "catch", "class",  "struct",  "namespace", "switch",
-                                                         "default", "case", "enum",  "public", "private", "protected"};
-      static const std::vector<const char*> typeKeywords{
-         "void",       "bool", "int",    "char",  "float", "double", "const",   "auto",      "static",  "static_cast", "dynamic_cast",
-         "const_cast", "new",  "delete", "using", "true",  "false",  "nullptr", "constexpr", "virtual", "override"};
+      static const std::vector<const char*> flowKeywords {
+         "if",      "else", "for",   "while",  "do",      "continue",  "break",
+         "return",  "try",  "catch", "class",  "struct",  "namespace", "switch",
+         "default", "case", "enum",  "public", "private", "protected"};
+      static const std::vector<const char*> typeKeywords {
+         "void",  "bool",   "int",         "char",         "float",      "double",  "const",
+         "auto",  "static", "static_cast", "dynamic_cast", "const_cast", "new",     "delete",
+         "using", "true",   "false",       "nullptr",      "constexpr",  "virtual", "override"};
 
       for (const auto& key : flowKeywords) {
             if (key == token) {
@@ -64,7 +66,7 @@ void File::markCpp() {
       QString rStringPattern;
 
       bool inChar = false;
-//TODO      for (auto& l : _viewMode == ViewMode::GitVersion ? _gitVersion : _fileText) {
+      //TODO      for (auto& l : _viewMode == ViewMode::GitVersion ? _gitVersion : _fileText) {
       for (auto& l : _fileText) {
             l.clearPrettyMarks();
             int col1 = 0;
@@ -76,7 +78,8 @@ void File::markCpp() {
                               }
                         }
                   else if (inRString) {
-                        if (i < l.size() - rStringPattern.size() && l.qstring().mid(i).startsWith(rStringPattern)) {
+                        if (i < l.size() - rStringPattern.size() &&
+                            l.qstring().mid(i).startsWith(rStringPattern)) {
                               inRString  = false;
                               i         += rStringPattern.size();
                               l.addMark(col1, i, TextStyle::String);

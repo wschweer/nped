@@ -82,7 +82,8 @@ bool Git::isClean() {
             return true;
 
       git_status_options opts;
-      git_status_options_init(&opts, GIT_STATUS_OPT_INCLUDE_UNTRACKED | GIT_STATUS_OPT_RECURSE_UNTRACKED_DIRS);
+      git_status_options_init(&opts,
+                              GIT_STATUS_OPT_INCLUDE_UNTRACKED | GIT_STATUS_OPT_RECURSE_UNTRACKED_DIRS);
 
       git_status_list* status;
       if (git_status_list_new(&status, repo, &opts) < 0)
@@ -245,11 +246,11 @@ Lines Git::getFile(const git_oid* oid) {
 struct DiffPayload {
       QString diff;
       };
+
 int print_cb(const git_diff_delta*, const git_diff_hunk*, const git_diff_line* line, void* payload) {
       DiffPayload* data = (DiffPayload*)payload;
       if (line) {
-            if (line->origin == GIT_DIFF_LINE_CONTEXT ||
-                line->origin == GIT_DIFF_LINE_ADDITION ||
+            if (line->origin == GIT_DIFF_LINE_CONTEXT || line->origin == GIT_DIFF_LINE_ADDITION ||
                 line->origin == GIT_DIFF_LINE_DELETION) {
                   data->diff += QChar(line->origin);
                   }
@@ -257,6 +258,7 @@ int print_cb(const git_diff_delta*, const git_diff_hunk*, const git_diff_line* l
             }
       return 0;
       }
+
 Lines Git::getDiff(const Lines& ref, const git_oid* oid) {
       if (!initialized)
             return Lines();
@@ -299,9 +301,9 @@ void Editor::updateGitHistory() {
             return;
       QDir dir(projectRoot());
       QString fileName = dir.relativeFilePath(kontext()->file()->path());
-//      Debug("<{}>", fileName);
+      //      Debug("<{}>", fileName);
       _git.getHistory(fileName, kontext()->file()->gitHistory());
       gitList.set(kontext()->file()->gitHistory());
-//      gitListView->setCurrentIndex(gitList.index(kontext()->file()->currentGitHistory(), 0));
+      //      gitListView->setCurrentIndex(gitList.index(kontext()->file()->currentGitHistory(), 0));
       update();
       }

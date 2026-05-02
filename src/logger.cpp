@@ -34,14 +34,16 @@ void Logger::write(std::ostream& f, MsgType t, const MsgLogContext& c, const std
             case MsgType::Fatal: type = "Fatal"; break;
             }
 
-//      std::lock_guard<std::mutex> lock(_mutex);
+      //      std::lock_guard<std::mutex> lock(_mutex);
 
       if (&f == &std::cerr) {
             // color messages
             if (t == MsgType::Critical)
-                  f << std::format("\033[31m{}({}:{}, {}): {}\033[0m\n", type, c.file, c.line, c.function, msg);
+                  f << std::format("\033[31m{}({}:{}, {}): {}\033[0m\n", type, c.file, c.line, c.function,
+                                   msg);
             else if (t == MsgType::Warning)
-                  f << std::format("\033[33m{}({}:{}, {}): {}\033[0m\n", type, c.file, c.line, c.function, msg);
+                  f << std::format("\033[33m{}({}:{}, {}): {}\033[0m\n", type, c.file, c.line, c.function,
+                                   msg);
             else
                   f << std::format("{}({}:{}, {}): {}\n", type, c.file, c.line, c.function, msg);
             }
@@ -62,9 +64,8 @@ void Logger::open(const char* appName) {
       std::string s = std::format(".{}.log", appName);
       f.open(s.c_str(), std::ios_base::out);
 
-      if (!f.is_open()) {
+      if (!f.is_open())
             std::cerr << "cannot open logfile <" << s << ">: " << strerror(errno) << "\n";
-            }
       }
 
 //---------------------------------------------------------
@@ -73,12 +74,12 @@ void Logger::open(const char* appName) {
 
 void Logger::write(MsgType t, const MsgLogContext& c, const std::string& msg) {
       switch (t) {
-            case MsgType::Log:      // log only into file
+            case MsgType::Log: // log only into file
                   break;
             case MsgType::Debug:
             case MsgType::Warning:
             case MsgType::Info:
-                  if (!verbose)     // verbose==true logs into file
+                  if (!verbose) // verbose==true logs into file
                         break;
                   [[fallthrough]]; // always show
             case MsgType::Critical:

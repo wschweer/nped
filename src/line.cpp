@@ -202,8 +202,8 @@ QString Lines::join(QChar c) const {
       for (const auto& ss : *this) {
             if (!first)
                   s += c;
-            first = false;
-            s += ss.qstring();
+            first  = false;
+            s     += ss.qstring();
             }
       return s;
       }

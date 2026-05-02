@@ -253,7 +253,7 @@ void GeminiClient::processTools() {
                         }
                   json args = (fc.contains("args") && fc["args"].is_object()) ? fc["args"] : json::object();
 
-                  std::string name = fc["name"].get<std::string>();
+                  std::string name   = fc["name"].get<std::string>();
                   std::string result = agent->executeTool(name, args);
 
                   msg["parts"].push_back({

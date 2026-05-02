@@ -486,11 +486,11 @@ void Kontext::moveCursorAbs(int col, int row) {
       if (row >= 0) {
             file()->unfold(row);
             _cursor.filePos.row = row;
-            int screenRow = _cursor.screenPos.row;
-            if (row == 0)     // goto start of file
+            int screenRow       = _cursor.screenPos.row;
+            if (row == 0) // goto start of file
                   screenRow = 0;
-            else if (row == rows()-1)    // goto end of file
-                  screenRow = std::min(screenRows(), rows()-1);
+            else if (row == rows() - 1) // goto end of file
+                  screenRow = std::min(screenRows(), rows() - 1);
             _cursor.screenPos.row = screenRow;
             // We want to move the cursor without scrolling the screen
             // if possible.
@@ -575,7 +575,7 @@ void Kontext::setViewMode(ViewMode m) {
       switch (_viewMode) {
             case ViewMode::File: {
                   int row;
-                  const Lines* map{nullptr};
+                  const Lines* map {nullptr};
                   switch (old) {
                         case ViewMode::Outline:
                               //
@@ -618,14 +618,14 @@ void Kontext::setViewMode(ViewMode m) {
 
 const Line& Kontext::line(int row) const {
       const Lines* lines = nullptr;
-// Debug("{}", int(_viewMode));
+      // Debug("{}", int(_viewMode));
       switch (_viewMode) {
             default: break;
-            case ViewMode::File:       lines = &file()->fileText(); break;
-            case ViewMode::Outline:  lines = &file()->outline(); break;
+            case ViewMode::File: lines = &file()->fileText(); break;
+            case ViewMode::Outline: lines = &file()->outline(); break;
             case ViewMode::GitVersion: lines = &file()->gitVersion(); break;
-            case ViewMode::GitDiff:    lines = &file()->gitVersion(); break;
-            case ViewMode::Annotations:       lines = &file()->bugs(); break;
+            case ViewMode::GitDiff: lines = &file()->gitVersion(); break;
+            case ViewMode::Annotations: lines = &file()->bugs(); break;
             }
       static const Line emptyLine;
       if (!lines || lines->empty() || row >= lines->size())

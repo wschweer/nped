@@ -255,7 +255,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             showToolMessageAction->setIcon(Editor::createStatefulIcon(":images/tool.svg", fg, fg, fg));
             screenshotButton->setIcon(Editor::createStatefulIcon(":images/camera.svg", fg, fg, fg));
             stopButton->setIcon(Editor::createStatefulIcon(":images/stop.svg", fg, fg, fg));
-      };
+            };
 
       connect(_editor, &Editor::darkModeChanged, updateIcons);
       connect(_editor, &Editor::textStylesLightChanged, updateIcons);
@@ -264,11 +264,11 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
 
       // --- 2. Chat Display ---
       chatDisplay = new ChatDisplay(_editor, parent);
-      chatDisplay->setZoomFactor(1.2);
+      connect(_editor, &Editor::scaleChanged, [this] { chatDisplay->setZoomFactor(1.2 * _editor->scale()); });
+      chatDisplay->setZoomFactor(1.2 * _editor->scale());
       chatDisplay->setDarkMode(_editor->darkMode());
       chatDisplay->setup();
-      mainLayout->addWidget(chatDisplay->widget(),
-                            1); // stretch=1: nimmt den gesamten verbleibenden Platz
+      mainLayout->addWidget(chatDisplay->widget(), 1); // stretch=1: nimmt den gesamten verbleibenden Platz
       connect(_editor, &Editor::darkModeChanged, chatDisplay, &ChatDisplay::setDarkMode);
 
       // 3b. Prompt input field (zuerst anlegen, damit die Höhe bekannt ist)
@@ -367,6 +367,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             button1->setFont(f);
             button2->setFont(f);
             button3->setFont(f);
+            dashboard->setFont(f);
             });
 
       connect(

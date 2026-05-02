@@ -31,14 +31,19 @@ QPlainTextEdit {
     selection-background-color: #eee;
 }
 
+QTabBar {
+    border: 0px solid #00000000;
+}
 QTabBar::tab {
-    background: #e0e0e0;
-    padding: 8px 12px;
-    border-bottom: none;
+    background: #00000000;
+    padding: 10px 8px;
+    border: 0px solid #00000000;
 }
 
 QTabBar::tab:selected {
     background: #ccc;
+    padding: 10px 8px;
+    border: 0px solid #00000000;
 }
 
 QComboBox {

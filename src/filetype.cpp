@@ -58,17 +58,16 @@ QJsonArray FileTypes::toJson() const {
 void FileTypes::reset() {
       clear();
 
-      for (const auto& ft : {
-         FileType(".*\\.cpp$", "cpp", "clangd", 6, false, false),
-         FileType(".*\\.c$", "c", "clangd", 6, false, false),
-         FileType(".*\\.html$", "html", "vscode-html", 4, false, false),
-         FileType(".*\\.h$", "cpp", "clangd", 6, true, false),
-         FileType(".*\\.py$", "python", "pylsp", 6, false, false),
-         FileType(".*\\.qml$", "qml", "qmlls", 4, false, false),
-         FileType(".*\\.md$", "markdown", "none", 6, false, false),
-         FileType("Makefile$", "makefile", "none", 6, false, true),
-         FileType(".*\\.(jpg|jpeg|png|gif|svg|webp|pdf)$", "image", "none", 6, false, false)
-            }) {
+      for (const auto& ft :
+                 {FileType(".*\\.cpp$", "cpp", "clangd", 6, false, false),
+            FileType(".*\\.c$", "c", "clangd", 6, false, false),
+            FileType(".*\\.html$", "html", "vscode-html", 4, false, false),
+            FileType(".*\\.h$", "cpp", "clangd", 6, true, false),
+            FileType(".*\\.py$", "python", "pylsp", 6, false, false),
+            FileType(".*\\.qml$", "qml", "qmlls", 4, false, false),
+            FileType(".*\\.md$", "markdown", "none", 6, false, false),
+            FileType("Makefile$", "makefile", "none", 6, false, true),
+            FileType(".*\\.(jpg|jpeg|png|gif|svg|webp|pdf)$", "image", "none", 6, false, false)}) {
             push_back(ft);
             }
       }

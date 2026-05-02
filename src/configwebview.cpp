@@ -199,11 +199,11 @@ static QColor parseColor(const QString& str) {
           R"(rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\))");
       auto m = rgbaRe.match(str);
       if (m.hasMatch()) {
-            int r      = m.captured(1).toInt();
-            int g      = m.captured(2).toInt();
-            int b      = m.captured(3).toInt();
-            double a   = m.captured(4).isEmpty() ? 1.0 : m.captured(4).toDouble();
-            int alpha   = qBound(0, static_cast<int>(a * 255), 255);
+            int r     = m.captured(1).toInt();
+            int g     = m.captured(2).toInt();
+            int b     = m.captured(3).toInt();
+            double a  = m.captured(4).isEmpty() ? 1.0 : m.captured(4).toDouble();
+            int alpha = qBound(0, static_cast<int>(a * 255), 255);
             return QColor(r, g, b, alpha);
             }
       return {};

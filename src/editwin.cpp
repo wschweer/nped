@@ -101,7 +101,8 @@ void EditWidget::keyPressEvent(QKeyEvent* e) {
 //---------------------------------------------------------
 
 QSize EditWidget::visibleSize() const {
-      return QSize((width() - EditWidget::BORDER) / editor->fw(), (height() - EditWidget::BORDER) / editor->fh());
+      return QSize((width() - EditWidget::BORDER) / editor->fw(),
+                   (height() - EditWidget::BORDER) / editor->fh());
       }
 
 //---------------------------------------------------------
@@ -130,8 +131,8 @@ QSize EditWidget::textSize() const {
 void EditWidget::wheelEvent(QWheelEvent* ev) {
       if (ev->modifiers() & Qt::ControlModifier) {
             int delta = ev->angleDelta().y() / 120;
-            qreal s   = editor->fontSize() * ((delta > 0) ? 1.1 : 0.9);
-            editor->setFontSize(s);
+            qreal s   = editor->scale() * ((delta > 0) ? 1.1 : 0.9);
+            editor->setScale(s);
             }
       else {
             int m      = ev->angleDelta().y() > 0 ? 1 : -1;
@@ -147,7 +148,8 @@ void EditWidget::wheelEvent(QWheelEvent* ev) {
 //---------------------------------------------------------
 
 QPointF EditWidget::charPosToPixel(const Pos& e) {
-      return QPointF(e.col * editor->fw() + leftMargin() + EditWidget::BORDER, e.row * editor->fh() + EditWidget::BORDER);
+      return QPointF(e.col * editor->fw() + leftMargin() + EditWidget::BORDER,
+                     e.row * editor->fh() + EditWidget::BORDER);
       }
 
 //---------------------------------------------------------
@@ -157,7 +159,8 @@ QPointF EditWidget::charPosToPixel(const Pos& e) {
 //---------------------------------------------------------
 
 Pos EditWidget::pixelToChar(const QPointF& e) {
-      return Pos((e.x() - EditWidget::BORDER - leftMargin()) / editor->fw(), (e.y() - EditWidget::BORDER) / editor->fh());
+      return Pos((e.x() - EditWidget::BORDER - leftMargin()) / editor->fw(),
+                 (e.y() - EditWidget::BORDER) / editor->fh());
       }
 
 //---------------------------------------------------------
@@ -327,7 +330,8 @@ void EditWidget::paintLine(DrawingContext& dc, int fileRow, int y) {
                         else if (fileRow > start.row && fileRow < end.row)
                               r = QRect(xToPixel(0), yy, dc.visibleColumns * dc.fw, dc.fh + 2);
                         else if (fileRow == start.row)
-                              r = QRect(xToPixel(start.col), yy, (dc.visibleColumns - start.col) * dc.fw, dc.fh + 2);
+                              r = QRect(xToPixel(start.col), yy, (dc.visibleColumns - start.col) * dc.fw,
+                                        dc.fh + 2);
                         else if (fileRow == end.row)
                               r = QRect(xToPixel(0), yy, end.col * dc.fw, dc.fh + 2);
                         break;
@@ -341,13 +345,13 @@ void EditWidget::paintLine(DrawingContext& dc, int fileRow, int y) {
             //*************************************************************
 
             QRect s(leftMargin(), y - dc.fa, width() - leftMargin(), dc.fh);
-            dc.painter->fillRect(s, editor->textStyle(TextStyle::MarkedLine).bg);
+            //            dc.painter->fillRect(s, editor->textStyle(TextStyle::MarkedLine).bg);
+            dc.painter->fillRect(s, editor->textStyle(TextStyle::Gutter).bg);
             dc.painter->setPen(l.labelColor());
             dc.painter->setFont(editor->font());
             dc.painter->drawText(EditWidget::BORDER, y, l.label());
             dc.painter->setPen(editor->textStyle(TextStyle::Normal).fg);
             }
-
 
       //*************************************************************
       //    paint text
@@ -370,8 +374,8 @@ void EditWidget::paintLine(DrawingContext& dc, int fileRow, int y) {
 
             QString ts = l.mid(col1, n);
             if (style != m.type) {
-                  style = m.type;
-                  auto md = editor->textStyle(style);
+                  style     = m.type;
+                  auto md   = editor->textStyle(style);
                   auto font = editor->font();
                   font.setItalic(md.italic);
                   font.setBold(md.bold);
@@ -392,7 +396,7 @@ void EditWidget::paintEvent(QPaintEvent* e) {
       if (!k)
             return;
 
-//      const File* file     = k->file();
+      //      const File* file     = k->file();
       const Cursor& cursor = k->cursor();
       QRect r(e->rect());
 
@@ -466,9 +470,7 @@ void EditWidget::paintEvent(QPaintEvent* e) {
       // draw cursor
       //*************************************************************
 
-      auto scol = [&] (int col) {
-            return col * dc.fw + EditWidget::BORDER + lm;
-            };
+      auto scol = [&](int col) { return col * dc.fw + EditWidget::BORDER + lm; };
 
       if (k->showCursor() && hasFocus()) {
             // draw cursor

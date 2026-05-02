@@ -105,14 +105,18 @@ void Editor::clearSearchMarks() {
 void Editor::searchNext() {
       if (createMatchList()) {
             for (const auto& m : matches) {
-                  if ((m.line == kontext()->fileRow() && kontext()->fileCol() <= m.col1) || m.line > kontext()->fileRow()) {
+                  if ((m.line == kontext()->fileRow() && kontext()->fileCol() <= m.col1) ||
+                      m.line > kontext()->fileRow()) {
                         if (doReplace) {
-                              int len       = m.col2 - m.col1;
-                              Pos p1        = {m.col1, m.line};                       // replace position
-                              Pos p2        = {int(m.col1 + replace.size()), m.line}; // position after replace
+                              int len = m.col2 - m.col1;
+                              Pos p1  = {m.col1, m.line};                       // replace position
+                              Pos p2  = {int(m.col1 + replace.size()), m.line}; // position after replace
                               int rowOffset = kontext()->screenRowOffset();
-                              undoPatch(p1, len, replace, Cursor(p2, Pos(p2.col, p2.row - rowOffset)), // file position - screen position
-                                        Cursor(p1, Pos(p1.col, p1.row - rowOffset)));
+                              undoPatch(
+                                  p1, len, replace,
+                                  Cursor(p2,
+                                         Pos(p2.col, p2.row - rowOffset)), // file position - screen position
+                                  Cursor(p1, Pos(p1.col, p1.row - rowOffset)));
                               }
                         else {
                               kontext()->moveCursorAbs(m.col2, m.line);
@@ -135,7 +139,8 @@ void Editor::searchPrev() {
       //      auto cursor = kontext()->cursor();
       for (int i = int(matches.size()) - 1; i >= 0; --i) {
             auto m = matches[i];
-            if ((m.line == kontext()->fileRow() && kontext()->fileCol() > m.col2) || m.line < kontext()->fileRow()) {
+            if ((m.line == kontext()->fileRow() && kontext()->fileCol() > m.col2) ||
+                m.line < kontext()->fileRow()) {
                   kontext()->moveCursorAbs(m.col1, m.line);
                   return;
                   }
@@ -165,7 +170,7 @@ void Editor::rename() {
 void Editor::rename(Kontext*, const QString& name, int row, int col1, int col2) {
       Debug("<{}> - {} {}-{}", name, row, col1, col2);
 
-      bool ok{false};
+      bool ok {false};
       QString origin = QString("Rename: <%1> to:").arg(name);
       QString text   = QInputDialog::getText(this, tr("Global Rename"), origin, QLineEdit::Normal, name, &ok);
       if (ok && !text.isEmpty() && text != name)

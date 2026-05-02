@@ -18,27 +18,25 @@
 //   serialize TextStyles
 //---------------------------------------------------------
 
-void LanguageServersConfig::fromJson(const QJsonArray& array)
-      {
+void LanguageServersConfig::fromJson(const QJsonArray& array) {
       clear();
       for (int i = 0; i < array.size(); ++i) {
             QJsonObject o = array[i].toObject();
             LanguageServerConfig s;
-            s.name = o["name"].toString();
+            s.name    = o["name"].toString();
             s.command = o["command"].toString();
-            s.args = o["args"].toString();
+            s.args    = o["args"].toString();
             append(s);
             }
       }
 
-QJsonArray LanguageServersConfig::toJson() const
-      {
+QJsonArray LanguageServersConfig::toJson() const {
       QJsonArray array;
       for (const auto& s : *this) {
             QJsonObject o;
-            o["name"] = s.name;
+            o["name"]    = s.name;
             o["command"] = s.command;
-            o["args"] = s.args;
+            o["args"]    = s.args;
             array.append(o);
             }
       return array;
@@ -51,12 +49,12 @@ QJsonArray LanguageServersConfig::toJson() const
 void LanguageServersConfig::reset() {
       clear();
 
-      for (const auto& ft : {
-               LanguageServerConfig("clangd",       "clangd", "--query-driver --log=error --completion-style=detailed --compile-commands-dir=build --background-index"),
-               LanguageServerConfig("vscode-html",  "vscode-html-languageserver", "--stdio"),
-               LanguageServerConfig(      "pylsp",  "pylsp", ""),
-               LanguageServerConfig(      "qmlls",  "qmlls",  "")
-            }) {
+      for (const auto& ft :
+                 {LanguageServerConfig("clangd", "clangd",
+                                 "--query-driver --log=error --completion-style=detailed "
+                                 "--compile-commands-dir=build --background-index"),
+            LanguageServerConfig("vscode-html", "vscode-html-languageserver", "--stdio"),
+            LanguageServerConfig("pylsp", "pylsp", ""), LanguageServerConfig("qmlls", "qmlls", "")}) {
             push_back(ft);
             }
       }

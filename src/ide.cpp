@@ -35,14 +35,14 @@ bool Editor::initProject() {
             if (!cwd.cdUp()) {
                   Debug("no CMakeLists.txt found");
                   _projectMode = false;
-//                  _projectRoot = QDir::homePath();
+                  //                  _projectRoot = QDir::homePath();
                   _projectRoot = QDir::currentPath();
                   Debug("not in project mode: <{}>", _projectRoot);
                   return false;
                   }
             }
       _projectRoot = cwd.absolutePath();
-//      Debug("project mode: <{}>", _projectRoot);
+      //      Debug("project mode: <{}>", _projectRoot);
       _projectMode = true;
 
       // Check for GIT repository
@@ -50,7 +50,7 @@ bool Editor::initProject() {
       _hasGit = _git.isInitialized();
       if (_hasGit) {
             _currentBranchName = _git.getCurrentBranch();
-//            Debug("git branch: <{}>", _currentBranchName);
+            //            Debug("git branch: <{}>", _currentBranchName);
             }
       return true;
       }

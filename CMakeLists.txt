@@ -86,7 +86,6 @@ qt_add_executable(nped
       src/screenshot.cpp
       src/dashboard.cpp
       src/dashboard.h
-      src/textstyle.cpp
       src/textstyle.h
       src/filetype.cpp
       src/filetype.h

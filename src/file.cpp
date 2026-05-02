@@ -861,7 +861,7 @@ void File::patch(Patches& items) {
                   /* TODO                  if (!posValid(pi.startPos)) {
                         Critical("invalid position col {} line {}", pi.startPos.col, pi.startPos.row);
                         return;
-                                                      }
+                                                            }
 */
                   }
             }

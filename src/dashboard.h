@@ -31,6 +31,9 @@ class Dashboard : public QWidget
       QLabel* tokenLabel;
       virtual void paintEvent(QPaintEvent*) override;
 
+    public slots:
+      void setFont(const QFont&);
+
     public:
       explicit Dashboard(QWidget* parent = nullptr);
       void addWidget(QWidget* widget, int row = 0);

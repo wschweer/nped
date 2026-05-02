@@ -24,8 +24,7 @@
 //   ScreenshotHelper
 //---------------------------------------------------------
 
-ScreenshotHelper::ScreenshotHelper(QObject* parent) : QObject(parent)
-      {
+ScreenshotHelper::ScreenshotHelper(QObject* parent) : QObject(parent) {
       }
 
 //---------------------------------------------------------
@@ -36,30 +35,21 @@ ScreenshotHelper::ScreenshotHelper(QObject* parent) : QObject(parent)
 //    returned Request handle object.
 //---------------------------------------------------------
 
-void ScreenshotHelper::takeScreenshot()
-      {
+void ScreenshotHelper::takeScreenshot() {
       // Disconnect any old pending handle signal to avoid duplicate connections
       if (!_pendingHandlePath.isEmpty()) {
-            QDBusConnection::sessionBus().disconnect(
-                "org.freedesktop.portal.Desktop",
-                _pendingHandlePath,
-                "org.freedesktop.portal.Request",
-                "Response",
-                this,
-                SLOT(onPortalResponse(uint, QVariantMap)));
+            QDBusConnection::sessionBus().disconnect("org.freedesktop.portal.Desktop", _pendingHandlePath,
+                                                     "org.freedesktop.portal.Request", "Response", this,
+                                                     SLOT(onPortalResponse(uint, QVariantMap)));
             _pendingHandlePath.clear();
             }
 
-      QDBusInterface portal(
-          "org.freedesktop.portal.Desktop",
-          "/org/freedesktop/portal/desktop",
-          "org.freedesktop.portal.Screenshot",
-          QDBusConnection::sessionBus());
+      QDBusInterface portal("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
+                            "org.freedesktop.portal.Screenshot", QDBusConnection::sessionBus());
 
       if (!portal.isValid()) {
             QString err = QDBusConnection::sessionBus().lastError().message();
-            emit screenshotFailed(
-                QString("XDG Desktop Portal (Screenshot) not available: %1").arg(err));
+            emit screenshotFailed(QString("XDG Desktop Portal (Screenshot) not available: %1").arg(err));
             return;
             }
 
@@ -71,8 +61,7 @@ void ScreenshotHelper::takeScreenshot()
       QDBusMessage reply = portal.call("Screenshot", QString(""), options);
 
       if (reply.type() == QDBusMessage::ErrorMessage) {
-            emit screenshotFailed(
-                QString("Screenshot portal call failed: %1").arg(reply.errorMessage()));
+            emit screenshotFailed(QString("Screenshot portal call failed: %1").arg(reply.errorMessage()));
             return;
             }
 
@@ -89,17 +78,12 @@ void ScreenshotHelper::takeScreenshot()
 
       // Connect to the Response signal on the Request object
       bool connected = QDBusConnection::sessionBus().connect(
-          "org.freedesktop.portal.Desktop",
-          _pendingHandlePath,
-          "org.freedesktop.portal.Request",
-          "Response",
-          this,
-          SLOT(onPortalResponse(uint, QVariantMap)));
+          "org.freedesktop.portal.Desktop", _pendingHandlePath, "org.freedesktop.portal.Request", "Response",
+          this, SLOT(onPortalResponse(uint, QVariantMap)));
 
       if (!connected) {
-            emit screenshotFailed(
-                QString("Failed to connect to portal Response signal: %1")
-                    .arg(QDBusConnection::sessionBus().lastError().message()));
+            emit screenshotFailed(QString("Failed to connect to portal Response signal: %1")
+                                      .arg(QDBusConnection::sessionBus().lastError().message()));
             }
       }
 
@@ -111,17 +95,12 @@ void ScreenshotHelper::takeScreenshot()
 //    response >= 2  → error
 //---------------------------------------------------------
 
-void ScreenshotHelper::onPortalResponse(uint response, const QVariantMap& results)
-      {
+void ScreenshotHelper::onPortalResponse(uint response, const QVariantMap& results) {
       // Disconnect so we don't get called twice
       if (!_pendingHandlePath.isEmpty()) {
-            QDBusConnection::sessionBus().disconnect(
-                "org.freedesktop.portal.Desktop",
-                _pendingHandlePath,
-                "org.freedesktop.portal.Request",
-                "Response",
-                this,
-                SLOT(onPortalResponse(uint, QVariantMap)));
+            QDBusConnection::sessionBus().disconnect("org.freedesktop.portal.Desktop", _pendingHandlePath,
+                                                     "org.freedesktop.portal.Request", "Response", this,
+                                                     SLOT(onPortalResponse(uint, QVariantMap)));
             _pendingHandlePath.clear();
             }
 
@@ -146,8 +125,7 @@ void ScreenshotHelper::onPortalResponse(uint response, const QVariantMap& result
 
       QImage image(filePath);
       if (image.isNull()) {
-            emit screenshotFailed(
-                QString("Could not load screenshot image from: %1").arg(filePath));
+            emit screenshotFailed(QString("Could not load screenshot image from: %1").arg(filePath));
             return;
             }
 

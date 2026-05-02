@@ -48,12 +48,10 @@ json toJson(const Models& models) {
       return array;
       }
 
-extern Models fromJson(const json& array)
-      {
+extern Models fromJson(const json& array) {
       Models models;
-      for (const auto& m : array) {
+      for (const auto& m : array)
             models.push_back(Model(m));
-            }
       return models;
       }
 
