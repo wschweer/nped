@@ -194,17 +194,28 @@ static void setVariant(QVariant& item, const QString& propName, QVariant value) 
             // Versuche, den Wert in den Zieltyp der Property zu konvertieren
             if (valToSet.convert(p.metaType())) {
                   p.writeOnGadget(item.data(), valToSet);
-            } else if (p.metaType() == QMetaType::fromType<QColor>() && valToSet.canConvert<QString>()) {
-                  QColor color(valToSet.toString());
-                  if (color.isValid()) {
-                        p.writeOnGadget(item.data(), color);
-                  } else {
-                        Critical("Konnte Property {} (String '{}') nicht in Typ QColor konvertieren", p.name(), valToSet.toString());
                   }
-            } else {
+            else if (p.metaType() == QMetaType::fromType<QColor>() && valToSet.canConvert<QString>()) {
+                  Debug("setColor <{}> <{}>", propName, valToSet.toString());
+                  QColor color;
+                  if (valToSet.toString().startsWith("#") && valToSet.toString().length() > 7) {
+                  color = QColor::fromString(valToSet.toString());
+                  } else {
+                                        color = QColor(valToSet.toString());
+                                    }
+                                    if (color.isValid()) {
+                                          p.writeOnGadget(item.data(), color);
+                                    }
+                  
+                  else {
+                        Critical("Konnte Property {} (String '{}') nicht in Typ QColor konvertieren",
+                                 p.name(), valToSet.toString());
+                        }
+                  }
+            else {
                   Critical("Konnte Property {} nicht in Typ {} konvertieren", p.name(), p.metaType().name());
+                  }
             }
-      }
       else
             Critical("Gadget property not found");
       }
@@ -640,9 +651,11 @@ void ConfigWebView::openConfig(const QString& activeListName, int activeListItem
                         html += QString("<div class=\"d-flex justify-content-end gap-2\" style=\"position: "
                                         "absolute; bottom: 80px; right: 20px;\">"
                                         "<button onclick=\"if(backend) backend.listAdd('%1')\" class=\"btn "
-                                        "btn-secondary btn-sm\" style=\"width: 66px; font-size: 0.85em; padding: 4px;\">Add</button>"
+                                        "btn-secondary btn-sm\" style=\"width: 66px; font-size: 0.85em; "
+                                        "padding: 4px;\">Add</button>"
                                         "<button onclick=\"removeCurrentListItem('%1', %2)\" class=\"btn "
-                                        "btn-secondary btn-sm\" style=\"width: 66px; font-size: 0.85em; padding: 4px;\">Remove</button>"
+                                        "btn-secondary btn-sm\" style=\"width: 66px; font-size: 0.85em; "
+                                        "padding: 4px;\">Remove</button>"
                                         "</div>")
                                     .arg(listName)
                                     .arg(i);
@@ -657,12 +670,14 @@ void ConfigWebView::openConfig(const QString& activeListName, int activeListItem
 
       html += "</div></div>"; // end content, main-content
 
-      html +=
-          "<div class=\"footer\">"
-          "<button onclick=\"if(backend) backend.resetConfig()\" class=\"btn btn-secondary btn-sm\" style=\"font-size: 0.85em; padding: 4px 16px;\">RESET</button>"
-          "<button onclick=\"if(backend) backend.cancelConfig()\" class=\"btn btn-secondary btn-sm\" style=\"font-size: 0.85em; padding: 4px 16px;\">CANCEL</button>"
-          "<button onclick=\"saveConfig()\" class=\"btn btn-primary btn-sm\" style=\"font-size: 0.85em; padding: 4px 16px;\">SAVE</button>"
-          "</div>";
+      html += "<div class=\"footer\">"
+              "<button onclick=\"if(backend) backend.resetConfig()\" class=\"btn btn-secondary btn-sm\" "
+              "style=\"font-size: 0.85em; padding: 4px 16px;\">RESET</button>"
+              "<button onclick=\"if(backend) backend.cancelConfig()\" class=\"btn btn-secondary btn-sm\" "
+              "style=\"font-size: 0.85em; padding: 4px 16px;\">CANCEL</button>"
+              "<button onclick=\"saveConfig()\" class=\"btn btn-primary btn-sm\" style=\"font-size: 0.85em; "
+              "padding: 4px 16px;\">SAVE</button>"
+              "</div>";
 
       html +=
           R"(<script>
