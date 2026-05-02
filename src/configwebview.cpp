@@ -197,15 +197,13 @@ static void setVariant(QVariant& item, const QString& propName, QVariant value) 
                   }
             else if (p.metaType() == QMetaType::fromType<QColor>() && valToSet.canConvert<QString>()) {
                   Debug("setColor <{}> <{}>", propName, valToSet.toString());
-                  QColor color;
-                  if (valToSet.toString().startsWith("#") && valToSet.toString().length() > 7) {
-                  color = QColor::fromString(valToSet.toString());
-                  } else {
-                                        color = QColor(valToSet.toString());
-                                    }
-                                    if (color.isValid()) {
-                                          p.writeOnGadget(item.data(), color);
-                                    }
+                  QColor color = QColor::fromString(valToSet.toString());
+                  if (!color.isValid()) {
+                      color = QColor(valToSet.toString());
+                  }
+                  if (color.isValid()) {
+                      p.writeOnGadget(item.data(), color);
+                  }
                   
                   else {
                         Critical("Konnte Property {} (String '{}') nicht in Typ QColor konvertieren",
