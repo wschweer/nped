@@ -194,8 +194,8 @@ static TextStyles tsFromJson(const QJsonArray& array) {
             QJsonObject o = array[i].toObject();
             TextStyle s;
             s.name   = o["name"].toString();
-            s.fg     = QColor(o["fg"].toString());
-            s.bg     = QColor(o["bg"].toString());
+            s.fg     = QColor::fromString(o["fg"].toString());
+            s.bg     = QColor::fromString(o["bg"].toString());
             s.italic = o["italic"].toBool();
             s.bold   = o["bold"].toBool();
             ts.append(s);
@@ -245,7 +245,7 @@ void Editor::saveSettings() {
 
       configs["shortcuts"]  = array;
       configs["fontFamily"] = fontFamily();
-      configs["fontSize"]   = fontSize();
+//      configs["fontSize"]   = fontSize();
       configs["fontDemo"]   = fontDemo();
 
       QJsonArray projects;
@@ -340,10 +340,10 @@ void Editor::loadSettings() {
             _textStylesLight = tsFromJson(config["textStylesLight"].toArray());
             emit textStylesLightChanged();
             }
-      if (config.contains("fontSize")) {
-            double n  = config["fontSize"].toDouble();
-            _fontSize = std::clamp(n, 5.0, 40.0); // sanitize value
-            }
+//      if (config.contains("fontSize")) {
+//            double n  = config["fontSize"].toDouble();
+//            _fontSize = std::clamp(n, 5.0, 40.0); // sanitize value
+//            }
       if (config.contains("fontFamily"))
             setFontFamily(config["fontFamily"].toString());
       if (config.contains("fontDemo"))
