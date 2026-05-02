@@ -19,6 +19,7 @@
 #include <QUrlQuery>
 #include <QFontDatabase>
 #include <QWebChannel>
+#include <QRegularExpression>
 
 #include "configwebview.h"
 #include "mcp.h"
@@ -182,6 +183,33 @@ QVariant ConfigWebView::getProperty(const QString& name) const {
       }
 
 //---------------------------------------------------------
+//   parseColor - parse color string in hex or CSS rgba() format
+//---------------------------------------------------------
+
+static QColor parseColor(const QString& str) {
+      // Try Qt's built-in parser first (handles #RGB, #RRGGBB, #AARRGGBB,
+      // #RRGGBBAA, and named colors like "red")
+      QColor color = QColor::fromString(str);
+      if (color.isValid())
+            return color;
+
+      // Fallback: parse CSS rgba(R, G, B, A) format
+      // (QColor::fromString does not support this)
+      static const QRegularExpression rgbaRe(
+          R"(rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\))");
+      auto m = rgbaRe.match(str);
+      if (m.hasMatch()) {
+            int r      = m.captured(1).toInt();
+            int g      = m.captured(2).toInt();
+            int b      = m.captured(3).toInt();
+            double a   = m.captured(4).isEmpty() ? 1.0 : m.captured(4).toDouble();
+            int alpha   = qBound(0, static_cast<int>(a * 255), 255);
+            return QColor(r, g, b, alpha);
+            }
+      return {};
+      }
+
+//---------------------------------------------------------
 //   setVariant
 //---------------------------------------------------------
 
@@ -197,9 +225,7 @@ static void setVariant(QVariant& item, const QString& propName, QVariant value) 
             // und die eigentliche Farbinformation verloren geht.
             if (p.metaType() == QMetaType::fromType<QColor>() && valToSet.canConvert<QString>()) {
                   Debug("setColor <{}> <{}>", propName, valToSet.toString());
-                  QColor color = QColor::fromString(valToSet.toString());
-                  if (!color.isValid())
-                        color = QColor(valToSet.toString());
+                  QColor color = parseColor(valToSet.toString());
                   if (color.isValid()) {
                         p.writeOnGadget(item.data(), color);
                         }
@@ -589,7 +615,7 @@ void ConfigWebView::openConfig(const QString& activeListName, int activeListItem
                               else if (propType == "color") {
                                     QString colorVal = currentValue.toString();
                                     if (colorVal.isEmpty() || colorVal == "invalid")
-                                          colorVal = "rgba(0, 0, 0, 1)";
+                                          colorVal = "#000000";
                                     detailsHtml += QString("<input type=\"hidden\" name=\"%1\" "
                                                            "id=\"hidden-%1\" value=\"%2\">")
                                                        .arg(inputName)
@@ -740,7 +766,7 @@ void ConfigWebView::openConfig(const QString& activeListName, int activeListItem
                   }
             });
             pickr.on('save', (color) => {
-                  hiddenInput.value = color.toRGBA().toString();
+                  hiddenInput.value = color.toHEXA().toString();
                   pickr.hide();
             });
       });
