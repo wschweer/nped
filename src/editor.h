@@ -622,6 +622,7 @@ class Editor : public QMainWindow
                   updateStyle();
                   initFont();
                   emit darkModeChanged(_darkMode);
+                  updateProjectTreeColors();
                   update();
                   }
             }
