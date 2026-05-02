@@ -168,7 +168,7 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
          Action(e->getSC(Cmd::CMD_VIEW_FUNCTIONS), [this] { _editor->toggleViewMode(); }),
          Action(e->getSC(Cmd::CMD_SEARCH_NEXT), [] {}),
          Action(e->getSC(Cmd::CMD_SEARCH_PREV), [] {}),
-         Action(e->getSC(Cmd::CMD_GIT_TOGGLE),
+         Action(e->getSC(Cmd::CMD_TOGGLE_GIT),
                 [this] { _editor->gitButton()->setChecked(!_editor->gitButton()->isChecked()); }),
          Action(e->getSC(Cmd::CMD_SCREENSHOT), [this] { _editor->screenshot(); }),
             };
