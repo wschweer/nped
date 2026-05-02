@@ -191,24 +191,25 @@ static void setVariant(QVariant& item, const QString& propName, QVariant value) 
             QMetaProperty p   = item.metaType().metaObject()->property(pidx);
             QVariant valToSet = value;
 
-            // Versuche, den Wert in den Zieltyp der Property zu konvertieren
-            if (valToSet.convert(p.metaType())) {
-                  p.writeOnGadget(item.data(), valToSet);
-                  }
-            else if (p.metaType() == QMetaType::fromType<QColor>() && valToSet.canConvert<QString>()) {
+            // QColor muss vor dem generischen convert() behandelt werden,
+            // da QVariant::convert(QMetaType::fromType<QColor>()) bei Strings
+            // zwar true zurückgibt, aber ein schwarzes QColor(0,0,0) erzeugt
+            // und die eigentliche Farbinformation verloren geht.
+            if (p.metaType() == QMetaType::fromType<QColor>() && valToSet.canConvert<QString>()) {
                   Debug("setColor <{}> <{}>", propName, valToSet.toString());
                   QColor color = QColor::fromString(valToSet.toString());
-                  if (!color.isValid()) {
-                      color = QColor(valToSet.toString());
-                  }
+                  if (!color.isValid())
+                        color = QColor(valToSet.toString());
                   if (color.isValid()) {
-                      p.writeOnGadget(item.data(), color);
-                  }
-                  
+                        p.writeOnGadget(item.data(), color);
+                        }
                   else {
                         Critical("Konnte Property {} (String '{}') nicht in Typ QColor konvertieren",
                                  p.name(), valToSet.toString());
                         }
+                  }
+            else if (valToSet.convert(p.metaType())) {
+                  p.writeOnGadget(item.data(), valToSet);
                   }
             else {
                   Critical("Konnte Property {} nicht in Typ {} konvertieren", p.name(), p.metaType().name());
@@ -224,6 +225,7 @@ static void setVariant(QVariant& item, const QString& propName, QVariant value) 
 
 void ConfigWebView::setProperty(const QString& name, const QJsonValue& jsonValue) {
       QVariant value = jsonValue.toVariant();
+      Debug("setProperty <{}>", name);
       if (name.contains('[')) {
             int b1  = name.indexOf('[');
             int b2  = name.indexOf(']');
