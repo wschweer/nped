@@ -405,8 +405,10 @@ void McpServer::parseMessage(const std::string& message) {
                   if (it != m_pendingRequests.end()) {
                         if (response.contains("result"))
                               it->second(response["result"]);
-                        else if (response.contains("error"))
-                              Warning("MCP RPC Error: {}", response["error"].dump());
+                        else if (response.contains("error")) {
+                              Debug("MCP RPC Error: {}", response["error"].dump());
+                              it->second(response);
+                              }
                         m_pendingRequests.erase(it);
                         }
                   else if (response.contains("method") && response["method"] == "roots/list") {

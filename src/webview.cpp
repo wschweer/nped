@@ -113,7 +113,7 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
             Warning("PDF-Viewer konnte in QWebEngineSettings nicht aktiviert werden!");
       _darkMode = e->darkMode();
       // Set initial background color to prevent white flash
-      page()->setBackgroundColor(_darkMode ? QColor("#222222") : Qt::white);
+      page()->setBackgroundColor(_darkMode ? Qt::black : Qt::white);
       connect(page(), &QWebEnginePage::printRequested, this, [this]() {
             QPrinter* printer = new QPrinter(QPrinter::HighResolution);
             QPrintDialog printDialog(printer, this);
@@ -187,6 +187,8 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
                   _pendingDiff.clear();
                   }
             });
+      connect(_editor, &Editor::scaleChanged, [this] { setZoomFactor(1.3 * _editor->scale()); });
+      setZoomFactor(1.4 * _editor->scale());
       }
 
 //---------------------------------------------------------

@@ -386,7 +386,7 @@ void ConfigWebView::openConfig(const QString& activeListName, int activeListItem
                   "column; overflow: hidden; margin: 0; font-family: sans-serif; } "
                   ".header { padding: 10px 20px; font-size: 24px; border-bottom: 1px solid %3; } "
                   ".main-content { display: flex; flex: 1; overflow: hidden; } "
-                  ".sidebar { width: 250px; border-right: 1px solid %3; overflow-y: auto; } "
+                  ".sidebar { width: 167px; border-right: 1px solid %3; overflow-y: auto; } "
                   ".content { flex: 1; padding: 20px; overflow-y: auto; } "
                   ".footer { padding: 10px 20px; border-top: 1px solid %3; display: flex; justify-content: "
                   "flex-end; gap: 10px; } "
@@ -495,16 +495,18 @@ void ConfigWebView::openConfig(const QString& activeListName, int activeListItem
 
                                     QString fontFamily = getProperty("fontFamily").toString();
                                     QString previewId  = "fontDemoPreview";
-                                    html +=
-                                        QString("<div class=\"p-3 flex-grow-1\" id=\"%1\" "
-                                                "style=\"font-family: '%2'; font-size: 14px; background: "
-                                                "%3; color: %4; border-radius: 4px; white-space: pre-wrap; "
-                                                "word-break: break-all; overflow-x: auto;\">%5</div>")
-                                            .arg(previewId)
-                                            .arg(fontFamily)
-                                            .arg(dark ? "#2d2d2d" : "#f5f5f5")
-                                            .arg(dark ? "#cccccc" : "#333333")
-                                            .arg(cppSnippet.toHtmlEscaped());
+                                    html += QString("<div class=\"p-3 flex-grow-1\" id=\"%1\" "
+                                                    "style=\"font-family: '%2'; font-size: 14px; background: "
+                                                    "%3; color: %4; border: 2px solid %5; box-shadow: 2px "
+                                                    "2px 8px rgba(0,0,0,0.1); "
+                                                    "border-radius: 8px; white-space: pre-wrap; "
+                                                    "word-break: break-all; overflow-x: auto;\">%6</div>")
+                                                .arg(previewId)
+                                                .arg(fontFamily)
+                                                .arg(dark ? "#1e1e1e" : "#ffffff")
+                                                .arg(dark ? "#d4d4d4" : "#000000")
+                                                .arg(dark ? "#555555" : "#aaaaaa")
+                                                .arg(cppSnippet.toHtmlEscaped());
                                     // Add Javascript to update preview when font family changes
                                     html += QString("<script>") +
                                             "document.getElementById('fontFamily').addEventListener('change',"

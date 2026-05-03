@@ -24,7 +24,7 @@
 #include <QListView>
 #include <QTextEdit>
 #include <QDialog>
-// #include <QFileSystemWatcher>
+#include <QSortFilterProxyModel>
 #include <vector>
 #include "file.h"
 #include "completer.h"
@@ -55,6 +55,7 @@ class QTreeView;
 class QComboBox;
 class QFileSystemModel;
 class QModelIndex;
+class QSortFilterProxyModel;
 class CompletionsPopup;
 class Completion;
 class QProgressBar;
@@ -184,6 +185,28 @@ struct Match {
       };
 
 //---------------------------------------------------------
+//   ProjectFileProxyModel
+//   Sortiert nach File Extension und dann nach Dateiname
+//---------------------------------------------------------
+
+class ProjectFileProxyModel : public QSortFilterProxyModel
+      {
+      Q_OBJECT
+
+    protected:
+      bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
+
+    public:
+      explicit ProjectFileProxyModel(QObject* parent = nullptr)
+          : QSortFilterProxyModel(parent)
+            {
+            setSortRole(Qt::DisplayRole);
+            setDynamicSortFilter(true);
+            setSortCaseSensitivity(Qt::CaseInsensitive);
+            }
+      };
+
+//---------------------------------------------------------
 //   TabBar
 //---------------------------------------------------------
 
@@ -203,9 +226,7 @@ class TabBar : public QTabBar
       void modifiedChanged();
 
     public:
-      TabBar(QWidget* parent = nullptr) : QTabBar(parent) {
-            setMovable(true);
-            }
+      TabBar(QWidget* parent = nullptr) : QTabBar(parent) { setMovable(true); }
       };
 
 //---------------------------------------------------------
@@ -357,6 +378,7 @@ class Editor : public QMainWindow
       QTreeView* _projectTreeView {nullptr};
       QFileSystemModel* _projectModel {nullptr};
       QToolButton* _projectButton {nullptr};
+      QSortFilterProxyModel* _projectProxyModel {nullptr};
       bool _projectVisible {false};
 
       void updateProjectPanel();
@@ -559,8 +581,6 @@ class Editor : public QMainWindow
       void copyKontext();
       QToolButton* gitButton() { return _gitButton; }
       QStackedWidget* stack() { return _stack; }
-
-
       QStringList monospacedFonts() const;
       QString fontFamily() const { return _fontFamily; }
       void setFontFamily(const QString& v) {
@@ -577,10 +597,19 @@ class Editor : public QMainWindow
                   }
             }
       qreal scale() const { return _scale; }
-      void setScale(qreal v) { if (v != _scale) { _scale = v; emit scaleChanged(); } };
+      void setScale(qreal v) {
+            if (v != _scale) {
+                  _scale = v;
+                  emit scaleChanged();
+                  }
+            };
       qreal fontSize() const { return _fontSize; }
-      void setFontSize(qreal v) { if (v != _fontSize) { _fontSize = v; emit fontSizeChanged(); } };
-
+      void setFontSize(qreal v) {
+            if (v != _fontSize) {
+                  _fontSize = v;
+                  emit fontSizeChanged();
+                  }
+            };
       FileTypes fileTypes() const { return _fileTypes; }
       void setFileTypes(const FileTypes& ft) {
             if (_fileTypes != ft) {

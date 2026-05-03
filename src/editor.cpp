@@ -60,6 +60,65 @@
 using json = nlohmann::json;
 
 //---------------------------------------------------------
+//   lessThan
+//---------------------------------------------------------
+
+bool ProjectFileProxyModel::lessThan(const QModelIndex& left, const QModelIndex& right) const {
+      if (!left.isValid() || !right.isValid())
+            return false;
+
+      QFileSystemModel* fsModel = qobject_cast<QFileSystemModel*>(sourceModel());
+
+      if (!fsModel)
+            return false;
+
+      // Verzeichnisse immer vor Dateien
+      bool leftIsDir  = fsModel->isDir(left);
+      bool rightIsDir = fsModel->isDir(right);
+
+      if (leftIsDir && !rightIsDir)
+            return true;
+
+      if (!leftIsDir && rightIsDir)
+            return false;
+
+      if (leftIsDir && rightIsDir) {
+            // Beide sind Verzeichnisse -> alphabetisch nach Name
+            return QString::compare(left.data(QFileSystemModel::FileNameRole).toString(),
+                                    right.data(QFileSystemModel::FileNameRole).toString(),
+                                    Qt::CaseInsensitive) < 0;
+            }
+
+      // Beide sind Dateien -> erst nach Extension, dann nach Name
+      QString leftName  = left.data(QFileSystemModel::FileNameRole).toString();
+      QString rightName = right.data(QFileSystemModel::FileNameRole).toString();
+
+      int leftDotPos   = leftName.lastIndexOf(".");
+      int rightDotPos  = rightName.lastIndexOf(".");
+      QString leftExt  = (leftDotPos != -1) ? leftName.mid(leftDotPos) : QString();
+      QString rightExt = (rightDotPos != -1) ? rightName.mid(rightDotPos) : QString();
+
+      // Dateien ohne Extension zuerst
+
+      if (leftExt.isEmpty() && !rightExt.isEmpty())
+            return true;
+
+      if (!leftExt.isEmpty() && rightExt.isEmpty())
+            return false;
+
+      int extCmp = QString::compare(leftExt, rightExt, Qt::CaseInsensitive);
+
+      if (extCmp != 0)
+            return extCmp < 0;
+
+      // Gleiche Extension -> nach Basisname sortieren
+
+      QString leftBase  = (leftDotPos != -1) ? leftName.left(leftDotPos) : leftName;
+      QString rightBase = (rightDotPos != -1) ? rightName.left(rightDotPos) : rightName;
+      return QString::compare(leftBase, rightBase, Qt::CaseInsensitive) < 0;
+      }
+
+//---------------------------------------------------------
 //   tintPixmap
 //---------------------------------------------------------
 
@@ -564,13 +623,18 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       _projectModel    = new QFileSystemModel(this);
       _projectModel->setFilter(QDir::NoDotAndDotDot | QDir::AllEntries);
 
-      _projectTreeView->setModel(_projectModel);
+      _projectProxyModel = new ProjectFileProxyModel(this);
+      _projectProxyModel->setSourceModel(_projectModel);
+      _projectProxyModel->sort(0);
+
+      _projectTreeView->setModel(_projectProxyModel);
       _projectTreeView->setHeaderHidden(true);
-      for (int i = 1; i < _projectModel->columnCount(); ++i)
+      for (int i = 1; i < _projectProxyModel->columnCount(); ++i)
             _projectTreeView->hideColumn(i);
       projectLayout->addWidget(_projectTreeView);
       connect(_projectTreeView, &QTreeView::doubleClicked, [this](const QModelIndex& index) {
-            QString path = _projectModel->filePath(index);
+            QString path = static_cast<QFileSystemModel*>(_projectProxyModel->sourceModel())
+                               ->filePath(_projectProxyModel->mapToSource(index));
             QFileInfo fi(path);
             if (fi.isFile() && !path.isEmpty()) {
                   addFile(path);
@@ -891,9 +955,7 @@ QWidget* Editor::gitPanel() {
 
 MarkdownWebView* Editor::mdWidget() {
       if (!_mdWidget) {
-            _mdWidget = new MarkdownWebView(this, this);
-            connect(this, &Editor::scaleChanged, [this] { _mdWidget->setZoomFactor(1.5 * _scale); });
-            _mdWidget->setZoomFactor(1.5 * _scale);
+            _mdWidget             = new MarkdownWebView(this, this);
             _mdContainer          = new QWidget(this);
             QVBoxLayout* mdLayout = new QVBoxLayout(_mdContainer);
             mdLayout->setContentsMargins(0, 0, 0, 0);
@@ -2569,7 +2631,7 @@ void Editor::updateProjectPanel() {
       // Set the root path if not set correctly yet
       if (_projectModel->rootPath() != rootPath) {
             QModelIndex rootIndex = _projectModel->setRootPath(rootPath);
-            _projectTreeView->setRootIndex(rootIndex);
+            _projectTreeView->setRootIndex(_projectProxyModel->mapFromSource(rootIndex));
             }
 
       Kontext* k = kontext();
@@ -2578,8 +2640,9 @@ void Editor::updateProjectPanel() {
             // Expand and select current file
             QModelIndex currentIndex = _projectModel->index(currentPath);
             if (currentIndex.isValid()) {
-                  _projectTreeView->setCurrentIndex(currentIndex);
-                  _projectTreeView->scrollTo(currentIndex);
+                  QModelIndex proxyIndex = _projectProxyModel->mapFromSource(currentIndex);
+                  _projectTreeView->setCurrentIndex(proxyIndex);
+                  _projectTreeView->scrollTo(proxyIndex);
                   }
             }
       }

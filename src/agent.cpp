@@ -264,8 +264,6 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
 
       // --- 2. Chat Display ---
       chatDisplay = new ChatDisplay(_editor, parent);
-      connect(_editor, &Editor::scaleChanged, [this] { chatDisplay->setZoomFactor(1.2 * _editor->scale()); });
-      chatDisplay->setZoomFactor(1.2 * _editor->scale());
       chatDisplay->setDarkMode(_editor->darkMode());
       chatDisplay->setup();
       mainLayout->addWidget(chatDisplay->widget(), 1); // stretch=1: nimmt den gesamten verbleibenden Platz
