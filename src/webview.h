@@ -1,3 +1,4 @@
+#include <QChildEvent>
 //=============================================================================
 //  nped Program Editor
 //
@@ -13,6 +14,7 @@
 
 #include <QWebEngineHistory>
 #include <QWebEngineView>
+#include <QWheelEvent>
 #include <QWebEnginePage>
 #include <QString>
 #include <string>
@@ -34,6 +36,7 @@ class MarkdownWebPage : public QWebEnginePage
       Editor* _editor;
 
     protected:
+       
       bool acceptNavigationRequest(const QUrl& url, NavigationType type, bool isMainFrame) override;
 
     public:
@@ -57,13 +60,14 @@ class MarkdownWebView : public QWebEngineView
       QString _pendingDiff;
       QString _currentDiff;
       Editor* _editor;
-      KeyLogger* kl{nullptr};
+      KeyLogger* kl {nullptr};
       // Hilfsmethode für JS-Injection
       void executeScroll(int pixelsY);
 
     protected:
-      bool _darkMode{false};
-      bool isLoaded{true};
+      bool eventFilter(QObject* obj, QEvent* event) override;
+      bool _darkMode {false};
+      bool isLoaded {true};
       // Hilft uns, das interne Chromium-Widget zu finden
       QWebEngineView* createWindow(QWebEnginePage::WebWindowType type) override;
       void childEvent(QChildEvent* event) override;
@@ -72,7 +76,7 @@ class MarkdownWebView : public QWebEngineView
       std::string getGithubDarkCss() const;
 
     public slots:
-      virtual void setDarkMode(bool);
+      virtual void updateStyle();
       Editor* editor() const { return _editor; }
 
     public:
@@ -95,4 +99,5 @@ class MarkdownWebView : public QWebEngineView
       void scrollPageDown();
       void scrollToTop();
       void scrollToBottom();
+      void wheelEvent(QWheelEvent* ev) override;
       };

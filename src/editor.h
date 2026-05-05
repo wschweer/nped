@@ -26,6 +26,7 @@
 #include <QDialog>
 #include <QSortFilterProxyModel>
 #include <vector>
+#include "types.h"
 #include "file.h"
 #include "completer.h"
 #include "git.h"
@@ -197,9 +198,7 @@ class ProjectFileProxyModel : public QSortFilterProxyModel
       bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
 
     public:
-      explicit ProjectFileProxyModel(QObject* parent = nullptr)
-          : QSortFilterProxyModel(parent)
-            {
+      explicit ProjectFileProxyModel(QObject* parent = nullptr) : QSortFilterProxyModel(parent) {
             setSortRole(Qt::DisplayRole);
             setDynamicSortFilter(true);
             setSortCaseSensitivity(Qt::CaseInsensitive);
@@ -287,38 +286,27 @@ class Editor : public QMainWindow
       {
       Q_OBJECT
 
-      Q_PROPERTY(QStringList projects READ projects WRITE setProjects NOTIFY projectsChanged)
-      Q_PROPERTY(Models models READ models WRITE setModels NOTIFY modelsChanged)
-      Q_PROPERTY(AgentRoles agentRoles READ agentRoles WRITE setAgentRoles NOTIFY agentRolesChanged)
-      Q_PROPERTY(QString agentRoleName READ agentRoleName WRITE setAgentRoleName NOTIFY agentRoleNameChanged)
-      Q_PROPERTY(QString fontFamily READ fontFamily WRITE setFontFamily NOTIFY fontFamilyChanged)
-      Q_PROPERTY(QString fontDemo READ fontDemo WRITE setFontDemo NOTIFY fontDemoChanged)
+      PROP(QStringList, projects)
+      PROP(Models, models)
+      PROP(AgentRoles, agentRoles)
+      PROP(QString, agentRoleName)
+      PROPV(QString, fontFamily, "Source Code Pro")
+
       Q_PROPERTY(QList<ShortcutConfig> shortcuts READ shortcuts WRITE setShortcuts NOTIFY shortcutsChanged)
-      Q_PROPERTY(QList<FileType> fileTypes READ fileTypes NOTIFY fileTypesChanged)
-      Q_PROPERTY(QList<LanguageServerConfig> languageServersConfig READ languageServersConfig WRITE
-                     setLanguageServersConfig NOTIFY languageServersConfigChanged)
-      Q_PROPERTY(McpServerConfigs mcpServersConfig READ mcpServersConfig WRITE setMcpServersConfig NOTIFY
-                     configChanged)
+
+      PROP(FileTypes, fileTypes)
+      PROP(LanguageServersConfig, languageServersConfig)
+      PROP(McpServerConfigs, mcpServersConfig)
+      PROP(CannedPrompts, cannedPrompts)
       Q_PROPERTY(QStringList monospacedFonts READ monospacedFonts CONSTANT)
-      Q_PROPERTY(bool darkMode READ darkMode WRITE setDarkMode NOTIFY darkModeChanged)
-      Q_PROPERTY(TextStyles textStylesLight READ textStylesLight WRITE setTextStylesLight NOTIFY
-                     textStylesLightChanged)
-      Q_PROPERTY(
-          TextStyles textStylesDark READ textStylesDark WRITE setTextStylesDark NOTIFY textStylesDarkChanged)
+      PROPV(bool, darkMode, true)
+      PROP(TextStyles, textStylesLight)
+      PROP(TextStyles, textStylesDark)
+      PROPV(double, fontSize, 14.0)
+      PROPV(double, scale, 1.0)
 
-      Q_PROPERTY(double fontSize READ fontSize WRITE setFontSize NOTIFY fontSizeChanged)
-      Q_PROPERTY(double scale READ scale WRITE setScale NOTIFY scaleChanged)
-
-      static std::map<Cmd, ShortcutConfig> _shortcuts;
-
-      QStringList _projects;
-
-      FileTypes _fileTypes;
-      TextStyles _textStylesLight;
-      TextStyles _textStylesDark;
       QList<ShortcutConfig> _shortcutsList;
-      LanguageServersConfig _languageServersConfig;
-      McpServerConfigs _mcpServersConfig;
+      static std::map<Cmd, ShortcutConfig> _shortcuts;
 
       std::vector<File*> files;
       Vector<Kontext*> _kontextList;
@@ -356,9 +344,6 @@ class Editor : public QMainWindow
       QTimer* cursorTimer;
       QTimer* lsUpdateTimer;
       Agent* _agent {nullptr};
-      Models _models;
-      AgentRoles _agentRoles;
-      QString _agentRoleName;
 
       static const int agentMinimumWidth {500};
       static const int gitPanelMinimumWidth {300};
@@ -403,22 +388,16 @@ class Editor : public QMainWindow
       bool _hasGit {false};
       QString _currentBranchName;
       Git _git;
-      bool _darkMode {false};
 
       //      QString _settingsLLModel;
       //       QFileSystemWatcher* fileWatcher;
 
       QFont _font;
-      QString _fontFamily {"Source Code Pro"};
-      qreal _fontSize {14.0};
-      qreal _scale {1.0};
-      QFont::Weight fontWeight {QFont::Normal};
+      //      QFont::Weight fontWeight {QFont::Normal};
       qreal _fw;
       qreal _fh;
       qreal _fa;
       qreal _fd;
-
-      QString _fontDemo {"The quick brown fox jumps over the lazy dog"};
 
       PickText pickText;
 
@@ -445,14 +424,6 @@ class Editor : public QMainWindow
       void insertTab();
       void pick();
 
-    public:
-      static QIcon createStatefulIcon(const QString& svgPath, const QColor& normalColor,
-                                      const QColor& hoverColor   = QColor(),
-                                      const QColor& checkedColor = QColor());
-      void put();
-      void setPickText(const QString& text, SelectionMode mode = SelectionMode::CharSelect);
-
-    private:
       void rowSelect();
       void colSelect();
       void charSelect();
@@ -474,6 +445,9 @@ class Editor : public QMainWindow
       void connectKontext(Kontext*);
       void updateStyle();
 
+    protected:
+      bool eventFilter(QObject* obj, QEvent* ev) override;
+
     public slots:
       void hScrollTo(int);
       void vScrollTo(int);
@@ -490,24 +464,11 @@ class Editor : public QMainWindow
       void applyCompletion(int idx);
 
     signals:
-      void scaleChanged();
-      void fontFamilyChanged();
       void fontChanged(QFont);
-      void fontSizeChanged();
-      void fontDemoChanged();
-      void shortcutsChanged();
-      void fileTypesChanged();
-      void languageServersConfigChanged();
       void configChanged();
       void configApplied(); // Signal an Editor Core, Daten neu zu laden
-      void darkModeChanged(bool);
-      void textStylesLightChanged();
-      void textStylesDarkChanged();
-      void modelsChanged();
-      void agentRolesChanged();
-      void agentRoleNameChanged();
       void screenshotReady(const QImage& image);
-      void projectsChanged();
+      void shortcutsChanged();
 
     public:
       Editor(int argc, char** argv);
@@ -582,73 +543,6 @@ class Editor : public QMainWindow
       QToolButton* gitButton() { return _gitButton; }
       QStackedWidget* stack() { return _stack; }
       QStringList monospacedFonts() const;
-      QString fontFamily() const { return _fontFamily; }
-      void setFontFamily(const QString& v) {
-            if (_fontFamily != v) {
-                  _fontFamily = v;
-                  emit fontFamilyChanged();
-                  }
-            }
-      QString fontDemo() const { return _fontDemo; }
-      void setFontDemo(const QString& v) {
-            if (_fontDemo != v) {
-                  _fontDemo = v;
-                  emit fontDemoChanged();
-                  }
-            }
-      qreal scale() const { return _scale; }
-      void setScale(qreal v) {
-            if (v != _scale) {
-                  _scale = v;
-                  emit scaleChanged();
-                  }
-            };
-      qreal fontSize() const { return _fontSize; }
-      void setFontSize(qreal v) {
-            if (v != _fontSize) {
-                  _fontSize = v;
-                  emit fontSizeChanged();
-                  }
-            };
-      FileTypes fileTypes() const { return _fileTypes; }
-      void setFileTypes(const FileTypes& ft) {
-            if (_fileTypes != ft) {
-                  _fileTypes = ft;
-                  emit fileTypesChanged();
-                  }
-            }
-      TextStyles textStylesLight() { return _textStylesLight; }
-      TextStyles textStylesDark() { return _textStylesDark; }
-      void setTextStylesLight(const TextStyles& v) {
-            if (v != _textStylesLight) {
-                  _textStylesLight = v;
-                  emit textStylesLightChanged();
-                  }
-            }
-      void setTextStylesDark(const TextStyles& v) {
-            if (v != _textStylesDark) {
-                  _textStylesDark = v;
-                  emit textStylesDarkChanged();
-                  }
-            }
-      QList<LanguageServerConfig> languageServersConfig() const { return _languageServersConfig; }
-      McpServerConfigs mcpServersConfig() const { return _mcpServersConfig; }
-      void setMcpServersConfig(const McpServerConfigs& c) {
-            if (_mcpServersConfig != c) {
-                  _mcpServersConfig = c;
-                  agent()->mcpManager()->applyConfigs(c);
-                  emit configChanged();
-                  }
-            }
-      void setLanguageServersConfig(const QList<LanguageServerConfig>& l) {
-            LanguageServersConfig c;
-            for (const auto& cfg : l) // ugh!
-                  c.push_back(cfg);
-            if (_languageServersConfig != c) {
-                  _languageServersConfig = c;
-                  emit languageServersConfigChanged();
-                  }
-            }
       void loadSettings();
       void saveSettings();
       Q_INVOKABLE void resetToDefaults();
@@ -656,16 +550,6 @@ class Editor : public QMainWindow
       void showConfig();
       void hideConfig();
       QList<ShortcutConfig> shortcutsList() const { return shortcuts(); }
-      bool darkMode() const { return _darkMode; }
-      void setDarkMode(bool v) {
-            if (v != _darkMode) {
-                  _darkMode = v;
-                  updateStyle();
-                  emit darkModeChanged(_darkMode);
-                  updateProjectTreeColors();
-                  update();
-                  }
-            }
       void showCompletions(const Completions&);
       void hideCompletions();
       //       QFileSystemWatcher* getFileWatcher() const { return fileWatcher; }
@@ -674,57 +558,37 @@ class Editor : public QMainWindow
       const TextStyle& textStyle(TextStyle::Style style) {
             return darkMode() ? _textStylesDark[int(style)] : _textStylesLight[int(style)];
             }
-      Q_INVOKABLE TextStyle textStyle(bool dark, int style) {
+      TextStyle textStyle(bool dark, int style) {
             return dark ? _textStylesDark[int(style)] : _textStylesLight[int(style)];
             }
-      Q_INVOKABLE void setTextStyle(const TextStyle& s, bool dark, int style) {
-            Debug("dark {} style {}", dark, style);
-            if (dark) {
+      void setTextStyle(const TextStyle& s, bool dark, int style) {
+            if (dark)
                   _textStylesDark[style] = s;
-                  // emit textStylesDarkChanged();
-                  }
-            else {
+            else
                   _textStylesLight[style] = s;
-                  // emit textStylesLightChanged();
-                  }
             update();
             }
-      Model model(int idx) { return _models.at(idx); }
       void setModel(int idx, const Model& m) { _models[idx] = m; }
+      Model model(int idx) const { return _models[idx]; }
       void addModel(const Model& m) { _models.push_back(m); }
-      const Models& models() const { return _models; }
-      void setModels(const Models& m) {
-            if (_models != m) {
-                  _models = m;
-                  emit modelsChanged();
-                  }
-            }
       void showGitVersion(int row);
       QWidget* gitPanel();
       AgentRole agentRole(int idx) { return _agentRoles[idx]; }
       void setAgentRole(int idx, const AgentRole& r) { _agentRoles[idx] = r; }
-      const AgentRoles& agentRoles() const { return _agentRoles; }
       void addAgentRole(const AgentRole& r) { _agentRoles.push_back(r); }
-      void setAgentRoles(const AgentRoles& a) {
-            if (_agentRoles != a) {
-                  _agentRoles = a;
-                  emit agentRolesChanged();
-                  }
-            }
-      void setAgentRoleName(const QString& s) { _agentRoleName = s; }
-      QString agentRoleName() const { return _agentRoleName; }
+      CannedPrompt cannedPrompt(int idx) { return _cannedPrompts[idx]; }
+      void setCannedPrompt(int idx, const CannedPrompt& r) { _cannedPrompts[idx] = r; }
+      void addCannedPrompt(const CannedPrompt& r) { _cannedPrompts.push_back(r); }
       QList<ShortcutConfig> shortcuts() const;
       void setShortcuts(const QList<ShortcutConfig>& l) {
             _shortcutsList = l;
             emit shortcutsChanged();
             }
-      QStringList projects() const { return _projects; }
-      void setProjects(const QStringList& v) {
-            if (v != _projects) {
-                  _projects = v;
-                  emit projectsChanged();
-                  }
-            }
+      static QIcon createStatefulIcon(const QString& svgPath, const QColor& normalColor,
+                                      const QColor& hoverColor   = QColor(),
+                                      const QColor& checkedColor = QColor());
+      void put();
+      void setPickText(const QString& text, SelectionMode mode = SelectionMode::CharSelect);
       };
 
 //---------------------------------------------------------
@@ -750,17 +614,4 @@ class KeyLogger : public QObject
       std::vector<Action> _pedActions;
       KeyLogger(std::vector<Action>* a, QObject* parent = nullptr) : QObject(parent), actions(a) { clear(); }
       void clear();
-      };
-
-//---------------------------------------------------------
-//   ConfigDialogWrapper
-//---------------------------------------------------------
-
-class ConfigDialogWrapper : public QDialog
-      {
-      Q_OBJECT
-
-    public:
-      explicit ConfigDialogWrapper(Editor*, QWidget* parent = nullptr);
-      ~ConfigDialogWrapper() override = default;
       };

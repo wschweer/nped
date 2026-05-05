@@ -1,0 +1,434 @@
+
+---
+events:
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineSystem.cmake:200 (message)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      The target system is: Windows -  - i686
+      The host system is: Linux - 7.0.0-15-generic - x86_64
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
+      Compiler: /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ 
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      
+      
+      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "a.exe"
+      
+      The CXX compiler identification is GNU, found in:
+        /home/ws/nped/build-mxe/CMakeFiles/3.31.8/CompilerIdCXX/a.exe
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:74 (try_compile)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:14 (project)"
+    checks:
+      - "Detecting CXX compiler ABI info"
+    directories:
+      source: "/home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-ZtMo5a"
+      binary: "/home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-ZtMo5a"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_CXX_SCAN_FOR_MODULES: "OFF"
+      CMAKE_EXE_LINKER_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/ws/projects/mxe/usr/share/cmake/modules;/home/ws/projects/mxe/usr/share/cmake/modules"
+    buildResult:
+      variable: "CMAKE_CXX_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: '/home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-ZtMo5a'
+        
+        Run Build Command(s): /usr/bin/ninja -v cmTC_60a9f
+        [1/2] /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++   -O3 -DNDEBUG   -v -o CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.obj -c /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeCXXCompilerABI.cpp
+        Reading specs from /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/specs
+        COLLECT_GCC=/home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-g++
+        Target: i686-w64-mingw32.static
+        Configured with: /home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0/configure ac_cv_prog_HAVE_DOXYGEN=false --enable-doc=no --enable-gtk-doc=no --enable-gtk-doc-html=no --enable-gtk-doc-pdf=no --docdir=/home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0.build_.sink --infodir=/home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0.build_.sink --mandir=/home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0.build_.sink --with-html-dir=/home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0.build_.sink --disable-doxygen --target=i686-w64-mingw32.static --build=x86_64-pc-linux-gnu --prefix=/home/ws/projects/mxe/usr --libdir=/home/ws/projects/mxe/usr/lib --with-sysroot=/home/ws/projects/mxe/usr/i686-w64-mingw32.static --enable-languages=c,c++,objc,fortran --enable-version-specific-runtime-libs --with-gcc --with-gnu-ld --with-gnu-as --disable-nls --disable-shared --disable-multilib --without-x --disable-win32-registry --enable-threads=posix --enable-sjlj-exceptions --enable-default-ssp --enable-libgomp --with-gmp=/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu --with-isl=/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu --with-mpc=/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu --with-mpfr=/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu --with-as=/home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-as --with-ld=/home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-ld --with-nm=/home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-nm --enable-libstdcxx-time
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 11.5.0 (GCC) 
+        COLLECT_GCC_OPTIONS='-O3' '-v' '-D' 'NDEBUG' '-c' '-o' 'CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.obj' '-mtune=generic' '-march=pentiumpro' '-dumpdir' 'CMakeFiles/cmTC_60a9f.dir/'
+         /home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/cc1plus -quiet -v -D_REENTRANT -D NDEBUG ../../../../../projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_60a9f.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=pentiumpro -O3 -version -o /tmp/ccNU6pfm.s
+        GNU C++17 (GCC) version 11.5.0 (i686-w64-mingw32.static)
+        	compiled by GNU C version 15.2.0, GMP version 6.3.0, MPFR version 4.2.2, MPC version 1.3.1, isl version isl-0.24-GMP
+        
+        GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+        ignoring nonexistent directory "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/usr/local/include"
+        ignoring duplicate directory "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/include"
+        #include "..." search starts here:
+        #include <...> search starts here:
+         /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++
+         /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++/i686-w64-mingw32.static
+         /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++/backward
+         /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include
+         /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include-fixed
+         /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/include
+        End of search list.
+        GNU C++17 (GCC) version 11.5.0 (i686-w64-mingw32.static)
+        	compiled by GNU C version 15.2.0, GMP version 6.3.0, MPFR version 4.2.2, MPC version 1.3.1, isl version isl-0.24-GMP
+        
+        GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+        Compiler executable checksum: 2dd6f8c89010a818f258557e48445149
+        COLLECT_GCC_OPTIONS='-O3' '-v' '-D' 'NDEBUG' '-c' '-o' 'CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.obj' '-mtune=generic' '-march=pentiumpro' '-dumpdir' 'CMakeFiles/cmTC_60a9f.dir/'
+         /home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-as -v -o CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.obj /tmp/ccNU6pfm.s
+        GNU assembler version 2.38 (i686-w64-mingw32.static) using BFD version (GNU Binutils) 2.38
+        COMPILER_PATH=/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/:/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/:/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/bin/
+        LIBRARY_PATH=/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib/:/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib/../lib/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/:/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib/
+        COLLECT_GCC_OPTIONS='-O3' '-v' '-D' 'NDEBUG' '-c' '-o' 'CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.obj' '-mtune=generic' '-march=pentiumpro' '-dumpdir' 'CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.'
+        [2/2] : && /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ -O3 -DNDEBUG -v -Wl,-v CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.obj -o cmTC_60a9f.exe -Wl,--out-implib,libcmTC_60a9f.dll.a -Wl,--major-image-version,0,--minor-image-version,0   && :
+        Reading specs from /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/specs
+        COLLECT_GCC=/home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-g++
+        COLLECT_LTO_WRAPPER=/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/lto-wrapper
+        Target: i686-w64-mingw32.static
+        Configured with: /home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0/configure ac_cv_prog_HAVE_DOXYGEN=false --enable-doc=no --enable-gtk-doc=no --enable-gtk-doc-html=no --enable-gtk-doc-pdf=no --docdir=/home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0.build_.sink --infodir=/home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0.build_.sink --mandir=/home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0.build_.sink --with-html-dir=/home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0.build_.sink --disable-doxygen --target=i686-w64-mingw32.static --build=x86_64-pc-linux-gnu --prefix=/home/ws/projects/mxe/usr --libdir=/home/ws/projects/mxe/usr/lib --with-sysroot=/home/ws/projects/mxe/usr/i686-w64-mingw32.static --enable-languages=c,c++,objc,fortran --enable-version-specific-runtime-libs --with-gcc --with-gnu-ld --with-gnu-as --disable-nls --disable-shared --disable-multilib --without-x --disable-win32-registry --enable-threads=posix --enable-sjlj-exceptions --enable-default-ssp --enable-libgomp --with-gmp=/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu --with-isl=/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu --with-mpc=/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu --with-mpfr=/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu --with-as=/home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-as --with-ld=/home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-ld --with-nm=/home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-nm --enable-libstdcxx-time
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 11.5.0 (GCC) 
+        COMPILER_PATH=/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/:/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/:/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/bin/
+        LIBRARY_PATH=/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib/:/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib/../lib/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/:/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib/
+        COLLECT_GCC_OPTIONS='-O3' '-D' 'NDEBUG' '-v' '-o' 'cmTC_60a9f.exe' '-mtune=generic' '-march=pentiumpro' '-dumpdir' 'cmTC_60a9f.'
+         /home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/collect2 -plugin /home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/liblto_plugin.so -plugin-opt=/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/lto-wrapper -plugin-opt=-fresolution=/tmp/ccotVhiz.res -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmoldname -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lssp_nonshared -plugin-opt=-pass-through=-lssp -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-lpthread -plugin-opt=-pass-through=-ladvapi32 -plugin-opt=-pass-through=-lshell32 -plugin-opt=-pass-through=-luser32 -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmoldname -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lssp_nonshared -plugin-opt=-pass-through=-lssp -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 --sysroot=/home/ws/projects/mxe/usr/i686-w64-mingw32.static -m i386pe -Bdynamic -o cmTC_60a9f.exe /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib/crt2.o /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/crtbegin.o -L/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0 -L/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib -L/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib/../lib -L/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib -L/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib -v CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.obj --out-implib libcmTC_60a9f.dll.a --major-image-version 0 --minor-image-version 0 -lstdc++ -lmingw32 -lgcc -lmoldname -lmingwex -lssp_nonshared -lssp -lmsvcrt -lkernel32 -lpthread -ladvapi32 -lshell32 -luser32 -lkernel32 -lmingw32 -lgcc -lmoldname -lmingwex -lssp_nonshared -lssp -lmsvcrt -lkernel32 /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/crtend.o
+        collect2 version 11.5.0
+        /home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-ld -plugin /home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/liblto_plugin.so -plugin-opt=/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/lto-wrapper -plugin-opt=-fresolution=/tmp/ccotVhiz.res -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmoldname -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lssp_nonshared -plugin-opt=-pass-through=-lssp -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-lpthread -plugin-opt=-pass-through=-ladvapi32 -plugin-opt=-pass-through=-lshell32 -plugin-opt=-pass-through=-luser32 -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmoldname -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lssp_nonshared -plugin-opt=-pass-through=-lssp -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 --sysroot=/home/ws/projects/mxe/usr/i686-w64-mingw32.static -m i386pe -Bdynamic -o cmTC_60a9f.exe /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib/crt2.o /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/crtbegin.o -L/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0 -L/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib -L/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib/../lib -L/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib -L/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib -v CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.obj --out-implib libcmTC_60a9f.dll.a --major-image-version 0 --minor-image-version 0 -lstdc++ -lmingw32 -lgcc -lmoldname -lmingwex -lssp_nonshared -lssp -lmsvcrt -lkernel32 -lpthread -ladvapi32 -lshell32 -luser32 -lkernel32 -lmingw32 -lgcc -lmoldname -lmingwex -lssp_nonshared -lssp -lmsvcrt -lkernel32 /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/crtend.o
+        GNU ld (GNU Binutils) 2.38
+        COLLECT_GCC_OPTIONS='-O3' '-D' 'NDEBUG' '-v' '-o' 'cmTC_60a9f.exe' '-mtune=generic' '-march=pentiumpro' '-dumpdir' 'cmTC_60a9f.'
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:182 (message)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      Parsed CXX implicit include dir info: rv=done
+        found start of include info
+        found start of implicit include info
+          add: [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++]
+          add: [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++/i686-w64-mingw32.static]
+          add: [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++/backward]
+          add: [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include]
+          add: [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include-fixed]
+          add: [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/include]
+        end of search list found
+        collapse include dir [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++] ==> [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++]
+        collapse include dir [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++/i686-w64-mingw32.static] ==> [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++/i686-w64-mingw32.static]
+        collapse include dir [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++/backward] ==> [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++/backward]
+        collapse include dir [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include] ==> [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include]
+        collapse include dir [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include-fixed] ==> [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include-fixed]
+        collapse include dir [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/include] ==> [/home/ws/projects/mxe/usr/i686-w64-mingw32.static/include]
+        implicit include dirs: [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++;/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++/i686-w64-mingw32.static;/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++/backward;/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include;/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include-fixed;/home/ws/projects/mxe/usr/i686-w64-mingw32.static/include]
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:218 (message)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      Parsed CXX implicit link information:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(\\.[a-z]+)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(ld[0-9]*(\\.[a-z]+)?))("|,| |$)]
+        ignore line: [Change Dir: '/home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-ZtMo5a']
+        ignore line: []
+        ignore line: [Run Build Command(s): /usr/bin/ninja -v cmTC_60a9f]
+        ignore line: [[1/2] /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++   -O3 -DNDEBUG   -v -o CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.obj -c /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeCXXCompilerABI.cpp]
+        ignore line: [Reading specs from /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/specs]
+        ignore line: [COLLECT_GCC=/home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-g++]
+        ignore line: [Target: i686-w64-mingw32.static]
+        ignore line: [Configured with: /home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0/configure ac_cv_prog_HAVE_DOXYGEN=false --enable-doc=no --enable-gtk-doc=no --enable-gtk-doc-html=no --enable-gtk-doc-pdf=no --docdir=/home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0.build_.sink --infodir=/home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0.build_.sink --mandir=/home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0.build_.sink --with-html-dir=/home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0.build_.sink --disable-doxygen --target=i686-w64-mingw32.static --build=x86_64-pc-linux-gnu --prefix=/home/ws/projects/mxe/usr --libdir=/home/ws/projects/mxe/usr/lib --with-sysroot=/home/ws/projects/mxe/usr/i686-w64-mingw32.static --enable-languages=c,c++,objc,fortran --enable-version-specific-runtime-libs --with-gcc --with-gnu-ld --with-gnu-as --disable-nls --disable-shared --disable-multilib --without-x --disable-win32-registry --enable-threads=posix --enable-sjlj-exceptions --enable-default-ssp --enable-libgomp --with-gmp=/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu --with-isl=/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu --with-mpc=/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu --with-mpfr=/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu --with-as=/home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-as --with-ld=/home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-ld --with-nm=/home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-nm --enable-libstdcxx-time]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 11.5.0 (GCC) ]
+        ignore line: [COLLECT_GCC_OPTIONS='-O3' '-v' '-D' 'NDEBUG' '-c' '-o' 'CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.obj' '-mtune=generic' '-march=pentiumpro' '-dumpdir' 'CMakeFiles/cmTC_60a9f.dir/']
+        ignore line: [ /home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/cc1plus -quiet -v -D_REENTRANT -D NDEBUG ../../../../../projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_60a9f.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=pentiumpro -O3 -version -o /tmp/ccNU6pfm.s]
+        ignore line: [GNU C++17 (GCC) version 11.5.0 (i686-w64-mingw32.static)]
+        ignore line: [	compiled by GNU C version 15.2.0  GMP version 6.3.0  MPFR version 4.2.2  MPC version 1.3.1  isl version isl-0.24-GMP]
+        ignore line: []
+        ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+        ignore line: [ignoring nonexistent directory "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/usr/local/include"]
+        ignore line: [ignoring duplicate directory "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/include"]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++]
+        ignore line: [ /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++/i686-w64-mingw32.static]
+        ignore line: [ /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include/c++/backward]
+        ignore line: [ /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include]
+        ignore line: [ /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/include-fixed]
+        ignore line: [ /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/include]
+        ignore line: [End of search list.]
+        ignore line: [GNU C++17 (GCC) version 11.5.0 (i686-w64-mingw32.static)]
+        ignore line: [	compiled by GNU C version 15.2.0  GMP version 6.3.0  MPFR version 4.2.2  MPC version 1.3.1  isl version isl-0.24-GMP]
+        ignore line: []
+        ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+        ignore line: [Compiler executable checksum: 2dd6f8c89010a818f258557e48445149]
+        ignore line: [COLLECT_GCC_OPTIONS='-O3' '-v' '-D' 'NDEBUG' '-c' '-o' 'CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.obj' '-mtune=generic' '-march=pentiumpro' '-dumpdir' 'CMakeFiles/cmTC_60a9f.dir/']
+        ignore line: [ /home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-as -v -o CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.obj /tmp/ccNU6pfm.s]
+        ignore line: [GNU assembler version 2.38 (i686-w64-mingw32.static) using BFD version (GNU Binutils) 2.38]
+        ignore line: [COMPILER_PATH=/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/:/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/:/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/bin/]
+        ignore line: [LIBRARY_PATH=/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib/:/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib/../lib/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/:/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-O3' '-v' '-D' 'NDEBUG' '-c' '-o' 'CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.obj' '-mtune=generic' '-march=pentiumpro' '-dumpdir' 'CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.']
+        ignore line: [[2/2] : && /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ -O3 -DNDEBUG -v -Wl -v CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.obj -o cmTC_60a9f.exe -Wl --out-implib libcmTC_60a9f.dll.a -Wl --major-image-version 0 --minor-image-version 0   && :]
+        ignore line: [Reading specs from /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/specs]
+        ignore line: [COLLECT_GCC=/home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-g++]
+        ignore line: [COLLECT_LTO_WRAPPER=/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/lto-wrapper]
+        ignore line: [Target: i686-w64-mingw32.static]
+        ignore line: [Configured with: /home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0/configure ac_cv_prog_HAVE_DOXYGEN=false --enable-doc=no --enable-gtk-doc=no --enable-gtk-doc-html=no --enable-gtk-doc-pdf=no --docdir=/home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0.build_.sink --infodir=/home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0.build_.sink --mandir=/home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0.build_.sink --with-html-dir=/home/ws/projects/mxe/tmp-gcc-i686-w64-mingw32.static/gcc-11.5.0.build_.sink --disable-doxygen --target=i686-w64-mingw32.static --build=x86_64-pc-linux-gnu --prefix=/home/ws/projects/mxe/usr --libdir=/home/ws/projects/mxe/usr/lib --with-sysroot=/home/ws/projects/mxe/usr/i686-w64-mingw32.static --enable-languages=c,c++,objc,fortran --enable-version-specific-runtime-libs --with-gcc --with-gnu-ld --with-gnu-as --disable-nls --disable-shared --disable-multilib --without-x --disable-win32-registry --enable-threads=posix --enable-sjlj-exceptions --enable-default-ssp --enable-libgomp --with-gmp=/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu --with-isl=/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu --with-mpc=/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu --with-mpfr=/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu --with-as=/home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-as --with-ld=/home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-ld --with-nm=/home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-nm --enable-libstdcxx-time]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 11.5.0 (GCC) ]
+        ignore line: [COMPILER_PATH=/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/:/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/:/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/bin/]
+        ignore line: [LIBRARY_PATH=/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib/:/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib/../lib/:/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/:/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-O3' '-D' 'NDEBUG' '-v' '-o' 'cmTC_60a9f.exe' '-mtune=generic' '-march=pentiumpro' '-dumpdir' 'cmTC_60a9f.']
+        link line: [ /home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/collect2 -plugin /home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/liblto_plugin.so -plugin-opt=/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/lto-wrapper -plugin-opt=-fresolution=/tmp/ccotVhiz.res -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmoldname -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lssp_nonshared -plugin-opt=-pass-through=-lssp -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-lpthread -plugin-opt=-pass-through=-ladvapi32 -plugin-opt=-pass-through=-lshell32 -plugin-opt=-pass-through=-luser32 -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmoldname -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lssp_nonshared -plugin-opt=-pass-through=-lssp -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 --sysroot=/home/ws/projects/mxe/usr/i686-w64-mingw32.static -m i386pe -Bdynamic -o cmTC_60a9f.exe /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib/crt2.o /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/crtbegin.o -L/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0 -L/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib -L/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib/../lib -L/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib -L/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib -v CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.obj --out-implib libcmTC_60a9f.dll.a --major-image-version 0 --minor-image-version 0 -lstdc++ -lmingw32 -lgcc -lmoldname -lmingwex -lssp_nonshared -lssp -lmsvcrt -lkernel32 -lpthread -ladvapi32 -lshell32 -luser32 -lkernel32 -lmingw32 -lgcc -lmoldname -lmingwex -lssp_nonshared -lssp -lmsvcrt -lkernel32 /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/crtend.o]
+          arg [/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/collect2] ==> ignore
+          arg [-plugin] ==> ignore
+          arg [/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/liblto_plugin.so] ==> ignore
+          arg [-plugin-opt=/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/lto-wrapper] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/ccotVhiz.res] ==> ignore
+          arg [-plugin-opt=-pass-through=-lmingw32] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lmoldname] ==> ignore
+          arg [-plugin-opt=-pass-through=-lmingwex] ==> ignore
+          arg [-plugin-opt=-pass-through=-lssp_nonshared] ==> ignore
+          arg [-plugin-opt=-pass-through=-lssp] ==> ignore
+          arg [-plugin-opt=-pass-through=-lmsvcrt] ==> ignore
+          arg [-plugin-opt=-pass-through=-lkernel32] ==> ignore
+          arg [-plugin-opt=-pass-through=-lpthread] ==> ignore
+          arg [-plugin-opt=-pass-through=-ladvapi32] ==> ignore
+          arg [-plugin-opt=-pass-through=-lshell32] ==> ignore
+          arg [-plugin-opt=-pass-through=-luser32] ==> ignore
+          arg [-plugin-opt=-pass-through=-lkernel32] ==> ignore
+          arg [-plugin-opt=-pass-through=-lmingw32] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lmoldname] ==> ignore
+          arg [-plugin-opt=-pass-through=-lmingwex] ==> ignore
+          arg [-plugin-opt=-pass-through=-lssp_nonshared] ==> ignore
+          arg [-plugin-opt=-pass-through=-lssp] ==> ignore
+          arg [-plugin-opt=-pass-through=-lmsvcrt] ==> ignore
+          arg [-plugin-opt=-pass-through=-lkernel32] ==> ignore
+          arg [--sysroot=/home/ws/projects/mxe/usr/i686-w64-mingw32.static] ==> ignore
+          arg [-m] ==> ignore
+          arg [i386pe] ==> ignore
+          arg [-Bdynamic] ==> search dynamic
+          arg [-o] ==> ignore
+          arg [cmTC_60a9f.exe] ==> ignore
+          arg [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib/crt2.o] ==> obj [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib/crt2.o]
+          arg [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/crtbegin.o] ==> obj [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/crtbegin.o]
+          arg [-L/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0] ==> dir [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0]
+          arg [-L/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib] ==> dir [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib]
+          arg [-L/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib/../lib] ==> dir [/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib/../lib]
+          arg [-L/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib] ==> dir [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib]
+          arg [-L/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib] ==> dir [/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib]
+          arg [-v] ==> ignore
+          arg [CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.obj] ==> ignore
+          arg [--out-implib] ==> ignore
+          arg [libcmTC_60a9f.dll.a] ==> ignore
+          arg [--major-image-version] ==> ignore
+          arg [0] ==> ignore
+          arg [--minor-image-version] ==> ignore
+          arg [0] ==> ignore
+          arg [-lstdc++] ==> lib [stdc++]
+          arg [-lmingw32] ==> lib [mingw32]
+          arg [-lgcc] ==> lib [gcc]
+          arg [-lmoldname] ==> lib [moldname]
+          arg [-lmingwex] ==> lib [mingwex]
+          arg [-lssp_nonshared] ==> lib [ssp_nonshared]
+          arg [-lssp] ==> lib [ssp]
+          arg [-lmsvcrt] ==> lib [msvcrt]
+          arg [-lkernel32] ==> lib [kernel32]
+          arg [-lpthread] ==> lib [pthread]
+          arg [-ladvapi32] ==> lib [advapi32]
+          arg [-lshell32] ==> lib [shell32]
+          arg [-luser32] ==> lib [user32]
+          arg [-lkernel32] ==> lib [kernel32]
+          arg [-lmingw32] ==> lib [mingw32]
+          arg [-lgcc] ==> lib [gcc]
+          arg [-lmoldname] ==> lib [moldname]
+          arg [-lmingwex] ==> lib [mingwex]
+          arg [-lssp_nonshared] ==> lib [ssp_nonshared]
+          arg [-lssp] ==> lib [ssp]
+          arg [-lmsvcrt] ==> lib [msvcrt]
+          arg [-lkernel32] ==> lib [kernel32]
+          arg [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/crtend.o] ==> obj [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/crtend.o]
+        ignore line: [collect2 version 11.5.0]
+        ignore line: [/home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-ld -plugin /home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/liblto_plugin.so -plugin-opt=/home/ws/projects/mxe/usr/libexec/gcc/i686-w64-mingw32.static/11.5.0/lto-wrapper -plugin-opt=-fresolution=/tmp/ccotVhiz.res -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmoldname -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lssp_nonshared -plugin-opt=-pass-through=-lssp -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-lpthread -plugin-opt=-pass-through=-ladvapi32 -plugin-opt=-pass-through=-lshell32 -plugin-opt=-pass-through=-luser32 -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmoldname -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lssp_nonshared -plugin-opt=-pass-through=-lssp -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 --sysroot=/home/ws/projects/mxe/usr/i686-w64-mingw32.static -m i386pe -Bdynamic -o cmTC_60a9f.exe /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib/crt2.o /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/crtbegin.o -L/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0 -L/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib -L/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib/../lib -L/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib -L/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib -v CMakeFiles/cmTC_60a9f.dir/CMakeCXXCompilerABI.cpp.obj --out-implib libcmTC_60a9f.dll.a --major-image-version 0 --minor-image-version 0 -lstdc++ -lmingw32 -lgcc -lmoldname -lmingwex -lssp_nonshared -lssp -lmsvcrt -lkernel32 -lpthread -ladvapi32 -lshell32 -luser32 -lkernel32 -lmingw32 -lgcc -lmoldname -lmingwex -lssp_nonshared -lssp -lmsvcrt -lkernel32 /home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/crtend.o]
+        ignore line: [GNU ld (GNU Binutils) 2.38]
+        ignore line: [COLLECT_GCC_OPTIONS='-O3' '-D' 'NDEBUG' '-v' '-o' 'cmTC_60a9f.exe' '-mtune=generic' '-march=pentiumpro' '-dumpdir' 'cmTC_60a9f.']
+        ignore line: []
+        ignore line: []
+        remove lib [msvcrt]
+        remove lib [msvcrt]
+        collapse obj [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib/crt2.o] ==> [/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib/crt2.o]
+        collapse library dir [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0] ==> [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0]
+        collapse library dir [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib/../lib] ==> [/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib]
+        collapse library dir [/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib/../lib] ==> [/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib]
+        collapse library dir [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/../../../../i686-w64-mingw32.static/lib] ==> [/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib]
+        collapse library dir [/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib] ==> [/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib]
+        implicit libs: [stdc++;mingw32;gcc;moldname;mingwex;ssp_nonshared;ssp;kernel32;pthread;advapi32;shell32;user32;kernel32;mingw32;gcc;moldname;mingwex;ssp_nonshared;ssp;kernel32]
+        implicit objs: [/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib/crt2.o;/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/crtbegin.o;/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0/crtend.o]
+        implicit dirs: [/home/ws/projects/mxe/usr/lib/gcc/i686-w64-mingw32.static/11.5.0;/home/ws/projects/mxe/usr/i686-w64-mingw32.static/lib]
+        implicit fwks: []
+      
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CheckCXXSourceCompiles.cmake:58 (cmake_check_source_compiles)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/FindThreads.cmake:99 (CHECK_CXX_SOURCE_COMPILES)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/FindThreads.cmake:163 (_threads_check_libc)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeFindDependencyMacro.cmake:76 (find_package)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/QtPublicDependencyHelpers.cmake:36 (find_dependency)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/Qt6Dependencies.cmake:38 (_qt_internal_find_third_party_dependencies)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/Qt6Config.cmake:185 (include)"
+      - "CMakeLists.txt:33 (find_package)"
+    checks:
+      - "Performing Test CMAKE_HAVE_LIBC_PTHREAD"
+    directories:
+      source: "/home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-6w8f9m"
+      binary: "/home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-6w8f9m"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/ws/projects/mxe/usr/share/cmake/modules;/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6;/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/3rdparty/extra-cmake-modules/find-modules;/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/3rdparty/kwin"
+    buildResult:
+      variable: "CMAKE_HAVE_LIBC_PTHREAD"
+      cached: true
+      stdout: |
+        Change Dir: '/home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-6w8f9m'
+        
+        Run Build Command(s): /usr/bin/ninja -v cmTC_8cc78
+        [1/2] /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ -DCMAKE_HAVE_LIBC_PTHREAD  -O3 -DNDEBUG -std=gnu++23 -o CMakeFiles/cmTC_8cc78.dir/src.cxx.obj -c /home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-6w8f9m/src.cxx
+        [2/2] : && /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ -O3 -DNDEBUG  CMakeFiles/cmTC_8cc78.dir/src.cxx.obj -o cmTC_8cc78.exe -Wl,--out-implib,libcmTC_8cc78.dll.a -Wl,--major-image-version,0,--minor-image-version,0  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CheckCXXSourceCompiles.cmake:58 (cmake_check_source_compiles)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/FindWrapAtomic.cmake:36 (check_cxx_source_compiles)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeFindDependencyMacro.cmake:76 (find_package)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/QtPublicDependencyHelpers.cmake:36 (find_dependency)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6Core/Qt6CoreDependencies.cmake:40 (_qt_internal_find_third_party_dependencies)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6Core/Qt6CoreConfig.cmake:42 (include)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/Qt6Config.cmake:246 (find_package)"
+      - "CMakeLists.txt:33 (find_package)"
+    checks:
+      - "Performing Test HAVE_STDATOMIC"
+    directories:
+      source: "/home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-8SPAaU"
+      binary: "/home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-8SPAaU"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/ws/projects/mxe/usr/share/cmake/modules;/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6;/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/3rdparty/extra-cmake-modules/find-modules;/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/3rdparty/kwin"
+    buildResult:
+      variable: "HAVE_STDATOMIC"
+      cached: true
+      stdout: |
+        Change Dir: '/home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-8SPAaU'
+        
+        Run Build Command(s): /usr/bin/ninja -v cmTC_4927f
+        [1/2] /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ -DHAVE_STDATOMIC  -O3 -DNDEBUG -std=gnu++23 -o CMakeFiles/cmTC_4927f.dir/src.cxx.obj -c /home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-8SPAaU/src.cxx
+        [2/2] : && /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ -O3 -DNDEBUG  CMakeFiles/cmTC_4927f.dir/src.cxx.obj -o cmTC_4927f.exe -Wl,--out-implib,libcmTC_4927f.dll.a -Wl,--major-image-version,0,--minor-image-version,0  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CheckCXXSourceCompiles.cmake:58 (cmake_check_source_compiles)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/FindWrapRt.cmake:23 (check_cxx_source_compiles)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeFindDependencyMacro.cmake:76 (find_package)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/QtPublicDependencyHelpers.cmake:36 (find_dependency)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6Core/Qt6CoreDependencies.cmake:40 (_qt_internal_find_third_party_dependencies)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6Core/Qt6CoreConfig.cmake:42 (include)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/Qt6Config.cmake:246 (find_package)"
+      - "CMakeLists.txt:33 (find_package)"
+    checks:
+      - "Performing Test HAVE_GETTIME"
+    directories:
+      source: "/home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-PcOdQp"
+      binary: "/home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-PcOdQp"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/ws/projects/mxe/usr/share/cmake/modules;/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6;/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/3rdparty/extra-cmake-modules/find-modules;/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/3rdparty/kwin"
+    buildResult:
+      variable: "HAVE_GETTIME"
+      cached: true
+      stdout: |
+        Change Dir: '/home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-PcOdQp'
+        
+        Run Build Command(s): /usr/bin/ninja -v cmTC_cd9ce
+        [1/2] /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ -DHAVE_GETTIME  -O3 -DNDEBUG -std=gnu++23 -o CMakeFiles/cmTC_cd9ce.dir/src.cxx.obj -c /home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-PcOdQp/src.cxx
+        [2/2] : && /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ -O3 -DNDEBUG  CMakeFiles/cmTC_cd9ce.dir/src.cxx.obj -o cmTC_cd9ce.exe -Wl,--out-implib,libcmTC_cd9ce.dll.a -Wl,--major-image-version,0,--minor-image-version,0  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CheckCXXSourceCompiles.cmake:58 (cmake_check_source_compiles)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/FindWrapRt.cmake:34 (check_cxx_source_compiles)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeFindDependencyMacro.cmake:76 (find_package)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/QtPublicDependencyHelpers.cmake:36 (find_dependency)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6Core/Qt6CoreDependencies.cmake:40 (_qt_internal_find_third_party_dependencies)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6Core/Qt6CoreConfig.cmake:42 (include)"
+      - "/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/Qt6Config.cmake:246 (find_package)"
+      - "CMakeLists.txt:33 (find_package)"
+    checks:
+      - "Performing Test HAVE_SHM_OPEN_SHM_UNLINK"
+    directories:
+      source: "/home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-IykMB6"
+      binary: "/home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-IykMB6"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/ws/projects/mxe/usr/share/cmake/modules;/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6;/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/3rdparty/extra-cmake-modules/find-modules;/home/ws/projects/mxe/usr/i686-w64-mingw32.static/qt6/lib/cmake/Qt6/3rdparty/kwin"
+    buildResult:
+      variable: "HAVE_SHM_OPEN_SHM_UNLINK"
+      cached: true
+      stdout: |
+        Change Dir: '/home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-IykMB6'
+        
+        Run Build Command(s): /usr/bin/ninja -v cmTC_21b52
+        [1/2] /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ -DHAVE_SHM_OPEN_SHM_UNLINK  -O3 -DNDEBUG -std=gnu++23 -o CMakeFiles/cmTC_21b52.dir/src.cxx.obj -c /home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-IykMB6/src.cxx
+        FAILED: [code=1] CMakeFiles/cmTC_21b52.dir/src.cxx.obj 
+        /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ -DHAVE_SHM_OPEN_SHM_UNLINK  -O3 -DNDEBUG -std=gnu++23 -o CMakeFiles/cmTC_21b52.dir/src.cxx.obj -c /home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-IykMB6/src.cxx
+        /home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-IykMB6/src.cxx: In function 'int main(int, char**)':
+        /home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-IykMB6/src.cxx:7:5: error: 'shm_open' was not declared in this scope; did you mean 'sopen'?
+            7 |     shm_open("test", O_RDWR | O_CREAT | O_EXCL, 0666);
+              |     ^~~~~~~~
+              |     sopen
+        /home/ws/nped/build-mxe/CMakeFiles/CMakeScratch/TryCompile-IykMB6/src.cxx:8:5: error: 'shm_unlink' was not declared in this scope; did you mean '_unlink'?
+            8 |     shm_unlink("test");
+              |     ^~~~~~~~~~
+              |     _unlink
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 1
+...

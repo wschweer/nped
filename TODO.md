@@ -2,7 +2,8 @@
 # TODO
 ---
 
-## Project-Panel
+## Canned Prompts
+
 Das Projekt Panel zeigt die Liste der Dateien im aktuellen Verzeichnis.
 Das aktuelle Verzeichnis ist das Verzeichnis des aktuellen Files.
 

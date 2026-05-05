@@ -152,7 +152,7 @@ json GeminiClient::prompt(QNetworkRequest* request) {
             // New format: "images" array
             if (msg.contains("images") && msg["images"].is_array()) {
                   for (const auto& imgItem : msg["images"]) {
-                        std::string b64 = imgItem.get<std::string>();
+                        std::string b64 = imgItem.is_string() ? imgItem.get<std::string>() : "";
                         msg["parts"].push_back({
                                  {"inline_data", {{"mime_type", "image/jpeg"}, {"data", b64}}}
                               });
@@ -161,7 +161,7 @@ json GeminiClient::prompt(QNetworkRequest* request) {
                   }
             // Legacy format: single "image" string
             else if (msg.contains("image")) {
-                  std::string b64 = msg["image"].get<std::string>();
+                  std::string b64 = msg["image"].is_string() ? msg["image"].get<std::string>() : "";
                   msg["parts"].push_back({
                            {"inline_data", {{"mime_type", "image/jpeg"}, {"data", b64}}}
                         });
@@ -253,8 +253,14 @@ void GeminiClient::processTools() {
                         }
                   json args = (fc.contains("args") && fc["args"].is_object()) ? fc["args"] : json::object();
 
-                  std::string name   = fc["name"].get<std::string>();
-                  std::string result = agent->executeTool(name, args);
+                  std::string name   = fc.value("name", "");
+                  std::string result;
+                  try {
+                        result = agent->executeTool(name, args);
+                  } catch (const std::exception& e) {
+                        Critical("Exception in executeTool: {}", e.what());
+                        result = "Error: " + std::string(e.what());
+                  }
 
                   msg["parts"].push_back({
                            {"functionResponse", {{"name", name}, {"response", {{"content", result}}}}}
@@ -273,16 +279,32 @@ void GeminiClient::processTools() {
             // put on history
             agent->session()->addRequest(msg, 0);
             _currentToolCalls.clear();
-            agent->sendMessage2();
+            
+            try {
+                  agent->sendMessage2();
+            } catch (const std::exception& e) {
+                  Critical("Exception in sendMessage2: {}", e.what());
+            }
             }
       catch (const json::parse_error& e) {
-            Critical("Parse Error: {}", e.what());
+            Critical("Parse Error in processTools: {}", e.what());
+            _currentToolCalls.clear();
+            agent->sendMessage2();
             }
       catch (const json::type_error& e) {
-            Critical("TypeError: {}", e.what());
+            Critical("TypeError in processTools: {}", e.what());
+            _currentToolCalls.clear();
+            agent->sendMessage2();
+            }
+      catch (const std::exception& e) {
+            Critical("Exception in processTools: {}", e.what());
+            _currentToolCalls.clear();
+            agent->sendMessage2();
             }
       catch (...) {
-            Critical("Unexpected error");
+            Critical("Unexpected error in processTools");
+            _currentToolCalls.clear();
+            agent->sendMessage2();
             }
       }
 

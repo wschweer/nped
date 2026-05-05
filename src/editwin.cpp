@@ -22,7 +22,6 @@
 #include "editor.h"
 #include "kontext.h"
 #include "types.h"
-
 //---------------------------------------------------------
 //   EditWin
 //---------------------------------------------------------
@@ -32,16 +31,14 @@ EditWidget::EditWidget(QWidget* parent, Editor* e) : QWidget(parent) {
       editor = e;
       setFocusPolicy(Qt::NoFocus);
       setMouseTracking(true);
-      }
-
+}
 //---------------------------------------------------------
 //   darkMode
 //---------------------------------------------------------
 
 bool EditWidget::darkMode() const {
       return editor->darkMode();
-      }
-
+}
 //---------------------------------------------------------
 //   keyPressEvent
 //---------------------------------------------------------
@@ -66,8 +63,8 @@ void EditWidget::keyPressEvent(QKeyEvent* e) {
                   case 223:
                   case 228:
                   case 196: c = QLatin1Char(e->nativeVirtualKey()); break;
-                  }
             }
+      }
       if (e->key() == 16781905)
             c = QLatin1Char(96);
       else if (e->key() == 16781904)
@@ -85,17 +82,16 @@ void EditWidget::keyPressEvent(QKeyEvent* e) {
                   case '+': c = QLatin1Char('~'); break;
                   case '<': c = QLatin1Char('|'); break;
                   case 'q': c = QLatin1Char('@'); break;
-                  }
             }
+      }
       if (c == QChar::CarriageReturn)
             c = '\n';
       if (c.isPrint() || c == '\n') {
             editor->startCmd();
             editor->input(c);
             editor->endCmd();
-            }
       }
-
+}
 //---------------------------------------------------------
 //   visibleSize
 //---------------------------------------------------------
@@ -103,16 +99,14 @@ void EditWidget::keyPressEvent(QKeyEvent* e) {
 QSize EditWidget::visibleSize() const {
       return QSize((width() - EditWidget::BORDER) / editor->fw(),
                    (height() - EditWidget::BORDER) / editor->fh());
-      }
-
+}
 //---------------------------------------------------------
 //   leftMargin
 //---------------------------------------------------------
 
 int EditWidget::leftMargin() const {
       return editor->fw() + EditWidget::BORDER * 2;
-      }
-
+}
 //---------------------------------------------------------
 //   textSize
 //    return size of the widget in text lines/columns
@@ -122,8 +116,7 @@ QSize EditWidget::textSize() const {
       int w = floor((width() - leftMargin() - 2 * EditWidget::BORDER) / editor->fw());
       int h = floor((height() - EditWidget::BORDER - editor->fa()) / editor->fh() + 1);
       return QSize(w, h);
-      }
-
+}
 //---------------------------------------------------------
 //   wheelEvent
 //---------------------------------------------------------
@@ -132,15 +125,14 @@ void EditWidget::wheelEvent(QWheelEvent* ev) {
       if (ev->modifiers() & Qt::ControlModifier) {
             int delta = ev->angleDelta().y() / 120;
             qreal s   = editor->scale() * ((delta > 0) ? 1.1 : 0.9);
-            editor->setScale(s);
-            }
+            editor->set_scale(s);
+      }
       else {
             int m      = ev->angleDelta().y() > 0 ? 1 : -1;
             int amount = (ev->modifiers() & Qt::ShiftModifier ? 8 : 2) * m;
             editor->kontext()->moveCursorRel(0, amount, MoveType::Roll);
-            }
       }
-
+}
 //---------------------------------------------------------
 //   pixelToChar
 //    converts screen character position (column, line) into
@@ -150,8 +142,7 @@ void EditWidget::wheelEvent(QWheelEvent* ev) {
 QPointF EditWidget::charPosToPixel(const Pos& e) {
       return QPointF(e.col * editor->fw() + leftMargin() + EditWidget::BORDER,
                      e.row * editor->fh() + EditWidget::BORDER);
-      }
-
+}
 //---------------------------------------------------------
 //   charPosToPixel
 //    converts screen character position (column, line) into
@@ -161,8 +152,7 @@ QPointF EditWidget::charPosToPixel(const Pos& e) {
 Pos EditWidget::pixelToChar(const QPointF& e) {
       return Pos((e.x() - EditWidget::BORDER - leftMargin()) / editor->fw(),
                  (e.y() - EditWidget::BORDER) / editor->fh());
-      }
-
+}
 //---------------------------------------------------------
 //   screenPosToFilePos
 //---------------------------------------------------------
@@ -170,8 +160,7 @@ Pos EditWidget::pixelToChar(const QPointF& e) {
 Pos EditWidget::screenPosToFilePos(Pos screenPos) {
       Kontext* k = editor->kontext();
       return Pos(screenPos.col + k->screenColumnOffset(), screenRowToFileRow(screenPos.row));
-      }
-
+}
 //---------------------------------------------------------
 //   screenRowToFileRow
 //---------------------------------------------------------
@@ -191,8 +180,7 @@ int EditWidget::screenRowToFileRow(int screenRow) {
             for (int i = 0; i > n; --i)
                   row = k->previousRowIfAvailable(row);
       return row;
-      }
-
+}
 //---------------------------------------------------------
 //   mousePressEvent
 //---------------------------------------------------------
@@ -205,7 +193,7 @@ void EditWidget::mousePressEvent(QMouseEvent* e) {
       if (pos.x() >= 0 && pos.x() < leftMargin()) {
             emit markerClicked(filePos.row);
             return;
-            }
+      }
 
       Cursor c;
       c.filePos   = filePos;
@@ -217,7 +205,7 @@ void EditWidget::mousePressEvent(QMouseEvent* e) {
             k->setSelectionMode(SelectionMode::CharSelect);
             k->startSelect() = filePos;
             k->endSelect()   = filePos;
-            }
+      }
       else if (mouseButton == Qt::MiddleButton) {
             editor->startCmd();
             QClipboard* cb = QApplication::clipboard();
@@ -225,16 +213,15 @@ void EditWidget::mousePressEvent(QMouseEvent* e) {
             if (!txt.isEmpty()) {
                   Debug("paste <{}>", txt);
                   editor->input(txt);
-                  }
-            editor->endCmd();
             }
+            editor->endCmd();
+      }
       k->updateSelection();
       emit k->cursorChanged();
       editor->update();
       editor->hideCompletions();
       setFocus(Qt::OtherFocusReason);
-      }
-
+}
 //---------------------------------------------------------
 //   mouseMoveEvent
 //---------------------------------------------------------
@@ -251,8 +238,8 @@ void EditWidget::mouseMoveEvent(QMouseEvent* e) {
                   k->updateSelection();
                   editor->update();
                   return;
-                  }
             }
+      }
 
       if (p.x() >= 0 && p.x() < leftMargin()) {
             Kontext* k = editor->kontext();
@@ -261,14 +248,13 @@ void EditWidget::mouseMoveEvent(QMouseEvent* e) {
             if (k->file()->isFoldable(row)) {
                   hoverMark = row;
                   update();
-                  }
             }
+      }
       else if (hoverMark >= 0) {
             hoverMark = -1;
             update();
-            }
       }
-
+}
 //---------------------------------------------------------
 //   mouseReleaseEvent
 //---------------------------------------------------------
@@ -279,9 +265,8 @@ void EditWidget::mouseReleaseEvent(QMouseEvent* e) {
             if (k->startSelect() == k->endSelect())
                   k->setSelectionMode(SelectionMode::NoSelect);
             editor->update();
-            }
       }
-
+}
 //---------------------------------------------------------
 //   DrawingContext
 //---------------------------------------------------------
@@ -292,8 +277,7 @@ struct DrawingContext {
       QPainter* painter;
       int lb;
       int visibleColumns;
-      };
-
+};
 //---------------------------------------------------------
 //   paintLine
 //---------------------------------------------------------
@@ -335,9 +319,9 @@ void EditWidget::paintLine(DrawingContext& dc, int fileRow, int y) {
                         else if (fileRow == end.row)
                               r = QRect(xToPixel(0), yy, end.col * dc.fw, dc.fh + 2);
                         break;
-                  }
-            dc.painter->fillRect(r, editor->textStyle(TextStyle::Selection).bg);
             }
+            dc.painter->fillRect(r, editor->textStyle(TextStyle::Selection).bg);
+      }
 
       if (l.label() != ' ') {
             //*************************************************************
@@ -351,7 +335,7 @@ void EditWidget::paintLine(DrawingContext& dc, int fileRow, int y) {
             dc.painter->setFont(editor->font());
             dc.painter->drawText(EditWidget::BORDER, y, l.label());
             dc.painter->setPen(editor->textStyle(TextStyle::Normal).fg);
-            }
+      }
 
       //*************************************************************
       //    paint text
@@ -368,7 +352,7 @@ void EditWidget::paintLine(DrawingContext& dc, int fileRow, int y) {
             if ((m.col1 - dc.xo) < 0) {
                   col1 += dc.xo - m.col1;
                   n    -= dc.xo - m.col1;
-                  }
+            }
             if (col1 - dc.xo + n > dc.visibleColumns)
                   n -= dc.visibleColumns - (col1 - dc.xo + n);
 
@@ -381,12 +365,11 @@ void EditWidget::paintLine(DrawingContext& dc, int fileRow, int y) {
                   font.setBold(md.bold);
                   dc.painter->setPen(md.fg);
                   dc.painter->setFont(font);
-                  }
+            }
             int x = dc.lb + (col1 - dc.xo) * dc.fw;
             dc.painter->drawText(x, y, ts);
-            }
       }
-
+}
 //---------------------------------------------------------
 //   paintEvent
 //---------------------------------------------------------
@@ -432,7 +415,7 @@ void EditWidget::paintEvent(QPaintEvent* e) {
             int cy = (hoverMark - dc.yo) * dc.fh + EditWidget::BORDER;
             QRect r(cx, cy, lm, dc.fh);
             painter.fillRect(r, hoverMarkerBGColor);
-            }
+      }
 
       //*************************************************************
       //    Draw text from cursor position to start of screen.
@@ -448,8 +431,8 @@ void EditWidget::paintEvent(QPaintEvent* e) {
             else {
                   paintLine(dc, fileRow, y);
                   fileRow = k->previousRow(fileRow);
-                  }
             }
+      }
 
       //*************************************************************
       //    draw text from cursor position to end of screen
@@ -463,8 +446,8 @@ void EditWidget::paintEvent(QPaintEvent* e) {
             else {
                   paintLine(dc, fileRow, y);
                   fileRow = k->nextRow(fileRow);
-                  }
             }
+      }
 
       //*************************************************************
       // draw cursor
@@ -482,6 +465,6 @@ void EditWidget::paintEvent(QPaintEvent* e) {
             painter.setFont(editor->font());
             QString s = k->cursorValid() ? k->line(k->fileRow())[k->fileCol()] : QString("");
             painter.drawText(cx, cy + dc.fa, s);
-            }
-      painter.end();
       }
+      painter.end();
+}

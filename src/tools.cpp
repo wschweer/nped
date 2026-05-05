@@ -55,12 +55,10 @@
 std::vector<json> Agent::getMCPTools() const {
       try {
             std::vector<json> tools = json::array();
-
             // 1. File Operations
-            tools.push_back(
-                MCPToolBuilder("format_source", "Formats a source file using the Language Server.")
-                    .add_parameter("path", "string", "The path to the file to format.")
-                    .build());
+            tools.push_back(MCPToolBuilder("format", "Formats a source file using the Language Server.")
+                                .add_parameter("path", "string", "The path to the file to format.")
+                                .build());
 
             // 2. Navigation & Search
             tools.push_back(MCPToolBuilder("search_project", "Searches for a text query across all files in "
@@ -104,7 +102,6 @@ std::vector<json> Agent::getMCPTools() const {
                               }
                         }
                   }
-
             tools.push_back(
                 MCPToolBuilder("find_references", "Uses the Language Server to find all references to a "
                                                   "symbol at a specific file and position.")
@@ -112,7 +109,6 @@ std::vector<json> Agent::getMCPTools() const {
                     .add_parameter("line", "integer", "The 1-based line number of the symbol.")
                     .add_parameter("column", "integer", "The 1-based column number of the symbol.")
                     .build());
-
             tools.push_back(
                 MCPToolBuilder(
                     "run_valgrind",
@@ -130,38 +126,17 @@ std::vector<json> Agent::getMCPTools() const {
                 MCPToolBuilder("bash_command", "Executes a shell command. Use this for general bash tasks.")
                     .add_parameter("command", "string", "The bash command to execute.")
                     .build());
+
             tools.push_back(
                 MCPToolBuilder(
                     "build_project",
                     "Builds the project. An optional parameter can be given to build a specific target.")
                     .add_parameter("target", "string", "The optional target to build.", false)
                     .build());
-#if 0
-            // 4. Git Integration
-            tools.push_back(
-                MCPToolBuilder("get_git_status",
-                               "Returns the current git status of the repository. No parameters needed.")
-                    .build());
-
-            tools.push_back(
-                MCPToolBuilder("get_git_diff",
-                               "Shows uncommitted changes as a diff. Helps review edits before committing.")
-                    .add_parameter("path", "string", "Optional: path to a specific file to diff.", false)
-                    .build());
-
-            tools.push_back(
-                MCPToolBuilder("get_git_log", "Displays the recent git commit history.")
-                    .add_parameter("limit", "integer", "Number of commits to retrieve (default: 5).", false)
-                    .build());
-
-            if (isExecuteMode()) {
-                  tools.push_back(
-                      MCPToolBuilder("create_git_commit",
-                                     "Stages all current changes (git add .) and creates a new commit.")
-                          .add_parameter("message", "string", "A clear and concise commit message.")
-                          .build());
-                        }
-#endif
+            tools.push_back(MCPToolBuilder("project_infos",
+                                           "Returns information about the current project as structured "
+                                           "JSON, including projectRoot and build directory.")
+                                .build());
             return tools;
             }
       catch (const json::parse_error& e) {
@@ -214,6 +189,16 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
                   }
             return compressBuildLog(runBashCommand(cmd));
             }
+      else if (functionName == "project_infos") {
+            QString projRoot = _editor->projectRoot();
+            if (projRoot.isEmpty())
+                  return "{\"error\": \"No project found.\"}";
+            json info = {
+                     { "projectRoot",    QDir::cleanPath(projRoot).toStdString()},
+                     { "buildDirectory", QDir::cleanPath(projRoot + "/build").toStdString()}
+                  };
+            return info.dump(2);
+            }
       else if (functionName == "run_valgrind") {
             if (!arguments.contains("executable") || !arguments["executable"].is_string())
                   return "Error: Parameter 'executable' missing.";
@@ -226,29 +211,6 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
                                      : "memcheck";
             return runValgrindCommand(executable, tool, args);
             }
-#if 0
-      else if (functionName == "get_git_status") {
-            return getGitStatus();
-                  }
-      else if (functionName == "get_git_diff") {
-            QString p = (arguments.contains("path") && arguments["path"].is_string())
-                            ? QString::fromStdString(arguments["path"].get<std::string>())
-                            : "";
-            return getGitDiff(p);
-                  }
-      else if (functionName == "get_git_log") {
-            int limit = (arguments.contains("limit") && arguments["limit"].is_number())
-                            ? arguments["limit"].get<int>()
-                            : 5;
-            return getGitLog(limit);
-                  }
-      else if (functionName == "create_git_commit") {
-            if (!arguments.contains("message") || !arguments["message"].is_string())
-                  return "Error: Parameter 'message' missing.";
-            QString msg = QString::fromStdString(arguments["message"].get<std::string>());
-            return createGitCommit(msg);
-                  }
-#endif
       //==========================================================
       // Tools MIT lokalem Datei-Pfad Argument
       //==========================================================
@@ -389,7 +351,7 @@ string Agent::searchProject(const QString& query, const QString& filePattern) {
       if (result.length() > 4000) {
             result.resize(4000);
             result += "\n... [Too many results, output truncated]";
-                                                                                                                                    }
+                                                                                                                                                }
 #endif
       return result;
       }

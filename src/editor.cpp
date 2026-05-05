@@ -350,6 +350,7 @@ void Editor::updateStyle() {
 //---------------------------------------------------------
 
 Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
+      qApp->installEventFilter(this);
       if (!initProject())
             Critical("init project failed");
       resetToDefaults();
@@ -850,10 +851,14 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       updateGitHistory();
       updateProjectPanel();
       connect(this, &Editor::fontFamilyChanged, [this] { initFont(); });
-      connect(this, &Editor::darkModeChanged, this, &Editor::updateProjectTreeColors);
+      connect(this, &Editor::darkModeChanged, [this] {
+            updateStyle();
+            updateProjectTreeColors();
+            update();
+            });
       connect(this, &Editor::textStylesLightChanged, this, &Editor::updateProjectTreeColors);
       connect(this, &Editor::textStylesDarkChanged, this, &Editor::updateProjectTreeColors);
-      connect(this, &Editor::scaleChanged, [this] { setFontSize(_scale * 14.0); });
+      connect(this, &Editor::scaleChanged, [this] { set_fontSize(_scale * 14.0); });
       connect(this, &Editor::fontSizeChanged, [this] { initFont(); });
       }
 
@@ -1000,16 +1005,15 @@ MarkdownWebView* Editor::mdWidget() {
                         }
                   });
 
-            connect(this, &Editor::darkModeChanged,
-                    [this, btnBack, btnForward, btnReload, btnHome](bool dark) {
-                          auto style = textStyle(TextStyle::Normal);
-                          QColor fg  = style.fg;
-                          btnBack->setIcon(createStatefulIcon(":/images/back.svg", fg, fg, fg));
-                          btnForward->setIcon(createStatefulIcon(":/images/forward.svg", fg, fg, fg));
-                          btnReload->setIcon(createStatefulIcon(":/images/reload.svg", fg, fg, fg));
-                          btnHome->setIcon(createStatefulIcon(":/images/home.svg", fg, fg, fg));
-                          _mdWidget->setDarkMode(dark);
-                          });
+            connect(this, &Editor::darkModeChanged, [this, btnBack, btnForward, btnReload, btnHome]() {
+                  auto style = textStyle(TextStyle::Normal);
+                  QColor fg  = style.fg;
+                  btnBack->setIcon(createStatefulIcon(":/images/back.svg", fg, fg, fg));
+                  btnForward->setIcon(createStatefulIcon(":/images/forward.svg", fg, fg, fg));
+                  btnReload->setIcon(createStatefulIcon(":/images/reload.svg", fg, fg, fg));
+                  btnHome->setIcon(createStatefulIcon(":/images/home.svg", fg, fg, fg));
+                  _mdWidget->updateStyle();
+                  });
             connect(this, &Editor::textStylesLightChanged, [this, btnBack, btnForward, btnReload, btnHome]() {
                   auto style = textStyle(TextStyle::Normal);
                   QColor fg  = style.fg;
@@ -1582,7 +1586,7 @@ bool Editor::loadStatus(int argc, char** argv) {
                   if (j.contains("aiVisible"))
                         _aiVisible = j["aiVisible"].get<bool>();
                   if (j.contains("agentRole"))
-                        setAgentRoleName(QString::fromStdString(j["agentRole"]));
+                        set_agentRoleName(QString::fromStdString(j["agentRole"]));
 
                   if (j.contains("gitWidth"))
                         gitWidth = j["gitWidth"].get<int>();
@@ -1610,9 +1614,9 @@ bool Editor::loadStatus(int argc, char** argv) {
                         splitter->restoreState(sState);
                         }
                   if (j.contains("scale"))
-                        setScale(j["scale"].get<qreal>());
+                        set_scale(j["scale"].get<qreal>());
                   if (j.contains("fontSize"))
-                        setFontSize(j["fontSize"].get<qreal>());
+                        set_fontSize(j["fontSize"].get<qreal>());
 
                   // panels already created before loadStatus
 
@@ -2479,7 +2483,7 @@ void TabBar::modifiedChanged() {
             bool readOnly = kontext->readOnly();
             TextStyle ts  = kontext->editor->textStyle(TextStyle::Normal);
             bool modified = kontext->file()->modified();
-            color         = readOnly ? QColor("#b0c0ff") : (modified ? QColor("#ff4040") : ts.fg);
+            color         = readOnly ? QColor("#2020ff") : (modified ? QColor("#ff4040") : ts.fg);
             setTabTextColor(i, color);
             }
       }
@@ -2706,4 +2710,23 @@ void Editor::initFont() {
             gitListView->setFont(f);
       qApp->setFont(f);
       emit fontChanged(f);
+      }
+
+//---------------------------------------------------------
+//   eventFilter
+//---------------------------------------------------------
+
+bool Editor::eventFilter(QObject* obj, QEvent* ev) {
+      if (ev->type() == QEvent::Wheel) {
+            QWheelEvent* wheel = static_cast<QWheelEvent*>(ev);
+            if (wheel->modifiers() & Qt::ControlModifier) {
+                  int delta = wheel->angleDelta().y();
+                  if (delta != 0) {
+                        qreal s = scale() * ((delta > 0) ? 1.1 : 0.9);
+                        set_scale(s);
+                        return true;
+                        }
+                  }
+            }
+      return QMainWindow::eventFilter(obj, ev);
       }

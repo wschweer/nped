@@ -27,6 +27,7 @@
 
 #include <QDesktopServices>
 #include <QWebEnginePage>
+#include <QWheelEvent>
 #include <QPrintDialog>
 #include <QPrinter>
 #include <QScopedPointer>
@@ -114,7 +115,12 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
       _darkMode = e->darkMode();
       // Set initial background color to prevent white flash
       page()->setBackgroundColor(_darkMode ? Qt::black : Qt::white);
-      connect(page(), &QWebEnginePage::printRequested, this, [this]() {
+      for (QObject* child : children()) {
+            if (child->isWidgetType()) {
+                  child->installEventFilter(this);
+            }
+      }
+connect(page(), &QWebEnginePage::printRequested, this, [this]() {
             QPrinter* printer = new QPrinter(QPrinter::HighResolution);
             QPrintDialog printDialog(printer, this);
             printDialog.setWindowTitle(tr("Dokument drucken"));
@@ -188,7 +194,7 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
                   }
             });
       connect(_editor, &Editor::scaleChanged, [this] { setZoomFactor(1.3 * _editor->scale()); });
-      setZoomFactor(1.4 * _editor->scale());
+      setZoomFactor(1.3 * _editor->scale());
       }
 
 //---------------------------------------------------------
@@ -208,11 +214,16 @@ void MarkdownWebView::childEvent(QChildEvent* event) {
 //   installFilterOnProxy
 //---------------------------------------------------------
 
+
 void MarkdownWebView::installFilterOnProxy() {
-      if (focusProxy())
+      if (focusProxy()) {
             focusProxy()->installEventFilter(kl);
-      this->installEventFilter(kl);
+            focusProxy()->installEventFilter(this);
       }
+      this->installEventFilter(kl);
+      this->installEventFilter(this);
+}
+
 
 //---------------------------------------------------------
 //   setHtml
@@ -229,10 +240,11 @@ void MarkdownWebView::setHtml(const QString& _html, const QUrl& _baseUrl) {
       }
 
 //---------------------------------------------------------
-//   setDarkMode
+//   updateStyle
 //---------------------------------------------------------
 
-void MarkdownWebView::setDarkMode(bool enabled) {
+void MarkdownWebView::updateStyle() {
+      bool enabled = _editor->darkMode();
       if (_darkMode == enabled)
             return;
       _darkMode = enabled;
@@ -406,7 +418,7 @@ QString MarkdownWebView::getKaTexJs() const {
     onload="renderMathInElement(document.body, {
         delimiters: [ {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true} ],
         throwOnError: false
-                                                    });"></script>)HTML");
+                                                          });"></script>)HTML");
       }
 
 //---------------------------------------------------------
@@ -750,7 +762,7 @@ const std::string& MarkdownWebView::getAnchorJs() const {
         anchor.innerHTML = '<svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg>';
         heading.insertBefore(anchor, heading.firstChild);
     });
-      });</script>)raw";
+            });</script>)raw";
       return s;
       }
 
@@ -782,7 +794,7 @@ const std::string& MarkdownWebView::getTocJs() const {
         li.appendChild(a);
         tocList.appendChild(li);
     });
-      });</script>)raw";
+            });</script>)raw";
       return s;
       }
 
@@ -804,3 +816,37 @@ void MarkdownWebView::showGitDiff(const QString& diffOutput) {
                                .arg(QString::fromUtf8(doc.toJson()));
       this->page()->runJavaScript(safeScript);
       }
+
+//---------------------------------------------------------
+//   wheelEvent
+//---------------------------------------------------------
+
+void MarkdownWebView::wheelEvent(QWheelEvent* ev) {
+      if (ev->modifiers() & Qt::ControlModifier) {
+            int delta = ev->angleDelta().y();
+            qreal s   = _editor->scale() * ((delta > 0) ? 1.1 : 0.9);
+            _editor->set_scale(s);
+            ev->accept();
+            }
+      else {
+            QWebEngineView::wheelEvent(ev);
+            }
+      }
+
+//---------------------------------------------------------
+//   eventFilter
+//---------------------------------------------------------
+
+bool MarkdownWebView::eventFilter(QObject* obj, QEvent* event) {
+      if (event->type() == QEvent::Wheel) {
+            QWheelEvent* ev = static_cast<QWheelEvent*>(event);
+            if (ev->modifiers() & Qt::ControlModifier) {
+                  int delta = ev->angleDelta().y();
+                  qreal s   = _editor->scale() * ((delta > 0) ? 1.1 : 0.9);
+                  _editor->set_scale(s);
+                  ev->accept();
+                  return true;
+            }
+      }
+      return QWebEngineView::eventFilter(obj, event);
+}

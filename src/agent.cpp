@@ -23,7 +23,6 @@
 #include <QProxyStyle>
 #include <QStyleOptionComboBox>
 #include <QPainter>
-
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QLabel>
@@ -43,19 +42,18 @@
 #include <QFileDialog>
 #include <QImageReader>
 #include <QMimeDatabase>
-#include <QDebug>
 #include <QBuffer>
 #include <QPixmap>
 #include <QDragEnterEvent>
-#include "mcp.h"
 #include <QDropEvent>
 #include <QMimeData>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QRegularExpression>
-
 #include <QApplication>
 #include <QGuiApplication>
+
+#include "mcp.h"
 #include "agent.h"
 #include "logger.h"
 #include "editor.h"
@@ -69,7 +67,6 @@
 using json = nlohmann::json;
 
 #define AI true // dump AI input/output for debugging
-
 //---------------------------------------------------------
 //   Agent (Constructor)
 //---------------------------------------------------------
@@ -96,11 +93,11 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             if (!s.isEmpty()) {
                   sendMessage(s);
                   userInput->clear();
-                  }
-            });
+            }
+      });
 
       stopButton = new QToolButton(this);
-      stopButton->setIcon(QIcon(_editor->darkMode() ? ":images/stop_white.svg" : ":images/stop.svg"));
+      //      stopButton->setIcon(QIcon(_editor->darkMode() ? ":images/stop_white.svg" : ":images/stop.svg"));
       stopButton->setToolTip("Stop AI");
       stopButton->setMinimumWidth(30);
       stopButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
@@ -116,7 +113,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             if (!model.name.isEmpty())
                   modelMenu->setCurrentText(model.name);
             modelMenu->blockSignals(blocked);
-            });
+      });
 
       connect(modelMenu, &QComboBox::activated,
               [this](int index) { setCurrentModel(_editor->models()[index].name); });
@@ -154,9 +151,9 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
                   if (r.name == _editor->agentRoleName())
                         currentIndex = idx;
                   ++idx;
-                  }
+            }
             agentRoleCombo->setCurrentIndex(currentIndex);
-            };
+      };
       connect(_editor, &Editor::agentRolesChanged, updateAgentRoleCombo);
       updateAgentRoleCombo();
 
@@ -171,19 +168,19 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       dashboard->addWidget(modelMenu, 0);
 
       connect(agentRoleCombo, &QComboBox::activated, [this] {
-            _editor->setAgentRoleName(agentRole()->name);
+            _editor->set_agentRoleName(agentRole()->name);
             // if we change the agent role the available tools may change
             mcpTools = getMCPTools();
             if (llm)
                   llm->setTools(mcpTools);
             addMessage("system", std::format("<br><i>[System: Role changed to <b>{}</b>]</i>",
                                              _editor->agentRoleName()));
-            });
+      });
       connect(_mcpManager, &McpManager::toolsChanged, [this] {
             mcpTools = getMCPTools();
             if (llm)
                   llm->setTools(mcpTools);
-            });
+      });
       mcpTools = getMCPTools();
 
       // Filter toggle buttons (icon-only, no pulldown menu needed)
@@ -191,19 +188,17 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       showToolMessageAction->setCheckable(true);
       showToolMessageAction->setChecked(!filterToolMessages);
       showToolMessageAction->setToolTip("Show Tool Messages");
-      showToolMessageAction->setIcon(
-          QIcon(_editor->darkMode() ? ":images/tool-dark.svg" : ":images/tool.svg"));
+      //      showToolMessageAction->setIcon(QIcon(_editor->darkMode() ? ":images/tool-dark.svg" : ":images/tool.svg"));
       connect(showToolMessageAction, &QAction::toggled, [this](bool checked) {
             filterToolMessages = !checked;
             session()->save();
             updateChatDisplay();
             chatDisplay->scrollToBottom();
-            });
+      });
       dashboard->addAction(showToolMessageAction, 1);
 
       showThoughtsAction = new QAction(this);
-      showThoughtsAction->setIcon(
-          QIcon(_editor->darkMode() ? ":images/thinking-dark.svg" : ":images/thinking.svg"));
+      //      showThoughtsAction->setIcon(QIcon(_editor->darkMode() ? ":images/thinking-dark.svg" : ":images/thinking.svg"));
       showThoughtsAction->setCheckable(true);
       showThoughtsAction->setChecked(!filterThoughts);
       showThoughtsAction->setToolTip("Show Thoughts");
@@ -212,7 +207,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             session()->save();
             updateChatDisplay();
             chatDisplay->scrollToBottom();
-            });
+      });
       dashboard->addAction(showThoughtsAction, 1);
 
       // Screenshot button
@@ -221,8 +216,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       screenshotButton->setToolTip("Take Screenshot and attach to next prompt");
       screenshotButton->setCheckable(true);
       screenshotButton->setChecked(false);
-      screenshotButton->setIcon(
-          QIcon(_editor->darkMode() ? ":images/camera-dark.svg" : ":images/camera.svg"));
+      //      screenshotButton->setIcon(QIcon(_editor->darkMode() ? ":images/camera-dark.svg" : ":images/camera.svg"));
       dashboard->addWidget(screenshotButton, 1);
 
       screenshotHelper = new ScreenshotHelper(this);
@@ -239,9 +233,9 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
                   addMessage("system", "<i>[All attached files discarded]</i><br>");
                   updateDataPanel();
                   return;
-                  }
+            }
             screenshotHelper->takeScreenshot();
-            });
+      });
 
       // Initialize token count
       dashboard->setTokenCount(session()->totalTokens);
@@ -249,25 +243,14 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       connect(session(), &Session::tokensChanged,
               [this](size_t tokens) { dashboard->setTokenCount(tokens); });
 
-      auto updateIcons = [this]() {
-            QColor fg = _editor->textStyle(TextStyle::Normal).fg;
-            showThoughtsAction->setIcon(Editor::createStatefulIcon(":images/thinking.svg", fg, fg, fg));
-            showToolMessageAction->setIcon(Editor::createStatefulIcon(":images/tool.svg", fg, fg, fg));
-            screenshotButton->setIcon(Editor::createStatefulIcon(":images/camera.svg", fg, fg, fg));
-            stopButton->setIcon(Editor::createStatefulIcon(":images/stop.svg", fg, fg, fg));
-            };
-
-      connect(_editor, &Editor::darkModeChanged, updateIcons);
-      connect(_editor, &Editor::textStylesLightChanged, updateIcons);
-      connect(_editor, &Editor::textStylesDarkChanged, updateIcons);
-      updateIcons();
+      connect(_editor, &Editor::textStylesLightChanged, this, &Agent::updateIcons);
+      connect(_editor, &Editor::textStylesDarkChanged, this, &Agent::updateIcons);
 
       // --- 2. Chat Display ---
       chatDisplay = new ChatDisplay(_editor, parent);
-      chatDisplay->setDarkMode(_editor->darkMode());
+      chatDisplay->updateStyle();
       chatDisplay->setup();
       mainLayout->addWidget(chatDisplay->widget(), 1); // stretch=1: nimmt den gesamten verbleibenden Platz
-      connect(_editor, &Editor::darkModeChanged, chatDisplay, &ChatDisplay::setDarkMode);
 
       // 3b. Prompt input field (zuerst anlegen, damit die Höhe bekannt ist)
       userInput = new DropAwarePlainTextEdit(this);
@@ -289,13 +272,25 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       dataPanelLayout->setSpacing(4);
       dataPanelLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
+      cannedPromptsButton = new QToolButton(dataPanel);
+      cannedPromptsButton->setText("💡");
+      cannedPromptsButton->setToolTip("Canned Prompts");
+      cannedPromptsButton->setPopupMode(QToolButton::InstantPopup);
+      QMenu* cannedPromptsMenu = new QMenu(cannedPromptsButton);
+      cannedPromptsButton->setMenu(cannedPromptsMenu);
+      connect(cannedPromptsMenu, &QMenu::aboutToShow, [this, cannedPromptsMenu]() {
+            cannedPromptsMenu->clear();
+            for (const auto& cp : _editor->cannedPrompts()) {
+                  QAction* action = cannedPromptsMenu->addAction(cp.name);
+                  action->setToolTip(cp.description);
+                  connect(action, &QAction::triggered, [this, cp]() { userInput->setPlainText(cp.prompt); });
+            }
+      });
+      dataPanelLayout->addWidget(cannedPromptsButton);
+
       // "+" button to add attachments
       addAttachmentButton = new QToolButton(dataPanel);
       addAttachmentButton->setText("+");
-      addAttachmentButton->setFixedSize(36, 36);
-      addAttachmentButton->setStyleSheet("QToolButton { border: 1px solid #555; border-radius: 4px; "
-                                         "background: transparent; font-size: 18px; }"
-                                         "QToolButton:hover { background: #3a3a3a; }");
       addAttachmentButton->setToolTip("Add attachment");
       connect(addAttachmentButton, &QToolButton::clicked, this, &Agent::addAttachment);
       dataPanelLayout->addWidget(addAttachmentButton);
@@ -309,28 +304,6 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       buttonPanelLayout->setContentsMargins(2, 2, 2, 2);
       buttonPanelLayout->setSpacing(4);
       buttonPanelLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
-
-      // New summary buttons (vertical bar)
-      button1 = new QToolButton(this);
-      button1->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed); // kein vertikales Wachstum
-      button1->setText("F1");
-      button1->setToolTip("Canned prompt F1");
-      connect(button1, &QToolButton::clicked, [this] { handleCannedPrompt("F1"); });
-      buttonPanelLayout->addWidget(button1);
-
-      button2 = new QToolButton(this);
-      button2->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed); // kein vertikales Wachstum
-      button2->setText("F2");
-      button2->setToolTip("Canned prompt F2");
-      connect(button2, &QToolButton::clicked, [this] { handleCannedPrompt("F2"); });
-      buttonPanelLayout->addWidget(button2);
-
-      button3 = new QToolButton(this);
-      button3->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed); // kein vertikales Wachstum
-      button3->setText("F3");
-      button3->setToolTip("Canned prompt F3");
-      connect(button3, &QToolButton::clicked, [this] { handleCannedPrompt("F3"); });
-      buttonPanelLayout->addWidget(button3);
 
       // 3c. Widgets in einer vertikalen Box kombinieren
       QWidget* inputContainer = new QWidget(this);
@@ -362,11 +335,10 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             deleteSessionButton->setFont(f);
             sessionComboBox->setFont(f);
             agentRoleCombo->setFont(f);
-            button1->setFont(f);
-            button2->setFont(f);
-            button3->setFont(f);
             dashboard->setFont(f);
-            });
+            cannedPromptsButton->setFont(f);
+            addAttachmentButton->setFont(f);
+      });
 
       connect(
           chatDisplay, &QWebEngineView::loadFinished, this, [this] { session()->load(QString()); },
@@ -376,9 +348,29 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       connect(spinnerTimer, &QTimer::timeout, this, &Agent::updateSpinner);
 
       _mcpManager->applyConfigs(_editor->mcpServersConfig());
-      updateCannedPrompts();
-      }
 
+      connect(_editor, &Editor::darkModeChanged, this, &Agent::updateStyle);
+      updateStyle();
+}
+//---------------------------------------------------------
+//   updateStyle
+//---------------------------------------------------------
+
+void Agent::updateStyle() {
+      updateIcons();
+      chatDisplay->updateStyle();
+}
+//---------------------------------------------------------
+//   updateIcons
+//---------------------------------------------------------
+
+void Agent::updateIcons() {
+      QColor fg = _editor->textStyle(TextStyle::Normal).fg;
+      showThoughtsAction->setIcon(Editor::createStatefulIcon(":images/thinking.svg", fg, fg, fg));
+      showToolMessageAction->setIcon(Editor::createStatefulIcon(":images/tool.svg", fg, fg, fg));
+      screenshotButton->setIcon(Editor::createStatefulIcon(":images/camera.svg", fg, fg, fg));
+      stopButton->setIcon(Editor::createStatefulIcon(":images/stop.svg", fg, fg, fg));
+}
 //---------------------------------------------------------
 //   getConfigPath
 // Helper function for the path
@@ -388,8 +380,7 @@ QString Agent::configPath() {
       QString path = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
       QDir().mkpath(path);
       return path + "/models.json";
-      }
-
+}
 //---------------------------------------------------------
 //   setCurrentModel
 //---------------------------------------------------------
@@ -409,7 +400,7 @@ void Agent::setCurrentModel(const QString& s, bool clearChat) {
                                       chatDisplay->handleIncomingChunk("", textChunk);
                                 else
                                       chatDisplay->handleIncomingChunk(thoughtChunk, textChunk);
-                                });
+                          });
                   currentRetryCount  = 0;
                   retryPause         = 2000;
                   rateLimitResetTime = QDateTime();
@@ -420,12 +411,11 @@ void Agent::setCurrentModel(const QString& s, bool clearChat) {
                         modelMenu->setCurrentText(s);
                   emit modelChanged();
                   return;
-                  }
             }
+      }
       pendingModelName = s;
       Critical("model <{}> not found, setting as pending", s.toStdString());
-      }
-
+}
 //---------------------------------------------------------
 //   fetchModels
 //    request list of local available ollama models
@@ -440,7 +430,7 @@ void Agent::fetchModels() {
                   QString errorStr = reply->errorString();
                   Critical("network error: {}", errorStr);
                   return;
-                  }
+            }
             try {
                   auto j = json::parse(reply->readAll().toStdString());
                   for (const auto& model : j["models"]) {
@@ -450,8 +440,8 @@ void Agent::fetchModels() {
                               if (em.modelIdentifier == name) {
                                     found = true;
                                     break;
-                                    }
                               }
+                        }
                         if (found)
                               continue;
 
@@ -462,28 +452,27 @@ void Agent::fetchModels() {
                         m.api             = "ollama";
                         m.dynamic         = true;
                         _editor->addModel(m);
-                        }
+                  }
                   // Now we can select the last used model as saved in settings
 
                   if (!pendingModelName.isEmpty()) {
                         QString pending = pendingModelName;
                         pendingModelName.clear();
                         setCurrentModel(pending, false);
-                        }
-                  emit _editor->modelsChanged();
                   }
+                  emit _editor->modelsChanged();
+            }
             catch (const json::parse_error& e) {
                   Debug("Parse Error: {}", e.what());
-                  }
+            }
             catch (const json::type_error& e) {
                   Debug("TypeError: {}", e.what());
-                  }
+            }
             catch (...) {
                   Critical("Unexpected error");
-                  }
-            });
-      }
-
+            }
+      });
+}
 //---------------------------------------------------------
 //   sendMessage
 //---------------------------------------------------------
@@ -507,8 +496,8 @@ void Agent::sendMessage(QString qtext) {
                   if (att.type == AttachmentType::Text && !att.data.isEmpty()) {
                         text += "\n\n";
                         text += att.data.toStdString();
-                        }
                   }
+            }
 
             // Collect images for the LLM clients
             json imagesArray = json::array();
@@ -521,7 +510,7 @@ void Agent::sendMessage(QString qtext) {
             _attachments.clear();
             screenshotButton->setChecked(false);
             updateDataPanel();
-            }
+      }
       std::string logText;
       std::string thought;
       logContent(msg, logText, thought);
@@ -530,8 +519,7 @@ void Agent::sendMessage(QString qtext) {
       // Approximate token count: 4 chars per token
       session()->addRequest(msg, text.length() / 4);
       sendMessage2();
-      }
-
+}
 //---------------------------------------------------------
 //   truncateOutput
 //---------------------------------------------------------
@@ -544,8 +532,7 @@ QString Agent::truncateOutput(const QString& text, int maxChars) {
       int removed = text.length() - maxChars;
       return text.left(maxChars) +
              QString("\n\n... [Output truncated. %1 characters omitted for brevity]").arg(removed);
-      }
-
+}
 //---------------------------------------------------------
 //   truncateOutput
 //---------------------------------------------------------
@@ -560,8 +547,7 @@ std::string Agent::truncateOutput(const std::string& text, int maxChars) {
       if (s.find('\n') == std::string::npos && s.length() > 100)
             s.insert(100, "\n");
       return s + std::format("\n\n... [Output truncated. {} characters omitted for brevity]", removed);
-      }
-
+}
 //---------------------------------------------------------
 //   stop
 //---------------------------------------------------------
@@ -573,13 +559,12 @@ void Agent::stop() {
             currentReply->abort();
             currentReply->deleteLater();
             currentReply = nullptr;
-            }
+      }
       // If there is an active local event loop from a tool (e.g., ask_user), it needs to be exited.
       // But typically ask_user blocks processTools, and since tools are run sequentially,
       // an abort of network is mostly enough, but let's allow enableInput on stop
       stopAgent();
-      }
-
+}
 //---------------------------------------------------------
 //   sendMessage2
 //---------------------------------------------------------
@@ -589,7 +574,7 @@ void Agent::sendMessage2() {
             _stopRequested = false;
             startAgent();
             return;
-            }
+      }
       startAgent();
       retryPause = 2000;
 
@@ -609,12 +594,11 @@ void Agent::sendMessage2() {
             currentReply->abort();
             currentReply->deleteLater();
             currentReply = nullptr;
-            }
+      }
       currentReply = networkManager->post(request, payload);
       connect(currentReply, &QNetworkReply::readyRead, this, &Agent::handleChatReadyRead);
       connect(currentReply, &QNetworkReply::finished, this, &Agent::handleChatFinished);
-      }
-
+}
 //---------------------------------------------------------
 //   handleChatReadyRead
 //---------------------------------------------------------
@@ -623,13 +607,12 @@ void Agent::handleChatReadyRead() {
       if (!currentReply) {
             Critical("no currentReply");
             return;
-            }
+      }
       QByteArray newData = currentReply->readAll();
       //      CLog(AI, "{}", newData.data());
       streamBuffer.append(newData);
       processData();
-      }
-
+}
 //---------------------------------------------------------
 //   handleChatFinished
 //---------------------------------------------------------
@@ -638,7 +621,7 @@ void Agent::handleChatFinished() {
       if (!currentReply) {
             Critical("no currentReply");
             return;
-            }
+      }
       // --- ERROR HANDLING & BACKOFF LOGIC ---
       if (currentReply->error() != QNetworkReply::NoError) {
             int statusCode = currentReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -655,7 +638,7 @@ void Agent::handleChatFinished() {
                               if (!retryAfterRaw.isEmpty()) {
                                     // Anthropic/OpenAI usually send seconds as integer here
                                     waitMs = retryAfterRaw.toInt() * 1000;
-                                    }
+                              }
 
                               // Fallback: Standard Exponential if no headers are there
                               if (waitMs <= 0)
@@ -668,7 +651,7 @@ void Agent::handleChatFinished() {
                                          std::format("<br><font color='orange'><b>[Rate Limit]:</b> Pause "
                                                      "for {} seconds...</font><br>",
                                                      waitMs / 1000.0));
-                              }
+                        }
                         // B: Server Error (5xx) -> Exponential Backoff
                         else {
                               waitMs = 2000 * std::pow(2, currentRetryCount);
@@ -676,7 +659,7 @@ void Agent::handleChatFinished() {
                                                                "{}]:</b> Retry {}/{} in {}s...</font><br>",
                                                                statusCode, currentRetryCount + 1, maxRetries,
                                                                waitMs / 1000.0));
-                              }
+                        }
 
                         currentReply->deleteLater();
                         currentReply = nullptr;
@@ -687,14 +670,14 @@ void Agent::handleChatFinished() {
                         // Start timer for next attempt
                         QTimer::singleShot(waitMs, this, &Agent::sendMessage2);
                         return;
-                        }
+                  }
                   else {
                         Debug("too many reply's");
                         addMessage("system", std::format("<br><font color='red'><b>[Abort]:</b> "
                                                          "Too many attempts ({}).</font><br>",
                                                          maxRetries));
-                        }
                   }
+            }
 
             QString errorMessage = currentReply->errorString();
             // Generate specific messages
@@ -708,7 +691,7 @@ void Agent::handleChatFinished() {
                         errorMessage += "\nModell not found (bad baseUrl configured?)";
                         break;
                   default: break;
-                  }
+            }
             Debug("Network/API error {}: {}", int(currentReply->error()), errorMessage);
 
             // Show the error to the user in the UI
@@ -719,7 +702,7 @@ void Agent::handleChatFinished() {
 
             stopAgent();
             return;
-            }
+      }
       QByteArray newData = currentReply->readAll();
       streamBuffer.append(newData);
       processData();
@@ -738,8 +721,7 @@ void Agent::handleChatFinished() {
       if (!currentReply)
             updateChatDisplay();
       session()->save();
-      }
-
+}
 //---------------------------------------------------------
 //   processData
 //---------------------------------------------------------
@@ -753,7 +735,7 @@ void Agent::processData() {
             if (startPos == std::string::npos) {
                   streamBuffer.clear(); // Kein Objektanfang gefunden, Puffer verwerfen
                   break;
-                  }
+            }
 
             bool foundValidObject = false;
 
@@ -774,13 +756,13 @@ void Agent::processData() {
                               CLog(AI, "received <{}>", j.dump(3));
                               try {
                                     llm->processJsonItem(j);
-                                    }
+                              }
                               catch (const std::exception& e) {
                                     Critical("Exception in processJsonItem: {}", e.what());
-                                    }
+                              }
                               catch (...) {
                                     Critical("Unknown exception in processJsonItem");
-                                    }
+                              }
 
                               // Puffer aktualisieren
                               size_t consumed = startPos + len;
@@ -789,22 +771,21 @@ void Agent::processData() {
 
                               foundValidObject = true;
                               break; // Zurück zum Anfang der while-Schleife
-                              }
                         }
+                  }
                   catch (const json::parse_error&) {
                         // Noch nicht vollständig oder korrupt, weitersuchen
                         continue;
-                        }
                   }
+            }
 
             if (!foundValidObject) {
                   // Wir haben kein vollständiges Objekt im aktuellen Puffer gefunden
                   // Wir behalten den Rest für den nächsten dataReceived-Call
                   break;
-                  }
             }
       }
-
+}
 //---------------------------------------------------------
 //   startNewSession
 //---------------------------------------------------------
@@ -824,8 +805,7 @@ void Agent::startNewSession() {
       addMessage("system", format("<i>[System: New session started: <b>{}</b>]</i><br>",
                                   QFileInfo(session()->name()).fileName().toStdString()));
       userInput->setFocus();
-      }
-
+}
 //---------------------------------------------------------
 //   deleteCurrentSession
 //---------------------------------------------------------
@@ -839,15 +819,14 @@ void Agent::deleteCurrentSession() {
             file.remove();
             //            chatDisplay->append(
             //                QString("<i>[System: Session deleted: <b>%1</b>]</i><br>").arg(QFileInfo(session()->name()).fileName()));
-            }
+      }
 
       session()->setName(QString());
       session()->clear();
       chatDisplay->clear();
       updateSessionList();
       userInput->setFocus();
-      }
-
+}
 //---------------------------------------------------------
 //   renameCurrentSession
 //---------------------------------------------------------
@@ -883,19 +862,18 @@ void Agent::renameCurrentSession() {
             do {
                   targetName = newName + "-" + QString::number(counter++);
                   targetPath = dir + "/" + targetName + "." + suffix;
-                  } while (QFile::exists(targetPath));
-            }
+            } while (QFile::exists(targetPath));
+      }
 
       // Umbenennen
       if (!QFile::rename(session()->name(), targetPath)) {
             QMessageBox::warning(this, tr("Rename failed"), tr("Could not rename session file."));
             return;
-            }
+      }
 
       session()->setName(targetPath);
       updateSessionList();
-      }
-
+}
 //---------------------------------------------------------
 //   updateSessionList
 //---------------------------------------------------------
@@ -918,21 +896,20 @@ void Agent::updateSessionList() {
 
             for (const QFileInfo& fileInfo : files)
                   sessionComboBox->addItem(fileInfo.baseName(), fileInfo.absoluteFilePath());
-            }
+      }
 
       int index = sessionComboBox->findData(session()->name());
       if (index >= 0) {
             sessionComboBox->setCurrentIndex(index);
-            }
+      }
       else if (!session()->name().isEmpty()) {
             QFileInfo fi(session()->name());
             sessionComboBox->insertItem(0, fi.baseName(), session()->name());
             sessionComboBox->setCurrentIndex(0);
-            }
-
-      sessionComboBox->blockSignals(wasBlocked);
       }
 
+      sessionComboBox->blockSignals(wasBlocked);
+}
 //---------------------------------------------------------
 //   onSessionSelected
 //---------------------------------------------------------
@@ -944,17 +921,15 @@ void Agent::onSessionSelected(int index) {
       if (fileName != session()->name()) {
             session()->save();
             session()->load(fileName);
-            }
       }
-
+}
 //---------------------------------------------------------
 //   isWorking
 //---------------------------------------------------------
 
 bool Agent::isWorking() const {
       return spinnerTimer->isActive();
-      }
-
+}
 //---------------------------------------------------------
 //   updateSpinner
 //---------------------------------------------------------
@@ -963,8 +938,7 @@ void Agent::updateSpinner() {
       const QString frames = "|/-\\";
       statusLabel->setText(QString(frames[spinnerFrame % 4]));
       spinnerFrame++;
-      }
-
+}
 //---------------------------------------------------------
 //   eventFilter
 //   Fängt Enter vs. Shift+Enter im mehrzeiligen Textfeld ab
@@ -980,15 +954,14 @@ bool Agent::eventFilter(QObject* obj, QEvent* event) {
                               sendMessage(userInput->toPlainText());
                               userInput->clear();
                               return true;
-                              }
+                        }
                         // Just insert a newline for normal Return
                         return false;
-                        }
                   }
             }
-      return QWidget::eventFilter(obj, event);
       }
-
+      return QWidget::eventFilter(obj, event);
+}
 //---------------------------------------------------------
 //   formatToolCall
 //    formats a tool call and its output (result)
@@ -1002,16 +975,15 @@ std::string Agent::formatToolCall(const std::string& name, const json& args, con
                   argsStr += ", ";
             argsStr += std::format("{}={}", key, value.dump());
             first    = false;
-            }
+      }
 
       std::string output = std::format("\n\n<i>[System: Run Tool: {}({})]</i>\n\n", name, argsStr);
       if (!result.empty()) {
             std::string truncatedResult  = truncateOutput(result, kChatResultMaxChars);
             output                      += std::format("```\n{}\n```\n\n", truncatedResult);
-            }
-      return output;
       }
-
+      return output;
+}
 //---------------------------------------------------------
 //   logContent
 //    gemini
@@ -1038,9 +1010,9 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                                                  "500px; display: block; margin: "
                                                  "10px 0;\"/><br>",
                                                  img.get<std::string>());
-                              }
                         }
                   }
+            }
 
             if (!content.contains("parts")) {
                   // Anthropic Extended Thinking: top-level "thinking" field on assistant messages.
@@ -1052,7 +1024,7 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                               thought += th.get<std::string>();
                         else if (th.is_object() && th.contains("thinking"))
                               thought += th["thinking"].get<std::string>();
-                        }
+                  }
                   // ollama / openai / anthropic
                   if (content.contains("content")) {
                         json c = content["content"];
@@ -1072,13 +1044,13 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                                           thought += s.substr(thinkStart + startTag.length(),
                                                               thinkEnd - (thinkStart + startTag.length()));
                                           s.erase(thinkStart, thinkEnd + endTag.length() - thinkStart);
-                                          }
+                                    }
                                     else {
                                           thought += s.substr(thinkStart + startTag.length());
                                           s.erase(thinkStart);
-                                          }
                                     }
-                              };
+                              }
+                        };
 
                         extractTag("<think>", "</think>");
                         extractTag("<thought>", "</thought>");
@@ -1091,23 +1063,23 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                                     if (content.contains("function")) {
                                           json fc  = content["function"];
                                           msg     += formatToolCall(fc["name"], fc["arguments"], s);
-                                          }
                                     }
                               }
+                        }
                         else
                               msg += s;
-                        }
+                  }
                   if (content.contains("tool_calls")) {
                         if (!filterToolMessages) {
                               for (const auto& tool : content["tool_calls"]) {
                                     if (tool.contains("function")) {
                                           json fc  = tool["function"];
                                           msg     += formatToolCall(fc["name"], fc["arguments"], "");
-                                          }
                                     }
                               }
                         }
                   }
+            }
             else {
                   // gemini:
                   for (const auto& part : content["parts"]) {
@@ -1116,7 +1088,7 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                                     thought += part["text"];
                               else
                                     msg += part["text"];
-                              }
+                        }
                         if (part.contains("functionResponse")) {
                               if (!filterToolMessages) {
                                     json fr = part["functionResponse"];
@@ -1127,28 +1099,27 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                                         truncateOutput(static_cast<std::string>(fr["response"]["content"]),
                                                        kChatResultMaxChars);
                                     msg += std::format("\n\n```\n{}\n```\n\n", s);
-                                    }
                               }
+                        }
                         if (part.contains("functionCall")) {
                               if (!filterToolMessages) {
                                     json fc  = part["functionCall"];
                                     msg     += formatToolCall(fc["name"], fc["args"]);
-                                    }
                               }
                         }
                   }
             }
+      }
       catch (const json::parse_error& e) {
             Debug("Parse Error: {}", e.what());
-            }
+      }
       catch (const json::type_error& e) {
             Debug("TypeError: {}", e.what());
-            }
+      }
       catch (...) {
             Critical("Unexpected error");
-            }
       }
-
+}
 //---------------------------------------------------------
 //   updateChatDisplay
 //---------------------------------------------------------
@@ -1168,7 +1139,7 @@ void Agent::updateChatDisplay(bool scrollToBottom) {
                   Critical("no role in chatHistory: <{}>", content.dump(3));
                   // assume this is a "system" message in the hope something will be displayed
                   role = "system";
-                  }
+            }
             else
                   role = content["role"];
 
@@ -1186,11 +1157,10 @@ void Agent::updateChatDisplay(bool scrollToBottom) {
             QString th    = chatDisplay->renderMarkdownToHtml(thought);
             bool isActive = (i == 0 || i >= startActiveIdx);
             chatDisplay->appendStaticHtml(QString::fromStdString(role), s, th, isActive);
-            }
+      }
       if (scrollToBottom)
             chatDisplay->scrollToBottom();
-      }
-
+}
 //---------------------------------------------------------
 //   onScreenshotReady
 //    Called when the XDG portal delivers a screenshot image.
@@ -1209,7 +1179,7 @@ void Agent::onScreenshotReady(const QImage& image) {
       if (jpegData.size() > kMaxAttachmentSize) {
             addMessage("system", "<i>[⚠️ Screenshot too large, discarding.]</i><br>");
             return;
-            }
+      }
       _attachments.append({AttachmentType::Image, jpegData.toBase64(), "screenshot"});
 
       const int count = _attachments.size();
@@ -1220,8 +1190,7 @@ void Agent::onScreenshotReady(const QImage& image) {
                                        "Click 📷 to discard all.]</i><br>",
                                        count, image.width(), image.height()));
       updateDataPanel();
-      }
-
+}
 //---------------------------------------------------------
 //   onScreenshotFailed
 //    Called when the portal screenshot fails or is cancelled.
@@ -1232,8 +1201,7 @@ void Agent::onScreenshotFailed(const QString& reason) {
       addMessage("system", std::string("<font color='orange'><i>[Screenshot failed: ") +
                                reason.toStdString() + "]</i></font><br>");
       updateDataPanel();
-      }
-
+}
 //---------------------------------------------------------
 //   updateDataPanel
 //   Rebuilds thumbnail/preview icons in the narrow left panel next
@@ -1250,7 +1218,7 @@ void Agent::updateDataPanel() {
       for (QToolButton* btn : _attachmentButtons) {
             dataPanelLayout->removeWidget(btn);
             delete btn;
-            }
+      }
       _attachmentButtons.clear();
 
       // Create one button per pending attachment in a single loop
@@ -1275,11 +1243,11 @@ void Agent::updateDataPanel() {
                         QPixmap pm = QPixmap::fromImage(
                             img.scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation));
                         btn->setIcon(QIcon(pm));
-                        }
+                  }
                   else {
                         btn->setText("🖼");
-                        }
                   }
+            }
             else if (att.type == AttachmentType::Text) {
                   // Show text file with document icon + extension
                   btn->setText("📄\n" + fileType);
@@ -1288,11 +1256,11 @@ void Agent::updateDataPanel() {
                       "QToolButton { border: 1px solid #555; border-radius: 4px; "
                       "background: #2d2d2d; font-size: 10px; } "
                       "QToolButton:checked { border: 2px solid #0078d7; background: #3a3a3a; }");
-                  }
+            }
             else if (att.type == AttachmentType::Audio) {
                   // Audio file icon
                   btn->setText("🔊");
-                  }
+            }
             else {
                   // Other file type — try to get extension from label (filename)
                   const QString ext = fileType;
@@ -1308,7 +1276,7 @@ void Agent::updateDataPanel() {
                   else if (ext == "xls" || ext == "xlsx" || ext == "csv")
                         fileIcon = "📗";
                   btn->setText(fileIcon);
-                  }
+            }
 
             // Connect clicked for select/deselect logic
             connect(btn, &QToolButton::clicked, this, &Agent::onAttachmentClicked);
@@ -1316,7 +1284,7 @@ void Agent::updateDataPanel() {
 
             dataPanelLayout->addWidget(btn);
             _attachmentButtons.append(btn);
-            }
+      }
 
       // Add stretch at the end if needed
       if (dataPanelLayout->count() > 0) {
@@ -1325,11 +1293,10 @@ void Agent::updateDataPanel() {
             if (last && last->spacerItem()) {
                   dataPanelLayout->removeItem(last);
                   delete last;
-                  }
             }
-      dataPanelLayout->addStretch(1);
       }
-
+      dataPanelLayout->addStretch(1);
+}
 //---------------------------------------------------------
 //   onAttachmentClicked
 //---------------------------------------------------------
@@ -1343,18 +1310,17 @@ void Agent::onAttachmentClicked() {
             if (btn->isChecked()) {
                   // If already checked, uncheck it
                   btn->setChecked(false);
-                  }
+            }
             else {
                   // Uncheck all other buttons
                   for (QToolButton* otherBtn : _attachmentButtons)
                         otherBtn->setChecked(false);
                   // Check this one
                   btn->setChecked(true);
-                  }
-            emit attachmentClicked(index);
             }
+            emit attachmentClicked(index);
       }
-
+}
 //---------------------------------------------------------
 //   onAttachmentSelected
 //---------------------------------------------------------
@@ -1373,17 +1339,16 @@ void Agent::onAttachmentSelected(int index) {
                   file.close();
                   addMessage("attachment", std::format("[%1]\n```\n%2\n```", QFileInfo(att.label).fileName(),
                                                        truncateOutput(text.toStdString(), 5000)));
-                  }
             }
+      }
       else if (att.type == AttachmentType::Image) {
             addMessage("attachment", std::format("[Image: {}]", QFileInfo(att.label).fileName()));
-            }
+      }
       else {
             addMessage("attachment", std::format("[Attachment: {}] ({})", QFileInfo(att.label).fileName(),
                                                  QFileInfo(att.label).size()));
-            }
       }
-
+}
 //---------------------------------------------------------
 //   removeAttachment
 //---------------------------------------------------------
@@ -1392,180 +1357,8 @@ void Agent::removeAttachment(int index) {
       if (index >= 0 && index < _attachments.size()) {
             _attachments.removeAt(index);
             updateDataPanel();
-            }
       }
-
-//---------------------------------------------------------
-//   updateCannedPrompts
-//---------------------------------------------------------
-
-void Agent::updateCannedPrompts() {
-      QString root = _editor->projectRoot();
-      if (root.isEmpty())
-            return;
-      QString npedDir  = root + "/.nped";
-      QString filePath = npedDir + "/agent.json";
-      QFile file(filePath);
-      if (!file.exists()) {
-            QDir dir;
-            if (!dir.exists(npedDir))
-                  dir.mkpath(npedDir);
-            if (file.open(QIODevice::WriteOnly)) {
-                  json j;
-                  j["F1"] = {
-                           {       "name",               "F1"},
-                           {"description", "Canned prompt F1"},
-                           {       "text",                 ""}
-                        };
-                  j["F2"] = {
-                           {       "name",               "F2"},
-                           {"description", "Canned prompt F2"},
-                           {       "text",                 ""}
-                        };
-                  j["F3"] = {
-                           {       "name",               "F3"},
-                           {"description", "Canned prompt F3"},
-                           {       "text",                 ""}
-                        };
-                  std::string s = j.dump(4);
-                  file.write(s.c_str(), s.length());
-                  file.close();
-                  }
-            else {
-                  Debug("Failed to create agent.json");
-                  }
-            }
-
-      if (file.open(QIODevice::ReadOnly)) {
-            QByteArray data = file.readAll();
-            try {
-                  json j = json::parse(data.toStdString());
-                  if (j.contains("F1") && j["F1"].is_object()) {
-                        button1->setText(QString::fromStdString(j["F1"].value("name", "F1")));
-                        button1->setToolTip(
-                            QString::fromStdString(j["F1"].value("description", "Canned prompt F1")));
-                        }
-                  if (j.contains("F2") && j["F2"].is_object()) {
-                        button2->setText(QString::fromStdString(j["F2"].value("name", "F2")));
-                        button2->setToolTip(
-                            QString::fromStdString(j["F2"].value("description", "Canned prompt F2")));
-                        }
-                  if (j.contains("F3") && j["F3"].is_object()) {
-                        button3->setText(QString::fromStdString(j["F3"].value("name", "F3")));
-                        button3->setToolTip(
-                            QString::fromStdString(j["F3"].value("description", "Canned prompt F3")));
-                        }
-                  }
-            catch (const std::exception& e) {
-                  Debug("Exception while parsing agent.json: {}", e.what());
-                  }
-            catch (...) {
-                  Debug("Error parsing agent.json");
-                  }
-            }
-      else {
-            Debug("Failed to open agent.json for reading");
-            }
-      }
-
-//---------------------------------------------------------
-//   handleCannedPrompt
-//---------------------------------------------------------
-
-void Agent::handleCannedPrompt(const QString& buttonId) {
-      QString root = _editor->projectRoot();
-      if (root.isEmpty())
-            return;
-      QString npedDir  = root + "/.nped";
-      QString filePath = npedDir + "/agent.json";
-
-      if (QApplication::keyboardModifiers() & Qt::ControlModifier) {
-            QDir dir;
-            if (!dir.exists(npedDir))
-                  dir.mkpath(npedDir);
-            QFile file(filePath);
-            if (!file.exists()) {
-                  if (file.open(QIODevice::WriteOnly)) {
-                        json j;
-                        j["F1"] = {
-                                 {       "name",               "F1"},
-                                 {"description", "Canned prompt F1"},
-                                 {       "text",                 ""}
-                              };
-                        j["F2"] = {
-                                 {       "name",               "F2"},
-                                 {"description", "Canned prompt F2"},
-                                 {       "text",                 ""}
-                              };
-                        j["F3"] = {
-                                 {       "name",               "F3"},
-                                 {"description", "Canned prompt F3"},
-                                 {       "text",                 ""}
-                              };
-                        std::string s = j.dump(4);
-                        file.write(s.c_str(), s.length());
-                        file.close();
-                        }
-                  }
-            _editor->addFile(filePath);
-            }
-      else {
-            QFile file(filePath);
-            if (!file.exists()) {
-                  QDir dir;
-                  if (!dir.exists(npedDir))
-                        dir.mkpath(npedDir);
-                  if (file.open(QIODevice::WriteOnly)) {
-                        json j;
-                        j["F1"] = {
-                                 {       "name",               "F1"},
-                                 {"description", "Canned prompt F1"},
-                                 {       "text",                 ""}
-                              };
-                        j["F2"] = {
-                                 {       "name",               "F2"},
-                                 {"description", "Canned prompt F2"},
-                                 {       "text",                 ""}
-                              };
-                        j["F3"] = {
-                                 {       "name",               "F3"},
-                                 {"description", "Canned prompt F3"},
-                                 {       "text",                 ""}
-                              };
-                        std::string s = j.dump(4);
-                        file.write(s.c_str(), s.length());
-                        file.close();
-                        }
-                  }
-            if (file.open(QIODevice::ReadOnly)) {
-                  QByteArray data = file.readAll();
-                  try {
-                        json j          = json::parse(data.toStdString());
-                        std::string key = buttonId.toStdString();
-                        if (j.contains(key) && j[key].is_object()) {
-                              QString text = QString::fromStdString(j[key].value("text", ""));
-                              if (!text.isEmpty()) {
-                                    userInput->insertPlainText(text);
-                                    userInput->setFocus();
-                                    }
-                              }
-                        else if (j.contains(key) && j[key].is_string()) {
-                              QString text = QString::fromStdString(j[key].get<std::string>());
-                              if (!text.isEmpty()) {
-                                    userInput->insertPlainText(text);
-                                    userInput->setFocus();
-                                    }
-                              }
-                        }
-                  catch (...) {
-                        addMessage("system", "<i>[System: Error parsing .nped/agent.json]</i><br>");
-                        updateChatDisplay();
-                        chatDisplay->scrollToBottom();
-                        }
-                  }
-            }
-      }
-
+}
 //---------------------------------------------------------
 //   addAttachment
 //    Opens a file dialog to attach ANY file type.
@@ -1602,7 +1395,7 @@ void Agent::addAttachment() {
                                  .arg(kMaxAttachmentSize / 1024)
                                  .toStdString());
                   return;
-                  }
+            }
             const QString fileName      = fileInfo.fileName();
             const QString fileExtension = fileInfo.suffix().toLower();
 
@@ -1634,15 +1427,15 @@ void Agent::addAttachment() {
                                                  .arg(img.height())
                                                  .arg(QByteArray::number(jpegData.size() / 1024) + " KB")
                                                  .toStdString());
-                        }
+                  }
                   else {
                         // Fallback if image can't be loaded
                         attachment.type = AttachmentType::Other;
                         addMessage("system", QString("<i>[⚠️ Could not load image %1 as attachment.]</i><br>")
                                                  .arg(fileName)
                                                  .toStdString());
-                        }
                   }
+            }
             else if (fileExtension == "mp3" || fileExtension == "wav" || fileExtension == "ogg" ||
                      fileExtension == "flac" || fileExtension == "aac" || fileExtension == "wma" ||
                      fileExtension == "midi") {
@@ -1656,7 +1449,7 @@ void Agent::addAttachment() {
                           .arg(_attachments.size() + 1)
                           .arg(QByteArray::number(QFileInfo(filePath).size() / 1024) + " KB")
                           .toStdString());
-                  }
+            }
             else if (fileExtension == "txt" || fileExtension == "md" || fileExtension == "json" ||
                      fileExtension == "xml" || fileExtension == "csv" || fileExtension == "ini" ||
                      fileExtension == "cfg" || fileExtension == "conf" || fileExtension == "yaml" ||
@@ -1683,7 +1476,7 @@ void Agent::addAttachment() {
                                                "sent with next prompt.]</i><br>",
                                                _attachments.size() + 1, attachment.data.count('\n') + 1,
                                                QByteArray::number(attachment.data.size() / 1024) + " KB"));
-                        }
+                  }
                   else {
                         // Fallback if file can't be read
                         attachment.type = AttachmentType::Other;
@@ -1691,8 +1484,8 @@ void Agent::addAttachment() {
                         addMessage("system", QString("<i>[⚠️ Could not read text file %1.]</i><br>")
                                                  .arg(fileName)
                                                  .toStdString());
-                        }
                   }
+            }
             else {
                   // Other file type
                   attachment.type = AttachmentType::Other;
@@ -1704,7 +1497,7 @@ void Agent::addAttachment() {
                           .arg(_attachments.size() + 1)
                           .arg(QByteArray::number(QFileInfo(filePath).size() / 1024) + " KB")
                           .toStdString());
-                  }
+            }
 
             _attachments.append(attachment);
 
@@ -1715,17 +1508,15 @@ void Agent::addAttachment() {
                 QString("%1 attachment(s) attached. Click 📷 to discard all.").arg(count));
 
             updateDataPanel();
-            }
       }
-
+}
 //---------------------------------------------------------
 //   addMessage
 //---------------------------------------------------------
 
 void Agent::addMessage(const std::string& role, const std::string& text) {
       chatDisplay->addMessage(role, text);
-      }
-
+}
 //---------------------------------------------------------
 //   agentRole
 //---------------------------------------------------------
@@ -1733,8 +1524,7 @@ void Agent::addMessage(const std::string& role, const std::string& text) {
 const AgentRole* Agent::agentRole() const {
       int idx = agentRoleCombo->currentIndex();
       return &_editor->agentRoles().at(idx);
-      }
-
+}
 //---------------------------------------------------------
 //   startAgent
 //    Called before the agent starts.
@@ -1751,9 +1541,8 @@ void Agent::startAgent() {
             f->undo()->beginMacro();
             f->release();
             f->undo()->endMacro();
-            }
       }
-
+}
 //---------------------------------------------------------
 //   stopAgent
 //    This is called after the agent stops.
@@ -1765,10 +1554,10 @@ void Agent::stopAgent() {
             f->undo()->beginMacro();
             f->load();
             f->undo()->endMacro();
-            }
+      }
       userInput->setEnabled(true);
       spinnerTimer->stop();
       statusLabel->setText(">");
       statusLabel->setStyleSheet("color: normal; font-weight: bold;");
       userInput->setFocus();
-      }
+}

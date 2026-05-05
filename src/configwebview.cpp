@@ -62,7 +62,7 @@ class ConfigApi : public QObject
             if (listName == "fileTypes") {
                   FileTypes ft = _view->editor()->fileTypes();
                   ft.append(FileType(".*\\.new$", "new", "none", 4, false, false));
-                  _view->editor()->setFileTypes(ft);
+                  _view->editor()->set_fileTypes(ft);
                   _view->openConfig(listName, ft.size() - 1);
                   }
             else if (listName == "models") {
@@ -71,7 +71,7 @@ class ConfigApi : public QObject
                   newModel.name = "New Model";
                   newModel.api  = "openai";
                   m.append(newModel);
-                  _view->editor()->setModels(m);
+                  _view->editor()->set_models(m);
                   _view->openConfig(listName, m.size() - 1);
                   }
             else if (listName == "agentRoles") {
@@ -81,8 +81,18 @@ class ConfigApi : public QObject
                   newRole.manifest = "You are a helpful assistant.";
                   newRole.rw       = true;
                   ar.append(newRole);
-                  _view->editor()->setAgentRoles(ar);
+                  _view->editor()->set_agentRoles(ar);
                   _view->openConfig(listName, ar.size() - 1);
+                  }
+            else if (listName == "cannedPrompts") {
+                  CannedPrompts cp = _view->editor()->cannedPrompts();
+                  CannedPrompt newPrompt;
+                  newPrompt.name        = "New Prompt";
+                  newPrompt.description = "A new canned prompt.";
+                  newPrompt.prompt      = "Your prompt here.";
+                  cp.append(newPrompt);
+                  _view->editor()->set_cannedPrompts(cp);
+                  _view->openConfig(listName, cp.size() - 1);
                   }
             else if (listName == "languageServersConfig") {
                   auto lsc = _view->editor()->languageServersConfig();
@@ -91,7 +101,7 @@ class ConfigApi : public QObject
                   newLsc.command = "ls_cmd";
                   newLsc.args    = "";
                   lsc.append(newLsc);
-                  _view->editor()->setLanguageServersConfig(lsc);
+                  _view->editor()->set_languageServersConfig(lsc);
                   _view->openConfig(listName, lsc.size() - 1);
                   }
             else if (listName == "mcpServersConfig") {
@@ -99,7 +109,7 @@ class ConfigApi : public QObject
                   McpServerConfig newMcp;
                   newMcp.id = "new_mcp";
                   mcp_list.append(newMcp);
-                  _view->editor()->setMcpServersConfig(mcp_list);
+                  _view->editor()->set_mcpServersConfig(mcp_list);
                   _view->openConfig(listName, mcp_list.size() - 1);
                   }
             else {
@@ -115,7 +125,7 @@ class ConfigApi : public QObject
                   FileTypes ft = _view->editor()->fileTypes();
                   if (index >= 0 && index < ft.size()) {
                         ft.removeAt(index);
-                        _view->editor()->setFileTypes(ft);
+                        _view->editor()->set_fileTypes(ft);
                         _view->openConfig(listName, qMax(0, index - 1));
                         }
                   }
@@ -123,7 +133,7 @@ class ConfigApi : public QObject
                   Models m = _view->editor()->models();
                   if (index >= 0 && index < m.size()) {
                         m.removeAt(index);
-                        _view->editor()->setModels(m);
+                        _view->editor()->set_models(m);
                         _view->openConfig(listName, qMax(0, index - 1));
                         }
                   }
@@ -131,7 +141,15 @@ class ConfigApi : public QObject
                   AgentRoles ar = _view->editor()->agentRoles();
                   if (index >= 0 && index < ar.size()) {
                         ar.removeAt(index);
-                        _view->editor()->setAgentRoles(ar);
+                        _view->editor()->set_agentRoles(ar);
+                        _view->openConfig(listName, qMax(0, index - 1));
+                        }
+                  }
+            else if (listName == "cannedPrompts") {
+                  CannedPrompts cp = _view->editor()->cannedPrompts();
+                  if (index >= 0 && index < cp.size()) {
+                        cp.removeAt(index);
+                        _view->editor()->set_cannedPrompts(cp);
                         _view->openConfig(listName, qMax(0, index - 1));
                         }
                   }
@@ -139,7 +157,7 @@ class ConfigApi : public QObject
                   auto lsc = _view->editor()->languageServersConfig();
                   if (index >= 0 && index < lsc.size()) {
                         lsc.removeAt(index);
-                        _view->editor()->setLanguageServersConfig(lsc);
+                        _view->editor()->set_languageServersConfig(lsc);
                         _view->openConfig(listName, qMax(0, index - 1));
                         }
                   }
@@ -147,7 +165,7 @@ class ConfigApi : public QObject
                   McpServerConfigs mcp = _view->editor()->mcpServersConfig();
                   if (index >= 0 && index < mcp.size()) {
                         mcp.removeAt(index);
-                        _view->editor()->setMcpServersConfig(mcp);
+                        _view->editor()->set_mcpServersConfig(mcp);
                         _view->openConfig(listName, qMax(0, index - 1));
                         }
                   }
@@ -224,7 +242,6 @@ static void setVariant(QVariant& item, const QString& propName, QVariant value) 
             // zwar true zurückgibt, aber ein schwarzes QColor(0,0,0) erzeugt
             // und die eigentliche Farbinformation verloren geht.
             if (p.metaType() == QMetaType::fromType<QColor>() && valToSet.canConvert<QString>()) {
-                  Debug("setColor <{}> <{}>", propName, valToSet.toString());
                   QColor color = parseColor(valToSet.toString());
                   if (color.isValid()) {
                         p.writeOnGadget(item.data(), color);
@@ -251,7 +268,6 @@ static void setVariant(QVariant& item, const QString& propName, QVariant value) 
 
 void ConfigWebView::setProperty(const QString& name, const QJsonValue& jsonValue) {
       QVariant value = jsonValue.toVariant();
-      Debug("setProperty <{}>", name);
       if (name.contains('[')) {
             int b1  = name.indexOf('[');
             int b2  = name.indexOf(']');
@@ -267,7 +283,7 @@ void ConfigWebView::setProperty(const QString& name, const QJsonValue& jsonValue
                               QVariant item = QVariant::fromValue(list[index]);
                               setVariant(item, propName, value);
                               list[index] = item.value<FileType>();
-                              editor()->setFileTypes(list);
+                              editor()->set_fileTypes(list);
                               }
                         else
                               Critical("bad index {}", index);
@@ -283,13 +299,19 @@ void ConfigWebView::setProperty(const QString& name, const QJsonValue& jsonValue
                         AgentRole r = item.value<AgentRole>();
                         editor()->setAgentRole(index, r);
                         }
+                  else if (listName == "cannedPrompts") {
+                        QVariant item = QVariant::fromValue(editor()->cannedPrompt(index));
+                        setVariant(item, propName, value);
+                        CannedPrompt p = item.value<CannedPrompt>();
+                        editor()->setCannedPrompt(index, p);
+                        }
                   else if (listName == "textStylesDark") {
                         auto list = editor()->textStylesDark();
                         if (index >= 0 && index < list.size()) {
                               QVariant item = QVariant::fromValue(list[index]);
                               setVariant(item, propName, value);
                               list[index] = item.value<TextStyle>();
-                              editor()->setTextStylesDark(list);
+                              editor()->set_textStylesDark(list);
                               }
                         else
                               Critical("bad index {}", index);
@@ -300,7 +322,7 @@ void ConfigWebView::setProperty(const QString& name, const QJsonValue& jsonValue
                               QVariant item = QVariant::fromValue(list[index]);
                               setVariant(item, propName, value);
                               list[index] = item.value<TextStyle>();
-                              editor()->setTextStylesLight(list);
+                              editor()->set_textStylesLight(list);
                               }
                         else
                               Critical("bad index {}", index);
@@ -311,7 +333,7 @@ void ConfigWebView::setProperty(const QString& name, const QJsonValue& jsonValue
                               QVariant item = QVariant::fromValue(list[index]);
                               setVariant(item, propName, value);
                               list[index] = item.value<McpServerConfig>();
-                              editor()->setMcpServersConfig(list);
+                              editor()->set_mcpServersConfig(list);
                               }
                         else
                               Critical("bad index {}", index);
@@ -322,7 +344,7 @@ void ConfigWebView::setProperty(const QString& name, const QJsonValue& jsonValue
                               QVariant item = QVariant::fromValue(list[index]);
                               setVariant(item, propName, value);
                               list[index] = item.value<LanguageServerConfig>();
-                              editor()->setLanguageServersConfig(list);
+                              editor()->set_languageServersConfig(list);
                               }
                         else
                               Critical("bad index {}", index);
@@ -538,9 +560,10 @@ void ConfigWebView::openConfig(const QString& activeListName, int activeListItem
                   QVariantList list = listVar.toList();
 
                   html += "<div class=\"d-flex\" style=\"height: calc(100vh - 120px);\">";
-                  html += "<div class=\"list-group w-25\" style=\"overflow-y: auto;\">";
+                  html +=
+                      "<div class=\"list-group\" style=\"width: 150px; flex-shrink: 0; overflow-y: auto;\">";
 
-                  QString detailsHtml = "<div class=\"w-75 p-3\" style=\"overflow-y: auto;\">";
+                  QString detailsHtml = "<div class=\"flex-grow-1 p-3\" style=\"overflow-y: auto;\">";
                   int itemIdx         = 0;
                   int targetItemIdx   = (activeListItem >= 0) ? activeListItem : 0;
 
@@ -590,7 +613,7 @@ void ConfigWebView::openConfig(const QString& activeListName, int activeListItem
 
                               detailsHtml += "<div class=\"d-flex align-items-center mb-2\">";
                               detailsHtml +=
-                                  "<label class=\"me-2 mb-0\" style=\"width: 200px; flex-shrink: 0;\">" +
+                                  "<label class=\"me-2 mb-0\" style=\"width: 120px; flex-shrink: 0;\">" +
                                   propLabel + "</label>";
 
                               QString readonlyAttr = propReadOnly ? "readonly" : "";
@@ -647,10 +670,56 @@ void ConfigWebView::openConfig(const QString& activeListName, int activeListItem
                                     }
                               else if (propType == "textarea") {
                                     detailsHtml += QString("<textarea class=\"form-control form-control-sm\" "
-                                                           "name=\"%1\" rows=\"5\" %2>%3</textarea>")
+                                                           "name=\"%1\" rows=\"12\" %2>%3</textarea>")
                                                        .arg(inputName)
                                                        .arg(readonlyAttr)
                                                        .arg(currentValue.toString().toHtmlEscaped());
+                                    }
+                              else if (propType == "checkboxList") {
+                                    QString targetListName = propObj["listName"].toString();
+                                    QString itemIdProp     = propObj["listItemId"].toString();
+
+                                    QVariant targetListVar  = getProperty(targetListName);
+                                    QVariantList targetList = targetListVar.toList();
+
+                                    QStringList currentSelected = currentValue.toStringList();
+
+                                    detailsHtml += "<div class=\"form-control form-control-sm\" "
+                                                   "style=\"height: auto; max-height: 150px; overflow-y: "
+                                                   "auto; background-color: transparent;\">";
+
+                                    for (const QVariant& targetItem : targetList) {
+                                          const QMetaObject* targetMeta = targetItem.metaType().metaObject();
+                                          if (!targetMeta)
+                                                continue;
+
+                                          QString itemId;
+                                          for (int k = 0; k < targetMeta->propertyCount(); ++k) {
+                                                if (QString(targetMeta->property(k).name()) == itemIdProp) {
+                                                      itemId = targetMeta->property(k)
+                                                                   .readOnGadget(targetItem.constData())
+                                                                   .toString();
+                                                      break;
+                                                      }
+                                                }
+
+                                          if (itemId.isEmpty())
+                                                continue;
+
+                                          bool isChecked      = currentSelected.contains(itemId);
+                                          QString checkedAttr = isChecked ? "checked" : "";
+                                          detailsHtml +=
+                                              QString("<div class=\"form-check\">"
+                                                      "<input type=\"checkbox\" class=\"form-check-input "
+                                                      "array-checkbox\" name=\"%1\" value=\"%2\" %3 %4>"
+                                                      "<label class=\"form-check-label\">%2</label>"
+                                                      "</div>")
+                                                  .arg(inputName)
+                                                  .arg(itemId)
+                                                  .arg(checkedAttr)
+                                                  .arg(readonlyAttr);
+                                          }
+                                    detailsHtml += "</div>";
                                     }
                               else if (propType == "int") {
                                     int minVal = propObj["min"].toVariant().toInt();
@@ -730,10 +799,22 @@ void ConfigWebView::openConfig(const QString& activeListName, int activeListItem
 
       function saveConfig() {
             let data = {};
+            // Pre-initialize arrays for array-checkboxes to ensure empty arrays are sent if none are checked
+            document.querySelectorAll('input.array-checkbox').forEach(el => {
+                  if (el.name && !data[el.name]) {
+                        data[el.name] = [];
+                  }
+            });
+
             document.querySelectorAll('input, select, textarea').forEach(el => {
                   if (el.name) {
                         if (el.type === 'checkbox') {
-                              data[el.name] = el.checked;
+                              if (el.classList.contains('array-checkbox')) {
+                                    if (el.checked) data[el.name].push(el.value);
+                              }
+                              else {
+                                    data[el.name] = el.checked;
+                              }
                         }
                         else {
                               data[el.name] = el.value;

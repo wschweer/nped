@@ -1,0 +1,309 @@
+
+---
+events:
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineSystem.cmake:200 (message)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      The target system is: Windows -  - i686
+      The host system is: Linux - 7.0.0-15-generic - x86_64
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+      Compiler: /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ 
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      1
+      ccache: error: Could not find compiler "i686-w64-mingw32.static-g++" in PATH
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+      Compiler: /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ 
+      Build flags: 
+      Id flags: -c 
+      
+      The output was:
+      1
+      ccache: error: Could not find compiler "i686-w64-mingw32.static-g++" in PATH
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+      Compiler: /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ 
+      Build flags: 
+      Id flags: --c++ 
+      
+      The output was:
+      1
+      ccache: error: Could not find compiler "i686-w64-mingw32.static-g++" in PATH
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+      Compiler: /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ 
+      Build flags: 
+      Id flags: --ec++ 
+      
+      The output was:
+      1
+      ccache: error: Could not find compiler "i686-w64-mingw32.static-g++" in PATH
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+      Compiler: /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ 
+      Build flags: 
+      Id flags: --target=arm-arm-none-eabi;-mcpu=cortex-m3 
+      
+      The output was:
+      1
+      ccache: error: Could not find compiler "i686-w64-mingw32.static-g++" in PATH
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+      Compiler: /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ 
+      Build flags: 
+      Id flags: -c;-I__does_not_exist__ 
+      
+      The output was:
+      1
+      ccache: error: Could not find compiler "i686-w64-mingw32.static-g++" in PATH
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+      Compiler: /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ 
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      1
+      ccache: error: Could not find compiler "i686-w64-mingw32.static-g++" in PATH
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+      Compiler: /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ 
+      Build flags: 
+      Id flags: -c 
+      
+      The output was:
+      1
+      ccache: error: Could not find compiler "i686-w64-mingw32.static-g++" in PATH
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+      Compiler: /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ 
+      Build flags: 
+      Id flags: --c++ 
+      
+      The output was:
+      1
+      ccache: error: Could not find compiler "i686-w64-mingw32.static-g++" in PATH
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+      Compiler: /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ 
+      Build flags: 
+      Id flags: --ec++ 
+      
+      The output was:
+      1
+      ccache: error: Could not find compiler "i686-w64-mingw32.static-g++" in PATH
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+      Compiler: /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ 
+      Build flags: 
+      Id flags: --target=arm-arm-none-eabi;-mcpu=cortex-m3 
+      
+      The output was:
+      1
+      ccache: error: Could not find compiler "i686-w64-mingw32.static-g++" in PATH
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+      Compiler: /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++ 
+      Build flags: 
+      Id flags: -c;-I__does_not_exist__ 
+      
+      The output was:
+      1
+      ccache: error: Could not find compiler "i686-w64-mingw32.static-g++" in PATH
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:1251 (message)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:86 (CMAKE_DETERMINE_COMPILER_ID_VENDOR)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      Checking whether the CXX compiler is IAR using "" did not match "IAR .+ Compiler":
+      ccache: error: Could not find compiler "i686-w64-mingw32.static-g++" in PATH
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:1251 (message)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:86 (CMAKE_DETERMINE_COMPILER_ID_VENDOR)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:14 (project)"
+    message: |
+      Checking whether the CXX compiler is IAR using "" did not match "IAR .+ Compiler":
+      ccache: error: Could not find compiler "i686-w64-mingw32.static-g++" in PATH
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:74 (try_compile)"
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:14 (project)"
+    checks:
+      - "Detecting CXX compiler ABI info"
+    directories:
+      source: "/home/ws/nped/build-windows/CMakeFiles/CMakeScratch/TryCompile-DcgksL"
+      binary: "/home/ws/nped/build-windows/CMakeFiles/CMakeScratch/TryCompile-DcgksL"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: ""
+      CMAKE_CXX_SCAN_FOR_MODULES: "OFF"
+      CMAKE_EXE_LINKER_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/ws/projects/mxe/usr/share/cmake/modules;/home/ws/projects/mxe/usr/share/cmake/modules"
+    buildResult:
+      variable: "CMAKE_CXX_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: '/home/ws/nped/build-windows/CMakeFiles/CMakeScratch/TryCompile-DcgksL'
+        
+        Run Build Command(s): /usr/bin/ninja -v cmTC_2cddf
+        [1/2] /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++    -o CMakeFiles/cmTC_2cddf.dir/CMakeCXXCompilerABI.cpp.obj -c /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeCXXCompilerABI.cpp
+        FAILED: [code=1] CMakeFiles/cmTC_2cddf.dir/CMakeCXXCompilerABI.cpp.obj 
+        /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++    -o CMakeFiles/cmTC_2cddf.dir/CMakeCXXCompilerABI.cpp.obj -c /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeCXXCompilerABI.cpp
+        ccache: error: Could not find compiler "i686-w64-mingw32.static-g++" in PATH
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/share/cmake-3.31/Modules/CMakeTestCXXCompiler.cmake:56 (try_compile)"
+      - "CMakeLists.txt:14 (project)"
+    checks:
+      - "Check for working CXX compiler: /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++"
+    directories:
+      source: "/home/ws/nped/build-windows/CMakeFiles/CMakeScratch/TryCompile-tBLB4w"
+      binary: "/home/ws/nped/build-windows/CMakeFiles/CMakeScratch/TryCompile-tBLB4w"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: ""
+      CMAKE_CXX_SCAN_FOR_MODULES: "OFF"
+      CMAKE_EXE_LINKER_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/ws/projects/mxe/usr/share/cmake/modules;/home/ws/projects/mxe/usr/share/cmake/modules"
+    buildResult:
+      variable: "CMAKE_CXX_COMPILER_WORKS"
+      cached: true
+      stdout: |
+        Change Dir: '/home/ws/nped/build-windows/CMakeFiles/CMakeScratch/TryCompile-tBLB4w'
+        
+        Run Build Command(s): /usr/bin/ninja -v cmTC_48321
+        [1/2] /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++    -o CMakeFiles/cmTC_48321.dir/testCXXCompiler.cxx.obj -c /home/ws/nped/build-windows/CMakeFiles/CMakeScratch/TryCompile-tBLB4w/testCXXCompiler.cxx
+        FAILED: [code=1] CMakeFiles/cmTC_48321.dir/testCXXCompiler.cxx.obj 
+        /home/ws/projects/mxe/usr/x86_64-pc-linux-gnu/bin/i686-w64-mingw32.static-g++    -o CMakeFiles/cmTC_48321.dir/testCXXCompiler.cxx.obj -c /home/ws/nped/build-windows/CMakeFiles/CMakeScratch/TryCompile-tBLB4w/testCXXCompiler.cxx
+        ccache: error: Could not find compiler "i686-w64-mingw32.static-g++" in PATH
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 1
+...

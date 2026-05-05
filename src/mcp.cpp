@@ -386,6 +386,10 @@ void McpServer::handleReadyReadStandardOutput() {
 
 void McpServer::handleReadyReadStandardError() {
       QString data = m_process->readAllStandardError();
+      if (data.isEmpty())
+            return;
+      if (data[data.size()-1] == '\n')
+            data[data.size()-1] = QChar(0);
       Debug("MCP Server STDERR [{}]: {}", _id, data);
       }
 

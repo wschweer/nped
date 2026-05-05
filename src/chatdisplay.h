@@ -11,13 +11,12 @@
 
 #pragma once
 #include "webview.h"
-
 //---------------------------------------------------------
 //   ChatDisplay
 //---------------------------------------------------------
 
 class ChatDisplay : public MarkdownWebView
-      {
+{
       Q_OBJECT
       Editor* _editor;
       std::string currentStreamingThought;
@@ -27,12 +26,13 @@ class ChatDisplay : public MarkdownWebView
       QString getHighlightJsDarkCss() const;
       QString getChatCss() const;
       QString getChatDarkCss() const;
-      bool mustStartMessage { false };
+      bool mustStartMessage {false};
       std::string role;
       void safeRunJs(const QString& call);
 
     public slots:
       void handleIncomingChunk(const std::string& thoughtChunk, const std::string& textChunk);
+      void updateStyle();
 
     public:
       ChatDisplay(Editor* e, QWidget* parent = nullptr) : MarkdownWebView(e, parent), _editor(e) {}
@@ -42,23 +42,21 @@ class ChatDisplay : public MarkdownWebView
             setup();
             while (!isLoaded)
                   qApp->processEvents();
-            }
+      }
       QWidget* widget() { return (QWidget*)this; }
       void setFont(QFont f) { MarkdownWebView::setFont(f); }
       QString quoteForJs(const QString& str);
-
       void startNewStreamingMessage(const std::string& r) {
             mustStartMessage = true;
-            role = r;
-            }
+            role             = r;
+      }
       void startMessage();
-      void appendStaticHtml(const QString& role, const QString& html, const QString& thoughtHtml = "", bool isActive = true);
-
-      void setDarkMode(bool enabled);
+      void appendStaticHtml(const QString& role, const QString& html, const QString& thoughtHtml = "",
+                            bool isActive = true);
       void setMarkdown(const QString&) { Fatal("not impl."); };
       void addMessage(const std::string& role, const std::string& text) {
             startNewStreamingMessage(role);
             handleIncomingChunk("", text);
             scrollToBottom();
-            }
-      };
+      }
+};

@@ -46,18 +46,20 @@ class Session : public QObject
       Session(Agent* a, QObject* parent = nullptr) : QObject(parent), agent(a) {}
       struct SessionItem {
             json content;
-            size_t tokens{0};
+            size_t tokens {0};
             };
       std::vector<SessionItem> _data;
-      static constexpr size_t maxEntries         = 20;     // Rolling window: keep at most 40 messages
-      static constexpr size_t criticalTokenCount = 30000; // Trigger summary/trim if context exceeds ~30k tokens
-      size_t totalTokens{0};
-      size_t activeEntries{0};
-      bool summaryRequested{false};
+      static constexpr size_t maxEntries = 20; // Rolling window: keep at most 20 active messages
+      static constexpr size_t minEntries = 4;  // Safety floor: never trim below this many entries
+      static constexpr size_t criticalTokenCount =
+          30000; // Trigger summary/trim if context exceeds ~30k tokens
+      size_t totalTokens {0};
+      size_t activeEntries {0};
+      bool summaryRequested {false};
 
       void clear();
-      int messages() const  { return _data.size(); }
-      bool empty() const    { return _data.empty(); }
+      int messages() const { return _data.size(); }
+      bool empty() const { return _data.empty(); }
       bool hitLimit() const { return totalTokens > criticalTokenCount; }
       void optimizeToolResponses();
       bool trim();
@@ -68,12 +70,11 @@ class Session : public QObject
       void setHistory(const json& h);
       void setActiveEntries(size_t a);
       size_t getActiveEntriesCount() const { return activeEntries; }
-
       void load(const QString& sessionPath);
       void save();
 
       SessionInfo sessionInfo() const;
       QString sessionName(bool getNext) const;
-      QString name() const { return _name;  }
+      QString name() const { return _name; }
       void setName(const QString& v) { _name = v; }
       };

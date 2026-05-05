@@ -272,17 +272,49 @@
                   "listSequence": [
                         "name",
                         "rw",
-                        "manifest"
+                        "manifest",
+                        "mcpServers"
                   ],
                   "rw": {
                         "type": "bool",
-                        "label": "Read/Write (Execute Mode)"
+                        "label": "R/W"
                   },
                   "manifest": {
                         "type": "textarea",
-                        "label": "Manifest / System Prompt"
+                        "label": "Manifest"
+                  },
+                  "mcpServers": {
+                        "type": "checkboxList",
+                        "label": "MCP Servers",
+                        "listName": "mcpServersConfig",
+                        "listItemId": "id"
                   },
                   "title": "AI - Roles"
+            },
+            {
+                  "name": {
+                        "type": "string",
+                        "label": "Prompt Name"
+                  },
+                  "type": "list",
+                  "readOnly": false,
+                  "listName": "cannedPrompts",
+                  "listType": "CannedPrompt",
+                  "listItemTitle": "CannedPrompt.name",
+                  "listSequence": [
+                        "name",
+                        "description",
+                        "prompt"
+                  ],
+                  "description": {
+                        "type": "string",
+                        "label": "Description"
+                  },
+                  "prompt": {
+                        "type": "textarea",
+                        "label": "Prompt Content"
+                  },
+                  "title": "AI - Canned Prompts"
             },
             {
                   "name": {

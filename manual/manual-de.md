@@ -1,330 +1,162 @@
-# NPEd Manual
+# NPEd Handbuch
 
-[TOC]
+Willkommen bei **NPEd**! NPEd ist ein moderner, auf C++23 und Qt6 basierender Texteditor, der sich als leichtgewichtige, tastaturzentrierte IDE versteht.
 
 ## 1. Übersicht
 
-NPed (Program Editor) ist ein moderner C++23 und Qt6-basierter Texteditor bzw. eine leichtgewichtige IDE.
-
-Hier ist eine Übersicht der zentralen Funktionen und Architekturmerkmale des Projekts:
-
-#### Kernfunktionen des Editors
-  * Multifile-Verwaltung: Öffnen und Bearbeiten mehrerer Dateien in Tabs (TabBar). Tabs visualisieren den Dateistatus farblich (z. B. rot für modifiziert, blau für schreibgeschützt).
-  * Kontext-Management: Jeder Tab und jede geöffnete Datei wird in einem Kontext verwaltet,
-  der u.a. die Cursor-Position und den Verlauf (History) speichert.
-  Dies ermöglicht einfaches Navigieren (Vor/Zurück) im Code. Eine Datei kann mehrere Kontexte haben.
-  * Standard-Editing: Undo/Redo-Stack (undo.cpp), Suche & Ersetzen mit Regulären Ausdrücken (search.cpp),
-    sowie zeilen- und spaltenweises Auswählen (Pick/Put).
-  * Syntax-Highlighting & Formatting: Automatisiertes Formatieren und Pretty-Printing des Codes (pretty.cpp).
-
-### Language Server Protocol (LSP) Integration
-
-Über den eingebauten LSclient kann der Editor mit Sprachservern kommunizieren (z.B. clangd für C/C++).
-Daraus resultieren fortgeschrittene IDE-Funktionen:
-
-  * Code Navigation: Go to Definition, Go to Type Definition, Go to Implementation.
-  * Autovervollständigung: Request Completions via LSP mit einem grafischen Popup (completion.cpp).
-  * Hover-Informationen: Anzeigen von Typen- oder Dokumentationshinweisen beim Verweilen mit dem Cursor.
-  * Refactoring: Kontextweites Umbenennen von Symbolen (Rename).
-
-### Integrierter KI-Agent
-
-Das wohl herausstechendste Merkmal ist die enge Integration eines KI-Agenten, der aktiv in die Entwicklung eingreifen kann:
-
-  * Modell-Unterstützung: Kompatibel mit lokalen Modellen (via Ollama) sowie Cloud-Modellen (Gemini, Anthropic, OpenAI).
-  * Werkzeuge (Tool-Calling): Der Agent implementiert lokale Werkzeuge sowie eine Schnittstelle zu MCP Servern, die
-  weitere Werkzeuge zur Verfügung stellen.
-
-### Git-Integration
-Der Editor hat native Git-Unterstützung integriert (basierend auf libgit2 in git.cpp):
-
-  * Abrufen von Git-Status, Diffs und Logs.
-  * Grafisches Git-Panel und Git-History-Ansicht im Editorfenster.
-
-### Architektur und Technik
-  * C++23 & CMake: Modernes C++ gepaart mit einem CMake-Buildsystem.
-  * Qt6: Verwendet für die grafische Benutzeroberfläche (Widgets, Splitter, Menüs). Styling erfolgt auch über Qt Stylesheets (style.qss).
-  * Bibliotheken: Nutzt nlohmann::json stark für das Parsen und Erzeugen von LSP-Nachrichten,
-  LLM-Prompts/Tool-Calls und das Speichern von Settings/Sitzungen.
-
-Zusammenfassend ist NPed also ein intelligenter Code-Editor, der LSP für präzise statische Code-Analyse mit
-LLM-basierten KI-Agenten kombiniert, um Entwicklungsaufgaben zu automatisieren.
-
-### Bedien-Konzept
-
-Das Bedienkonzept von **NPed** orientiert sich stark an der Effizienz für Vielschreiber
-und Entwickler, die bevorzugt ohne Mauseinsatz programmieren. Es ist als eine
-Art "Mini-IDE für die Kommandozeile, aber mit GUI" konzipiert.
-
-Hier sind die wesentlichen Aspekte des Bedienkonzepts:
-
-#### Tastaturzentriert ("Blindes Editieren")
-* **Kein Mauszwang:** Nahezu alle Funktionen werden über Tastaturkürzel aufgerufen. Du sollst deine Hände nicht von der Tastatur nehmen müssen.
-* **Zehnfingersystem empfohlen:** Das Konzept ist nicht optimal für das \"Zwei-Finger-Suchsystem\", da die Befehle blind und schnell ausgeführt werden sollen.
-* **Keine überladenen Menüs:** Die verfügbaren Befehle sind im Programm nicht prominent als Schaltflächen sichtbar. Das Erlernen der Shortcuts über eine Referenzkarte oder das Manual ist notwendig.
-
-#### Das Befehlssystem (Command Entry)
-Funktionen, die Parameter benötigen (wie das Öffnen einer Datei oder Suchen/Ersetzen), folgen einem speziellen Workflow:
-
-1. **`<Escape>`** drücken: Dadurch öffnet sich am unteren Bildschirmrand (in der Statuszeile) ein Eingabefeld.
-2. **Text eingeben:** Du tippst das Argument ein (z. B. den Suchbegriff oder den Dateinamen).
-3. **Kommando-Taste drücken:** Anstatt Enter zu drücken, beendest du die Eingabe mit dem Shortcut der gewünschten Funktion. Wenn du z. B. nach dem eingegebenen Text suchen willst, drückst du `<F7>`.
-
-#### Cursor-Steuerung (WordStar/Turbo-Pascal-Stil)
-Die Cursor-Bewegungen orientieren sich an einem klassischen Block-Konzept um die Tasten `S, E, D, X`
-(der "Cursor-Block"), wobei `Ctrl` als Modifikator und `Ctrl+Q` als Verstärker (Prefix) genutzt wird.
-Dieses Layout ist stark an Editoren wie *WordStar* oder dem alten *Turbo Pascal / Borland* Editor angelehnt.
-
-* **Einzelne Schritte:**
-  * <kbd>Ctrl+S</kbd>: Zeichen links
-  * `Ctrl+D`: Zeichen rechts
-  * `Ctrl+E`: Zeile hoch
-  * `Ctrl+X`: Zeile tief
-* **Wort-/Seitenweise:**
-  * `Ctrl+A`: Wort links
-  * `Ctrl+F`: Wort rechts
-  * `Ctrl+R`: Seite hoch
-  * `Ctrl+C`: Seite tief
-
-* **Sprünge (mit `Ctrl+Q` als Prefix):**
-  * `Ctrl+Q, Ctrl+S`: Zeilenanfang
-  * `Ctrl+Q, Ctrl+D`: Zeilenende
-  * `Ctrl+Q, Ctrl+E`: Seitenanfang
-  * `Ctrl+Q, Ctrl+X`: Seitenende
-  * `Ctrl+Q, Ctrl+R`: Textanfang
-  * `Ctrl+Q, Ctrl+C`: Textende
-
-#### Code-spezifische Formatierungsregeln (Auto-Clean)
-Der Editor erzwingt bestimmte Formatierungen automatisch, um sauberen Code zu gewährleisten:
-
-* Leerzeichen (Trailing Spaces) am Ende einer Zeile werden automatisch entfernt.
-* Leerzeilen am Ende einer Datei werden gelöscht.
-* Die letzte Zeile wird **immer** mit einem Zeilenumbruch (`\\n`) abgeschlossen.
-* Es können keine komplett leeren Dateien gespeichert werden; sie werden beim Sichern ignoriert.
-
-#### IDE-Features über Shortcuts
-Da nped als Mini-IDE fungiert, sind LSP-Funktionen ebenfalls auf Tasten gelegt (oft im Zusammenspiel mit
-dem Command Entry).
-Zum Beispiel das Formatieren der aktuellen Datei geschieht über die Kombination `Ctrl+O, Ctrl+F`.
-
-Zusammenfassend richtet sich nped an Entwickler, die eine puristische, hochgradig tastaturgesteuerte
-Umgebung suchen, die klassischen Editor-Flow mit modernen C++ Language Server-Funktionen verbindet.
-
-## 2. IDE - Features
-
-Ein "Projekt" ist ein Verzeichnis, welches eine CMakeLists.txt Datei enthält. Der Editor
-kann auch in einem Projekt Unterverzeichnis gestartet werden.
-
-Für Informationen über das gesamte Projekt kontaktiert Ped einen Languageserver. Für c++ wird dazu der clangd
-Languageserver gestartet.
-Der LS parst den aktuellen Quellcode und benötigt dazu die gleiche Umgebung wie beim späteren Compilerlauf damit
-er z.B. alle Headerdateien findet. Dazu muss man CMake anweisen, eine Datei ``compile_commands.json`` zu erzeugen die
-genau diese Informationen enthält.
-
-CMake wird dazu wie folgt aufgerufen:
-
-    cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -G Ninja
-
-Cmake schreibt dann die "compile_commands.json" ins build-Verzeichnis "build".
-Wird Ped innerhalb des Projektverzeichnisses oder eines Projekt Unterverzeichnis gestartet, findet der clangd
-LS alles weitere automatisch.
-
-### **Globale Kommandos**
-
-      [F1]                Sichert geänderte Dateien und Beendet den Editor.
-      [Shift+F1]          Sichert
-      [Ctrl+K, Ctrl+Q]    Beendet den Editor **ohne** geänderte Dateien zurückzuschreiben.
-      [Escape]            "Enter" Kommando: öffnet Eingabefenster auf der Statuszeile zur Eingabe von Parmetern
-      [Enter <name> F3]   öffnet Datei `name` in neuem Kontextfenster
-
-
-### **Cursor Kommandos**
-
-      [Ctrl+D oder Cursor-Rechts]  CMD_CHAR_RIGHT
-      [Ctrl+S oder `Cursor-Links]  CMD_CHAR_LEFT
-      [Up;    Ctrl+E]              CMD_LINE_UP
-      [Down;  Ctrl+X]              CMD_LINE_DOWN
-      [Ctrl+Q,  Ctrl+S]            CMD_LINE_START
-      [Ctrl+Q,  Ctrl+D]            CMD_LINE_END
-      [Ctrl+Q,  Ctrl+E]            CMD_LINE_TOP
-      [Ctrl+Q,  Ctrl+X]            CMD_LINE_BOTTOM
-      [Ctrl+R;  PageUp]            CMD_PAGE_UP
-      [Ctrl+C;  PageDown]          CMD_PAGE_DOWN
-      [Ctrl+Q,  Ctrl+R]            CMD_FILE_BEGIN
-      [Ctrl+Q,  Ctrl+C]            CMD_FILE_END
-      [Ctrl+A]                     CMD_WORD_LEFT
-      [Ctrl+F]                     CMD_WORD_RIGHT
-      [Enter <nn> Ctrl+G]          gehe nach Zeile nn
-
-### **Text verändern**
-
-      [Ctrl+Z]                     CMD_UNDO
-      [Shift+Ctrl+Z]               CMD_REDO
-      [Delete; Backspace]          CMD_RUBOUT
-      [Ctrl+G]                     CMD_CHAR_DELETE
-      [Ctrl+N]                     CMD_INSERT_LINE
-      [F8]                         CMD_PICK
-      [F9]                         CMD_PUT
-      [Ctrl+Y]                     CMD_DELETE_LINE
-      [Ctrl+Q,  Ctrl+Y]            CMD_DELETE_LINE_RIGHT
-      [Ctrl+T]                     CMD_DELETE_WORD
-
-
-### **Datei Kommandos**
-
-      [Ctrl+K,  Ctrl+S]            CMD_SAVE
-      [Ctrl+K,  Ctrl+K; F4]        CMD_KONTEXT_COPY
-      [Ctrl+K,  Ctrl+J; Shift+F3]  CMD_KONTEXT_PREV
-      [Ctrl+K,  Ctrl+L; F3]        CMD_KONTEXT_NEXT
-      [Ctrl+K,  Ctrl+I]            CMD_SHOW_BRACKETS
-      [Ctrl+Up]                    CMD_KONTEXT_UP
-      [Ctrl+Down]                  CMD_KONTEXT_DOWN
-      [F5]                         CMD_SELECT_ROW
-      [F6]                         CMD_SELECT_COL
-      [Ctrl+O,  Ctrl+W]            CMD_ENTER_WORD
-
-
-### **Suchen/Ersetzen**
-
-      [Enter <text> F7]               suche nach `text`
-      [Enter <suchen>/<ersetzen> F7]  suche `suchen` und ersetze durch `ersetzen`
-      [F7]                            vorwärts weitersuchen
-      [SHIFT+F7]                      rückwärts weitersuchen
-      [Ctrl+O, Ctrl+R]                projektweites umbenennen über den Language Server
-
-### **Copy/Cut Paste**
-#### Selektions Modi
-
-NPed unterstützt drei Arten von Selektionen:
-
-      [F5]              CMD_SELECT_ROW    selektiert Zeilen
-      [F6]              CMD_SELECT_COL    selektiert Spalten
-      [Ctrl + F5]       CMD_SELECT_CHAR   selektiert alle Zeichen zwischen einer Start und Endmarke
-
-#### Selektions Funktionen
-
-      [F8]              CMD_PICK          Kopiert die Selektion (Copy) oder die aktuelle Zeile
-                                          bei leerer Selektion (Pick) in den Copy Buffer.
-      [Ctrl + Y]        CMD_DELETE_LINE   Kopiert die Selektion oder die aktuelle Zeile
-                                          bei leerer Selektion in den Copy Buffer und löscht sie dann.
-      [F9]              CMD_PUT           Insertiert den Copy Buffer (Paste/Put) an die aktuelle
-                                          Cursor Position.
-      [MMT]             Paste             Kopiert den Inhalt des System Clipboards an die
-                                          Cursor Position.
-
-### **IDE Kommandos**
-
-      [Ctrl+K,  Ctrl+M]             CMD_SHOW_LEVEL
-
-#### **``Ctrl+O,  Ctrl+F``** Formatiert eine Datei
-Das Format Kommando wird zum Language Server geschickt. Es muss ein LS für den aktuellen Filetyp
-konfiguriert und verfügbar sein und er muss das Format Kommando unterstützen. Für C/C++ funktioniert
-das mit dem clangd LanguageServer prima.
-
-#### **``Ctrl+V``** Schaltet auf eine andere Ansicht der aktuellen Datei.
-Für Markdown- sowie Html-Dateien
-wird von der editierbaren Textdarstellung auf eine gerenderte 'nur lesen' Darstellung umgeschaltet.
-<p>Für C/C++ Dateien wird
-eine Liste von Funktions- bzw. Methodennamen gezeigt. Du kannst den Cursor auf eine Funktion positionieren und wieder in
-die Textdarstellung zurückschalten um blitzschnell zu dieser Funktion zu navigieren.
-
-      [Ctrl+B]                      CMD_VIEW_BUGS
-      [F10]                         CMD_GOTO_TYPE_DEFINITION
-      [F11]                         CMD_GOTO_IMPLEMENTATION
-      [F12]                         CMD_GOTO_DEFINITION
-      [Ctrl+O, Ctrl+E]              CMD_EXPAND_MACROS
-      [Ctrl+Tab; Shift+Tab]         CMD_COMPLETIONS
-      [Ctrl+M]                      CMD_FOLD_ALL
-      [Ctrl+Shift+M]                CMD_UNFOLD_ALL
-      [Ctrl+<]                      CMD_FOLD_TOGGLE
-      [Ctrl+O, Ctrl+H]              CMD_FUNCTION_HEADER
-      [Ctrl+O, Ctrl+G]              CMD_GIT_TOGGLE
-      [Ctrl+F12]                    CMD_GOTO_BACK
-      [Ctrl+H]                      CMD_SHOW_INFO
-      [Enter <name> Ctrl+F]         Erzeugt leere c++ Funktion mit Namen `name`
-
-## 3. AI Agent
-### AI-Models
-
-AI Modelle musst du konfigurieren damit sie dann im AI Panel Pulldown Menü "Models" ausgewählt werden
-können.
-Läuft auf dem Rechner ein Ollama-Server, dann werden die verfügbaren Ollama-Modelle
-automatisch ermittelt und im "Models" Menü angezeigt.
-
-Du kannst Modelle von Google (Gemini), Anthropic (Claude) und Ollama konfigurieren.
-Ollama ist besonders interessant, da du darüber lokale Modelle nutzen kannst.
-
-Für alle nicht lokalen Modelle benötigst du normalerweise einen API-Key des Anbieters,
-
-Reasoning wird bei geeigneten Modellen unterstützt.
-
-### MCP Server
-
-MCP ("Model Context Protocol") ist ein offener Standard, der es KI-Modellen ermöglicht, nahtlos auf
-Daten und Werkzeuge aus verschiedenen Quellen zuzugreifen.
-
-Für ein sinnvolles Arbeiten mit NPed und AI-Modellen musst du einige MCP-Server konfiguriere:
-
-- rust-mcp-filesystem
-- mcp-server-git
-- server-github
-- websearch-mcp
-
-Modelle können nur über die implementierten Tools auf dein System zugreifen. In ```Role``` kannst
-du konfigurieren, ob das Modell Schreibrechte auf deinem System bekommen soll.
-Das Modell kann auch dann nur Files schreiben die sich im oder unterhalb des aktuellen
-Projektverzeichnisses befinden.
-Eine Schwachstelle ist das Tool "bash", welches es dem Modell erlaubt, beliebige
-Shell-Kommandos auf deinem System auszuführen. Dieses Kommando läuft jedoch in einer
-Sandbox, was die Möglichkeiten des Modells, auf dein System zuzugreifen stark einschränkt.
-
-
-### Session
-
-Sessions werden automatisch gespeichert. Es können neue Sessions angelegt und
-bestehende Sessions gelöscht werden. Über das Session Pulldown Menü im AI Panel kann
-zwischen Sessions umgeschaltet werden.
-Eine Session ist immer mit einem AI-Modell verbunden. Beim Umschalten eines Modells wird
-immer das zugehörige Modell ausgewählt. Wird das Modell gewechselt, wird die aktuelle
-Session gesichert und eine neue Session für dieses Modell angelegt.
-
-### Roles
-
-In Roles kannst du den System-Prompt des Models konfigurieren. Ausserdem kannst du festlegen,
-ob das AI-Modell Schreibrechte auf dem System haben soll.
-
-Du kannst neue Rollen erstellen sowie bestehende verändern oder löschen.
-
+NPEd kombiniert die klassische, effiziente Bedienung bekannter Editoren mit modernen Features einer IDE. Hier sind die wichtigsten Merkmale im Überblick:
+
+### Kernfunktionen
+*   **Multifile-Verwaltung:** Arbeite in Tabs, die dir den Dateistatus farblich signalisieren (z. B. rot für modifizierte Dateien).
+*   **Kontext-Management:** Jeder Tab verwaltet Cursor-Position und Historie – so navigierst du blitzschnell vor und zurück. Eine Datei kann dabei mehrere Kontexte besitzen.
+*   **Standard-Editing:** Umfassende Funktionen wie Undo/Redo, Suchen & Ersetzen (auch mit regulären Ausdrücken) sowie zeilen- und spaltenweises Auswählen (Pick/Put).
+*   **LSP-Integration:** Über das *Language Server Protocol* erhältst du IDE-Features wie Code-Navigation (*Go to Definition*), Autovervollständigung und Refactoring.
+*   **KI-Agent:** Ein tief integrierter Agent unterstützt lokale (Ollama) sowie Cloud-Modelle (Gemini, Anthropic, OpenAI). Er beherrscht *Tool-Calling* und lässt sich via MCP-Server (Model Context Protocol) nahtlos erweitern.
+*   **Git-Integration:** Native Unterstützung für Git-Status, Diffs und Historie direkt im Editorfenster.
+
+### Technische Basis
+*   **Modernes C++23 & CMake:** Leistungsstarkes Fundament für hohe Performance.
+*   **Qt6:** Robuste grafische Benutzeoberfläche mit flexiblem Styling (via `style.qss`).
+*   **Daten-Handling:** Intensive Nutzung von `nlohmann::json` für eine effiziente Kommunikation mit dem LSP und die Verwaltung deiner Einstellungen.
+
+---
+
+## 2. Bedienkonzept: Effizienz pur
+
+NPEd ist für Entwickler konzipiert, die ihre Hände bevorzugt auf der Tastatur lassen. Das Bedienkonzept orientiert sich an klassischen Editoren wie *WordStar* oder *Turbo Pascal*, ergänzt um moderne Funktionen.
+
+### Das Befehlssystem (Command Entry)
+Funktionen, die Parameter benötigen (wie das Öffnen einer Datei oder Suchen/Ersetzen), rufst du so auf:
+1. Drücke **`<Escape>`**, um am unteren Bildschirmrand ein Eingabefeld zu öffnen.
+2. Gib dein Argument ein (z. B. einen Dateinamen oder Suchbegriff).
+3. Bestätige mit dem Shortcut der gewünschten Funktion, anstatt die Eingabetaste zu drücken. (Beispiel: Suche mit **`<F7>`** starten).
+
+### Cursor-Steuerung (WordStar/Turbo-Pascal-Stil)
+Der "Cursor-Block" ist dein Zuhause. Hier nutzt du <kbd>Ctrl</kbd> als Modifikator und <kbd>Ctrl+Q</kbd> als Präfix für komplexere Sprünge:
+
+*   **Grundbewegung:** 
+    *   <kbd>Ctrl+S</kbd>: links | <kbd>Ctrl+D</kbd>: rechts | <kbd>Ctrl+E</kbd>: hoch | <kbd>Ctrl+X</kbd>: runter
+*   **Wort-/Seitenweise:**
+    *   <kbd>Ctrl+A</kbd>: Wort links | <kbd>Ctrl+F</kbd>: Wort rechts | <kbd>Ctrl+R</kbd>: Seite hoch | <kbd>Ctrl+C</kbd>: Seite runter
+*   **Spezialsprünge (<kbd>Ctrl+Q</kbd> als Präfix):**
+    *   `Ctrl+Q, Ctrl+S`: Zeilenanfang | `Ctrl+Q, Ctrl+D`: Zeilenende
+    *   `Ctrl+Q, Ctrl+E`: Seitenanfang | `Ctrl+Q, Ctrl+X`: Seitenende
+    *   `Ctrl+Q, Ctrl+R`: Textanfang | `Ctrl+Q, Ctrl+C`: Textende
+
+### Formatierungsregeln (Auto-Clean)
+NPEd sorgt automatisch für sauberen Code:
+*   Überflüssige Leerzeichen am Zeilenende (*Trailing Spaces*) werden entfernt.
+*   Leerzeilen am Dateiende werden gelöscht.
+*   Die letzte Zeile endet **immer** mit einem Zeilenumbruch (`\n`).
+*   Leere Dateien werden beim Speichern ignoriert.
+
+### Wichtige IDE-Shortcuts
+*   <kbd>Ctrl+O, Ctrl+F</kbd>: Datei formatieren (LSP-unterstützt).
+*   <kbd>Ctrl+V</kbd>: Ansicht wechseln (z. B. von Text auf gerenderte Darstellung bei Markdown/HTML oder Funktionsliste bei C++).
+*   <kbd>F10</kbd> / <kbd>F11</kbd> / <kbd>F12</kbd>: Go to Type Definition / Implementation / Definition.
+
+## 3. KI-Agent
+
+NPEd integriert KI-Modelle direkt in deinen Entwicklungs-Workflow.
+
+### 3.1 KI-Modelle konfigurieren
+Du kannst Modelle von Google (Gemini), Anthropic (Claude) und lokale Modelle via Ollama nutzen. Läuft ein Ollama-Server auf deinem Rechner, werden die verfügbaren Modelle automatisch erkannt und im AI-Panel unter "Models" gelistet. Für Cloud-Modelle ist in der Regel ein API-Key erforderlich.
+
+### 3.2 MCP-Server (Model Context Protocol)
+MCP ermöglicht es dem KI-Agenten, auf externe Werkzeuge und Daten zuzugreifen. Hier ist eine Übersicht empfohlener MCP-Server:
+
+| Server | Zweck | Installation / Befehl |
+| :--- | :--- | :--- |
+| **Filesystem** | Lese-/Schreibzugriff auf Projektdateien | `rust-mcp-filesystem` |
+| **GitHub** | GitHub-Integration | `npx -y @modelcontextprotocol/server-github` |
+| **Git** | Lokale Git-Operationen | `pip install mcp-server-git` |
+| **Websearch** | Websuche-Erweiterung | `npx websearch-mcp` |
+| **Chrome DevTools** | Frontend-Debugging/Steuerung | `npx -y chrome-devtools-mcp@latest` |
+
+*Hinweis: MCP-Server werden in der Konfigurationsdatei unter `mcpServers` registriert.*
+
+### 3.3 Interne Tools & Sicherheit
+Zusätzlich zu den MCP-Servern bietet NPEd eigene interne Tools an. Die Sicherheit steht dabei im Vordergrund:
+*   **Dateizugriff:** KI-Modelle können nur auf Dateien innerhalb des aktuellen Projektverzeichnisses zugreifen. Schreibrechte sind optional pro Rolle konfigurierbar.
+*   **Bash-Sandbox:** Das `bash`-Tool erlaubt Shell-Kommandos, läuft jedoch in einer geschützten Sandbox, um dein System abzusichern.
+
+### 3.4 Sessions & Rollen
+*   **Sessions:** Werden automatisch gespeichert und sind an ein spezifisches Modell gebunden. Du kannst bequem im AI-Panel zwischen verschiedenen Sessions wechseln.
+*   **Rollen:** Hier definierst du System-Prompts für dein Modell und konfigurierst Berechtigungen (z.B. ob das Modell Dateien verändern darf).
 
 ## 4. Installation
-### Font
 
-Nped kann nur Schriften verwenden, die nichtproportional (Monospace) sind. Dementsprechend
-zeigt die Konfigurationsseite nur monospaced Fonts.
+### Schriftart
+NPEd erfordert eine nichtproportionale Schriftart (*Monospace*). In den Einstellungen werden dir automatisch nur geeignete Fonts angeboten.
 
 ### Language Server
+Für C/C++ ist `clangd` der Standard. Installiere ihn einfach über deinen Paketmanager:
+`sudo apt install clangd`
 
-Für die "C" Sprachfamilie: c, c++
+### Tipp: Core Dumps für Debugging
+Falls du unter Kubuntu/Ubuntu mit Core-Dumps arbeitest, musst du diese explizit aktivieren:
+1. Deaktiviere Apport: `/etc/default/apport` auf `enabled=0` setzen.
+2. Stoppe den Dienst: `sudo systemctl stop apport.service`
+3. Deaktiviere den Dienst: `sudo systemctl disable apport.service`
 
-      sudo apt install clangd
+## 5. Beispiele
+Weitere Anwendungsbeispiele findest du unter [Examples](manual/examples.md).
 
-### Core Dumps
+## 6. Kommando-Referenz
 
-Ein normales Kubuntu Linux erzeugt keine Core-Dumps. Core Dumps sind für das Testen und Debuggen
-von Programmen essentiell.
+Hier findest du eine kompakte Übersicht aller verfügbaren Kommandos und der zugehörigen Tastaturkürzel.
 
-Um auf Ubuntu/Kubuntu Core-Dumps zu ermöglichen sind musst du:
+### Globale Kommandos
+| Kommando | Beschreibung | Shortcut(s) |
+| :--- | :--- | :--- |
+| `CMD_SAVE` | Datei speichern | <kbd>Ctrl+K, Ctrl+S</kbd> |
+| `CMD_SAVE_QUIT` | Speichern & Beenden | <kbd>F1</kbd> |
+| `CMD_QUIT` | Beenden ohne Speichern | <kbd>Ctrl+K, Ctrl+Q</kbd>, <kbd>Shift+F1</kbd> |
 
-- Apport abschalten
+### Command-Entry Funktionen (Escape-Modus)
+*Nach drücken von `<Escape>` den Namen/Parameter eingeben und dann den Shortcut bestätigen.*
 
-      sudo nano /etc/default/apport
+| Kommando | Beschreibung | Shortcut(s) |
+| :--- | :--- | :--- |
+| `CMD_ENTER_ADD_FILE` | Datei öffnen | <kbd>F3</kbd> |
+| `CMD_ENTER_SEARCH` | Suche / Ersetzen | <kbd>F7</kbd> |
+| `CMD_ENTER_CREATE_FUNCTION` | Neue C++ Funktion | <kbd>Ctrl+F</kbd> |
+| `CMD_ENTER_GOTO_LINE` | Zu Zeile springen | <kbd>Ctrl+G</kbd> |
 
-ändere "enabled=1" nach "enabled=0"
+### Cursor-Steuerung
+| Kommando | Beschreibung | Shortcut(s) |
+| :--- | :--- | :--- |
+| `CMD_CHAR_RIGHT` | Zeichen rechts | <kbd>Right</kbd>, <kbd>Ctrl+D</kbd> |
+| `CMD_CHAR_LEFT` | Zeichen links | <kbd>Left</kbd>, <kbd>Ctrl+S</kbd> |
+| `CMD_LINE_UP` | Zeile hoch | <kbd>Up</kbd>, <kbd>Ctrl+E</kbd> |
+| `CMD_LINE_DOWN` | Zeile runter | <kbd>Down</kbd>, <kbd>Ctrl+X</kbd> |
+| `CMD_WORD_LEFT` | Wort links | <kbd>Ctrl+A</kbd> |
+| `CMD_WORD_RIGHT` | Wort rechts | <kbd>Ctrl+F</kbd> |
+| `CMD_PAGE_UP` | Seite hoch | <kbd>PgUp</kbd>, <kbd>Ctrl+R</kbd> |
+| `CMD_PAGE_DOWN` | Seite runter | <kbd>PgDown</kbd>, <kbd>Ctrl+C</kbd> |
+| `CMD_FILE_BEGIN` | Textanfang | <kbd>Ctrl+Q, Ctrl+R</kbd> |
+| `CMD_FILE_END` | Textende | <kbd>Ctrl+Q, Ctrl+C</kbd> |
 
-dann:
+### Textbearbeitung
+| Kommando | Beschreibung | Shortcut(s) |
+| :--- | :--- | :--- |
+| `CMD_UNDO` | Rückgängig | <kbd>Ctrl+Z</kbd> |
+| `CMD_REDO` | Wiederherstellen | <kbd>Shift+Ctrl+Z</kbd> |
+| `CMD_PICK` | Kopieren (Pick) | <kbd>F8</kbd> |
+| `CMD_PUT` | Einfügen (Put) | <kbd>F9</kbd> |
+| `CMD_DELETE_LINE` | Zeile löschen (Cut) | <kbd>Ctrl+Y</kbd> |
+| `CMD_INSERT_LINE` | Zeile einfügen | <kbd>Ctrl+N</kbd> |
 
-      sudo systemctl stop apport.service
-      sudo systemctl disable apport.service
+### IDE & LSP Features
+| Kommando | Beschreibung | Shortcut(s) |
+| :--- | :--- | :--- |
+| `CMD_FORMAT` | Code formatieren | <kbd>Ctrl+O, Ctrl+F</kbd> |
+| `CMD_GOTO_DEFINITION` | Zur Definition springen | <kbd>F12</kbd> |
+| `CMD_GOTO_IMPLEMENTATION`| Zur Implementierung | <kbd>F11</kbd> |
+| `CMD_GOTO_TYPE_DEFINITION`| Zum Typ springen | <kbd>F10</kbd> |
+| `CMD_RENAME` | Symbol umbenennen | <kbd>Ctrl+O, Ctrl+R</kbd> |
+| `CMD_COMPLETIONS` | Autovervollständigung | <kbd>Ctrl+Tab</kbd>, <kbd>Shift+Tab</kbd> |
+| `CMD_TOGGLE_AI` | AI Panel anzeigen | <kbd>Ctrl+I</kbd> |
+| `CMD_TOGGLE_GIT` | Git Panel anzeigen | <kbd>Ctrl+O, Ctrl+G</kbd> |
 
-## 5. Examples
-[Examples](manual/examples.md)
+*(Hinweis: Diese Liste enthält die wichtigsten Befehle. Weitere Funktionen können durch Kombinationen oder das Command-Entry-System erreicht werden.)*

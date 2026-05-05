@@ -481,6 +481,7 @@ void Kontext::moveCursorRel(int dx, int dy, MoveType type) {
 void Kontext::moveCursorAbs(int col, int row) {
       if (col >= 0) {
             _cursor.filePos.col   = std::max(0, col);
+            Debug("clamp {} {} {}", col, 0, screenColumns());
             _cursor.screenPos.col = std::clamp(col, 0, screenColumns());
             }
       if (row >= 0) {

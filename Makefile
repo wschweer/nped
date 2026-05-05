@@ -50,3 +50,12 @@ init-gcc:
 #
 init:
 	rm -rf build; mkdir build; cd build; cmake -D CMAKE_CXX_COMPILER=clang++ -G Ninja ..
+
+#
+#     initialize the project for cross compiling to windows using mxe
+#
+init-windows:
+	rm -rf build-windows; mkdir build-windows; cd build-windows; /home/ws/projects/mxe/usr/bin/i686-w64-mingw32.static-cmake -G Ninja ..
+
+init-windows-shared:
+	rm -rf build-windows-shared; mkdir build-windows-shared; cd build-windows-shared; /home/ws/projects/mxe/usr/bin/x86_64-w64-mingw32.shared-cmake -G Ninja ..

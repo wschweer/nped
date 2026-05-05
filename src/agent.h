@@ -51,31 +51,41 @@ class Session;
 class QEventLoop;
 class ScreenshotHelper;
 class McpManager;
-
 //---------------------------------------------------------
 //   AgentRole
 //---------------------------------------------------------
 
-struct AgentRole
-      {
+struct AgentRole {
       Q_GADGET
       Q_PROPERTY(QString name MEMBER name)
       Q_PROPERTY(QString manifest MEMBER manifest)
       Q_PROPERTY(bool rw MEMBER rw)
+      Q_PROPERTY(QStringList mcpServers MEMBER mcpServers)
+
     public:
       QString name;
       QString manifest;
       bool rw; // true: read/write, false: read only
+      QStringList mcpServers;
 
       bool operator==(const AgentRole& other) const = default;
-      };
-
+};
 using AgentRoles = QList<AgentRole>;
+//---------------------------------------------------------
+//   CannedPrompt
+//---------------------------------------------------------
 
-Q_DECLARE_METATYPE(AgentRole)
-Q_DECLARE_METATYPE(AgentRoles)
+struct CannedPrompt {
+      Q_GADGET
+      Q_PROPERTY(QString name MEMBER name)
+      Q_PROPERTY(QString description MEMBER description)
+      Q_PROPERTY(QString prompt MEMBER prompt)
 
-
+    public:
+      QString name, description, prompt;
+      bool operator==(const CannedPrompt& other) const = default;
+};
+using CannedPrompts = QList<CannedPrompt>;
 //---------------------------------------------------------
 //   DropAwarePlainTextEdit
 //   A QPlainTextEdit that intercepts image drag-and-drop
@@ -84,7 +94,7 @@ Q_DECLARE_METATYPE(AgentRoles)
 //---------------------------------------------------------
 
 class DropAwarePlainTextEdit : public QPlainTextEdit
-      {
+{
       Q_OBJECT
 
     public:
@@ -101,7 +111,7 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
                   e->acceptProposedAction();
             else
                   QPlainTextEdit::dragEnterEvent(e);
-            }
+      }
       void dragMoveEvent(QDragMoveEvent* e) override {
             const QMimeData* m = e->mimeData();
             qDebug() << "[DropAware] dragMoveEvent — hasImage:" << m->hasImage()
@@ -110,7 +120,7 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
                   e->acceptProposedAction();
             else
                   QPlainTextEdit::dragMoveEvent(e);
-            }
+      }
       void dropEvent(QDropEvent* e) override {
             const QMimeData* m = e->mimeData();
             qDebug() << "[DropAware] dropEvent — hasImage:" << m->hasImage() << "hasUrls:" << m->hasUrls()
@@ -119,7 +129,7 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
             if (m->hasImage()) {
                   qDebug() << "[DropAware] dropEvent — extracting image from imageData";
                   image = qvariant_cast<QImage>(m->imageData());
-                  }
+            }
             else if (m->hasUrls()) {
                   for (const QUrl& url : m->urls()) {
                         qDebug() << "[DropAware] dropEvent — trying URL:" << url.toString().left(80);
@@ -130,8 +140,8 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
                               if (!loaded.isNull()) {
                                     image = loaded;
                                     break;
-                                    }
                               }
+                        }
                         else {
                               // Handle data: URIs dragged from a browser (e.g. "data:image/jpeg;base64,...")
                               const QString urlStr = url.toString();
@@ -145,30 +155,29 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
                                                             "image, size:"
                                                          << image.size();
                                                 break;
-                                                }
                                           }
                                     }
                               }
                         }
                   }
+            }
             if (!image.isNull()) {
                   qDebug() << "[DropAware] dropEvent — emitting imageDropped, size:" << image.size();
                   e->acceptProposedAction();
                   emit imageDropped(image);
-                  }
+            }
             else {
                   qDebug() << "[DropAware] dropEvent — no image found, delegating to base class";
                   QPlainTextEdit::dropEvent(e);
-                  }
             }
-      };
-
+      }
+};
 //---------------------------------------------------------
 //   Agent
 //---------------------------------------------------------
 
 class Agent : public QWidget
-      {
+{
       Q_OBJECT
 
       Q_PROPERTY(bool filterToolMessages MEMBER filterToolMessages)
@@ -191,12 +200,8 @@ class Agent : public QWidget
       QToolButton* statusLabel;
       QToolButton* stopButton;
 
-
       QToolButton* configButton;
       QToolButton* screenshotButton;
-      QToolButton* button1;
-      QToolButton* button2;
-      QToolButton* button3;
       QWidget* buttonPanel {nullptr}; ///< narrow vertical icon panel left of prompt input
       QWidget* dataPanel {nullptr};   ///< narrow vertical icon panel right of prompt input
       QHBoxLayout* dataPanelLayout {nullptr};
@@ -211,7 +216,7 @@ class Agent : public QWidget
       QList<Attachment> _attachments;                  ///< pending files attached to prompt
       QList<AttachmentButton*> _attachmentIconButtons; ///< one thumbnail button per pending attachment
 
-      QComboBox* agentRoleCombo { nullptr };
+      QComboBox* agentRoleCombo {nullptr};
 
       // Netzwerk & Status
       QNetworkAccessManager* networkManager;
@@ -223,9 +228,10 @@ class Agent : public QWidget
       bool isRetrying {false};
       bool _stopRequested {false};
       int retryPause {2000};
+      QToolButton* cannedPromptsButton {nullptr};
       QToolButton* addAttachmentButton {nullptr}; ///< "+" button to add attachments
-      void addAttachment();                        ///< opens file dialog to attach any file
-      QList<QToolButton*> _attachmentButtons;      ///< all attachment buttons (images and other files)
+      void addAttachment();                       ///< opens file dialog to attach any file
+      QList<QToolButton*> _attachmentButtons;     ///< all attachment buttons (images and other files)
       int currentRetryCount {0};
       const int maxRetries {12};
       QDateTime rateLimitResetTime;
@@ -301,14 +307,14 @@ class Agent : public QWidget
       void onScreenshotReady(const QImage& image);
       void onScreenshotFailed(const QString& reason);
       void removeAttachment(int index);
-      void handleCannedPrompt(const QString& buttonId);
-      void updateCannedPrompts();
 
       void stop();
 
     public slots:
       void sendMessage(QString);
       void sendMessage2();
+      void updateStyle();
+      void updateIcons();
 
     signals:
       void modelChanged();
@@ -317,7 +323,6 @@ class Agent : public QWidget
     public:
       explicit Agent(Editor* e, QWidget* parent = nullptr);
       ~Agent() {}
-
       ChatDisplay* chatDisplay;
       QAction* showToolMessageAction = nullptr;
       QAction* showThoughtsAction    = nullptr;
@@ -337,14 +342,15 @@ class Agent : public QWidget
       std::string executeTool(const std::string& functionName, const json& arguments);
 
       // Output-Limits für LLM-Context-Window (Punkt 11)
-      static constexpr int kBuildLogMaxChars   = 20000 * 10;
-      static constexpr int kWebFetchMaxChars   = 80000;
-      static constexpr int kGitDiffMaxChars    = 10000;
+      static constexpr int kBuildLogMaxChars  = 20000 * 10;
+      static constexpr int kWebFetchMaxChars  = 80000;
+      static constexpr int kGitDiffMaxChars   = 10000;
       static constexpr int kMaxAttachmentSize = 1024 * 1024 * 2; // 2MB limit
 
       static constexpr int kSearchMaxChars     = 10000;
       static constexpr int kChatResultMaxChars = 20000;
       static constexpr int kChatMaxMessages    = 40;
+
       std::string compressBuildLog(const std::string& rawLog);
       std::string truncateOutput(const std::string& text, int maxChars);
       Editor* editor() const { return _editor; }
@@ -356,4 +362,10 @@ class Agent : public QWidget
       McpManager* mcpManager() const { return _mcpManager; }
       void startAgent();
       void stopAgent();
-      };
+};
+
+Q_DECLARE_METATYPE(AgentRole)
+Q_DECLARE_METATYPE(AgentRoles)
+
+Q_DECLARE_METATYPE(CannedPrompt)
+Q_DECLARE_METATYPE(CannedPrompts)

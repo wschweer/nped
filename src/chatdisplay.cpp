@@ -14,7 +14,6 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QApplication>
-
 //---------------------------------------------------------
 //   getHighlightJsCss
 //---------------------------------------------------------
@@ -22,8 +21,7 @@
 QString ChatDisplay::getHighlightJsCss() const {
       return R"(
 pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}.hljs{color:#24292e;background:#fff})";
-      }
-
+}
 //---------------------------------------------------------
 //   getHighlightJsDarkCss
 //---------------------------------------------------------
@@ -32,8 +30,7 @@ QString ChatDisplay::getHighlightJsDarkCss() const {
       //      return R"(pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}.hljs{color:#c9d1d9;background:#0d1117})";
       // blue codeblock
       return R"(pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}.hljs{color:#c9d1d9;background:#313144})";
-      }
-
+}
 //---------------------------------------------------------
 //   getChatCss
 //        code     {{ background-color: rgba(128,128,128,0.2); border-radius: 4px; padding: 2px 4px; }}
@@ -89,8 +86,7 @@ QString ChatDisplay::getChatCss() const {
     )",
                                                 bg, fg)) +
              getScrollbarCss(false);
-      }
-
+}
 //---------------------------------------------------------
 //   getChatDarkCss
 //        code {{ background-color: rgba(255,255,255,0.1); border-radius: 4px; padding: 2px 4px; }}
@@ -110,8 +106,7 @@ QString ChatDisplay::getChatDarkCss() const {
     )",
                                                 bg, fg)) +
              getScrollbarCss(true);
-      }
-
+}
 //---------------------------------------------------------
 //   setup
 //---------------------------------------------------------
@@ -314,13 +309,13 @@ void ChatDisplay::setup() {
 )")
                       .arg(hljsCss, chatCss, getMermaidJs(_darkMode), getKaTexJs());
       setHtml(html);
-      }
-
+}
 //---------------------------------------------------------
-//   setDarkMode
+//   updateStyle
 //---------------------------------------------------------
 
-void ChatDisplay::setDarkMode(bool enabled) {
+void ChatDisplay::updateStyle() {
+      bool enabled = _editor->darkMode();
       if (_darkMode == enabled)
             return;
       _darkMode = enabled;
@@ -344,8 +339,7 @@ void ChatDisplay::setDarkMode(bool enabled) {
                    "})();";
 
       page()->runJavaScript(js, [](const QVariant& res) { (void)res; });
-      }
-
+}
 //---------------------------------------------------------
 //   safeRunJs
 //       Guards against calling JS functions before the page
@@ -362,8 +356,7 @@ void ChatDisplay::safeRunJs(const QString& call) {
                                  "}")
                              .arg(funcName, call);
       page()->runJavaScript(js, [](const QVariant& res) { (void)res; });
-      }
-
+}
 //---------------------------------------------------------
 //   startMessage
 //---------------------------------------------------------
@@ -373,8 +366,7 @@ void ChatDisplay::startMessage() {
       currentStreamingText.clear();
       auto s = std::format("startNewStreamingMessage('{}');", role);
       safeRunJs(QString::fromStdString(s));
-      }
-
+}
 //---------------------------------------------------------
 //   handleIncomingChunk
 //---------------------------------------------------------
@@ -384,7 +376,7 @@ void ChatDisplay::handleIncomingChunk(const std::string& thoughtChunk, const std
       if (mustStartMessage && (!thoughtChunk.empty() || !textChunk.empty())) {
             mustStartMessage = false;
             startMessage();
-            }
+      }
 
       if (!thoughtChunk.empty()) {
             currentStreamingThought += thoughtChunk;
@@ -392,7 +384,7 @@ void ChatDisplay::handleIncomingChunk(const std::string& thoughtChunk, const std
 
             QString js = QString("updateStreamingThought(%1);").arg(quoteForJs(html));
             safeRunJs(js);
-            }
+      }
 
       if (!textChunk.empty()) {
             currentStreamingText += textChunk;
@@ -401,9 +393,8 @@ void ChatDisplay::handleIncomingChunk(const std::string& thoughtChunk, const std
             // JS Aufruf
             QString js = QString("updateStreamingText(%1);").arg(quoteForJs(html));
             safeRunJs(js);
-            }
       }
-
+}
 //---------------------------------------------------------
 //   quoteForJs
 //---------------------------------------------------------
@@ -413,8 +404,7 @@ QString ChatDisplay::quoteForJs(const QString& str) {
             return "''";
       QByteArray json = QJsonDocument(QJsonArray {str}).toJson(QJsonDocument::Compact);
       return QString::fromUtf8(json.mid(1, json.length() - 2));
-      }
-
+}
 //---------------------------------------------------------
 //   appendStaticHtml
 //---------------------------------------------------------
@@ -430,4 +420,4 @@ void ChatDisplay::appendStaticHtml(const QString& role, const QString& html, con
               "}")
               .arg(quoteForJs(role), quoteForJs(html), quoteForJs(thoughtHtml), isActive ? "true" : "false");
       page()->runJavaScript(js, [](const QVariant& res) { (void)res; });
-      }
+}

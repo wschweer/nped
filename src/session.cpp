@@ -230,7 +230,50 @@ void Session::optimizeToolResponses() {
 //---------------------------------------------------------------------------------------
 
 bool Session::trim() {
+      // 0. Drop redundant repeated tool calls
+      std::map<std::string, std::string> toolSignatures;
+      for (const auto& item : _data) {
+            if (item.content.value("role", "") == "assistant" && item.content.contains("tool_calls")) {
+                  for (const auto& tc : item.content["tool_calls"]) {
+                        if (tc.contains("id") && tc.contains("function")) {
+                              std::string id     = tc["id"].get<std::string>();
+                              auto func          = tc["function"];
+                              std::string sig    = func.value("name", "") + ":" + func.value("arguments", "");
+                              toolSignatures[id] = sig;
+                              }
+                        }
+                  }
+            }
+
+      std::set<std::string> seenSignatures;
+      for (auto it = _data.rbegin(); it != _data.rend(); ++it) {
+            std::string role = it->content.value("role", "");
+            if (role == "tool" || role == "function") {
+                  std::string id = it->content.value("tool_call_id", "");
+                  if (!id.empty() && toolSignatures.count(id)) {
+                        std::string sig = toolSignatures[id];
+                        if (seenSignatures.count(sig)) {
+                              if (it->content.contains("content") && it->content["content"].is_string()) {
+                                    std::string oldContent = it->content["content"].get<std::string>();
+                                    std::string newContent = "[Repeated tool call omitted to save context]";
+                                    if (oldContent != newContent) {
+                                          it->content["content"] = newContent;
+                                          it->tokens             = newContent.length() / 4;
+                                          }
+                                    }
+                              }
+                        else {
+                              seenSignatures.insert(sig);
+                              }
+                        }
+                  }
+            }
+
       optimizeToolResponses();
+
+      // Update tokens reflecting the modifications
+      setActiveEntries(activeEntries);
+
       // 1. Wenn der letzte Turn eine Zusammenfassung war:
       // Wir setzen activeEntries auf 2 (Zusammenfassungs-Anfrage und Modell-Antwort).
       if (summaryRequested) {
@@ -241,39 +284,31 @@ bool Session::trim() {
                   if (it->content.value("role", "") == "user")
                         break;
                   }
-            activeEntries = n;
-            totalTokens   = 0;
-            for (size_t i = _data.size() - activeEntries; i < _data.size(); ++i)
-                  totalTokens += _data[i].tokens;
+            activeEntries    = n;
             summaryRequested = false;
-            emit tokensChanged(totalTokens);
+            setActiveEntries(activeEntries);
             return false;
             }
 
-      // 2. Klassisches Rolling Window (nur activeEntries reduzieren statt Löschen)
+      // 2. Klassisches Rolling Window mit Berücksichtigung von Größe (totalTokens) und Anzahl (maxEntries)
+      //    Safety: never trim below minEntries to guarantee the model always has
+      //    some context, even when no "user" boundary is found.
       size_t n = activeEntries;
-      while (activeEntries > maxEntries) {
-            if (activeEntries == 0)
-                  break;
-            size_t idx   = _data.size() - activeEntries;
-            totalTokens -= _data[idx].tokens;
+      while ((activeEntries > maxEntries || totalTokens > criticalTokenCount) && activeEntries > minEntries) {
             activeEntries--;
-            while (activeEntries > 0) {
-                  idx           = _data.size() - activeEntries;
+            while (activeEntries > minEntries) {
+                  size_t idx    = _data.size() - activeEntries;
                   std::string r = _data[idx].content.value("role", "");
                   if (r == "user")
                         break;
-                  totalTokens -= _data[idx].tokens;
                   activeEntries--;
                   }
+            // Recalculate total tokens for the new active window
+            setActiveEntries(activeEntries);
             }
       if (n != activeEntries)
             Debug("****Reduced History from {} to {} entries", n, activeEntries);
-      //      if (hitLimit()) {
-      //          request summary
-      //            summaryRequested = true;
-      //            }
-      emit tokensChanged(totalTokens);
+
       return summaryRequested;
       }
 
@@ -321,6 +356,10 @@ void Session::setActiveEntries(size_t a) {
       activeEntries   = std::min(a, _data.size());
       totalTokens     = 0;
       size_t startIdx = _data.size() - activeEntries;
+
+      if (startIdx > 0 && !_data.empty())
+            totalTokens += _data[0].tokens;
+
       for (size_t i = startIdx; i < _data.size(); ++i)
             totalTokens += _data[i].tokens;
       emit tokensChanged(totalTokens);

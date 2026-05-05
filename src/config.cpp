@@ -16,7 +16,6 @@
 #include <QJsonArray>
 #include <QVBoxLayout>
 #include <QQmlContext>
-#include <QDebug>
 #include <QFontDatabase>
 #include <QSettings>
 #include <QScreen>
@@ -218,17 +217,18 @@ void Editor::saveSettings() {
       auto s                     = toJson(_models).dump();
       auto doc                   = QJsonDocument::fromJson(s.c_str());
       configs["models"]          = doc.array();
-      configs["fileTypes"]       = _fileTypes.toJson();
-      configs["languageServers"] = _languageServersConfig.toJson();
+      configs["fileTypes"]       = fileTypes().toJson();
+      configs["languageServers"] = languageServersConfig().toJson();
       auto mcp_s                 = mcpServerConfigsToJson(_mcpServersConfig).dump();
       configs["mcpServers"]      = QJsonDocument::fromJson(mcp_s.c_str()).array();
 
       QJsonArray ar;
       for (const auto& agentRole : _agentRoles) {
             QJsonObject r;
-            r["name"]     = agentRole.name;
-            r["manifest"] = agentRole.manifest;
-            r["rw"]       = agentRole.rw;
+            r["name"]       = agentRole.name;
+            r["manifest"]   = agentRole.manifest;
+            r["rw"]         = agentRole.rw;
+            r["mcpServers"] = QJsonArray::fromStringList(agentRole.mcpServers);
             ar.append(r);
             }
       configs["agentRoles"] = ar;
@@ -245,8 +245,6 @@ void Editor::saveSettings() {
 
       configs["shortcuts"]  = array;
       configs["fontFamily"] = fontFamily();
-      //      configs["fontSize"]   = fontSize();
-      configs["fontDemo"] = fontDemo();
 
       QJsonArray projects;
       int i = 0;
@@ -315,12 +313,17 @@ void Editor::loadSettings() {
                   ar.name     = obj["name"].toString();
                   ar.manifest = obj["manifest"].toString();
                   ar.rw       = obj["rw"].toBool();
+
+                  QJsonArray mcpArray = obj["mcpServers"].toArray();
+                  for (int j = 0; j < mcpArray.size(); ++j)
+                        ar.mcpServers.append(mcpArray[j].toString());
+
                   _agentRoles.push_back(ar);
                   }
             }
 
       if (config.contains("darkMode"))
-            setDarkMode(config["darkMode"].toBool());
+            set_darkMode(config["darkMode"].toBool());
       if (config.contains("models")) { // hack until we converted all to lohmann json
             auto ma       = config["models"].toArray();
             QByteArray ba = QJsonDocument(ma).toJson();
@@ -345,21 +348,32 @@ void Editor::loadSettings() {
       //            _fontSize = std::clamp(n, 5.0, 40.0); // sanitize value
       //            }
       if (config.contains("fontFamily"))
-            setFontFamily(config["fontFamily"].toString());
-      if (config.contains("fontDemo"))
-            setFontDemo(config["fontDemo"].toString());
+            set_fontFamily(config["fontFamily"].toString());
       if (config.contains("textStylesDark")) {
             _textStylesDark = tsFromJson(config["textStylesDark"].toArray());
             emit textStylesDarkChanged();
             }
 
       if (_agentRoles.isEmpty()) {
+            QStringList allMcpServers;
+            for (const auto& mcp : _mcpServersConfig)
+                  allMcpServers.append(mcp.id);
             AgentRoles defaultRoles = {
-                     { "C++Coder",    "You are a high-performace c++ coding engine.\nUse modern C++23.",  true},
-                     {"Architect", "You are an experienced C++ developer acting as a system architect.", false},
-                     {    "Agent",                                  "You are a friendly helpful agent.",  true}
+                     { "C++Coder",    "You are a high-performace c++ coding engine.\nUse modern C++23.",  true,
+                allMcpServers                                                                                          },
+                     {"Architect", "You are an experienced C++ developer acting as a system architect.", false,
+                allMcpServers                                                                                          },
+                     {    "Agent",                                  "You are a friendly helpful agent.",  true, allMcpServers}
                   };
             _agentRoles = defaultRoles;
+            }
+      if (_cannedPrompts.isEmpty()) {
+            CannedPrompts defaultPrompts = {
+                     {"Refactor", "Refactor the selected code",
+                "Refactor the following code to improve readability and performance."            },
+                     { "Explain",  "Explain the selected code", "Explain how the following code works."}
+                  };
+            _cannedPrompts = defaultPrompts;
             }
       }
 

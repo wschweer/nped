@@ -1,3 +1,14 @@
+#=============================================================================
+#  nped Program Editor
+#
+#  Copyright (C) 2026 Werner Schweer
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License version 2
+#  as published by the Free Software Foundation and appearing in
+#  the file LICENCE.GPL
+#=============================================================================
+
 cmake_minimum_required(VERSION 3.16)
 Set(QT_FORCE_CMP0156_TO_VALUE NEW)
 project (nped VERSION 0.0.1 LANGUAGES CXX)
