@@ -51,6 +51,7 @@ class Session;
 class QEventLoop;
 class ScreenshotHelper;
 class McpManager;
+
 //---------------------------------------------------------
 //   AgentRole
 //---------------------------------------------------------
@@ -69,8 +70,10 @@ struct AgentRole {
       QStringList mcpServers;
 
       bool operator==(const AgentRole& other) const = default;
-};
+      };
+
 using AgentRoles = QList<AgentRole>;
+
 //---------------------------------------------------------
 //   CannedPrompt
 //---------------------------------------------------------
@@ -84,8 +87,10 @@ struct CannedPrompt {
     public:
       QString name, description, prompt;
       bool operator==(const CannedPrompt& other) const = default;
-};
+      };
+
 using CannedPrompts = QList<CannedPrompt>;
+
 //---------------------------------------------------------
 //   DropAwarePlainTextEdit
 //   A QPlainTextEdit that intercepts image drag-and-drop
@@ -94,7 +99,7 @@ using CannedPrompts = QList<CannedPrompt>;
 //---------------------------------------------------------
 
 class DropAwarePlainTextEdit : public QPlainTextEdit
-{
+      {
       Q_OBJECT
 
     public:
@@ -111,7 +116,7 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
                   e->acceptProposedAction();
             else
                   QPlainTextEdit::dragEnterEvent(e);
-      }
+            }
       void dragMoveEvent(QDragMoveEvent* e) override {
             const QMimeData* m = e->mimeData();
             qDebug() << "[DropAware] dragMoveEvent — hasImage:" << m->hasImage()
@@ -120,7 +125,7 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
                   e->acceptProposedAction();
             else
                   QPlainTextEdit::dragMoveEvent(e);
-      }
+            }
       void dropEvent(QDropEvent* e) override {
             const QMimeData* m = e->mimeData();
             qDebug() << "[DropAware] dropEvent — hasImage:" << m->hasImage() << "hasUrls:" << m->hasUrls()
@@ -129,7 +134,7 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
             if (m->hasImage()) {
                   qDebug() << "[DropAware] dropEvent — extracting image from imageData";
                   image = qvariant_cast<QImage>(m->imageData());
-            }
+                  }
             else if (m->hasUrls()) {
                   for (const QUrl& url : m->urls()) {
                         qDebug() << "[DropAware] dropEvent — trying URL:" << url.toString().left(80);
@@ -140,8 +145,8 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
                               if (!loaded.isNull()) {
                                     image = loaded;
                                     break;
+                                    }
                               }
-                        }
                         else {
                               // Handle data: URIs dragged from a browser (e.g. "data:image/jpeg;base64,...")
                               const QString urlStr = url.toString();
@@ -155,29 +160,30 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
                                                             "image, size:"
                                                          << image.size();
                                                 break;
+                                                }
                                           }
                                     }
                               }
                         }
                   }
-            }
             if (!image.isNull()) {
                   qDebug() << "[DropAware] dropEvent — emitting imageDropped, size:" << image.size();
                   e->acceptProposedAction();
                   emit imageDropped(image);
-            }
+                  }
             else {
                   qDebug() << "[DropAware] dropEvent — no image found, delegating to base class";
                   QPlainTextEdit::dropEvent(e);
+                  }
             }
-      }
-};
+      };
+
 //---------------------------------------------------------
 //   Agent
 //---------------------------------------------------------
 
 class Agent : public QWidget
-{
+      {
       Q_OBJECT
 
       Q_PROPERTY(bool filterToolMessages MEMBER filterToolMessages)
@@ -362,7 +368,7 @@ class Agent : public QWidget
       McpManager* mcpManager() const { return _mcpManager; }
       void startAgent();
       void stopAgent();
-};
+      };
 
 Q_DECLARE_METATYPE(AgentRole)
 Q_DECLARE_METATYPE(AgentRoles)
