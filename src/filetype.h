@@ -12,6 +12,7 @@
 #pragma once
 
 #include <QObject>
+#include <QVariant>
 
 //---------------------------------------------------------
 //   FileType
@@ -56,6 +57,16 @@ class FileTypes : public QList<FileType> {
       void fromJson(const QJsonArray& array);
       QJsonArray toJson() const;
       void reset();
+
+      // Conversion to QVariantList for Qt property system
+      operator QVariantList() const {
+            QVariantList list;
+            list.reserve(size());
+            for (const auto& item : *this) {
+                  list.append(QVariant::fromValue(item));
+                  }
+            return list;
+            }
       };
 
 Q_DECLARE_METATYPE(FileType)

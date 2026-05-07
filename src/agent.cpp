@@ -580,10 +580,11 @@ void Agent::sendMessage2() {
 
       streamBuffer.clear();
       QNetworkRequest request;
-      json jsonPayLoad   = llm->prompt(&request);
-      QByteArray payload = QString::fromStdString(jsonPayLoad.dump()).toUtf8();
+      json jsonPayLoad = llm->prompt(&request);
+      QByteArray payload =
+          QString::fromStdString(jsonPayLoad.dump(-1, ' ', false, json::error_handler_t::replace)).toUtf8();
 
-      CLog(AI, "send <{}>", jsonPayLoad.dump(3));
+      CLog(AI, "send <{}>", jsonPayLoad.dump(3, ' ', false, json::error_handler_t::replace));
       request.setTransferTimeout(60000 * 10);
 
       chatDisplay->startNewStreamingMessage(model.name.toStdString());

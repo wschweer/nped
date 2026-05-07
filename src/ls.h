@@ -15,6 +15,7 @@
 #include <QList>
 #include <QJsonArray>
 #include <QMetaType>
+#include <QVariant>
 
 class LSclient;
 
@@ -45,6 +46,15 @@ class LanguageServersConfig : public QList<LanguageServerConfig> {
       void fromJson(const QJsonArray& array);
       QJsonArray toJson() const;
       void reset();
+
+      // Conversion operator to QVariantList for web config support
+      operator QVariantList() const {
+            QVariantList result;
+            for (const auto& item : *this) {
+                  result.append(QVariant::fromValue(item));
+                  }
+            return result;
+            }
       };
 
 Q_DECLARE_METATYPE(LanguageServerConfig)

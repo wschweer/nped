@@ -236,9 +236,15 @@ bool Session::trim() {
             if (item.content.value("role", "") == "assistant" && item.content.contains("tool_calls")) {
                   for (const auto& tc : item.content["tool_calls"]) {
                         if (tc.contains("id") && tc.contains("function")) {
-                              std::string id     = tc["id"].get<std::string>();
-                              auto func          = tc["function"];
-                              std::string sig    = func.value("name", "") + ":" + func.value("arguments", "");
+                              std::string id  = tc["id"].get<std::string>();
+                              auto func       = tc["function"];
+                              std::string sig = func.value("name", "") + ":";
+                              if (func.contains("arguments")) {
+                                    if (func["arguments"].is_string())
+                                          sig += func["arguments"].get<std::string>();
+                                    else
+                                          sig += func["arguments"].dump();
+                                    }
                               toolSignatures[id] = sig;
                               }
                         }

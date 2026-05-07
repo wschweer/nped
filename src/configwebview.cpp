@@ -557,7 +557,26 @@ void ConfigWebView::openConfig(const QString& activeListName, int activeListItem
                   QJsonArray listSequence = secObj["listSequence"].toArray();
 
                   QVariant listVar  = getProperty(listName);
-                  QVariantList list = listVar.toList();
+                  QVariantList list;
+
+                  // Handle FileTypes specially since it's a class inheriting from QList
+                  // rather than a type alias
+                  if (listName == "fileTypes") {
+                        FileTypes ft = listVar.value<FileTypes>();
+                        for (const auto& item : ft) {
+                              list.append(QVariant::fromValue(item));
+                              }
+                        }
+                  // Handle LanguageServersConfig specially since it's a class inheriting from QList
+                  else if (listName == "languageServersConfig") {
+                        LanguageServersConfig lsc = listVar.value<LanguageServersConfig>();
+                        for (const auto& item : lsc) {
+                              list.append(QVariant::fromValue(item));
+                              }
+                        }
+                  else {
+                        list = listVar.toList();
+                        }
 
                   html += "<div class=\"d-flex\" style=\"height: calc(100vh - 120px);\">";
                   html +=
