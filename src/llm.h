@@ -48,7 +48,7 @@ class LLMClient : public QObject
       virtual json prompt(QNetworkRequest* request)            = 0;
       virtual void processJsonItem(const json& item)           = 0;
       virtual void dataFinished()                              = 0;
-
+      virtual void abort() {}
     signals:
       void incomingChunk(const std::string& thought, const std::string& text);
       };

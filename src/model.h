@@ -36,23 +36,23 @@ struct Model {
       Q_PROPERTY(bool stream MEMBER stream)
 
     public:
-      bool dynamic{false}; // True if a model was added by the system and not the user,
-                           // for example automatically detected ollama models. This models are
-                           // not saved. If the user edits an model, it will change to dynamic = false.
+      bool dynamic {false}; // True if a model was added by the system and not the user,
+                            // for example automatically detected ollama models. This models are
+                            // not saved. If the user edits an model, it will change to dynamic = false.
 
       QString name;
       QString modelIdentifier;
       QString baseUrl;
       QString apiKey;
-      QString api;                                 // "ollama", "gemini", "anthropic", "openai"
-      bool supportsThinking               = false; ///< true: model supports Extended Thinking (e.g. claude-3-7-sonnet)
-      double temperature                  = -1.0;  ///< <0: use API default
-      double topP                         = -1.0;  ///< <0: use API default
-      double topK                         = -1.0;  ///< <0: use API default
-      int maxTokens                       = -1;    ///< <0: use per-client default
-      int num_ctx                         = -1;
-      int num_predict                     = -1;
-      bool stream                         = true;
+      QString api;                   // "ollama", "gemini", "gemini2", "anthropic", "openai"
+      bool supportsThinking = false; ///< true: model supports Extended Thinking (e.g. claude-3-7-sonnet)
+      double temperature    = -1.0;  ///< <0: use API default
+      double topP           = -1.0;  ///< <0: use API default
+      double topK           = -1.0;  ///< <0: use API default
+      int maxTokens         = -1;    ///< <0: use per-client default
+      int num_ctx           = -1;
+      int num_predict       = -1;
+      bool stream           = true;
       bool operator==(const Model&) const = default;
       json toJson() const;
       Model() {}

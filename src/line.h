@@ -37,10 +37,12 @@ static constexpr char endReplaceSignature[]   = "//##>";
 class Mark
       {
     public:
-      int col1{0};
-      int col2{};
-      TextStyle::Style type{TextStyle::Normal};
-      bool operator==(const Mark& other) const { return col1 == other.col1 && col2 == other.col2 && type == other.type; }
+      int col1 {0};
+      int col2 {};
+      TextStyle::Style type {TextStyle::Normal};
+      bool operator==(const Mark& other) const {
+            return col1 == other.col1 && col2 == other.col2 && type == other.type;
+            }
       };
 
 //---------------------------------------------------------
@@ -63,8 +65,8 @@ class Marks : public std::vector<Mark>
 //---------------------------------------------------------
 
 struct Label {
-      QChar text{QChar(' ')};
-      QColor color{QColorConstants::Black};
+      QChar text {QChar(' ')};
+      QColor color {QColorConstants::Black};
       Pos tag;
       };
 
@@ -81,13 +83,14 @@ enum class FoldMark { No, Begin, Fold };
 class Line : QString
       {
       Label _label;
-      FoldMark _fold{FoldMark::No};
+      FoldMark _fold {FoldMark::No};
 
       Marks _marks;
 
     public:
       Line() {}
-      Line(const QString& s, const Pos& t = Pos(), QChar m = QChar(' '), QColor c = QColorConstants::Black) : QString(s) {
+      Line(const QString& s, const Pos& t = Pos(), QChar m = QChar(' '), QColor c = QColorConstants::Black)
+          : QString(s) {
             _label.tag   = t;
             _label.text  = m;
             _label.color = c;

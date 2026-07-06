@@ -162,8 +162,8 @@ class McpServer : public QObject
       McpRoots m_roots;
       Editor* _editor;
 
-      bool initialized { false };
-      bool handleRoot { false };
+      bool initialized {false};
+      bool handleRoot {false};
       int m_nextRequestId = 1;
       std::map<int, std::function<void(const json&)>> m_pendingRequests;
 
@@ -183,26 +183,25 @@ class McpServer : public QObject
     signals:
       void toolsChanged();
       void resourcesChanged();
-//      void rootsChanged();
+      //      void rootsChanged();
 
     public:
       explicit McpServer(const McpServerConfig& config, Editor*, QObject* parent = nullptr);
       ~McpServer() override { stop(); }
       bool start();
       void stop();
-
       const QString& id() const { return _id; }
       const QString& url() const { return _url; }
-
       // Available capabilities after initialization
       const std::vector<McpTool>& getTools() const { return m_tools; }
       const std::vector<McpResource>& getResources() const { return m_resources; }
       const McpRoots& getRoots() const { return m_roots; }
-
       // Communication
       // MCP tool call (uses tools/call method per spec)
-      void callTool(const std::string& toolName, const json& arguments, std::function<void(const json&)> callback);
-      void sendRequest(const std::string& method, const json& params, std::function<void(const json&)> callback);
+      void callTool(const std::string& toolName, const json& arguments,
+                    std::function<void(const json&)> callback);
+      void sendRequest(const std::string& method, const json& params,
+                       std::function<void(const json&)> callback);
 
       // Roots management
       void addRoot(const McpRoot& root);
@@ -228,7 +227,7 @@ class McpManager : public QObject
     signals:
       void toolsChanged();
       void resourcesChanged();
-//      void rootsChanged();
+      //      void rootsChanged();
 
     public:
       McpManager(Editor* e, QObject* parent = nullptr) : QObject(parent), _editor(e) {}

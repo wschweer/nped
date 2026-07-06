@@ -44,8 +44,8 @@ bool Editor::initProject() {
       _projectRoot = cwd.absolutePath();
       //      Debug("project mode: <{}>", _projectRoot);
       _projectMode = true;
-//      if (!QDir::setCurrent(_projectRoot))
-//            Critical("cannot set cwd to <{}>", _projectRoot);
+      //      if (!QDir::setCurrent(_projectRoot))
+      //            Critical("cannot set cwd to <{}>", _projectRoot);
       qputenv("PROJECT_ROOT", _projectRoot.toLocal8Bit());
 
       // Check for GIT repository

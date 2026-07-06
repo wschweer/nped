@@ -861,7 +861,7 @@ void File::patch(Patches& items) {
                   /* TODO                  if (!posValid(pi.startPos)) {
                         Critical("invalid position col {} line {}", pi.startPos.col, pi.startPos.row);
                         return;
-                                                            }
+                                                                        }
 */
                   }
             }
@@ -1303,6 +1303,19 @@ bool File::searchReplace(const QString& search, const QString& replaceText) {
             undo()->push(new Patch(this, matches[j], searchLen, replaceText, Cursor(), Cursor()));
             }
       return true;
+      }
+
+//---------------------------------------------------------
+//   clearGitHistory
+//    Clean up git history entries
+//---------------------------------------------------------
+
+void File::clearGitHistory() {
+      for (auto i : _gitHistory)
+            delete i;
+      _gitHistory.clear();
+      _gitHistoryDirty     = true;
+      _gitHistoryTimestamp = 0;
       }
 
 //---------------------------------------------------------

@@ -20,8 +20,7 @@
 #include "chatdisplay.h"
 #include "session.h"
 
-// static const int maxThinkingBudget = 1024;
-static const int maxThinkingBudget = 512;
+static const int maxThinkingBudget = 1024;
 
 //---------------------------------------------------------
 //   AnthropicClient
@@ -69,8 +68,12 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
       // Enable Extended Thinking when the model flag is set.
       // The beta header is required; thinking budget must be strictly < max_tokens.
       const bool extendedThinking = model->supportsThinking;
-      if (extendedThinking)
-            request->setRawHeader("anthropic-beta", "interleaved-thinking-2025-05-14");
+      if (extendedThinking) {
+            // Claude 4+ models support thinking as GA; beta header only needed for 3.x
+            const std::string mid = model->modelIdentifier.toStdString();
+            if (mid.find("claude-3") != std::string::npos)
+                  request->setRawHeader("anthropic-beta", "interleaved-thinking-2025-05-14");
+            }
 
       QUrl url(model->baseUrl.isEmpty() ? "https://api.anthropic.com/v1/messages" : model->baseUrl);
       request->setUrl(url);
@@ -79,7 +82,8 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
       anthropicRequest["model"] = model->modelIdentifier.toStdString();
       // max_tokens: use model setting if configured, otherwise 8192 (supports claude-3.5+, claude-3.7+).
       // Older claude-3 models cap at 4096 – set model->maxTokens accordingly in the config.
-      const int maxTokens            = (model->maxTokens > 0) ? model->maxTokens : 8192;
+      const int maxTokens = (model->maxTokens > 0) ? model->maxTokens : (extendedThinking ? 16384 : 8192);
+
       anthropicRequest["max_tokens"] = maxTokens;
       anthropicRequest["stream"]     = model->stream;
       if (!tools.empty())
@@ -92,12 +96,20 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
             anthropicRequest["top_p"] = model->topP;
 
       if (extendedThinking) {
-            // Budget must be strictly less than max_tokens.
-            const int thinkingBudget     = std::max(maxThinkingBudget, maxTokens - 1000);
+            // Extended Thinking: temperature/top_p/top_k are forbidden by the API.
+            // Budget must be >= 1024 and strictly < max_tokens.
+            const int thinkingBudget     = std::max(1024, maxTokens - 1000);
             anthropicRequest["thinking"] = {
                      {         "type",      "enabled"},
                      {"budget_tokens", thinkingBudget}
                   };
+            }
+      else {
+            // Optional sampling parameters – only without thinking.
+            if (model->temperature >= 0.0)
+                  anthropicRequest["temperature"] = model->temperature;
+            if (model->topP >= 0.0)
+                  anthropicRequest["top_p"] = model->topP;
             }
 
       // Reset token counters for this new request
@@ -166,7 +178,25 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                   json toolResult           = json::object();
                   toolResult["type"]        = "tool_result";
                   toolResult["tool_use_id"] = item.value("tool_call_id", "");
-                  toolResult["content"]     = item.value("content", "");
+                  if (item.contains("images") && item["images"].is_array() && !item["images"].empty()) {
+                        json toolContent = json::array();
+                        toolContent.push_back({
+                                 {"type", "text"},
+                                 {"text", item.value("content", "")}
+                              });
+                        for (const auto& imgItem : item["images"]) {
+                              std::string b64 = imgItem.is_string() ? imgItem.get<std::string>() : "";
+                              toolContent.push_back({
+                                       {  "type",      "image"                                           },
+                                       {"source",
+                                        {{"type", "base64"}, {"media_type", "image/jpeg"}, {"data", b64}}}
+                                    });
+                              }
+                        toolResult["content"] = toolContent;
+                        }
+                  else {
+                        toolResult["content"] = item.value("content", "");
+                        }
                   contentArray.push_back(toolResult);
                   toolMsg["content"] = contentArray;
                   addMessage(toolMsg);
@@ -262,8 +292,38 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
                         // Otherwise keep the structured array as-is (e.g. text+image blocks).
                         }
 
-                  // Embed screenshot if present as an Anthropic image content block
-                  if (cleaned.contains("image")) {
+                  // Embed screenshot/images if present as Anthropic image content blocks
+                  if (cleaned.contains("images") && cleaned["images"].is_array() &&
+                      !cleaned["images"].empty()) {
+                        json contentArray = json::array();
+                        for (const auto& imgItem : cleaned["images"]) {
+                              std::string b64 = imgItem.is_string() ? imgItem.get<std::string>() : "";
+                              contentArray.push_back({
+                                       {  "type",      "image"                                           },
+                                       {"source",
+                                        {{"type", "base64"}, {"media_type", "image/jpeg"}, {"data", b64}}}
+                                    });
+                              }
+                        cleaned.erase("images");
+
+                        // Extract existing text content (may be string or array)
+                        std::string textContent;
+                        if (cleaned.contains("content")) {
+                              if (cleaned["content"].is_string())
+                                    textContent = cleaned["content"].get<std::string>();
+                              else if (cleaned["content"].is_array()) {
+                                    for (const auto& p : cleaned["content"])
+                                          if (p.is_string())
+                                                textContent += p.get<std::string>();
+                                    }
+                              }
+                        contentArray.push_back({
+                                 {"type",      "text"},
+                                 {"text", textContent}
+                              });
+                        cleaned["content"] = contentArray;
+                        }
+                  else if (cleaned.contains("image")) {
                         std::string b64 = cleaned["image"].get<std::string>();
                         cleaned.erase("image");
 
@@ -415,7 +475,12 @@ void AnthropicClient::processTools(json resolvedToolCalls) {
 
       try {
             for (auto& call : resolvedToolCalls) {
-                  std::string functionName = call["function"]["name"];
+                  if (!call.contains("function") || !call["function"].is_object() ||
+                      !call["function"].contains("name") || !call["function"]["name"].is_string()) {
+                        Critical("ToolCall does not contain valid <name>");
+                        continue;
+                        }
+                  std::string functionName = call["function"]["name"].get<std::string>();
 
                   // Arguments have been parsed from arguments_str by dataFinished()
                   // and are stored in call["function"]["arguments"] as a JSON object.
@@ -424,7 +489,26 @@ void AnthropicClient::processTools(json resolvedToolCalls) {
                           ? call["function"]["arguments"]
                           : json::object();
 
-                  std::string result = agent->executeTool(functionName, args);
+                  std::string result;
+                  try {
+                        result = agent->executeTool(functionName, args);
+                        }
+                  catch (const json::type_error& e) {
+                        Critical("TypeError in executeTool: {}", e.what());
+                        result = std::string("Error: tool failed (type error): ") + e.what();
+                        }
+                  catch (const json::parse_error& e) {
+                        Critical("ParseError in executeTool: {}", e.what());
+                        result = std::string("Error: tool failed (parse error): ") + e.what();
+                        }
+                  catch (const std::exception& e) {
+                        Critical("Exception in executeTool: {}", e.what());
+                        result = std::string("Error: tool failed: ") + e.what();
+                        }
+                  catch (...) {
+                        Critical("Unknown exception in executeTool");
+                        result = std::string("Error: tool failed: unknown exception");
+                        }
 
                   // Truncate oversized tool results before they enter the history.
                   if (result.size() > maxToolResultChars) {
@@ -440,6 +524,22 @@ void AnthropicClient::processTools(json resolvedToolCalls) {
                   if (call.contains("id"))
                         msg["tool_call_id"] = call["id"];
                   msg["function"] = call["function"];
+
+                  if (functionName == "extract_video_frames") {
+                        try {
+                              json imgList = json::parse(result);
+                              if (imgList.is_array()) {
+                                    json imgs = json::array();
+                                    for (const auto& imgObj : imgList)
+                                          if (imgObj.contains("data") && imgObj["data"].is_string())
+                                                imgs.push_back(imgObj["data"].get<std::string>());
+                                    if (!imgs.empty())
+                                          msg["images"] = imgs;
+                                    }
+                              }
+                        catch (...) {
+                              }
+                        }
 
                   // show on display
                   std::string thinking;

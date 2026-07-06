@@ -32,12 +32,14 @@
 #include <QPrinter>
 #include <QScopedPointer>
 #include <QTimer>
+
 //---------------------------------------------------------
 //   MarkdownWebPage
 //---------------------------------------------------------
 
 MarkdownWebPage::MarkdownWebPage(Editor* e, QObject* parent) : QWebEnginePage(parent), _editor(e) {
-}
+      }
+
 //---------------------------------------------------------
 //   acceptNavigationRequest
 //---------------------------------------------------------
@@ -51,10 +53,10 @@ bool MarkdownWebPage::acceptNavigationRequest(const QUrl& url, NavigationType ty
                                       QString text = result.toString();
                                       if (!text.isEmpty() && _editor)
                                             _editor->setPickText(text, SelectionMode::CharSelect);
-                                });
-            }
+                                      });
+                  }
             return false;
-      }
+            }
 
       if (type == QWebEnginePage::NavigationTypeLinkClicked) {
             if (url.scheme() == "file") {
@@ -65,7 +67,7 @@ bool MarkdownWebPage::acceptNavigationRequest(const QUrl& url, NavigationType ty
                         if (_editor && _editor->kontext() && _editor->kontext()->file() &&
                             path == _editor->kontext()->file()->path())
                               return true;
-                  }
+                        }
 
                   // For local files, open in Editor instead
                   if (_editor) {
@@ -80,22 +82,24 @@ bool MarkdownWebPage::acceptNavigationRequest(const QUrl& url, NavigationType ty
                                         ext == "html" || ext == "htm") {
                                           if (k->viewMode() != ViewMode::WebView)
                                                 e->setViewMode(ViewMode::WebView);
+                                          }
                                     }
-                              }
-                        });
-                  }
+                              });
+                        }
                   return false;
+                  }
             }
-      }
       return QWebEnginePage::acceptNavigationRequest(url, type, isMainFrame);
-}
+      }
+
 //---------------------------------------------------------
 //   createWindow
 //---------------------------------------------------------
 
 QWebEngineView* MarkdownWebView::createWindow(QWebEnginePage::WebWindowType /*type*/) {
       return this;
-}
+      }
+
 //---------------------------------------------------------
 //   MarkdownWebView
 //---------------------------------------------------------
@@ -125,14 +129,14 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
                             if (!success)
                                   qWarning() << "Fehler beim Drucken aufgetreten.";
                             delete printer;
-                      },
+                            },
                       Qt::SingleShotConnection);
                   this->print(printer);
-            }
+                  }
             else {
                   delete printer;
-            }
-      });
+                  }
+            });
 
       textActions = {
          Action(e->getSC(Cmd::CMD_QUIT), [this] { _editor->quitCmd(); }),
@@ -170,14 +174,14 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
          Action(e->getSC(Cmd::CMD_TOGGLE_GIT),
                 [this] { _editor->gitButton()->setChecked(!_editor->gitButton()->isChecked()); }),
          Action(e->getSC(Cmd::CMD_SCREENSHOT), [this] { _editor->screenshot(); }),
-      };
+            };
 
       kl = new KeyLogger(&textActions, this);
       connect(kl, &KeyLogger::triggered, [this](Action* a) {
             _editor->startCmd();
             a->func();
             _editor->endCmd();
-      });
+            });
       connect(kl, &KeyLogger::keyLabelChanged, [this](QString s) { _editor->keyLabel()->setText(s); });
       installEventFilter(kl);
       connect(this, &QWebEngineView::loadFinished, this, [this] {
@@ -185,11 +189,12 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
             if (!_pendingDiff.isEmpty() && url().toString().contains("diff.html")) {
                   showGitDiff(_pendingDiff);
                   _pendingDiff.clear();
-            }
-      });
+                  }
+            });
       connect(_editor, &Editor::scaleChanged, [this] { setZoomFactor(1.3 * _editor->scale()); });
       setZoomFactor(1.3 * _editor->scale());
-}
+      }
+
 //---------------------------------------------------------
 //   childEvent
 //---------------------------------------------------------
@@ -197,11 +202,16 @@ MarkdownWebView::MarkdownWebView(Editor* e, QWidget* _parent) : QWebEngineView(_
 void MarkdownWebView::childEvent(QChildEvent* event) {
       if (event->type() == QEvent::ChildAdded) {
             QObject* child = event->child();
-            if (child && kl)
-                  child->installEventFilter(kl);
-      }
+            if (child) {
+                  if (child->isWidgetType())
+                        child->installEventFilter(this);
+                  if (kl)
+                        child->installEventFilter(kl);
+                  }
+            }
       QWebEngineView::childEvent(event);
-}
+      }
+
 //---------------------------------------------------------
 //   installFilterOnProxy
 //---------------------------------------------------------
@@ -210,10 +220,11 @@ void MarkdownWebView::installFilterOnProxy() {
       if (focusProxy()) {
             focusProxy()->installEventFilter(kl);
             focusProxy()->installEventFilter(this);
-      }
+            }
       this->installEventFilter(kl);
       this->installEventFilter(this);
-}
+      }
+
 //---------------------------------------------------------
 //   setHtml
 //---------------------------------------------------------
@@ -224,9 +235,10 @@ void MarkdownWebView::setHtml(const QString& _html, const QUrl& _baseUrl) {
       if (baseUrl.isEmpty() && _editor->kontext() && _editor->kontext()->file()) {
             QFileInfo fi(_editor->kontext()->file()->path());
             baseUrl = QUrl::fromLocalFile(fi.absoluteDir().absolutePath() + "/");
-      }
+            }
       QWebEngineView::setHtml(_html, baseUrl);
-}
+      }
+
 //---------------------------------------------------------
 //   updateStyle
 //---------------------------------------------------------
@@ -242,7 +254,8 @@ void MarkdownWebView::updateStyle() {
       else if (url().toString().contains("diff.html") && !_currentDiff.isEmpty())
             showGitDiff(_currentDiff);
       showGitDiff(_currentDiff);
-}
+      }
+
 //---------------------------------------------------------
 //   setMarkdown
 //---------------------------------------------------------
@@ -254,7 +267,7 @@ void MarkdownWebView::setMarkdown(const QString& _markdown, int cursorLine) {
       if (_markdown.isEmpty()) {
             setHtml("");
             return;
-      }
+            }
 
       QString _processedMarkdown = _markdown;
       if (_processedMarkdown.contains("[TOC]"))
@@ -273,8 +286,8 @@ void MarkdownWebView::setMarkdown(const QString& _markdown, int cursorLine) {
                   else
                         line.prepend("<span id=\"nped-cursor-pos\"></span>");
                   _processedMarkdown = lines.join('\n');
+                  }
             }
-      }
 
       QString _convertedHtml    = renderMarkdownToHtml(_processedMarkdown.toStdString());
       auto _css                 = _darkMode ? getGithubDarkCss() : getGithubCss();
@@ -295,7 +308,7 @@ void MarkdownWebView::setMarkdown(const QString& _markdown, int cursorLine) {
                 });
                 </script>
             )";
-      }
+            }
 
       QString _fullHtml = QString::fromStdString(std::format(
           R"(<!DOCTYPE html>
@@ -318,9 +331,10 @@ void MarkdownWebView::setMarkdown(const QString& _markdown, int cursorLine) {
       if (_editor && _editor->kontext() && _editor->kontext()->file()) {
             QFileInfo fi(_editor->kontext()->file()->path());
             baseUrl = QUrl::fromLocalFile(fi.absoluteDir().absolutePath() + "/");
-      }
+            }
       setHtml(_fullHtml, baseUrl);
-}
+      }
+
 //---------------------------------------------------------
 //   getScrollbarCss
 //---------------------------------------------------------
@@ -334,7 +348,7 @@ QString MarkdownWebView::getScrollbarCss(bool darkMode) const {
             ::-webkit-scrollbar-thumb:hover { background: #777; }
             ::-webkit-scrollbar-corner { background: #1e1e1e; }
             )";
-      }
+            }
       else {
             return R"(
             ::-webkit-scrollbar { width: 12px; height: 12px; }
@@ -343,8 +357,9 @@ QString MarkdownWebView::getScrollbarCss(bool darkMode) const {
             ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
             ::-webkit-scrollbar-corner { background: #ffffff; }
             )";
+            }
       }
-}
+
 //---------------------------------------------------------
 //   getHighlightJsAssets
 //---------------------------------------------------------
@@ -389,7 +404,8 @@ QString MarkdownWebView::getHighlightJsAssets(bool darkMode) const {
         </script>
     )";
       return js;
-}
+      }
+
 //---------------------------------------------------------
 //   getKaTexJs
 //---------------------------------------------------------
@@ -402,8 +418,9 @@ QString MarkdownWebView::getKaTexJs() const {
     onload="renderMathInElement(document.body, {
         delimiters: [ {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true} ],
         throwOnError: false
-                                                          });"></script>)HTML");
-}
+                                                                            });"></script>)HTML");
+      }
+
 //---------------------------------------------------------
 //   getMermaidJs
 //---------------------------------------------------------
@@ -421,14 +438,16 @@ QString MarkdownWebView::getMermaidJs(bool darkMode) const {
         <style> .mermaid { background-color: transparent; } </style>
       )";
       return js;
-}
+      }
+
 //---------------------------------------------------------
 //   md4c_callback
 //---------------------------------------------------------
 
 void md4c_callback(const MD_CHAR* _data, MD_SIZE _size, void* _userData) {
       static_cast<QString*>(_userData)->append(QString::fromUtf8(_data, _size));
-}
+      }
+
 //---------------------------------------------------------
 //   renderMarkdownToHtml
 //---------------------------------------------------------
@@ -444,7 +463,7 @@ QString MarkdownWebView::renderMarkdownToHtml(const std::string& _stdMarkdown) {
       if (_result != 0) {
             Critical("Markdown conversion failed with code: {}", _result);
             return "<b>Error: Markdown rendering failed.</b>";
-      }
+            }
 
       // Convert links to JPGs into image tags
       QRegularExpression imgRe("<a href=\"([^\"]+\\.jpe?g)\"[^>]*>([^<]*)</a>",
@@ -470,7 +489,7 @@ QString MarkdownWebView::renderMarkdownToHtml(const std::string& _stdMarkdown) {
                   // Wir dekorieren sie nicht mit Copy-Button oder Code-Header.
 
                   result += QString(R"X(<div class="mermaid">%1</div>)X").arg(code);
-            }
+                  }
             else {
                   result += QString(R"X(
 <div class="code-container">
@@ -484,13 +503,14 @@ QString MarkdownWebView::renderMarkdownToHtml(const std::string& _stdMarkdown) {
    </div>
 )X")
                                 .arg(lang, codeClass, code);
-            }
+                  }
 
             offset = match.capturedEnd();
-      }
+            }
       result += _output.mid(offset);
       return result;
-}
+      }
+
 //---------------------------------------------------------
 //   getGithubCss
 //---------------------------------------------------------
@@ -604,7 +624,8 @@ h4:hover .anchor, h5:hover .anchor, h6:hover .anchor {
       s.replace("{fg}", fg);
       s.replace("{bg}", bg);
       return s.toStdString();
-}
+      }
+
 //---------------------------------------------------------
 //   getGithubDarkCss
 //---------------------------------------------------------
@@ -701,7 +722,8 @@ std::string MarkdownWebView::getGithubDarkCss() const {
       s.replace("{fg}", fg);
       s.replace("{bg}", bg);
       return s.toStdString();
-}
+      }
+
 //---------------------------------------------------------
 //   Scroll / Other
 //---------------------------------------------------------
@@ -710,27 +732,34 @@ static constexpr int SCROLL_LINE_HEIGHT = 30;
 void MarkdownWebView::executeScroll(int _pixelsY) {
       QString _js = QString("window.scrollBy({ top: %1, left: 0, behavior: 'smooth' });").arg(_pixelsY);
       page()->runJavaScript(_js);
-}
+      }
+
 void MarkdownWebView::scrollLineUp() {
       executeScroll(-SCROLL_LINE_HEIGHT);
-}
+      }
+
 void MarkdownWebView::scrollLineDown() {
       executeScroll(SCROLL_LINE_HEIGHT);
-}
+      }
+
 void MarkdownWebView::scrollPageUp() {
       page()->runJavaScript(
           "window.scrollBy({ top: -window.innerHeight * 0.9, left: 0, behavior: 'smooth' });");
-}
+      }
+
 void MarkdownWebView::scrollPageDown() {
       page()->runJavaScript(
           "window.scrollBy({ top: window.innerHeight * 0.9, left: 0, behavior: 'smooth' });");
-}
+      }
+
 void MarkdownWebView::scrollToTop() {
       page()->runJavaScript("window.scrollTo({ top: 0, behavior: 'smooth' });");
-}
+      }
+
 void MarkdownWebView::scrollToBottom() {
       page()->runJavaScript("window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });");
-}
+      }
+
 const std::string& MarkdownWebView::getAnchorJs() const {
       static const std::string s =
           R"raw(<script>document.addEventListener("DOMContentLoaded", function() {
@@ -745,9 +774,10 @@ const std::string& MarkdownWebView::getAnchorJs() const {
         anchor.innerHTML = '<svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg>';
         heading.insertBefore(anchor, heading.firstChild);
     });
-            });</script>)raw";
+                              });</script>)raw";
       return s;
-}
+      }
+
 const std::string& MarkdownWebView::getTocJs() const {
       static const std::string s =
           R"raw(<script>document.addEventListener("DOMContentLoaded", function() {
@@ -776,27 +806,29 @@ const std::string& MarkdownWebView::getTocJs() const {
         li.appendChild(a);
         tocList.appendChild(li);
     });
-            });</script>)raw";
+                              });</script>)raw";
       return s;
-}
+      }
+
 void MarkdownWebView::showGitDiff(const QString& diffOutput) {
       _currentDiff = diffOutput;
       if (!url().toString().contains("diff.html")) {
             _pendingDiff = diffOutput;
             setUrl(QUrl("qrc:/res/diff.html"));
             return;
-      }
+            }
       // JSON-Escape für den Diff-Output
       // JSON-Escape für den Diff-Output
       QJsonDocument doc(QJsonObject {
-         { "diff",                   diffOutput},
-         {"theme", _darkMode ? "dark" : "light"}
-      });
+               { "diff",                   diffOutput},
+               {"theme", _darkMode ? "dark" : "light"}
+            });
 
       QString safeScript = QString("if(typeof renderDiff === 'function') renderDiff(%1);")
                                .arg(QString::fromUtf8(doc.toJson()));
       this->page()->runJavaScript(safeScript);
-}
+      }
+
 //---------------------------------------------------------
 //   wheelEvent
 //---------------------------------------------------------
@@ -804,14 +836,15 @@ void MarkdownWebView::showGitDiff(const QString& diffOutput) {
 void MarkdownWebView::wheelEvent(QWheelEvent* ev) {
       if (ev->modifiers() & Qt::ControlModifier) {
             int delta = ev->angleDelta().y();
-            qreal s   = _editor->scale() * ((delta > 0) ? 1.1 : 0.9);
-            _editor->set_scale(s);
+            qreal zf  = zoomFactor() * ((delta > 0) ? 1.1 : 0.9);
+            setZoomFactor(zf);
             ev->accept();
-      }
+            }
       else {
             QWebEngineView::wheelEvent(ev);
+            }
       }
-}
+
 //---------------------------------------------------------
 //   eventFilter
 //---------------------------------------------------------
@@ -821,11 +854,11 @@ bool MarkdownWebView::eventFilter(QObject* obj, QEvent* event) {
             QWheelEvent* ev = static_cast<QWheelEvent*>(event);
             if (ev->modifiers() & Qt::ControlModifier) {
                   int delta = ev->angleDelta().y();
-                  qreal s   = _editor->scale() * ((delta > 0) ? 1.1 : 0.9);
-                  _editor->set_scale(s);
+                  qreal zf  = zoomFactor() * ((delta > 0) ? 1.1 : 0.9);
+                  setZoomFactor(zf);
                   ev->accept();
                   return true;
+                  }
             }
-      }
       return QWebEngineView::eventFilter(obj, event);
-}
+      }

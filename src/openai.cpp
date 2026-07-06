@@ -95,8 +95,30 @@ json OpenAiClient::prompt(QNetworkRequest* request) {
             if (msg.contains("tool_call_id"))
                   jmsg["tool_call_id"] = msg["tool_call_id"];
 
-            // Embed screenshot: OpenAI Vision uses content block array with image_url
-            if (msg.contains("image")) {
+            // Embed screenshot/images: OpenAI Vision uses content block array with image_url
+            if (jmsg.value("role", "") == "user" && msg.contains("images") && msg["images"].is_array() &&
+                !msg["images"].empty()) {
+                  json contentArray = json::array();
+                  for (const auto& img : msg["images"]) {
+                        std::string dataUri = "data:image/jpeg;base64," + img.get<std::string>();
+                        contentArray.push_back({
+                                 {     "type",        "image_url"},
+                                 {"image_url", {{"url", dataUri}}}
+                              });
+                        }
+
+                  std::string textContent;
+                  if (msg.contains("content")) {
+                        if (msg["content"].is_string())
+                              textContent = msg["content"].get<std::string>();
+                        }
+                  contentArray.push_back({
+                           {"type",      "text"},
+                           {"text", textContent}
+                        });
+                  jmsg["content"] = contentArray;
+                  }
+            else if (msg.contains("image")) {
                   std::string dataUri = "data:image/jpeg;base64," + msg["image"].get<std::string>();
                   json contentArray   = json::array();
                   contentArray.push_back({
@@ -114,6 +136,37 @@ json OpenAiClient::prompt(QNetworkRequest* request) {
                            {"text", textContent}
                         });
                   jmsg["content"] = contentArray;
+                  }
+
+            if (jmsg.value("role", "") != "user" && msg.contains("images") && msg["images"].is_array() &&
+                !msg["images"].empty()) {
+                  // Find the last user message in history
+                  for (auto it = history.rbegin(); it != history.rend(); ++it) {
+                        if ((*it).contains("role") && (*it)["role"] == "user") {
+                              json& userMsg     = *it;
+                              json contentArray = json::array();
+                              if (userMsg.contains("content")) {
+                                    if (userMsg["content"].is_string()) {
+                                          contentArray.push_back({
+                                                   {"type",                                "text"},
+                                                   {"text", userMsg["content"].get<std::string>()}
+                                                });
+                                          }
+                                    else if (userMsg["content"].is_array()) {
+                                          contentArray = userMsg["content"];
+                                          }
+                                    }
+                              for (const auto& img : msg["images"]) {
+                                    std::string dataUri = "data:image/jpeg;base64," + img.get<std::string>();
+                                    contentArray.push_back({
+                                             {     "type",        "image_url"},
+                                             {"image_url", {{"url", dataUri}}}
+                                          });
+                                    }
+                              userMsg["content"] = contentArray;
+                              break;
+                              }
+                        }
                   }
 
             history.push_back(jmsg);
@@ -150,6 +203,10 @@ void OpenAiClient::processJsonItem(const json& item) {
 
       if (delta.contains("tool_calls")) {
             for (const auto& tc : delta["tool_calls"]) {
+                  if (!tc.contains("index") || !tc["index"].is_number_integer()) {
+                        Critical("OpenAI tool_call missing integer <index>");
+                        continue;
+                        }
                   int index = tc["index"].get<int>();
                   // Ensure array is large enough
                   while (_currentToolCalls.size() <= static_cast<size_t>(index))
@@ -157,9 +214,9 @@ void OpenAiClient::processJsonItem(const json& item) {
 
                   auto& currentCall = _currentToolCalls[index];
 
-                  if (tc.contains("id"))
+                  if (tc.contains("id") && tc["id"].is_string())
                         currentCall["id"] = tc["id"];
-                  if (tc.contains("type"))
+                  if (tc.contains("type") && tc["type"].is_string())
                         currentCall["type"] = tc["type"];
 
                   if (tc.contains("function")) {
@@ -167,14 +224,16 @@ void OpenAiClient::processJsonItem(const json& item) {
                               currentCall["function"] = json::object();
 
                         const auto& func = tc["function"];
-                        if (func.contains("name"))
+                        if (func.contains("name") && func["name"].is_string())
                               currentCall["function"]["name"] = func["name"];
                         if (func.contains("arguments")) {
-                              if (!currentCall["function"].contains("arguments_str"))
+                              if (!currentCall["function"].contains("arguments_str") ||
+                                  !currentCall["function"]["arguments_str"].is_string())
                                     currentCall["function"]["arguments_str"] = "";
-                              currentCall["function"]["arguments_str"] =
-                                  currentCall["function"]["arguments_str"].get<std::string>() +
-                                  func["arguments"].get<std::string>();
+                              if (func["arguments"].is_string())
+                                    currentCall["function"]["arguments_str"] =
+                                        currentCall["function"]["arguments_str"].get<std::string>() +
+                                        func["arguments"].get<std::string>();
                               }
                         }
                   }
@@ -193,7 +252,12 @@ void OpenAiClient::processTools() {
                         Critical("ToolCall does not contain <function>");
                         continue;
                         }
-                  json fc   = call["function"];
+                  json fc = call["function"];
+                  if (!fc.is_object() || !fc.contains("name") || !fc["name"].is_string()) {
+                        Critical("ToolCall function does not contain valid <name>");
+                        continue;
+                        }
+
                   json args = json::object();
                   if (fc.contains("arguments") && fc["arguments"].is_string()) {
                         std::string argsStr = fc["arguments"].get<std::string>();
@@ -205,9 +269,28 @@ void OpenAiClient::processTools() {
                         }
 
                   fc["arguments"]          = args;
-                  std::string functionName = fc["name"];
+                  std::string functionName = fc["name"].get<std::string>();
 
-                  std::string result = agent->executeTool(functionName, args);
+                  std::string result;
+                  try {
+                        result = agent->executeTool(functionName, args);
+                        }
+                  catch (const json::type_error& e) {
+                        Critical("TypeError in executeTool: {}", e.what());
+                        result = std::string("Error: tool failed (type error): ") + e.what();
+                        }
+                  catch (const json::parse_error& e) {
+                        Critical("ParseError in executeTool: {}", e.what());
+                        result = std::string("Error: tool failed (parse error): ") + e.what();
+                        }
+                  catch (const std::exception& e) {
+                        Critical("Exception in executeTool: {}", e.what());
+                        result = std::string("Error: tool failed: ") + e.what();
+                        }
+                  catch (...) {
+                        Critical("Unknown exception in executeTool");
+                        result = std::string("Error: tool failed: unknown exception");
+                        }
 
                   json msg;
                   msg["role"]    = "tool";
@@ -216,6 +299,22 @@ void OpenAiClient::processTools() {
                   if (call.contains("id"))
                         msg["tool_call_id"] = call["id"];
                   msg["function"] = fc; // For logContent
+
+                  if (functionName == "extract_video_frames") {
+                        try {
+                              json imgList = json::parse(result);
+                              if (imgList.is_array()) {
+                                    json imgs = json::array();
+                                    for (const auto& imgObj : imgList)
+                                          if (imgObj.contains("data") && imgObj["data"].is_string())
+                                                imgs.push_back(imgObj["data"].get<std::string>());
+                                    if (!imgs.empty())
+                                          msg["images"] = imgs;
+                                    }
+                              }
+                        catch (...) {
+                              }
+                        }
 
                   // show on display
                   std::string thinking;

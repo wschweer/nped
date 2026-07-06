@@ -16,7 +16,7 @@
 #include "editor.h"
 
 // Conditional Trace:
-#define IO true
+#define IO false
 
 //---------------------------------------------------------
 //   mcpServerConfigsFromJson
@@ -259,14 +259,14 @@ void McpServer::callTool(const std::string& toolName, const json& arguments,
       if (!_url.isEmpty() && !m_postEndpoint.isEmpty()) {
             QNetworkRequest req(m_postEndpoint);
             req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-            QByteArray data      = request.dump().c_str();
+            QByteArray data      = request.dump(-1, ' ', false, json::error_handler_t::replace).c_str();
             QNetworkReply* reply = m_nam->post(req, data);
             connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
             return;
             }
-      std::string msg = request.dump() + "\n";
+      std::string msg = request.dump(-1, ' ', false, json::error_handler_t::replace) + "\n";
       m_process->write(msg.c_str());
-      CLog(IO, "write: {} <{}>", _id, request.dump(3));
+      CLog(IO, "write: {} <{}>", _id, request.dump(3, ' ', false, json::error_handler_t::replace));
       }
 
 //---------------------------------------------------------
@@ -286,13 +286,13 @@ void McpServer::sendRequest(const std::string& method, const json& params,
             m_pendingRequests[m_nextRequestId++] = callback;
             }
 
-      std::string msg = request.dump() + "\n";
+      std::string msg = request.dump(-1, ' ', false, json::error_handler_t::replace) + "\n";
       m_process->write(msg.c_str());
-      CLog(IO, "write: {} <{}>", _id, request.dump(3));
+      CLog(IO, "write: {} <{}>", _id, request.dump(3, ' ', false, json::error_handler_t::replace));
       if (!_url.isEmpty() && !m_postEndpoint.isEmpty()) {
             QNetworkRequest req(m_postEndpoint);
             req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-            QByteArray data      = request.dump().c_str();
+            QByteArray data      = request.dump(-1, ' ', false, json::error_handler_t::replace).c_str();
             QNetworkReply* reply = m_nam->post(req, data);
             connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
             return;
@@ -350,14 +350,15 @@ void McpServer::sendRootsChanged() {
                { "params",            {{"roots", rootsArray}}}
             };
 
-      std::string msg = notification.dump() + "\n";
-      CLog(IO, "write roots changed: <{}> <{}>", _id, notification.dump(3));
+      std::string msg = notification.dump(-1, ' ', false, json::error_handler_t::replace) + "\n";
+      CLog(IO, "write roots changed: <{}> <{}>", _id,
+           notification.dump(3, ' ', false, json::error_handler_t::replace));
       m_process->write(msg.c_str());
 
       if (!_url.isEmpty() && !m_postEndpoint.isEmpty()) {
             QNetworkRequest req(m_postEndpoint);
             req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-            QByteArray data      = notification.dump().c_str();
+            QByteArray data      = notification.dump(-1, ' ', false, json::error_handler_t::replace).c_str();
             QNetworkReply* reply = m_nam->post(req, data);
             connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
             return;
@@ -388,8 +389,8 @@ void McpServer::handleReadyReadStandardError() {
       QString data = m_process->readAllStandardError();
       if (data.isEmpty())
             return;
-      if (data[data.size()-1] == '\n')
-            data[data.size()-1] = QChar(0);
+      if (data[data.size() - 1] == '\n')
+            data[data.size() - 1] = QChar(0);
       Debug("MCP Server STDERR [{}]: {}", _id, data);
       }
 
@@ -400,7 +401,7 @@ void McpServer::handleReadyReadStandardError() {
 void McpServer::parseMessage(const std::string& message) {
       try {
             json response = json::parse(message);
-            CLog(IO, "mcp read: {} {}>", _id, response.dump(3));
+            CLog(IO, "mcp read: {} {}>", _id, response.dump(3, ' ', false, json::error_handler_t::replace));
 
             // 1) Handle responses to requests (has "id")
             if (response.contains("id") && response["id"].is_number()) {
@@ -410,7 +411,8 @@ void McpServer::parseMessage(const std::string& message) {
                         if (response.contains("result"))
                               it->second(response["result"]);
                         else if (response.contains("error")) {
-                              Debug("MCP RPC Error: {}", response["error"].dump());
+                              Debug("MCP RPC Error: {}",
+                                    response["error"].dump(-1, ' ', false, json::error_handler_t::replace));
                               it->second(response);
                               }
                         m_pendingRequests.erase(it);
@@ -428,14 +430,16 @@ void McpServer::parseMessage(const std::string& message) {
                                  {     "id",                      id},
                                  { "result", {{"roots", rootsArray}}}
                               };
-                        std::string msg = reply.dump() + "\n";
+                        std::string msg = reply.dump(-1, ' ', false, json::error_handler_t::replace) + "\n";
                         if (m_process)
                               m_process->write(msg.c_str());
-                        CLog(IO, "write: {} <{}>", _id, reply.dump(3));
+                        CLog(IO, "write: {} <{}>", _id,
+                             reply.dump(3, ' ', false, json::error_handler_t::replace));
                         if (!_url.isEmpty() && !m_postEndpoint.isEmpty()) {
                               QNetworkRequest req(m_postEndpoint);
                               req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-                              QByteArray data     = reply.dump().c_str();
+                              QByteArray data =
+                                  reply.dump(-1, ' ', false, json::error_handler_t::replace).c_str();
                               QNetworkReply* rply = m_nam->post(req, data);
                               connect(rply, &QNetworkReply::finished, rply, &QObject::deleteLater);
                               }

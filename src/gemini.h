@@ -24,9 +24,9 @@ class GeminiClient : public LLMClient
       json _lastUsageMetadata;
       json _currentToolCalls;
       json tools;
-      int currentRetryCount{0};
-      bool isRetrying{false};
-      int maxRetries{12};
+      int currentRetryCount {0};
+      bool isRetrying {false};
+      int maxRetries {12};
 
       void sanitizeSchemaRecursive(json& schema, bool isRoot);
 

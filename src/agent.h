@@ -20,7 +20,7 @@
 #include <QMimeData>
 #include <QUrl>
 #include <QImage>
-#include <map>
+// #include <map>
 #include <QVBoxLayout>
 #include <QDateTime>
 
@@ -30,10 +30,10 @@
 #include "dashboard.h"
 #include "model.h"
 #include "attachmentbutton.h"
+#include "editor.h"
 
 using string = std::string;
 
-class Editor;
 class QTextEdit;
 class MarkdownWebView;
 
@@ -44,52 +44,13 @@ class QNetworkAccessManager;
 class QNetworkReply;
 class QLabel;
 class QTimer;
-class QAction;
 class LLMClient;
 class ChatDisplay;
 class Session;
 class QEventLoop;
 class ScreenshotHelper;
 class McpManager;
-
-//---------------------------------------------------------
-//   AgentRole
-//---------------------------------------------------------
-
-struct AgentRole {
-      Q_GADGET
-      Q_PROPERTY(QString name MEMBER name)
-      Q_PROPERTY(QString manifest MEMBER manifest)
-      Q_PROPERTY(bool rw MEMBER rw)
-      Q_PROPERTY(QStringList mcpServers MEMBER mcpServers)
-
-    public:
-      QString name;
-      QString manifest;
-      bool rw; // true: read/write, false: read only
-      QStringList mcpServers;
-
-      bool operator==(const AgentRole& other) const = default;
-      };
-
-using AgentRoles = QList<AgentRole>;
-
-//---------------------------------------------------------
-//   CannedPrompt
-//---------------------------------------------------------
-
-struct CannedPrompt {
-      Q_GADGET
-      Q_PROPERTY(QString name MEMBER name)
-      Q_PROPERTY(QString description MEMBER description)
-      Q_PROPERTY(QString prompt MEMBER prompt)
-
-    public:
-      QString name, description, prompt;
-      bool operator==(const CannedPrompt& other) const = default;
-      };
-
-using CannedPrompts = QList<CannedPrompt>;
+class KeyLogger;
 
 //---------------------------------------------------------
 //   DropAwarePlainTextEdit
@@ -102,16 +63,21 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
       {
       Q_OBJECT
 
+      std::vector<Action> textActions;
+      KeyLogger* kl {nullptr};
+      Editor* _editor;
+
     public:
-      explicit DropAwarePlainTextEdit(QWidget* parent = nullptr) : QPlainTextEdit(parent) {}
+      explicit DropAwarePlainTextEdit(Editor*, QWidget* parent = nullptr);
+
     signals:
       void imageDropped(const QImage& image);
 
     protected:
       void dragEnterEvent(QDragEnterEvent* e) override {
             const QMimeData* m = e->mimeData();
-            qDebug() << "[DropAware] dragEnterEvent — hasImage:" << m->hasImage()
-                     << "hasUrls:" << m->hasUrls() << "formats:" << m->formats();
+            Debug("[DropAware] dragEnterEvent — hasImage: {} hasUrls: {} formats: {}", m->hasImage(),
+                  m->hasUrls(), m->formats());
             if (m->hasImage() || (m->hasUrls() && !m->urls().isEmpty()))
                   e->acceptProposedAction();
             else
@@ -119,8 +85,7 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
             }
       void dragMoveEvent(QDragMoveEvent* e) override {
             const QMimeData* m = e->mimeData();
-            qDebug() << "[DropAware] dragMoveEvent — hasImage:" << m->hasImage()
-                     << "hasUrls:" << m->hasUrls();
+            Debug("[DropAware] dragMoveEvent — hasImage: {} hasUrls: {}", m->hasImage(), m->hasUrls());
             if (m->hasImage() || (m->hasUrls() && !m->urls().isEmpty()))
                   e->acceptProposedAction();
             else
@@ -128,20 +93,19 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
             }
       void dropEvent(QDropEvent* e) override {
             const QMimeData* m = e->mimeData();
-            qDebug() << "[DropAware] dropEvent — hasImage:" << m->hasImage() << "hasUrls:" << m->hasUrls()
-                     << "formats:" << m->formats();
+            Debug("[DropAware] dropEvent — hasImage: {} hasUrls: {} formats: {}", m->hasImage(), m->hasUrls(),
+                  m->formats());
             QImage image;
             if (m->hasImage()) {
-                  qDebug() << "[DropAware] dropEvent — extracting image from imageData";
+                  Debug("[DropAware] dropEvent — extracting image from imageData");
                   image = qvariant_cast<QImage>(m->imageData());
                   }
             else if (m->hasUrls()) {
                   for (const QUrl& url : m->urls()) {
-                        qDebug() << "[DropAware] dropEvent — trying URL:" << url.toString().left(80);
+                        Debug("[DropAware] dropEvent — trying URL: {}", url.toString().left(80));
                         if (url.isLocalFile()) {
                               QImage loaded(url.toLocalFile());
-                              qDebug()
-                                  << "[DropAware] dropEvent — loaded local file, null:" << loaded.isNull();
+                              Debug("[DropAware] dropEvent — loaded local file, null: {}", loaded.isNull());
                               if (!loaded.isNull()) {
                                     image = loaded;
                                     break;
@@ -156,9 +120,9 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
                                           const QByteArray raw =
                                               QByteArray::fromBase64(urlStr.mid(commaPos + 1).toUtf8());
                                           if (image.loadFromData(raw)) {
-                                                qDebug() << "[DropAware] dropEvent — decoded data: URI "
-                                                            "image, size:"
-                                                         << image.size();
+                                                Debug("[DropAware] dropEvent — decoded data: URI image, "
+                                                      "size: {}",
+                                                      image.size());
                                                 break;
                                                 }
                                           }
@@ -167,12 +131,12 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
                         }
                   }
             if (!image.isNull()) {
-                  qDebug() << "[DropAware] dropEvent — emitting imageDropped, size:" << image.size();
+                  Debug("[DropAware] dropEvent — emitting imageDropped, size: {}", image.size());
                   e->acceptProposedAction();
                   emit imageDropped(image);
                   }
             else {
-                  qDebug() << "[DropAware] dropEvent — no image found, delegating to base class";
+                  Debug("[DropAware] dropEvent — no image found, delegating to base class");
                   QPlainTextEdit::dropEvent(e);
                   }
             }
@@ -188,10 +152,6 @@ class Agent : public QWidget
 
       Q_PROPERTY(bool filterToolMessages MEMBER filterToolMessages)
       Q_PROPERTY(bool filterThoughts MEMBER filterThoughts)
-
-      // Stylesheet-Konstanten für Plan/Build-Button (Punkt 6)
-      static const QString kPlanStyle;
-      static const QString kBuildStyle;
 
       McpManager* _mcpManager;
       QByteArray streamBuffer;
@@ -268,6 +228,8 @@ class Agent : public QWidget
       QString handleListDirectory(const json& args);
       QString handleWriteFile(const json& args);
       QString handleReplaceInFile(const json& args);
+
+      std::string extractVideoFrames(const QString& video_file, int start_number, int count, double interval);
 
       // Agenten-Tools & Pfad-Sicherheit
       std::string errorResponse(const std::string& message) const;
@@ -369,9 +331,3 @@ class Agent : public QWidget
       void startAgent();
       void stopAgent();
       };
-
-Q_DECLARE_METATYPE(AgentRole)
-Q_DECLARE_METATYPE(AgentRoles)
-
-Q_DECLARE_METATYPE(CannedPrompt)
-Q_DECLARE_METATYPE(CannedPrompts)

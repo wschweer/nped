@@ -34,10 +34,21 @@ struct TextStyle {
       bool bold;
       bool italic;
       bool operator==(const TextStyle& other) const = default;
-      enum Style { Normal, Selection, Cursor, Flow, Type, Comment, String,
-            Search, SearchHit, Gutter, MarkedLine, NonText};
+      enum Style {
+            Normal,
+            Selection,
+            Cursor,
+            Flow,
+            Type,
+            Comment,
+            String,
+            Search,
+            SearchHit,
+            Gutter,
+            MarkedLine,
+            NonText
+            };
       };
-
 
 using TextStyles = QList<TextStyle>;
 

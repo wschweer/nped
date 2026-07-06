@@ -30,9 +30,9 @@
 #include "file.h"
 #include "completer.h"
 #include "git.h"
-#include "agent.h"
 #include "ls.h"
 #include "mcp.h"
+#include "model.h"
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -277,6 +277,45 @@ struct Action {
                   }
             }
       };
+
+//---------------------------------------------------------
+//   AgentRole
+//---------------------------------------------------------
+
+struct AgentRole {
+      Q_GADGET
+      Q_PROPERTY(QString name MEMBER name)
+      Q_PROPERTY(QString manifest MEMBER manifest)
+      Q_PROPERTY(bool rw MEMBER rw)
+      Q_PROPERTY(QStringList mcpServers MEMBER mcpServers)
+
+    public:
+      QString name;
+      QString manifest;
+      bool rw; // true: read/write, false: read only
+      QStringList mcpServers;
+
+      bool operator==(const AgentRole& other) const = default;
+      };
+
+using AgentRoles = QList<AgentRole>;
+
+//---------------------------------------------------------
+//   CannedPrompt
+//---------------------------------------------------------
+
+struct CannedPrompt {
+      Q_GADGET
+      Q_PROPERTY(QString name MEMBER name)
+      Q_PROPERTY(QString description MEMBER description)
+      Q_PROPERTY(QString prompt MEMBER prompt)
+
+    public:
+      QString name, description, prompt;
+      bool operator==(const CannedPrompt& other) const = default;
+      };
+
+using CannedPrompts = QList<CannedPrompt>;
 
 //---------------------------------------------------------
 //   Editor
@@ -615,3 +654,9 @@ class KeyLogger : public QObject
       KeyLogger(std::vector<Action>* a, QObject* parent = nullptr) : QObject(parent), actions(a) { clear(); }
       void clear();
       };
+
+Q_DECLARE_METATYPE(AgentRole)
+Q_DECLARE_METATYPE(AgentRoles)
+
+Q_DECLARE_METATYPE(CannedPrompt)
+Q_DECLARE_METATYPE(CannedPrompts)

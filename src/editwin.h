@@ -27,10 +27,10 @@ class EditWidget : public QWidget
       Q_OBJECT
 
       Editor* editor;
-      int hoverMark{-1};
+      int hoverMark {-1};
       static const int BORDER = 2;
 
-   protected:
+    protected:
       void paintEvent(QPaintEvent*) override;
       void keyPressEvent(QKeyEvent*) override;
       void wheelEvent(QWheelEvent*) override;
@@ -38,7 +38,7 @@ class EditWidget : public QWidget
       void mouseMoveEvent(QMouseEvent*) override;
       void mouseReleaseEvent(QMouseEvent*) override;
 
-   public:
+    public:
       EditWidget(QWidget* parent, Editor* e);
       QSize visibleSize() const;
       int leftMargin() const;
@@ -52,6 +52,6 @@ class EditWidget : public QWidget
       Pos screenPosToFilePos(Pos screenPos);
       int screenRowToFileRow(int screenRow);
 
-   signals:
+    signals:
       void markerClicked(int row);
       };

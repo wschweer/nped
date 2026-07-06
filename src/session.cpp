@@ -150,16 +150,16 @@ void Session::save() {
                   json header;
                   header["model"]         = agent->currentModel().toStdString();
                   header["activeEntries"] = getActiveEntriesCount();
-                  f << header.dump() << "\n";
+                  f << header.dump(-1, ' ', false, json::error_handler_t::replace) << "\n";
                   }
             if (savedEntries < _data.size()) {
                   if (savedEntries > 0) {
                         json meta;
                         meta["activeEntries"] = getActiveEntriesCount();
-                        f << meta.dump() << "\n";
+                        f << meta.dump(-1, ' ', false, json::error_handler_t::replace) << "\n";
                         }
                   for (size_t i = savedEntries; i < _data.size(); ++i)
-                        f << _data[i].content.dump() << "\n";
+                        f << _data[i].content.dump(-1, ' ', false, json::error_handler_t::replace) << "\n";
                   savedEntries = _data.size();
                   }
             f.close();
@@ -243,7 +243,8 @@ bool Session::trim() {
                                     if (func["arguments"].is_string())
                                           sig += func["arguments"].get<std::string>();
                                     else
-                                          sig += func["arguments"].dump();
+                                          sig += func["arguments"].dump(-1, ' ', false,
+                                                                        json::error_handler_t::replace);
                                     }
                               toolSignatures[id] = sig;
                               }
@@ -385,6 +386,41 @@ json Session::getActiveEntries() const {
 
       for (size_t i = startIdx; i < _data.size(); ++i)
             arr.push_back(_data[i].content);
+
+      int maxImagesInContext = 2;
+      int imagesFound        = 0;
+
+      for (int i = arr.size() - 1; i >= 0; --i) {
+            bool hasImage = false;
+
+            if (arr[i].contains("images") && !arr[i]["images"].empty()) {
+                  hasImage = true;
+                  if (imagesFound >= maxImagesInContext)
+                        arr[i].erase("images");
+                  }
+            else if (arr[i].contains("image")) {
+                  hasImage = true;
+                  if (imagesFound >= maxImagesInContext)
+                        arr[i].erase("image");
+                  }
+
+            if (hasImage) {
+                  imagesFound++;
+                  if (imagesFound > maxImagesInContext) {
+                        std::string placeholder = "\n[Image removed from history]";
+                        if (arr[i].contains("content") && arr[i]["content"].is_string()) {
+                              arr[i]["content"] = arr[i]["content"].get<std::string>() + placeholder;
+                              }
+                        else if (arr[i].contains("parts") && arr[i]["parts"].is_array()) {
+                              if (!arr[i]["parts"].empty() && arr[i]["parts"][0].contains("text") &&
+                                  arr[i]["parts"][0]["text"].is_string()) {
+                                    arr[i]["parts"][0]["text"] =
+                                        arr[i]["parts"][0]["text"].get<std::string>() + placeholder;
+                                    }
+                              }
+                        }
+                  }
+            }
 
       return arr;
       }

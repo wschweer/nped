@@ -11,9 +11,12 @@
 
 #pragma once
 
+#include <cstdlib>
 #include <QPoint>
+#include <QRect>
 #include <QString>
 #include <nlohmann/json.hpp>
+#include "logger.h"
 
 class File;
 using json     = nlohmann::json;
@@ -30,13 +33,13 @@ using Callback = std::function<void(const json&)>;
     public:                                                                                                  \
       T name() const {                                                                                       \
             return _##name;                                                                                  \
-      }                                                                                                      \
+            }                                                                                                      \
       void set_##name(T v) {                                                                                 \
             if (v != _##name) {                                                                              \
                   _##name = v;                                                                               \
                   emit name##Changed();                                                                      \
-            }                                                                                                \
-      }                                                                                                      \
+                  }                                                                                                \
+            }                                                                                                      \
     Q_SIGNALS:                                                                                               \
       void name##Changed();                                                                                  \
                                                                                                              \
@@ -49,18 +52,19 @@ using Callback = std::function<void(const json&)>;
     public:                                                                                                  \
       T name() const {                                                                                       \
             return _##name;                                                                                  \
-      }                                                                                                      \
+            }                                                                                                      \
       void set_##name(T v) {                                                                                 \
             if (v != _##name) {                                                                              \
                   _##name = v;                                                                               \
                   emit name##Changed();                                                                      \
-            }                                                                                                \
-      }                                                                                                      \
+                  }                                                                                                \
+            }                                                                                                      \
     Q_SIGNALS:                                                                                               \
       void name##Changed();                                                                                  \
                                                                                                              \
     protected:                                                                                               \
       T _##name {value};
+
 //---------------------------------------------------------
 //   Pos
 //---------------------------------------------------------
@@ -71,7 +75,7 @@ struct Pos {
       void set(int r, int c) {
             row = r;
             col = c;
-      }
+            }
       QPoint point() const { return QPoint(col, row); }
       Pos(const QPoint& p) : col(p.x()), row(p.y()) {}
       Pos(int x, int y) : col(x), row(y) {}
@@ -79,7 +83,13 @@ struct Pos {
       Pos operator+(const Pos& p) const { return Pos(col + p.col, row + p.row); }
       Pos operator+(const QPoint& p) const { return Pos(col + p.x(), row + p.y()); }
       bool operator==(const Pos& p) const { return col == p.col && row == p.row; }
-};
+      bool operator>(const Pos& p) const {
+            if (row == p.row)
+                  return col > p.col;
+            return row > p.row;
+            }
+      };
+
 //---------------------------------------------------------
 //   Cursor
 //---------------------------------------------------------
@@ -93,16 +103,19 @@ struct Cursor {
       int fileRow() const { return filePos.row; }
       Cursor() {}
       Cursor(const Pos& p1, const Pos& p2) : filePos(p1), screenPos(p2) {}
-};
+      };
 
 //---------------------------------------------------------
 //   Selection
 //---------------------------------------------------------
 
 enum class SelectionMode { NoSelect, RowSelect, ColSelect, CharSelect };
-struct Selection {
+//
+class Selection
+      {
+    public:
       SelectionMode mode;
-      Cursor cursor;
+      Cursor cursor; // Cursor at start of selection
       Pos start;
       Pos end;
       void flip() { std::swap(start, end); }
@@ -110,7 +123,15 @@ struct Selection {
       int height() const { return end.row - start.row + 1; }
       int x() const { return start.col; }
       int width() const { return end.col - start.col + 1; }
-};
+      QRect rect() const {
+            int y = std::min(start.row, end.row);
+            int x = std::min(start.col, end.col);
+            int h = std::abs(start.row - end.row) + 1;
+            int w = std::abs(start.col - end.col) + 1;
+            return {x, y, w, h};
+            }
+      };
+
 //---------------------------------------------------------
 //   PickText
 //---------------------------------------------------------
@@ -121,9 +142,10 @@ struct PickText {
       void clear() {
             text.clear();
             mode = SelectionMode::NoSelect;
-      }
+            }
       bool isEmpty() const { return text.isEmpty(); }
-};
+      };
+
 //---------------------------------------------------------
 //   Range
 //---------------------------------------------------------
@@ -142,16 +164,16 @@ struct Range {
             range["start"]         = startJson;
             range["end"]           = endJson;
             return range;
-      }
+            }
       Range(const json& range) {
             start.col = range["start"]["character"];
             start.row = range["start"]["line"];
             end.col   = range["end"]["character"];
             end.row   = range["end"]["line"];
-      }
+            }
       Range() {}
       Range(const Pos& s, const Pos& e) : start(s), end(e) {}
-};
+      };
 
 //---------------------------------------------------------
 //   Attachment
@@ -162,7 +184,8 @@ struct Attachment {
       AttachmentType type;
       QString data; // base64 or path
       QString label;
-};
+      };
+
 //---------------------------------------------------------
 //   PatchItem
 //---------------------------------------------------------
@@ -173,5 +196,6 @@ struct PatchItem {
       QString insertText;
       void setRange(const Range& r, File*);
       bool empty() const { return toRemove == 0 && insertText.isEmpty(); }
-};
+      };
+
 using Patches = std::vector<PatchItem>;

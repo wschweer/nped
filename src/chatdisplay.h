@@ -11,12 +11,13 @@
 
 #pragma once
 #include "webview.h"
+
 //---------------------------------------------------------
 //   ChatDisplay
 //---------------------------------------------------------
 
 class ChatDisplay : public MarkdownWebView
-{
+      {
       Q_OBJECT
       Editor* _editor;
       std::string currentStreamingThought;
@@ -42,14 +43,14 @@ class ChatDisplay : public MarkdownWebView
             setup();
             while (!isLoaded)
                   qApp->processEvents();
-      }
+            }
       QWidget* widget() { return (QWidget*)this; }
       void setFont(QFont f) { MarkdownWebView::setFont(f); }
       QString quoteForJs(const QString& str);
       void startNewStreamingMessage(const std::string& r) {
             mustStartMessage = true;
             role             = r;
-      }
+            }
       void startMessage();
       void appendStaticHtml(const QString& role, const QString& html, const QString& thoughtHtml = "",
                             bool isActive = true);
@@ -58,5 +59,5 @@ class ChatDisplay : public MarkdownWebView
             startNewStreamingMessage(role);
             handleIncomingChunk("", text);
             scrollToBottom();
-      }
-};
+            }
+      };

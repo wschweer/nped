@@ -30,7 +30,6 @@ class UndoStack;
 class LSclient;
 class File;
 
-
 enum class Codec { ISO_LATIN, UTF8 };
 
 //---------------------------------------------------------
@@ -41,8 +40,8 @@ class File : public QObject
       {
       Q_OBJECT
 
-      bool created{true};
-      bool _readOnly{false};
+      bool created {true};
+      bool _readOnly {false};
       UndoStack* _undo;
       QFile f;
 
@@ -52,18 +51,20 @@ class File : public QObject
       Lines _bugs;
       Lines _searchResults;
       Lines _fileText;
+
       Lines _gitVersion;
-      int _currentGitHistory{0};
-
+      int _currentGitHistory {0};
       std::vector<GitHistory*> _gitHistory;
+      mutable bool _gitHistoryDirty {true};    // true if history needs to be reloaded
+      mutable qint64 _gitHistoryTimestamp {0}; // when history was last loaded
 
-      int _version{1};
+      int _version {1};
       FileType fileType = defaultFileType;
 
-      QFile::Permissions mode{QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther};
+      QFile::Permissions mode {QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther};
       QFileInfo _fi;
-      int referenceCount{0};
-      LSclient* client{nullptr};
+      int referenceCount {0};
+      LSclient* client {nullptr};
 
       int toOffset(const Pos&);
       void lcOpen();
@@ -121,16 +122,14 @@ class File : public QObject
       void clearLabel();
 
       int distance(Pos start, Pos end) const;
-      int columns(int y) const { return (y < fileRows()) ? fileLine(y).size() : 0; }      // TODO
+      int columns(int y) const { return (y < fileRows()) ? fileLine(y).size() : 0; } // TODO
       LSclient* languageClient() { return client; }
       void setLSclient(LSclient* c) { client = c; }
       // editing:
       void patch(Patches& items);
       Pos advance(const Pos& p, int dist) const;
-
       int fileRows() const { return _fileText.size(); }
       const Line& fileLine(int row) const { return _fileText.at(row); }
-
       bool readOnly() const;
       void postprocessFormat();
 
@@ -149,4 +148,10 @@ class File : public QObject
       bool searchReplace(const QString& search, const QString& replaceText);
       void setSymbols(const json& j);
       const json& symbols() const { return _symbols; }
+      // Git history lazy loading
+      bool isGitHistoryDirty() const { return _gitHistoryDirty; }
+      void markGitHistoryDirty() { _gitHistoryDirty = true; }
+      void clearGitHistory();
+      qint64 gitHistoryTimestamp() const { return _gitHistoryTimestamp; }
+      void setGitHistoryTimestamp(qint64 ts) { _gitHistoryTimestamp = ts; }
       };

@@ -28,11 +28,11 @@ class UndoStack : public QObject
       {
       Q_OBJECT
 
-      UndoCommand* curCmd{nullptr};
+      UndoCommand* curCmd {nullptr};
       QList<UndoCommand*> list;
-      int curIdx{0};
-      int cleanIdx{0};
-      bool _dirty{false};
+      int curIdx {0};
+      int cleanIdx {0};
+      bool _dirty {false};
 
     signals:
       void undoChanged();
@@ -103,7 +103,8 @@ class Patch : public UndoCommand
 
     public:
       const std::string name() override { return "Patch"; };
-      Patch(File* k, const Pos& p, int r, const QString& i, const Cursor& o1 = Cursor(), const Cursor& o2 = Cursor()) {
+      Patch(File* k, const Pos& p, int r, const QString& i, const Cursor& o1 = Cursor(),
+            const Cursor& o2 = Cursor()) {
             file = k;
             items.push_back({p, r, i});
             p1 = o1;

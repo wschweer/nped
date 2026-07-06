@@ -145,7 +145,9 @@ json GeminiClient::prompt(QNetworkRequest* request) {
                   if (msg["content"].is_string())
                         msg["parts"] = json::array({{{"text", msg["content"]}}});
                   else
-                        msg["parts"] = json::array({{{"text", msg["content"].dump()}}});
+                        msg["parts"] =
+                            json::array({{{"text", msg["content"].dump(-1, ' ', false,
+                                                                       json::error_handler_t::replace)}}});
                   msg.erase("content");
                   }
 
@@ -253,18 +255,36 @@ void GeminiClient::processTools() {
                         }
                   json args = (fc.contains("args") && fc["args"].is_object()) ? fc["args"] : json::object();
 
-                  std::string name   = fc.value("name", "");
+                  std::string name = fc["name"].get<std::string>();
                   std::string result;
                   try {
                         result = agent->executeTool(name, args);
-                  } catch (const std::exception& e) {
+                        }
+                  catch (const std::exception& e) {
                         Critical("Exception in executeTool: {}", e.what());
                         result = "Error: " + std::string(e.what());
-                  }
+                        }
 
                   msg["parts"].push_back({
                            {"functionResponse", {{"name", name}, {"response", {{"content", result}}}}}
                         });
+
+                  if (name == "extract_video_frames") {
+                        try {
+                              json imgList = json::parse(result);
+                              if (imgList.is_array()) {
+                                    json imgs = json::array();
+                                    for (const auto& imgObj : imgList)
+                                          if (imgObj.contains("data") && imgObj["data"].is_string())
+                                                imgs.push_back(imgObj["data"].get<std::string>());
+                                    if (!imgs.empty())
+                                          msg["images"] = imgs;
+                                    }
+                              }
+                        catch (...) {
+                              }
+                        }
+
                   if (!agent->filterToolMessages)
                         displayMsg += agent->formatToolCall(name, args);
                   }
@@ -279,12 +299,13 @@ void GeminiClient::processTools() {
             // put on history
             agent->session()->addRequest(msg, 0);
             _currentToolCalls.clear();
-            
+
             try {
                   agent->sendMessage2();
-            } catch (const std::exception& e) {
+                  }
+            catch (const std::exception& e) {
                   Critical("Exception in sendMessage2: {}", e.what());
-            }
+                  }
             }
       catch (const json::parse_error& e) {
             Critical("Parse Error in processTools: {}", e.what());

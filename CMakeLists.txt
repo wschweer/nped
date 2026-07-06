@@ -13,7 +13,7 @@ cmake_minimum_required(VERSION 3.16)
 Set(QT_FORCE_CMP0156_TO_VALUE NEW)
 project (nped VERSION 0.0.1 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD    23)
+set(CMAKE_CXX_STANDARD    26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(QT_QML_GENERATE_QMLLS_INI ON)
@@ -40,10 +40,14 @@ find_package(Qt6 REQUIRED COMPONENTS
       WebChannel
       DBus
       PrintSupport
+      Concurrent
       )
 
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FFMPEG REQUIRED libavcodec libavformat libavutil libswscale)
 
 # find_library(MD4C_LIB md4c)
 # find_library(MD4C_HTML_LIB md4c-html)
@@ -52,7 +56,9 @@ qt_policy(SET QTP0004 NEW)
 include_directories(
       ${PROJECT_SOURCE_DIR}
       ${PROJECT_SOURCE_DIR}/src
+      ${PROJECT_SOURCE_DIR}/ollama-hpp/include
       ${PROJECT_BINARY_DIR}
+      ${FFMPEG_INCLUDE_DIRS}
       )
 link_directories("/usr/local/lib" "/usr/lib")
 
@@ -90,6 +96,7 @@ qt_add_executable(nped
       src/llm.cpp
       src/ollama.cpp
       src/gemini.cpp
+      src/gemini2.cpp
       src/anthropic.cpp
       src/openai.cpp
       src/chatdisplay.cpp
@@ -168,8 +175,10 @@ target_link_libraries(nped PRIVATE
       Qt::WebChannel
       Qt::DBus
       Qt::PrintSupport
+      Qt::Concurrent
       pthread
       git2
       md4c-html
       md4c
+      ${FFMPEG_LIBRARIES}
       )

@@ -216,6 +216,7 @@
                         "options": [
                               "ollama",
                               "gemini",
+                              "gemini2",
                               "anthropic",
                               "openai"
                         ]

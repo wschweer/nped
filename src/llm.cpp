@@ -13,6 +13,7 @@
 #include "logger.h"
 #include "ollama.h"
 #include "gemini.h"
+#include "gemini2.h"
 #include "anthropic.h"
 #include "openai.h"
 #include "agent.h"
@@ -35,6 +36,8 @@ LLMClient* llmFactory(Agent* agent, Model* model, const std::vector<json>& mcps)
       LLMClient* client = nullptr;
       if (model->api == "gemini")
             client = new GeminiClient(agent, model, mcps);
+      else if (model->api == "gemini2")
+            client = new Gemini2Client(agent, model, mcps);
       else if (model->api == "ollama")
             client = new OllamaClient(agent, model, mcps);
       else if (model->api == "anthropic")

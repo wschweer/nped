@@ -64,12 +64,24 @@ constexpr T& operator&=(T& left, T right) {
 
 #include <mutex>
 #include <QString>
+#include <QSize>
+
+//---------------------------------------------------------
+//   formatter QSize
+//---------------------------------------------------------
+
+template <> struct std::formatter<QSize> {
+      constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
+      auto format(const QSize& s, auto& ctx) const {
+            return std::format_to(ctx.out(), "{}x{}", s.width(), s.height());
+            }
+      };
 
 //---------------------------------------------------------
 //   formatter QString
 //---------------------------------------------------------
 
- template <> struct std::formatter<QString> {
+template <> struct std::formatter<QString> {
       constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
       auto format(const QString& s, auto& ctx) const {
             return std::format_to(ctx.out(), "{}", s.toStdString());
@@ -129,57 +141,62 @@ extern Logger logger;
 #define CDebug(cond, msg, ...)
 #define CLog(cond, msg, ...)
 #else
-#define Debug(msg, ...)                                                                                                                    \
-      do {                                                                                                                                 \
-            Logger::logger.write(Logger::MsgType::Debug, {__FILE__, __LINE__, __FUNCTION__}, std::format(msg __VA_OPT__(, ) __VA_ARGS__)); \
+#define Debug(msg, ...)                                                                                      \
+      do {                                                                                                   \
+            Logger::logger.write(Logger::MsgType::Debug, {__FILE__, __LINE__, __FUNCTION__},                 \
+                                 std::format(msg __VA_OPT__(, ) __VA_ARGS__));                               \
             } while (0)
-#define CDebug(cond, msg, ...)                                                                                                             \
-      do {                                                                                                                                 \
-            if (cond)                                                                                                                      \
-                  Logger::logger.write(Logger::MsgType::Debug, {__FILE__, __LINE__, __FUNCTION__},                                         \
-                                       std::format(msg __VA_OPT__(, ) __VA_ARGS__));                                                       \
+#define CDebug(cond, msg, ...)                                                                               \
+      do {                                                                                                   \
+            if (cond)                                                                                        \
+                  Logger::logger.write(Logger::MsgType::Debug, {__FILE__, __LINE__, __FUNCTION__},           \
+                                       std::format(msg __VA_OPT__(, ) __VA_ARGS__));                         \
             } while (0)
-#define Info(msg, ...)                                                                                                                     \
-      do {                                                                                                                                 \
-            Logger::logger.write(Logger::MsgType::Info, {__FILE__, __LINE__, __FUNCTION__}, std::format(msg __VA_OPT__(, ) __VA_ARGS__));  \
+#define Info(msg, ...)                                                                                       \
+      do {                                                                                                   \
+            Logger::logger.write(Logger::MsgType::Info, {__FILE__, __LINE__, __FUNCTION__},                  \
+                                 std::format(msg __VA_OPT__(, ) __VA_ARGS__));                               \
             } while (0)
-#define Log(msg, ...)                                                                                                                      \
-      do {                                                                                                                                 \
-            Logger::logger.write(Logger::MsgType::Log, {__FILE__, __LINE__, __FUNCTION__}, std::format(msg __VA_OPT__(, ) __VA_ARGS__));   \
+#define Log(msg, ...)                                                                                        \
+      do {                                                                                                   \
+            Logger::logger.write(Logger::MsgType::Log, {__FILE__, __LINE__, __FUNCTION__},                   \
+                                 std::format(msg __VA_OPT__(, ) __VA_ARGS__));                               \
             } while (0)
-#define CLog(cond, msg, ...)                                                                                                               \
-      do {                                                                                                                                 \
-            if (cond)                                                                                                                      \
-                  Logger::logger.write(Logger::MsgType::Log, {__FILE__, __LINE__, __FUNCTION__},                                           \
-                                       std::format(msg __VA_OPT__(, ) __VA_ARGS__));                                                       \
+#define CLog(cond, msg, ...)                                                                                 \
+      do {                                                                                                   \
+            if (cond)                                                                                        \
+                  Logger::logger.write(Logger::MsgType::Log, {__FILE__, __LINE__, __FUNCTION__},             \
+                                       std::format(msg __VA_OPT__(, ) __VA_ARGS__));                         \
             } while (0)
-#define Warning(msg, ...)                                                                                                                  \
-      do {                                                                                                                                 \
-            Logger::logger.write(Logger::MsgType::Warning, {__FILE__, __LINE__, __FUNCTION__},                                             \
-                                 std::format(msg __VA_OPT__(, ) __VA_ARGS__));                                                             \
+#define Warning(msg, ...)                                                                                    \
+      do {                                                                                                   \
+            Logger::logger.write(Logger::MsgType::Warning, {__FILE__, __LINE__, __FUNCTION__},               \
+                                 std::format(msg __VA_OPT__(, ) __VA_ARGS__));                               \
             } while (0)
-#define Critical(msg, ...)                                                                                                                 \
-      do {                                                                                                                                 \
-            Logger::logger.write(Logger::MsgType::Critical, {__FILE__, __LINE__, __FUNCTION__},                                            \
-                                 std::format(msg __VA_OPT__(, ) __VA_ARGS__));                                                             \
+#define Critical(msg, ...)                                                                                   \
+      do {                                                                                                   \
+            Logger::logger.write(Logger::MsgType::Critical, {__FILE__, __LINE__, __FUNCTION__},              \
+                                 std::format(msg __VA_OPT__(, ) __VA_ARGS__));                               \
             } while (0)
-#define Printf(msg, ...)                                                                                                                   \
-      do {                                                                                                                                 \
-            Logger::logger.write(Logger::MsgType::Printf, {__FILE__, __LINE__, __FUNCTION__},                                              \
-                                 std::format(msg __VA_OPT__(, ) __VA_ARGS__));                                                             \
+#define Printf(msg, ...)                                                                                     \
+      do {                                                                                                   \
+            Logger::logger.write(Logger::MsgType::Printf, {__FILE__, __LINE__, __FUNCTION__},                \
+                                 std::format(msg __VA_OPT__(, ) __VA_ARGS__));                               \
             } while (0)
 #endif
 
-#define Fatal(msg, ...)                                                                                                                    \
-      do {                                                                                                                                 \
-            Logger::logger.write(Logger::MsgType::Fatal, {__FILE__, __LINE__, __FUNCTION__}, std::format(msg __VA_OPT__(, ) __VA_ARGS__)), \
-                ::abort();                                                                                                                 \
+#define Fatal(msg, ...)                                                                                      \
+      do {                                                                                                   \
+            Logger::logger.write(Logger::MsgType::Fatal, {__FILE__, __LINE__, __FUNCTION__},                 \
+                                 std::format(msg __VA_OPT__(, ) __VA_ARGS__)),                               \
+                ::abort();                                                                                   \
             } while (0)
 
-#define Assert(x)                                                                                                                          \
-      do {                                                                                                                                 \
-            if (!(x)) {                                                                                                                    \
-                  Logger::logger.write(Logger::MsgType::Fatal, {__FILE__, __LINE__, __FUNCTION__}, "Assert <" #x "> failed");              \
-                  ::abort();                                                                                                               \
-                  }                                                                                                                              \
+#define Assert(x)                                                                                            \
+      do {                                                                                                   \
+            if (!(x)) {                                                                                      \
+                  Logger::logger.write(Logger::MsgType::Fatal, {__FILE__, __LINE__, __FUNCTION__},           \
+                                       "Assert <" #x "> failed");                                            \
+                  ::abort();                                                                                 \
+                  }                                                                                                \
             } while (0)

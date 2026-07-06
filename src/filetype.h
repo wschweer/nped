@@ -27,22 +27,20 @@ struct FileType {
       Q_PROPERTY(bool header MEMBER header)
       Q_PROPERTY(bool createTabs MEMBER createTabs)
 
-   public:
+    public:
       QString extensions;
       QString languageId; // language id to select the right language server
       QString languageServer;
-      int tabSize{6};    // tab expansion
+      int tabSize {6}; // tab expansion
 
-      bool header{false};     // special handling of header files
-      bool createTabs{false}; // spaces are converted to tabs when writing the file
-                              // on reading tabs are converted to spaces
+      bool header {false};     // special handling of header files
+      bool createTabs {false}; // spaces are converted to tabs when writing the file
+                               // on reading tabs are converted to spaces
 
       bool operator==(const FileType& other) const = default;
-
       FileType() {}
-      FileType(const QString& a, const QString& b, const QString& c,  int d, bool f, bool g)
-         : extensions(a), languageId(b), languageServer(c), tabSize(d), header(f), createTabs(g) {}
-
+      FileType(const QString& a, const QString& b, const QString& c, int d, bool f, bool g)
+          : extensions(a), languageId(b), languageServer(c), tabSize(d), header(f), createTabs(g) {}
       };
 
 static const FileType defaultFileType = FileType(QString(), QString(), QString("none"), 6, false, false);
@@ -51,20 +49,19 @@ static const FileType defaultFileType = FileType(QString(), QString(), QString("
 //   FileTypes
 //---------------------------------------------------------
 
-class FileTypes : public QList<FileType> {
-   public:
+class FileTypes : public QList<FileType>
+      {
+    public:
       using QList<FileType>::QList;
       void fromJson(const QJsonArray& array);
       QJsonArray toJson() const;
       void reset();
-
       // Conversion to QVariantList for Qt property system
       operator QVariantList() const {
             QVariantList list;
             list.reserve(size());
-            for (const auto& item : *this) {
+            for (const auto& item : *this)
                   list.append(QVariant::fromValue(item));
-                  }
             return list;
             }
       };

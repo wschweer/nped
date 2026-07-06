@@ -25,7 +25,7 @@
 #include "completion.h"
 
 // Conditional Trace:
-#define IO false
+#define IO true
 enum DiagnosticSeverity { Error = 1, Warning, Information, Hint };
 //
 //---------------------------------------------------------
@@ -396,7 +396,7 @@ void LSclient::readerLoop() {
 //   start
 //---------------------------------------------------------
 
-bool LSclient::start(const std::string& path, const std::vector<string>& args) {
+bool LSclient::start(const std::string& path, const std::vector<std::string>& args) {
       // Erstellen der drei Pipes
       if (pipe(stdinPipe) == -1 || pipe(stdoutPipe) == -1 || pipe(stderrPipe) == -1) {
             Critical("pipe failed: {}", strerror(errno));
@@ -525,8 +525,8 @@ bool LSclient::notification(const char* method, const json& params) {
       msg["method"]  = method;
       msg["params"]  = params;
       //      Debug("<{}>", method);
-      CLog(IO, "write: <{}>", msg.dump(3));
-      return writeMessage(msg.dump());
+      CLog(IO, "write: <{}>", msg.dump(3, ' ', false, json::error_handler_t::replace));
+      return writeMessage(msg.dump(-1, ' ', false, json::error_handler_t::replace));
       }
 
 //---------------------------------------------------------
@@ -539,8 +539,8 @@ bool LSclient::request(const char* method, const json& params) {
       msg["method"]  = method;
       msg["params"]  = params;
       msg["id"]      = id++;
-      CLog(IO, "write: <{}>", msg.dump(3));
-      return writeMessage(msg.dump());
+      CLog(IO, "write: <{}>", msg.dump(3, ' ', false, json::error_handler_t::replace));
+      return writeMessage(msg.dump(-1, ' ', false, json::error_handler_t::replace));
       }
 
 //---------------------------------------------------------
@@ -571,7 +571,7 @@ bool LSclient::didCloseNotification(File* file) {
       textDocument["version"]    = file->version();
       json params;
       params["textDocument"] = textDocument;
-      //      Debug("{}", textDocument["uri"].dump());
+      //      Debug("{}", textDocument["uri"].dump(-1, ' ', false, json::error_handler_t::replace));
       return notification("textDocument/didClose", params);
       }
 
@@ -859,7 +859,7 @@ void LSclient::handleResponse(int id, json response) {
                   json msg;
                   msg["id"]      = id;
                   msg["jsonrpc"] = "2.0";
-                  writeMessage(msg.dump());
+                  writeMessage(msg.dump(-1, ' ', false, json::error_handler_t::replace));
                   editor->showProgress(true);
                   return;
                   }
@@ -958,7 +958,7 @@ void LSclient::referencesRequest(const QString& file, int line, int col) {
 
 void LSclient::symbolRequest(const QString& symbol) {
       callbacks[id] = [this](const json& msg) {
-            string res = "";
+            std::string res = "";
             if (msg.contains("result") && msg["result"].is_array()) {
                   for (const auto& item : msg["result"]) {
                         if (item.contains("location")) {

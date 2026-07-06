@@ -45,9 +45,9 @@ class GitList : public VectorModel<GitHistory>
 
 class Git
       {
-      bool initialized{false};
-      git_repository* repo{nullptr};
-      const char* repo_path{"."};
+      bool initialized {false};
+      git_repository* repo {nullptr};
+      const char* repo_path {"."};
 
       bool check_error(int error_code, const char* action);
 

@@ -667,7 +667,6 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       hbox->addWidget(_gitButton, 0);
 
       connect(_gitButton, &QToolButton::toggled, [this] {
-            updateGitHistory();
             bool visible      = _gitButton->isChecked();
             bool wasAIVisible = false;
             if (visible) {
@@ -675,6 +674,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
                   const QSignalBlocker blocker(aiButton);
                   aiButton->setChecked(false);
                   _sidePanelStack->setCurrentWidget(gitPanel());
+                  // Load git history after the panel is visible
+                  updateGitHistory();
                   }
 
             int sideIndex = splitter->indexOf(_sidePanelStack);
@@ -835,6 +836,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
                   QList<int> sizes                          = splitter->sizes();
                   sizes[splitter->indexOf(_sidePanelStack)] = gitWidth;
                   splitter->setSizes(sizes);
+                  // Now load git history since panel is visible
+                  updateGitHistory();
                   }
             }
 
@@ -848,7 +851,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       _editWidget->installEventFilter(kl);
       initFont();
       updateProjectTreeColors();
-      updateGitHistory();
+      // updateGitHistory() is now called during initialization above if needed
       updateProjectPanel();
       connect(this, &Editor::fontFamilyChanged, [this] { initFont(); });
       connect(this, &Editor::darkModeChanged, [this] {
@@ -1106,8 +1109,13 @@ void Editor::initEnterWidget() {
                       kontext()->gotoLine(enterLine->text());
                       update();
                       }),
-
+         /*         Action(getSC(Cmd::CMD_CHAR_LEFT),  [this] { enterLine->cursorBackward(false, 1); }),
+         Action(getSC(Cmd::CMD_WORD_LEFT),  [this] { enterLine->cursorWordBackward(false); }),
+         Action(getSC(Cmd::CMD_WORD_RIGHT), [this] { enterLine->cursorWordForward(false); }),
+         Action(getSC(Cmd::CMD_CHAR_RIGHT), [this] { enterLine->cursorForward(false, 1); })
+*/
             };
+
       for (auto& a : enterActions) {
             for (const auto& ks : a.seq) {
                   QAction* action = new QAction(this);
@@ -1247,7 +1255,9 @@ void Editor::setCurrentKontext(size_t idx) {
       urlLabel->setText(kontext()->file()->path());
       setViewMode(kontext()->viewMode());
       //      update();
-      updateGitHistory();
+      // Only update git history if panel is visible - lazy loading
+      if (_gitPanel && _gitPanel->isVisible())
+            updateGitHistory();
       updateCursor();
       updateProjectPanel();
       }
@@ -1914,10 +1924,16 @@ void Editor::deleteLine() {
                   undoPatch(p, pickText.text.size(), "", cursor, cursor);
                   pickText.mode = SelectionMode::RowSelect;
                   } break;
-            case SelectionMode::RowSelect:
-                  pickText.text = kontext()->selectionText();
-                  undoPatch({0, kontext()->selection().y()}, pickText.text.size(), "", cursor, cursor);
-                  break;
+            case SelectionMode::RowSelect: {
+                  pickText.text      = kontext()->selectionText();
+                  const Selection& s = kontext()->selection();
+                  Cursor c           = s.cursor;
+                  if (s.start.row > s.end.row) {
+                        c.filePos.row    = s.rect().y();
+                        c.screenPos.row -= (s.start.row - s.end.row);
+                        }
+                  undoPatch({0, s.rect().y()}, pickText.text.size(), "", c, s.cursor);
+                  } break;
             case SelectionMode::ColSelect: {
                   pickText.text = kontext()->selectionText();
                   Pos pt        = kontext()->selection().start;
@@ -1942,7 +1958,8 @@ void Editor::deleteLine() {
             }
       QClipboard* cb = QApplication::clipboard();
       cb->setText(pickText.text, QClipboard::Clipboard);
-      endSelectionMode();
+      kontext()->setSelectionMode(SelectionMode::NoSelect);
+      // endSelectionMode();
       }
 
 //---------------------------------------------------------
@@ -2716,17 +2733,48 @@ void Editor::initFont() {
 //   eventFilter
 //---------------------------------------------------------
 
-bool Editor::eventFilter(QObject* obj, QEvent* ev) {
+bool Editor::eventFilter(QObject* /*obj*/, QEvent* ev) {
       if (ev->type() == QEvent::Wheel) {
             QWheelEvent* wheel = static_cast<QWheelEvent*>(ev);
             if (wheel->modifiers() & Qt::ControlModifier) {
                   int delta = wheel->angleDelta().y();
                   if (delta != 0) {
+                        // If the mouse cursor is over the MarkdownWebView,
+                        // zoom the webview content (setZoomFactor) instead of
+                        // scaling the editor font. We handle it here because
+                        // the embedded Chromium widget is a native window that
+                        // does not propagate Qt wheel events to our
+                        // MarkdownWebView::eventFilter / wheelEvent.
+                        if (_mdWidget) {
+                              QPoint localPos = _mdWidget->mapFromGlobal(wheel->globalPosition().toPoint());
+                              if (_mdWidget->rect().contains(localPos)) {
+                                    // For PDF files the Chromium PDF viewer
+                                    // (PDFium) manages its own internal zoom
+                                    // that is not affected by setZoomFactor().
+                                    // Send synthetic Ctrl+Plus / Ctrl+Minus
+                                    // key events which the PDF viewer handles
+                                    // natively.
+                                    bool isPdf = _mdWidget->url().fileName().toLower().endsWith(".pdf");
+                                    if (isPdf) {
+                                          int key = (delta > 0) ? Qt::Key_Plus : Qt::Key_Minus;
+                                          QKeyEvent keyPress(QEvent::KeyPress, key, Qt::ControlModifier);
+                                          QKeyEvent keyRelease(QEvent::KeyRelease, key, Qt::ControlModifier);
+                                          qApp->sendEvent(_mdWidget, &keyPress);
+                                          qApp->sendEvent(_mdWidget, &keyRelease);
+                                          }
+                                    else {
+                                          qreal zf = _mdWidget->zoomFactor() * ((delta > 0) ? 1.1 : 0.9);
+                                          _mdWidget->setZoomFactor(zf);
+                                          }
+                                    wheel->accept();
+                                    return true;
+                                    }
+                              }
                         qreal s = scale() * ((delta > 0) ? 1.1 : 0.9);
                         set_scale(s);
                         return true;
                         }
                   }
             }
-      return QMainWindow::eventFilter(obj, ev);
+      return QMainWindow::eventFilter(/*obj*/ nullptr, ev);
       }

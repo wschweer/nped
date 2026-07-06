@@ -36,7 +36,7 @@ class MarkdownWebPage : public QWebEnginePage
       Editor* _editor;
 
     protected:
-       
+
       bool acceptNavigationRequest(const QUrl& url, NavigationType type, bool isMainFrame) override;
 
     public:
@@ -56,10 +56,10 @@ class MarkdownWebView : public QWebEngineView
       const std::string& getTocJs() const;
 
       QString _currentRawMarkdown;
-      std::vector<Action> textActions;
       QString _pendingDiff;
       QString _currentDiff;
       Editor* _editor;
+      std::vector<Action> textActions;
       KeyLogger* kl {nullptr};
       // Hilfsmethode für JS-Injection
       void executeScroll(int pixelsY);

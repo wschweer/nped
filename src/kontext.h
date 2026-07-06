@@ -59,7 +59,7 @@ class Kontext : public QObject
       Cursor _cursor;
 
       Selection _selection;
-      ViewMode _viewMode{ViewMode::File};
+      ViewMode _viewMode {ViewMode::File};
 
       void switchToLineMap(const Lines& map);
       int screenLines() const;
@@ -101,7 +101,7 @@ class Kontext : public QObject
       Selection& selection() { return _selection; }
       QString selectionText();
       const Cursor& selectionStartCursor() const { return _selection.cursor; }
-      QRect selectionRect() const;
+      QRect selectionRect() const { return _selection.rect(); }
       void setSelection(const QRect& r);
       void setSelectionMode(SelectionMode sm);
       void updateSelection();

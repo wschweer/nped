@@ -294,16 +294,42 @@ Lines Git::getDiff(const Lines& ref, const git_oid* oid) {
 
 //---------------------------------------------------------
 //   updateGitHistory
+//    Lazy loading: only reload if git panel is visible
+//    and the history is marked as dirty or older than 5 seconds
 //---------------------------------------------------------
 
 void Editor::updateGitHistory() {
       if (!kontext() || !kontext()->file())
             return;
+
+      File* file = kontext()->file();
+
+      // Only load history if git panel is visible
+      if (!_gitPanel || !_gitPanel->isVisible()) {
+            // Mark history as dirty so it will be loaded when panel becomes visible
+            file->markGitHistoryDirty();
+            return;
+            }
+
+      // Check if history needs to be reloaded
+      if (!file->isGitHistoryDirty()) {
+            qint64 now      = QDateTime::currentMSecsSinceEpoch();
+            qint64 lastLoad = file->gitHistoryTimestamp();
+            // Reload if older than 5 seconds (to catch new commits)
+            if (now - lastLoad < 5000)
+                  return;
+            }
+
       QDir dir(projectRoot());
-      QString fileName = dir.relativeFilePath(kontext()->file()->path());
-      //      Debug("<{}>", fileName);
-      _git.getHistory(fileName, kontext()->file()->gitHistory());
-      gitList.set(kontext()->file()->gitHistory());
-      //      gitListView->setCurrentIndex(gitList.index(kontext()->file()->currentGitHistory(), 0));
+      QString fileName = dir.relativeFilePath(file->path());
+
+      // Clear existing history before loading new
+      file->clearGitHistory();
+
+      _git.getHistory(fileName, file->gitHistory());
+      gitList.set(file->gitHistory());
+
+      file->setGitHistoryTimestamp(QDateTime::currentMSecsSinceEpoch());
+
       update();
       }

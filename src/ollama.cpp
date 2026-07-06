@@ -28,6 +28,16 @@ OllamaClient::OllamaClient(Agent* a, Model* m, const std::vector<json>& mcps) : 
       setTools(mcps);
       }
 
+OllamaClient::~OllamaClient() {
+      _abort = true;
+      if (_thread.joinable())
+            _thread.join();
+      }
+
+void OllamaClient::abort() {
+      _abort = true;
+      }
+
 //---------------------------------------------------------
 //   setTools
 //---------------------------------------------------------
@@ -65,6 +75,7 @@ void OllamaClient::setTools(const std::vector<json>& mcps) {
 
 json OllamaClient::prompt(QNetworkRequest* request) {
       request->setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+      request->setRawHeader("Authorization", "Bearer " + model->apiKey.toUtf8());
 
       QUrl url(model->baseUrl);
       request->setUrl(url);
@@ -99,11 +110,12 @@ json OllamaClient::prompt(QNetworkRequest* request) {
       json jmanifest;
       auto manifest = agent->getManifest();
       // think hack for gemma4
-      jmanifest["content"] = model->supportsThinking ? "<|think|> " + manifest : manifest;
+      jmanifest["content"] = manifest;
       jmanifest["role"]    = "system";
       history.push_back(jmanifest);
 
-      for (const auto& msg : agent->session()->getActiveEntries()) {
+      for (const auto& item : agent->session()->data()) {
+            const auto& msg = item.content;
             json jmsg;
             if (msg.contains("role"))
                   jmsg["role"] = msg["role"];
@@ -221,15 +233,55 @@ void OllamaClient::processTools() {
                         Critical("ToolCall does not contain <function>");
                         continue;
                         }
-                  json fc   = call["function"];
-                  json args = (fc.contains("arguments") && fc["arguments"].is_object()) ? fc["arguments"]
-                                                                                        : json::object();
-                  if (args.is_string())
-                        args = json::parse(args.get<std::string>());
-                  fc["arguments"]          = args;
-                  std::string functionName = fc["name"];
+                  json fc = call["function"];
+                  if (!fc.is_object() || !fc.contains("name") || !fc["name"].is_string()) {
+                        Critical("ToolCall function does not contain valid <name>");
+                        continue;
+                        }
 
-                  std::string result = agent->executeTool(functionName, args);
+                  json args;
+                  if (fc.contains("arguments")) {
+                        if (fc["arguments"].is_string()) {
+                              try {
+                                    args = json::parse(fc["arguments"].get<std::string>());
+                                    }
+                              catch (...) {
+                                    args = json::object();
+                                    }
+                              }
+                        else if (fc["arguments"].is_object()) {
+                              args = fc["arguments"];
+                              }
+                        else {
+                              args = json::object();
+                              }
+                        }
+                  else {
+                        args = json::object();
+                        }
+                  fc["arguments"]          = args;
+                  std::string functionName = fc["name"].get<std::string>();
+
+                  std::string result;
+                  try {
+                        result = agent->executeTool(functionName, args);
+                        }
+                  catch (const json::type_error& e) {
+                        Critical("TypeError in executeTool: {}", e.what());
+                        result = std::string("Error: tool failed (type error): ") + e.what();
+                        }
+                  catch (const json::parse_error& e) {
+                        Critical("ParseError in executeTool: {}", e.what());
+                        result = std::string("Error: tool failed (parse error): ") + e.what();
+                        }
+                  catch (const std::exception& e) {
+                        Critical("Exception in executeTool: {}", e.what());
+                        result = std::string("Error: tool failed: ") + e.what();
+                        }
+                  catch (...) {
+                        Critical("Unknown exception in executeTool");
+                        result = std::string("Error: tool failed: unknown exception");
+                        }
 
                   json msg;
                   msg["role"]    = "tool";
@@ -238,6 +290,22 @@ void OllamaClient::processTools() {
                   if (call.contains("id"))
                         msg["tool_call_id"] = call["id"];
                   msg["function"] = fc; // For logContent
+
+                  if (functionName == "extract_video_frames") {
+                        try {
+                              json imgList = json::parse(result);
+                              if (imgList.is_array()) {
+                                    json imgs = json::array();
+                                    for (const auto& imgObj : imgList)
+                                          if (imgObj.contains("data") && imgObj["data"].is_string())
+                                                imgs.push_back(imgObj["data"].get<std::string>());
+                                    if (!imgs.empty())
+                                          msg["images"] = imgs;
+                                    }
+                              }
+                        catch (...) {
+                              }
+                        }
 
                   // show on display
                   std::string thinking;

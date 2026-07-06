@@ -28,17 +28,6 @@ Kontext::Kontext(Editor* e, File* f) : _file(f), editor(e) {
       }
 
 //---------------------------------------------------------
-//   setSelectionMode
-//---------------------------------------------------------
-
-void Kontext::setSelectionMode(SelectionMode sm) {
-      _selection.mode = sm;
-
-      if (sm != SelectionMode::NoSelect)
-            _selection.cursor = _cursor;
-      }
-
-//---------------------------------------------------------
 //   atLineEnd
 //---------------------------------------------------------
 
@@ -97,6 +86,31 @@ int Kontext::moveRow(int row, int delta, int* screenDy) const {
       }
 
 //---------------------------------------------------------
+//   setSelectionMode
+//---------------------------------------------------------
+
+void Kontext::setSelectionMode(SelectionMode sm) {
+      _selection.mode = sm;
+
+      if (sm != SelectionMode::NoSelect)
+            _selection.cursor = _cursor;
+      }
+
+//---------------------------------------------------------
+//   setSelection
+//---------------------------------------------------------
+
+void Kontext::setSelection(const QRect& r) {
+      // QRect r          = nr.normalized();
+      _selection.start = r.topLeft();
+      _selection.end   = r.bottomRight();
+      if (startSelect().row >= rows())
+            startSelect().row = rows() - 1;
+      if (endSelect().row >= rows())
+            endSelect().row = rows() - 1;
+      }
+
+//---------------------------------------------------------
 //   updateSelection
 //---------------------------------------------------------
 
@@ -104,6 +118,8 @@ void Kontext::updateSelection() {
       _selection.end = _cursor.filePos;
       if (endSelect().row >= rows())
             endSelect().row = rows() - 1;
+      //      if (_selection.start > _selection.end)
+      //            std::swap(_selection.start, _selection.end);
       }
 
 //---------------------------------------------------------
@@ -116,29 +132,52 @@ void Kontext::flipSelectionCursor() {
       }
 
 //---------------------------------------------------------
-//   selectionRect
+//   selectionText
 //---------------------------------------------------------
 
-QRect Kontext::selectionRect() const {
-      int x = std::min(startSelect().col, endSelect().col);
-      int y = std::min(startSelect().row, endSelect().row);
-      int w = std::abs(startSelect().col - endSelect().col) + 1;
-      int h = std::abs(startSelect().row - endSelect().row) + 1;
-      return QRect(x, y, w, h);
-      }
+QString Kontext::selectionText() {
+      QString s;
 
-//---------------------------------------------------------
-//   setSelection
-//---------------------------------------------------------
+      switch (_selection.mode) {
+            case SelectionMode::RowSelect: {
+                  QStringList sl;
+                  QRect r = selection().rect();
+                  Debug("{}  height {}", r.y(), r.height());
+                  for (int i = 0; i < r.height(); ++i)
+                        sl << line(r.y() + i).qstring();
+                  s  = sl.join('\n');
+                  s += "\n";
+                  } break;
 
-void Kontext::setSelection(const QRect& r) {
-      //      QRect nr         = r.normalized();
-      _selection.start = r.topLeft();
-      _selection.end   = r.bottomRight();
-      if (startSelect().row >= rows())
-            startSelect().row = rows() - 1;
-      if (endSelect().row >= rows())
-            endSelect().row = rows() - 1;
+            case SelectionMode::CharSelect: {
+                  Pos p1 = startSelect();
+                  Pos p2 = endSelect();
+                  if (p1.row > p2.row || (p1.row == p2.row && p1.col > p2.col))
+                        std::swap(p1, p2);
+
+                  if (p1.row == p2.row) {
+                        s = line(p1.row).qstring().mid(p1.col, p2.col - p1.col + 1);
+                        }
+                  else {
+                        s = line(p1.row).qstring().mid(p1.col) + "\n";
+                        for (int i = p1.row + 1; i < p2.row; ++i)
+                              s += line(i).qstring() + "\n";
+                        s += line(p2.row).qstring().left(p2.col + 1);
+                        }
+                  } break;
+
+            case SelectionMode::ColSelect:
+                  for (int i = selection().y(); i < selection().y() + selection().height(); ++i) {
+                        QString ss = line(i).mid(selection().x(), selection().width());
+                        while (ss.size() < selection().width())
+                              ss += " ";
+                        s += (ss + "\n");
+                        }
+                  break;
+            case SelectionMode::NoSelect: break;
+            }
+      // Debug("<{}>", s);
+      return s;
       }
 
 //---------------------------------------------------------
@@ -226,53 +265,6 @@ void Kontext::moveNextWord() {
 
 const QString& Kontext::currentLine() const {
       return line(_cursor.filePos.row).qstring();
-      }
-
-//---------------------------------------------------------
-//   selectionText
-//---------------------------------------------------------
-
-QString Kontext::selectionText() {
-      QString s;
-
-      switch (_selection.mode) {
-            case SelectionMode::RowSelect: {
-                  QStringList sl;
-                  for (int i = 0; i < selection().height(); ++i)
-                        sl << line(selection().y() + i).qstring();
-                  s  = sl.join('\n');
-                  s += "\n";
-                  } break;
-
-            case SelectionMode::CharSelect: {
-                  Pos p1 = startSelect();
-                  Pos p2 = endSelect();
-                  if (p1.row > p2.row || (p1.row == p2.row && p1.col > p2.col))
-                        std::swap(p1, p2);
-
-                  if (p1.row == p2.row) {
-                        s = line(p1.row).qstring().mid(p1.col, p2.col - p1.col + 1);
-                        }
-                  else {
-                        s = line(p1.row).qstring().mid(p1.col) + "\n";
-                        for (int i = p1.row + 1; i < p2.row; ++i)
-                              s += line(i).qstring() + "\n";
-                        s += line(p2.row).qstring().left(p2.col + 1);
-                        }
-                  } break;
-
-            case SelectionMode::ColSelect:
-                  for (int i = selection().y(); i < selection().y() + selection().height(); ++i) {
-                        QString ss = line(i).mid(selection().x(), selection().width());
-                        while (ss.size() < selection().width())
-                              ss += " ";
-                        s += (ss + "\n");
-                        }
-                  break;
-            case SelectionMode::NoSelect: break;
-            }
-      // Debug("<{}>", s);
-      return s;
       }
 
 //---------------------------------------------------------
@@ -481,7 +473,6 @@ void Kontext::moveCursorRel(int dx, int dy, MoveType type) {
 void Kontext::moveCursorAbs(int col, int row) {
       if (col >= 0) {
             _cursor.filePos.col   = std::max(0, col);
-            Debug("clamp {} {} {}", col, 0, screenColumns());
             _cursor.screenPos.col = std::clamp(col, 0, screenColumns());
             }
       if (row >= 0) {
@@ -504,6 +495,7 @@ void Kontext::moveCursorAbs(int col, int row) {
 //---------------------------------------------------------
 
 void Kontext::setCursorAbs(const Cursor& c) {
+      // keep old value if new one is -1
       if (c.filePos.col >= 0)
             _cursor.filePos.col = c.filePos.col;
       if (c.filePos.row >= 0)
@@ -512,6 +504,7 @@ void Kontext::setCursorAbs(const Cursor& c) {
             _cursor.screenPos.col = c.screenPos.col;
       if (c.screenPos.row >= 0)
             _cursor.screenPos.row = c.screenPos.row;
+      // sanitize values
       _cursor.filePos.row   = std::clamp(_cursor.filePos.row, 0, rows() - 1);
       _cursor.filePos.col   = std::max(0, _cursor.filePos.col);
       _cursor.screenPos.row = std::clamp(_cursor.screenPos.row, 0, screenRows());

@@ -49,10 +49,12 @@ class Session : public QObject
             size_t tokens {0};
             };
       std::vector<SessionItem> _data;
-      static constexpr size_t maxEntries = 20; // Rolling window: keep at most 20 active messages
+      //      static constexpr size_t maxEntries = 20; // Rolling window: keep at most 20 active messages
+      static constexpr size_t maxEntries = 50; // Rolling window: keep at most 20 active messages
       static constexpr size_t minEntries = 4;  // Safety floor: never trim below this many entries
       static constexpr size_t criticalTokenCount =
-          30000; // Trigger summary/trim if context exceeds ~30k tokens
+          //          30000; // Trigger summary/trim if context exceeds ~30k tokens
+          100000; // Trigger summary/trim if context exceeds ~100k tokens
       size_t totalTokens {0};
       size_t activeEntries {0};
       bool summaryRequested {false};

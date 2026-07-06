@@ -18,11 +18,22 @@
 #include <QDirIterator>
 #include <QPlainTextEdit>
 #include <QXmlStreamReader>
+#include <QBuffer>
+#include <QImage>
+
+extern "C" {
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libswscale/swscale.h>
+#include <libavutil/imgutils.h>
+      }
 
 // #include <list>
 #include <functional>
 #include <QEventLoop>
 #include <QTimer>
+#include <QtConcurrent>
+#include <QFutureWatcher>
 #include <pwd.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -87,18 +98,27 @@ std::vector<json> Agent::getMCPTools() const {
                     .add_parameter("path", "string", "The path to the file to get diagnostics for.")
                     .build());
 
+            tools.push_back(
+                MCPToolBuilder("extract_video_frames", "Extracts a sequence of images from a video file.")
+                    .add_parameter("video_file", "string", "Path to the video file.")
+                    .add_parameter("start_number", "integer", "Start time or frame number.")
+                    .add_parameter("count", "integer", "Number of images to extract (default=1).", false)
+                    .add_parameter("interval", "number", "Interval between images in seconds (default=1).",
+                                   false)
+                    .build());
+
             // 5. MCP Tools
-            for (const auto& config : _editor->mcpServersConfig()) {
-                  if (!config.enabled)
-                        continue;
-                  McpServer* server = _mcpManager->getServer(config.id);
-                  if (server) {
-                        for (const auto& tool : server->getTools()) {
-                              json jtool           = json::object();
-                              jtool["name"]        = tool.name;
-                              jtool["description"] = tool.description;
-                              jtool["inputSchema"] = tool.inputSchema;
-                              tools.push_back(jtool);
+            if (const AgentRole* role = agentRole()) {
+                  for (const QString& serverId : role->mcpServers) {
+                        McpServer* server = _mcpManager->getServer(serverId);
+                        if (server) {
+                              for (const auto& tool : server->getTools()) {
+                                    json jtool           = json::object();
+                                    jtool["name"]        = tool.name;
+                                    jtool["description"] = tool.description;
+                                    jtool["inputSchema"] = tool.inputSchema;
+                                    tools.push_back(jtool);
+                                    }
                               }
                         }
                   }
@@ -151,21 +171,21 @@ std::vector<json> Agent::getMCPTools() const {
 
 std::string Agent::executeTool(const std::string& functionName, const json& arguments) {
       // --- MCP Tool Check ---
-      for (const auto& config : _editor->mcpServersConfig()) {
-            if (!config.enabled)
-                  continue;
-            McpServer* server = _mcpManager->getServer(config.id);
-            if (server) {
-                  for (const auto& tool : server->getTools()) {
-                        if (tool.name == functionName) {
-                              QEventLoop loop;
-                              std::string result;
-                              server->callTool(functionName, arguments, [&](const json& res) {
-                                    result = res.dump();
-                                    loop.quit();
-                                    });
-                              loop.exec();
-                              return result;
+      if (const AgentRole* role = agentRole()) {
+            for (const QString& serverId : role->mcpServers) {
+                  McpServer* server = _mcpManager->getServer(serverId);
+                  if (server) {
+                        for (const auto& tool : server->getTools()) {
+                              if (tool.name == functionName) {
+                                    QEventLoop loop;
+                                    std::string result;
+                                    server->callTool(functionName, arguments, [&](const json& res) {
+                                          result = res.dump();
+                                          loop.quit();
+                                          });
+                                    loop.exec();
+                                    return result;
+                                    }
                               }
                         }
                   }
@@ -194,11 +214,38 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             if (projRoot.isEmpty())
                   return "{\"error\": \"No project found.\"}";
             json info = {
-                     { "projectRoot",    QDir::cleanPath(projRoot).toStdString()},
-                     { "buildDirectory", QDir::cleanPath(projRoot + "/build").toStdString()}
+                     {   "projectRoot",            QDir::cleanPath(projRoot).toStdString()},
+                     {"buildDirectory", QDir::cleanPath(projRoot + "/build").toStdString()}
                   };
             return info.dump(2);
             }
+      else if (functionName == "extract_video_frames") {
+            if (!arguments.contains("video_file") || !arguments["video_file"].is_string() ||
+                !arguments.contains("start_number") || !arguments["start_number"].is_number())
+                  return "Error: Missing or invalid parameters for extract_video_frames.";
+            QString video_file = QString::fromStdString(arguments["video_file"].get<std::string>());
+            int start_number   = arguments["start_number"].get<int>();
+            int count          = 1;
+            if (arguments.contains("count") && arguments["count"].is_number())
+                  count = arguments["count"].get<int>();
+            double interval = 1;
+            if (arguments.contains("interval") && arguments["interval"].is_number())
+                  interval = arguments["interval"].get<double>();
+
+            QEventLoop loop;
+            QFutureWatcher<std::string> watcher;
+            QObject::connect(&watcher, &QFutureWatcher<std::string>::finished, &loop, &QEventLoop::quit);
+
+            QFuture<std::string> future =
+                QtConcurrent::run([this, video_file, start_number, count, interval]() {
+                      return extractVideoFrames(video_file, start_number, count, interval);
+                      });
+            watcher.setFuture(future);
+            loop.exec();
+
+            return future.result();
+            }
+
       else if (functionName == "run_valgrind") {
             if (!arguments.contains("executable") || !arguments["executable"].is_string())
                   return "Error: Parameter 'executable' missing.";
@@ -211,6 +258,7 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
                                      : "memcheck";
             return runValgrindCommand(executable, tool, args);
             }
+
       //==========================================================
       // Tools MIT lokalem Datei-Pfad Argument
       //==========================================================
@@ -224,6 +272,7 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
                                   : "";
             return searchProject(query, pattern);
             }
+
       else if (functionName == "find_symbol") {
             if (!arguments.contains("symbol") || !arguments["symbol"].is_string())
                   return "Error: Parameter 'symbol' missing.";
@@ -253,9 +302,11 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             int column = arguments["column"].get<int>();
             return findReferences(path, line, column);
             }
-      else if (functionName == "format_source") {
+
+      else if (functionName == "format") {
             return formatSource(path);
             }
+
       return "Error: Unknown tool (" + functionName + ").";
       }
 
@@ -351,7 +402,7 @@ string Agent::searchProject(const QString& query, const QString& filePattern) {
       if (result.length() > 4000) {
             result.resize(4000);
             result += "\n... [Too many results, output truncated]";
-                                                                                                                                                }
+                                                                                                                                                                                                            }
 #endif
       return result;
       }
@@ -920,7 +971,19 @@ string Agent::getFileOutline(const QString& file) {
       QTimer timer;
       timer.setSingleShot(true);
 
-      string result = f->symbols();
+      // f->symbols() returns a json that is initially null and only becomes
+      // a string after the language server has responded (setSymbols()).
+      // Reading it via implicit conversion to std::string would throw
+      // json::type_error with "type must be string, but is null".
+      // Guard the conversion and start with an empty string until symbols
+      // have actually been populated.
+      string result;
+      const json& syms = f->symbols();
+      if (syms.is_string())
+            result = syms.get<std::string>();
+      else
+            result = std::string();
+
       connect(&timer, &QTimer::timeout, [&]() {
             result = "Error: Timeout (5s) while waiting for Language Server symbol outline result.";
             loop.quit();
@@ -1090,4 +1153,134 @@ string Agent::formatSource(const QString& ipath) {
       disconnect(connection);
 
       return std::format("Success: File {} successfully formatted.", normPath.toStdString());
+      }
+
+//---------------------------------------------------------
+//   extractVideoFrames
+//---------------------------------------------------------
+
+std::string Agent::extractVideoFrames(const QString& videoFile, int startNumber, int count, double interval) {
+      json imageList = json::array();
+
+      QString normPath           = normalizePath(videoFile);
+      AVFormatContext* formatCtx = nullptr;
+      if (avformat_open_input(&formatCtx, normPath.toStdString().c_str(), nullptr, nullptr) != 0)
+            return "Error: Could not open video file.";
+
+      if (avformat_find_stream_info(formatCtx, nullptr) < 0) {
+            avformat_close_input(&formatCtx);
+            return "Error: Could not find stream info.";
+            }
+
+      int videoStream      = -1;
+      const AVCodec* codec = nullptr;
+      for (unsigned int i = 0; i < formatCtx->nb_streams; i++) {
+            if (formatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+                  videoStream = i;
+                  codec       = avcodec_find_decoder(formatCtx->streams[i]->codecpar->codec_id);
+                  break;
+                  }
+            }
+
+      if (videoStream == -1 || !codec) {
+            avformat_close_input(&formatCtx);
+            return "Error: Could not find video stream or codec.";
+            }
+
+      AVCodecContext* codecCtx = avcodec_alloc_context3(codec);
+      avcodec_parameters_to_context(codecCtx, formatCtx->streams[videoStream]->codecpar);
+      if (avcodec_open2(codecCtx, codec, nullptr) < 0) {
+            avcodec_free_context(&codecCtx);
+            avformat_close_input(&formatCtx);
+            return "Error: Could not open codec.";
+            }
+
+      AVFrame* frame    = av_frame_alloc();
+      AVFrame* frameRGB = av_frame_alloc();
+      if (!frame || !frameRGB)
+            return "Error: Could not allocate frames.";
+
+      int targetWidth  = codecCtx->width;
+      int targetHeight = codecCtx->height;
+      if (targetWidth > 1024 || targetHeight > 1024) {
+            double ratio = std::min(1024.0 / targetWidth, 1024.0 / targetHeight);
+            targetWidth  = static_cast<int>(targetWidth * ratio);
+            targetHeight = static_cast<int>(targetHeight * ratio);
+            }
+
+      int numBytes    = av_image_get_buffer_size(AV_PIX_FMT_RGB24, targetWidth, targetHeight, 1);
+      uint8_t* buffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
+      av_image_fill_arrays(frameRGB->data, frameRGB->linesize, buffer, AV_PIX_FMT_RGB24, targetWidth,
+                           targetHeight, 1);
+
+      struct SwsContext* swsCtx =
+          sws_getContext(codecCtx->width, codecCtx->height, codecCtx->pix_fmt, targetWidth, targetHeight,
+                         AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
+
+      int64_t seekTarget = startNumber * AV_TIME_BASE;
+      av_seek_frame(formatCtx, -1, seekTarget, AVSEEK_FLAG_BACKWARD);
+      avcodec_flush_buffers(codecCtx);
+
+      AVPacket* packet     = av_packet_alloc();
+      int framesExtracted  = 0;
+      double nextFrameTime = startNumber;
+
+      AVRational timeBase = formatCtx->streams[videoStream]->time_base;
+
+      while (av_read_frame(formatCtx, packet) >= 0 && framesExtracted < count) {
+            if (packet->stream_index == videoStream) {
+                  if (avcodec_send_packet(codecCtx, packet) == 0) {
+                        while (avcodec_receive_frame(codecCtx, frame) == 0) {
+                              int64_t pts = frame->best_effort_timestamp;
+                              if (pts == AV_NOPTS_VALUE)
+                                    pts = frame->pts;
+
+                              double frameTime = pts * av_q2d(timeBase);
+
+                              if (frameTime >= nextFrameTime) {
+                                    sws_scale(swsCtx, (uint8_t const* const*)frame->data, frame->linesize, 0,
+                                              codecCtx->height, frameRGB->data, frameRGB->linesize);
+
+                                    QImage img(frameRGB->data[0], targetWidth, targetHeight,
+                                               frameRGB->linesize[0], QImage::Format_RGB888);
+
+                                    QByteArray jpegData;
+                                    QBuffer qbuffer(&jpegData);
+                                    qbuffer.open(QIODevice::WriteOnly);
+                                    img.save(&qbuffer, "JPEG", 70);
+
+                                    json imgObj         = json::object();
+                                    imgObj["filename"]  = std::format("frame_{:04d}.jpg", framesExtracted);
+                                    imgObj["data"]      = jpegData.toBase64().toStdString();
+                                    imgObj["mime_type"] = "image/jpeg";
+                                    imageList.push_back(imgObj);
+
+                                    nextFrameTime = frameTime + interval;
+                                    framesExtracted++;
+                                    if (framesExtracted >= count)
+                                          break;
+
+                                    // Only seek if the jump is significant (e.g. > 2 seconds) to avoid repeated decoding
+                                    // from the same keyframe for small intervals.
+                                    if (interval >= 3.0) {
+                                          int64_t nextSeekTarget = nextFrameTime * AV_TIME_BASE;
+                                          av_seek_frame(formatCtx, -1, nextSeekTarget, AVSEEK_FLAG_BACKWARD);
+                                          avcodec_flush_buffers(codecCtx);
+                                          }
+                                    }
+                              }
+                        }
+                  }
+            av_packet_unref(packet);
+            }
+
+      av_packet_free(&packet);
+      av_free(buffer);
+      av_frame_free(&frameRGB);
+      av_frame_free(&frame);
+      sws_freeContext(swsCtx);
+      avcodec_free_context(&codecCtx);
+      avformat_close_input(&formatCtx);
+
+      return imageList.dump();
       }

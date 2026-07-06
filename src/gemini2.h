@@ -12,36 +12,30 @@
 #pragma once
 
 #include "llm.h"
-#include <thread>
-#include <atomic>
 
 //---------------------------------------------------------
-//   OllamaClient
+//   Gemini2Client
 //---------------------------------------------------------
 
-class OllamaClient : public LLMClient
+class Gemini2Client : public LLMClient
       {
       Q_OBJECT
-      std::string currentContent;
-      std::string currentThinking;
-      std::string _buffer;
-      bool _isThinking {false};
+      std::string _lastInteractionId;
+      std::string _currentStepType;
+      std::string _accumulatedText;
+      std::string _accumulatedThought;
+      json _lastUsageMetadata;
       json _currentToolCalls;
       json tools;
-      int currentRetryCount {0};
-      int maxRetries {12};
-      std::atomic<bool> _abort {false};
-      std::thread _thread;
 
+      void sanitizeSchemaRecursive(json& schema, bool isRoot);
       void processTools();
 
     public:
-      OllamaClient(Agent*, Model* m, const std::vector<json>& mcps);
-      ~OllamaClient();
+      Gemini2Client(Agent*, Model* m, const std::vector<json>& mcps);
       virtual void setTools(const std::vector<json>& mcps) override;
-      virtual QString name() const override { return "ollama"; }
+      virtual QString name() const override { return "gemini2"; }
       virtual json prompt(QNetworkRequest* request) override;
       virtual void processJsonItem(const json& item) override;
       virtual void dataFinished() override;
-      virtual void abort() override;
       };

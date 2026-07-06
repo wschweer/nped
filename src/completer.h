@@ -49,7 +49,8 @@ class Completer : public QLineEdit
 
             // Verbindung: Wenn ein Vorschlag (per Klick/Enter) gewählt wird,
             // wird er in das LineEdit geschrieben.
-            connect(m_completer, QOverload<const QString&>::of(&QCompleter::activated), this, &Completer::completeText);
+            connect(m_completer, QOverload<const QString&>::of(&QCompleter::activated), this,
+                    &Completer::completeText);
             connect(this, &QLineEdit::returnPressed, this, [this]() { addHistory(text()); });
             }
       void setSuggestions(const QStringList& list) {

@@ -40,19 +40,18 @@ struct LanguageServerConfig {
 //   LanguageServersConfig
 //---------------------------------------------------------
 
-class LanguageServersConfig : public QList<LanguageServerConfig> {
-   public:
+class LanguageServersConfig : public QList<LanguageServerConfig>
+      {
+    public:
       using QList<LanguageServerConfig>::QList;
       void fromJson(const QJsonArray& array);
       QJsonArray toJson() const;
       void reset();
-
       // Conversion operator to QVariantList for web config support
       operator QVariantList() const {
             QVariantList result;
-            for (const auto& item : *this) {
+            for (const auto& item : *this)
                   result.append(QVariant::fromValue(item));
-                  }
             return result;
             }
       };
@@ -66,11 +65,9 @@ Q_DECLARE_METATYPE(LanguageServerConfig)
 struct LanguageServer {
       LanguageServer() = default;
       LanguageServer(const QString& n, LSclient* c) : name(n), client(c) {}
-
       bool operator==(const LanguageServer& other) const { return name == other.name; }
-
       QString name;
-      LSclient* client{nullptr};
+      LSclient* client {nullptr};
       };
 
 Q_DECLARE_METATYPE(LanguageServer)
@@ -79,5 +76,4 @@ Q_DECLARE_METATYPE(LanguageServer)
 //   LanguageServerList
 //---------------------------------------------------------
 
-struct LanguageServerList : public std::vector<LanguageServer> {
-      };
+struct LanguageServerList : public std::vector<LanguageServer> {};
