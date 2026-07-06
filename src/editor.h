@@ -21,6 +21,7 @@
 #include <QRegularExpression>
 #include <QStatusBar>
 #include <QResizeEvent>
+#include <QShowEvent>
 #include <QListView>
 #include <QTextEdit>
 #include <QDialog>
@@ -486,6 +487,7 @@ class Editor : public QMainWindow
 
     protected:
       bool eventFilter(QObject* obj, QEvent* ev) override;
+      void showEvent(QShowEvent* event) override;
 
     public slots:
       void hScrollTo(int);

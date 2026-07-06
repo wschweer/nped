@@ -674,8 +674,6 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
                   const QSignalBlocker blocker(aiButton);
                   aiButton->setChecked(false);
                   _sidePanelStack->setCurrentWidget(gitPanel());
-                  // Load git history after the panel is visible
-                  updateGitHistory();
                   }
 
             int sideIndex = splitter->indexOf(_sidePanelStack);
@@ -684,6 +682,10 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
 
             bool showStack = visible || aiButton->isChecked();
             _sidePanelStack->setVisible(showStack);
+
+            // Load git history after the panel is made visible
+            if (visible)
+                  updateGitHistory();
 
             if (!this->isVisible())
                   return;
@@ -2727,6 +2729,20 @@ void Editor::initFont() {
             gitListView->setFont(f);
       qApp->setFont(f);
       emit fontChanged(f);
+      }
+
+//---------------------------------------------------------
+//   showEvent
+//    When the editor window is first shown, the git panel may
+//    have been marked visible during initialization but
+//    updateGitHistory() deferred loading because the widget
+//    was not yet visible.  Trigger the deferred load now.
+//---------------------------------------------------------
+
+void Editor::showEvent(QShowEvent* event) {
+      QMainWindow::showEvent(event);
+      if (_gitPanel && _gitPanel->isVisible())
+            updateGitHistory();
       }
 
 //---------------------------------------------------------
