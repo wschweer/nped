@@ -37,6 +37,7 @@
 #include <QMetaType>
 #include <QDataStream>
 #include <QPainter>
+#include <QStandardPaths>
 
 #include <functional>
 #include <thread>
@@ -160,7 +161,7 @@ extern bool persistent;
 std::map<Cmd, ShortcutConfig> Editor::_shortcuts = {
          {                 Cmd::CMD_QUIT,                    {"CMD_QUIT", "Quit", "Ctrl + K, Ctrl + Q; Shift+F1"}},
          {            Cmd::CMD_SAVE_QUIT,                                    {"CMD_SAVE_QUIT", "Save+Quit", "F1"}},
-         {                 Cmd::CMD_SAVE,                             {"CMD_SAVE", "Save", "Ctrl + K,  Ctrl + S"}},
+         {                 Cmd::CMD_SAVE,                             {"CMD_SAVE", "Save", "Ctrl + K,  Ctrl + W"}},
          {           Cmd::CMD_CHAR_RIGHT,                          {"CMD_CHAR_RIGHT", "Right", "Right; Ctrl + D"}},
          {            Cmd::CMD_CHAR_LEFT,                            {"CMD_CHAR_LEFT", "Left", "Left;  Ctrl + S"}},
          {              Cmd::CMD_LINE_UP,                                 {"CMD_LINE_UP", "Up", "Up;   Ctrl + E"}},
@@ -231,6 +232,8 @@ std::map<Cmd, ShortcutConfig> Editor::_shortcuts = {
          {           Cmd::CMD_SCREENSHOT,       {"CMD_SCREENSHOT", "Screen Shot", "Ctrl + O, Ctrl + O, Ctrl + P"}},
          {            Cmd::CMD_LINK_BACK,                           {"CMD_LINK_BACK", "Link Back", "Ctrl + PgUp"}},
          {         Cmd::CMD_LINK_FORWARD,                   {"CMD_LINK_FORWARD", "Link Forward", "Ctrl + PgDown"}},
+         {           Cmd::CMD_SAVE_STATE,             {"CMD_SAVE_STATE", "Save Editor State", "Ctrl + K, Ctrl + S"}},
+         {        Cmd::CMD_RESTORE_STATE,        {"CMD_RESTORE_STATE", "Restore Editor State", "Ctrl + K, Ctrl + R"}},
       };
 
 //---------------------------------------------------------
@@ -341,6 +344,7 @@ void Editor::updateStyle() {
       QFile file(styleFile);
       if (file.open(QFile::ReadOnly)) {
             QString style = QLatin1String(file.readAll());
+            file.close();
             qApp->setStyleSheet(style);
             }
       }
@@ -477,6 +481,8 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
          //             Action(getSC(Cmd::CMD_SEARCH_LIST, [this] { setViewMode(ViewMode::SearchResults); }),
          Action(getSC(Cmd::CMD_RENAME), [this] { rename(); }),
          Action(getSC(Cmd::CMD_SCREENSHOT), [this] { screenshot(); }),
+         Action(getSC(Cmd::CMD_SAVE_STATE), [this] { saveEditorState(); }),
+         Action(getSC(Cmd::CMD_RESTORE_STATE), [this] { restoreEditorState(); }),
             };
 
       KeyLogger* kl = new KeyLogger(&_pedActions, this);
@@ -1556,6 +1562,146 @@ void Editor::saveStatus() {
 
       std::ofstream fs(".nped.json");
       fs << j.dump(4);
+      }
+
+//---------------------------------------------------------
+//   saveEditorState
+//    Save the current editor state (window geometry + splitter
+//    sizes for project/git/ai panels) to a persistent file so
+//    it can be restored later with restoreEditorState().
+//---------------------------------------------------------
+
+void Editor::saveEditorState() {
+      if (!persistent)
+            return;
+
+      // capture current panel widths before saving
+      if (_gitButton && _gitButton->isChecked() && _sidePanelStack->isVisible())
+            gitWidth = splitter->sizes()[splitter->indexOf(_sidePanelStack)];
+      if (_projectPanel && _projectPanel->isVisible())
+            projectWidth = splitter->sizes()[splitter->indexOf(_projectPanel)];
+      if (aiButton && aiButton->isChecked() && _sidePanelStack->isVisible())
+            agentWidth = splitter->sizes()[splitter->indexOf(_sidePanelStack)];
+
+      json j;
+      j["width"]	        = width();
+      j["height"]	       = height();
+      j["x"]               = x();
+      j["y"]               = y();
+
+      QByteArray geom = saveGeometry();
+      j["geometry"]	 = geom.toHex().toStdString();
+
+      QByteArray splitterState = splitter->saveState();
+      j["splitterState"]       = splitterState.toHex().toStdString();
+
+      j["aiVisible"]	  = _agent && _agent->isVisible();
+      j["gitVisible"]	 = _gitButton->isChecked();
+      j["projectVisible"] = _projectButton->isChecked();
+      j["gitWidth"]	     = gitWidth;
+      j["projectWidth"]	 = projectWidth;
+      j["agentWidth"]	   = agentWidth;
+
+      QString path = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+      QDir().mkpath(path);
+      path += "/editor_state.json";
+      std::ofstream fs(path.toStdString());
+      if (fs.is_open()) {
+            fs << j.dump(4);
+            msg("Editor state saved");
+            }
+      else
+            msg("Failed to save editor state");
+      }
+
+//---------------------------------------------------------
+//   restoreEditorState
+//    Restore a previously saved editor state (window geometry +
+//    splitter sizes for project/git/ai panels).
+//---------------------------------------------------------
+
+void Editor::restoreEditorState() {
+      QString path = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+      path += "/editor_state.json";
+      std::ifstream fs(path.toStdString());
+      if (!fs.is_open()) {
+            msg("No saved editor state found");
+            return;
+            }
+      try {
+            json j;
+            fs >> j;
+
+            if (j.contains("geometry")) {
+                  QByteArray geom =
+                      QByteArray::fromHex(QByteArray::fromStdString(j["geometry"].get<std::string>()));
+                  restoreGeometry(geom);
+                  }
+            if (j.contains("splitterState")) {
+                  QByteArray sState = QByteArray::fromHex(
+                      QByteArray::fromStdString(j["splitterState"].get<std::string>()));
+                  splitter->restoreState(sState);
+                  }
+
+            bool aiVis		= j.value("aiVisible", false);
+            bool gitVis		= j.value("gitVisible", false);
+            bool projVis	= j.value("projectVisible", false);
+            int gw			= j.value("gitWidth", 300);
+            int pw			= j.value("projectWidth", 300);
+            int aw			= j.value("agentWidth", 500);
+
+            gitWidth		= gw;
+            projectWidth	= pw;
+            agentWidth	= aw;
+
+            {
+            const QSignalBlocker blocker(_projectButton);
+            _projectButton->setChecked(projVis);
+            _projectPanel->setVisible(projVis);
+            if (projVis) {
+                  QList<int> sizes = splitter->sizes();
+                  sizes[splitter->indexOf(_projectPanel)] = projectWidth;
+                  splitter->setSizes(sizes);
+                  updateProjectPanel();
+                  }
+            }
+            {
+            const QSignalBlocker blocker(aiButton);
+            aiButton->setChecked(aiVis);
+            if (aiVis) {
+                  _sidePanelStack->setVisible(true);
+                  _sidePanelStack->setCurrentWidget(agent());
+                  QList<int> sizes = splitter->sizes();
+                  sizes[splitter->indexOf(_sidePanelStack)] = agentWidth;
+                  splitter->setSizes(sizes);
+                  }
+            }
+            {
+            const QSignalBlocker blocker(_gitButton);
+            _gitButton->setChecked(gitVis);
+            if (gitVis) {
+                  _sidePanelStack->setVisible(true);
+                  _sidePanelStack->setCurrentWidget(gitPanel());
+                  QList<int> sizes = splitter->sizes();
+                  sizes[splitter->indexOf(_sidePanelStack)] = gitWidth;
+                  splitter->setSizes(sizes);
+                  updateGitHistory();
+                  }
+            }
+
+            // if neither AI nor Git is visible, hide the side panel stack
+            if (!aiVis && !gitVis)
+                  _sidePanelStack->setVisible(false);
+
+            update();
+            msg("Editor state restored");
+            }
+      catch (const json::parse_error& e) {
+            msg("Error parsing editor state: {}", e.what());
+            }
+      catch (const json::type_error& e) {
+            msg("Type error reading editor state: {}", e.what());
+            }
       }
 
 //---------------------------------------------------------

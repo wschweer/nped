@@ -101,6 +101,11 @@ The editor automatically enforces certain formatting to ensure clean code:
 Since nped acts as a mini-IDE, LSP functions are also mapped to keys (often in conjunction with the Command Entry).
 For example, formatting the current file is done via the combination `Ctrl+O, Ctrl+F`.
 
+*   `Ctrl+K, Ctrl+S`: Save editor state (persistently store window size and splitter settings).
+*   `Ctrl+K, Ctrl+R`: Restore editor state (recall a previously saved state).
+
+These save/restore state shortcuts work in all input areas: the editor window, the WebView, and the AI prompt input field.
+
 In summary, nped is aimed at developers looking for a purist, highly keyboard-controlled environment that bridges classic editor flow with modern C++ Language Server features.
 
 ## IDE - Features
@@ -160,7 +165,9 @@ If Ped is started within the project directory or a project subdirectory, the `c
 
 ### **File Commands**
 
-      [Ctrl+K,  Ctrl+S]         CMD_SAVE
+      [Ctrl+K,  Ctrl+W]         CMD_SAVE
+      [Ctrl+K,  Ctrl+S]         CMD_SAVE_STATE  -- save editor state (window geometry + splitter settings)
+      [Ctrl+K,  Ctrl+R]         CMD_RESTORE_STATE -- restore saved editor state
       [Ctrl+K,  Ctrl+K; F4]     CMD_KONTEXT_COPY
       [Ctrl+K,  Ctrl+J; Shift+F3] CMD_KONTEXT_PREV
       [Ctrl+K,  Ctrl+L; F3]     CMD_KONTEXT_NEXT

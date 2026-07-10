@@ -371,6 +371,7 @@ bool File::modified() const {
 //---------------------------------------------------------
 
 bool File::load() {
+      f.close(); // close if already open from a previous load/restore
       if (_readOnly) {
             if (!f.open(QIODevice::ReadOnly)) {
                   // file is new
@@ -409,11 +410,13 @@ bool File::load() {
             _fileText = Lines(QString("[Image File: %1]").arg(_fi.fileName()));
             _readOnly = true;
             created   = false;
+            f.close();
             return true;
             }
 
       QTextStream os(&f);
       QString s = os.readAll();
+      f.close(); // close file after reading — content is now in memory
       _fileText = Lines(s);
       for (auto& l : _fileText) {
             if (l.contains('\t')) {
@@ -443,7 +446,6 @@ bool File::load() {
       makePretty();
       created = false;
       lcOpen(); // notify language server
-      mode = f.permissions();
       //      if (editor && editor->getFileWatcher())
       //            editor->getFileWatcher()->addPath(_fi.absoluteFilePath());
       return true;
@@ -464,15 +466,18 @@ void File::release() {
             fl.l_start  = 0;
             fl.l_pid    = getpid();
             int fd      = f.handle();
-            if (fcntl(fd, F_SETLK, &fl) == -1) {
-                  if (errno == EACCES || errno == EAGAIN) {
-                        Debug("File is unlocked");
-                        _readOnly = true;
+            if (fd >= 0) {
+                  if (fcntl(fd, F_SETLK, &fl) == -1) {
+                        if (errno == EACCES || errno == EAGAIN) {
+                              Debug("File is unlocked");
+                              _readOnly = true;
+                              }
+                        else
+                              Debug("F_SETLK: Ioctl error fd {}: {}", fd, strerror(errno));
                         }
-                  else
-                        Debug("F_SETLK: Ioctl error fd {}: {}", fd, strerror(errno));
                   }
             }
+      f.close(); // close file descriptor, also releases any remaining locks
       }
 
 //---------------------------------------------------------
@@ -480,6 +485,7 @@ void File::release() {
 //---------------------------------------------------------
 
 bool File::restore() {
+      f.close(); // close if already open from a previous load/restore
       if (_readOnly) {
             if (!f.open(QIODevice::ReadOnly)) {
                   // file is new
@@ -517,11 +523,13 @@ bool File::restore() {
             _fileText = Lines(QString("[Image File: %1]").arg(_fi.fileName()));
             _readOnly = true;
             created   = false;
+            f.close();
             return true;
             }
 
       QTextStream os(&f);
       QString s = os.readAll();
+      f.close(); // close file after reading — content is now in memory
       _fileText = Lines(s);
       for (auto& l : _fileText) {
             if (l.contains('\t')) {
@@ -550,7 +558,6 @@ bool File::restore() {
       markExpansion();
       makePretty();
       lcOpen(); // notify language server
-      mode = f.permissions();
       return true;
       }
 
@@ -690,6 +697,8 @@ bool File::save() {
             if (i < lines - 1)
                   os << '\n';
             }
+      os.flush();
+      tempFile.close(); // close temp file before rename
       if (tempFile.error()) {
             QString s = QString("Write Temp File\n") + tempFile.fileName() + QString("failed: ") +
                         tempFile.errorString();
@@ -861,7 +870,7 @@ void File::patch(Patches& items) {
                   /* TODO                  if (!posValid(pi.startPos)) {
                         Critical("invalid position col {} line {}", pi.startPos.col, pi.startPos.row);
                         return;
-                                                                        }
+                                                                              }
 */
                   }
             }

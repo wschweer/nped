@@ -146,7 +146,10 @@ enum class Cmd {
       CMD_SCREENSHOT,
       // Web-Navigation:
       CMD_LINK_BACK,
-      CMD_LINK_FORWARD
+      CMD_LINK_FORWARD,
+
+      CMD_SAVE_STATE,
+      CMD_RESTORE_STATE
       };
 
 //---------------------------------------------------------
@@ -630,6 +633,8 @@ class Editor : public QMainWindow
                                       const QColor& checkedColor = QColor());
       void put();
       void setPickText(const QString& text, SelectionMode mode = SelectionMode::CharSelect);
+      void saveEditorState();
+      void restoreEditorState();
       };
 
 //---------------------------------------------------------

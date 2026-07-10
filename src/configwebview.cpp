@@ -380,7 +380,8 @@ void ConfigWebView::openConfig(const QString& activeListName, int activeListItem
             qWarning() << "Could not open config.json";
             return;
             }
-      QByteArray data   = file.readAll();
+      QByteArray data = file.readAll();
+      file.close();
       QJsonDocument doc = QJsonDocument::fromJson(data);
       QJsonObject obj   = doc.object();
 

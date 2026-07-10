@@ -54,6 +54,10 @@ NPEd sorgt automatisch für sauberen Code:
 *   <kbd>Ctrl+O, Ctrl+F</kbd>: Datei formatieren (LSP-unterstützt).
 *   <kbd>Ctrl+V</kbd>: Ansicht wechseln (z. B. von Text auf gerenderte Darstellung bei Markdown/HTML oder Funktionsliste bei C++).
 *   <kbd>F10</kbd> / <kbd>F11</kbd> / <kbd>F12</kbd>: Go to Type Definition / Implementation / Definition.
+*   <kbd>Ctrl+K, Ctrl+S</kbd>: Editor-Zustand merken (Fenstergröße und Splitter-Einstellungen persistent speichern).
+*   <kbd>Ctrl+K, Ctrl+R</kbd>: Editor-Zustand wiederherstellen (zuvor gemerkten Zustand wieder abrufen).
+
+Die Shortcuts zum Merken und Wiederherstellen des Editor-Zustands funktionieren in allen Eingabebereichen: im Editor-Fenster, in der WebView und im KI-Prompt-Eingabefeld.
 
 ## 3. KI-Agent
 
@@ -109,9 +113,11 @@ Hier findest du eine kompakte Übersicht aller verfügbaren Kommandos und der zu
 ### Globale Kommandos
 | Kommando | Beschreibung | Shortcut(s) |
 | :--- | :--- | :--- |
-| `CMD_SAVE` | Datei speichern | <kbd>Ctrl+K, Ctrl+S</kbd> |
+| `CMD_SAVE` | Datei speichern | <kbd>Ctrl+K, Ctrl+W</kbd> |
 | `CMD_SAVE_QUIT` | Speichern & Beenden | <kbd>F1</kbd> |
 | `CMD_QUIT` | Beenden ohne Speichern | <kbd>Ctrl+K, Ctrl+Q</kbd>, <kbd>Shift+F1</kbd> |
+| `CMD_SAVE_STATE` | Editor-Zustand merken | <kbd>Ctrl+K, Ctrl+S</kbd> |
+| `CMD_RESTORE_STATE` | Editor-Zustand wiederherstellen | <kbd>Ctrl+K, Ctrl+R</kbd> |
 
 ### Command-Entry Funktionen (Escape-Modus)
 *Nach drücken von `<Escape>` den Namen/Parameter eingeben und dann den Shortcut bestätigen.*

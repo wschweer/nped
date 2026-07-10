@@ -292,7 +292,8 @@ void Editor::loadSettings() {
             Debug("config file <{}> not found", path);
             return;
             }
-      QByteArray s       = file.readAll();
+      QByteArray s = file.readAll();
+      file.close();
       QJsonObject config = QJsonDocument::fromJson(s).object();
 
       QJsonArray sc = config["shortcuts"].toArray();

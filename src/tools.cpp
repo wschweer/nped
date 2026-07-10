@@ -367,6 +367,7 @@ bool Agent::readFile(const QString& ipath, QString& result) {
             return false;
             }
       result = QTextStream(&file).readAll();
+      file.close();
       return true;
       }
 
@@ -402,7 +403,7 @@ string Agent::searchProject(const QString& query, const QString& filePattern) {
       if (result.length() > 4000) {
             result.resize(4000);
             result += "\n... [Too many results, output truncated]";
-                                                                                                                                                                                                            }
+                                                                                                                                                                                                                  }
 #endif
       return result;
       }
@@ -523,6 +524,8 @@ string Agent::writeFile(const QString& ipath, const QString& content) {
                   return std::format("Error opening or creating file ({})", file.errorString());
             QTextStream out(&file);
             out << content;
+            out.flush();
+            file.close();
             }
       return std::format("Success: File {} successfully written.", path);
       }
@@ -1006,6 +1009,7 @@ std::string Agent::compressValgrindOutput(const QString& xmlPath) {
       if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
             return "Error: Could not read Valgrind XML output.";
       QXmlStreamReader xml(&file);
+      // file will be closed after the XML is fully consumed
       json outputArray = json::array();
       json currentError;
       json currentStackFrames = json::array();

@@ -1634,6 +1634,8 @@ DropAwarePlainTextEdit::DropAwarePlainTextEdit(Editor* e, QWidget* parent) : QPl
          Action(e->getSC(Cmd::CMD_LINE_DOWN), [this] { moveCursor(QTextCursor::Down); }),
          Action(e->getSC(Cmd::CMD_FILE_BEGIN), [this] { moveCursor(QTextCursor::Start); }),
          Action(e->getSC(Cmd::CMD_FILE_END), [this] { moveCursor(QTextCursor::End); }),
+         Action(e->getSC(Cmd::CMD_SAVE_STATE), [this] { _editor->saveEditorState(); }),
+         Action(e->getSC(Cmd::CMD_RESTORE_STATE), [this] { _editor->restoreEditorState(); }),
             };
 
       kl = new KeyLogger(&textActions, this);
