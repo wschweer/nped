@@ -12,6 +12,7 @@
 #include <QTextEdit>
 #include <QDir>
 #include <QProcess>
+#include <QThread>
 #include <sstream>
 #include <QNetworkRequest>
 #include <QNetworkReply>
@@ -42,6 +43,8 @@ extern "C" {
 #include "mcp.h"
 #include "agent.h"
 #include "logger.h"
+#include "llminfo.h"
+#include "session.h"
 #include "undo.h"
 #include "kontext.h"
 #include "file.h"
@@ -68,17 +71,16 @@ std::vector<json> Agent::getMCPTools() const {
             std::vector<json> tools = json::array();
             // 1. File Operations
             tools.push_back(MCPToolBuilder("format", "Formats a source file using the Language Server.")
-                                .add_parameter("path", "string", "The path to the file to format.")
-                                .build());
+                    .add_parameter("path", "string", "The path to the file to format.")
+                    .build());
 
             // 2. Navigation & Search
             tools.push_back(MCPToolBuilder("search_project", "Searches for a text query across all files in "
                                                              "the project, including unsaved editor buffers.")
-                                .add_parameter("query", "string", "The text to search for.")
-                                .add_parameter("file_pattern", "string",
-                                               "Optional glob pattern to filter files (e.g., '*.cpp').",
-                                               false)
-                                .build());
+                    .add_parameter("query", "string", "The text to search for.")
+                    .add_parameter("file_pattern", "string",
+                        "Optional glob pattern to filter files (e.g., '*.cpp').", false)
+                    .build());
 
             tools.push_back(
                 MCPToolBuilder("find_symbol", "Uses the Language Server (LSP) to find the definition of a "
@@ -86,15 +88,14 @@ std::vector<json> Agent::getMCPTools() const {
                     .add_parameter("symbol", "string", "The name of the symbol to locate (e.g., 'MyClass').")
                     .build());
 
-            tools.push_back(MCPToolBuilder("get_file_outline",
-                                           "Uses the Language Server (LSP) to get a hierarchical "
-                                           "outline of classes, methods, and functions in a file.")
-                                .add_parameter("path", "string", "The path to the file to analyze.")
-                                .build());
-
             tools.push_back(
-                MCPToolBuilder("get_diagnostics",
-                               "Retrieve Language Server diagnostics (errors, warnings) for a file.")
+                MCPToolBuilder("get_file_outline", "Uses the Language Server (LSP) to get a hierarchical "
+                                                   "outline of classes, methods, and functions in a file.")
+                    .add_parameter("path", "string", "The path to the file to analyze.")
+                    .build());
+
+            tools.push_back(MCPToolBuilder(
+                "get_diagnostics", "Retrieve Language Server diagnostics (errors, warnings) for a file.")
                     .add_parameter("path", "string", "The path to the file to get diagnostics for.")
                     .build());
 
@@ -103,8 +104,8 @@ std::vector<json> Agent::getMCPTools() const {
                     .add_parameter("video_file", "string", "Path to the video file.")
                     .add_parameter("start_number", "integer", "Start time or frame number.")
                     .add_parameter("count", "integer", "Number of images to extract (default=1).", false)
-                    .add_parameter("interval", "number", "Interval between images in seconds (default=1).",
-                                   false)
+                    .add_parameter(
+                        "interval", "number", "Interval between images in seconds (default=1).", false)
                     .build());
 
             // 5. MCP Tools
@@ -129,16 +130,13 @@ std::vector<json> Agent::getMCPTools() const {
                     .add_parameter("line", "integer", "The 1-based line number of the symbol.")
                     .add_parameter("column", "integer", "The 1-based column number of the symbol.")
                     .build());
-            tools.push_back(
-                MCPToolBuilder(
-                    "run_valgrind",
-                    "Executes a compiled C/C++ program under Valgrind and returns a compressed error report.")
-                    .add_parameter("executable", "string",
-                                   "The path to the executable (e.g. ./build/my_app).")
+            tools.push_back(MCPToolBuilder("run_valgrind",
+                "Executes a compiled C/C++ program under Valgrind and returns a compressed error report.")
+                    .add_parameter(
+                        "executable", "string", "The path to the executable (e.g. ./build/my_app).")
                     .add_parameter("args", "string", "Command line arguments for the target program.", false)
                     .add_parameter("tool", "string",
-                                   "The Valgrind tool to use: 'memcheck' (default), 'helgrind', 'massif'.",
-                                   false)
+                        "The Valgrind tool to use: 'memcheck' (default), 'helgrind', 'massif'.", false)
                     .build());
 
             // 3. System & External
@@ -147,16 +145,19 @@ std::vector<json> Agent::getMCPTools() const {
                     .add_parameter("command", "string", "The bash command to execute.")
                     .build());
 
-            tools.push_back(
-                MCPToolBuilder(
-                    "build_project",
-                    "Builds the project. An optional parameter can be given to build a specific target.")
+            tools.push_back(MCPToolBuilder("build_project",
+                "Builds the project. An optional parameter can be given to build a specific target.")
                     .add_parameter("target", "string", "The optional target to build.", false)
                     .build());
-            tools.push_back(MCPToolBuilder("project_infos",
-                                           "Returns information about the current project as structured "
-                                           "JSON, including projectRoot and build directory.")
-                                .build());
+            tools.push_back(
+                MCPToolBuilder("project_infos", "Returns information about the current project as structured "
+                                                "JSON, including projectRoot and build directory.")
+                    .build());
+            tools.push_back(
+                MCPToolBuilder("llm_info", "Returns the metadata discovered from the current LLM "
+                                           "provider (model, context window, capabilities, ...) as "
+                                           "structured JSON, including the history token budget.")
+                    .build());
             return tools;
             }
       catch (const json::parse_error& e) {
@@ -167,24 +168,70 @@ std::vector<json> Agent::getMCPTools() const {
 
 //---------------------------------------------------------
 //   executeTool
+//    Runs executeToolImpl in a worker thread (QtConcurrent) so the
+//    GUI stays responsive. The QEventLoop below processes events
+//    (including stop-button clicks) while the tool runs.
 //---------------------------------------------------------
 
 std::string Agent::executeTool(const std::string& functionName, const json& arguments) {
+      _toolStopRequested.store(false);
+
+      QEventLoop loop;
+      QFutureWatcher<string> watcher;
+      QObject::connect(&watcher, &QFutureWatcher<string>::finished, &loop, &QEventLoop::quit);
+
+      QFuture<string> future = QtConcurrent::run(
+          [this, functionName, arguments]() { return executeToolImpl(functionName, arguments); });
+      watcher.setFuture(future);
+      loop.exec();
+
+      if (_toolStopRequested.load())
+            return "[Tool execution was stopped by the user.]";
+      return future.result();
+      }
+
+//---------------------------------------------------------
+//   runInGuiThread
+//    Helper: runs a lambda in the GUI thread via BlockingQueuedConnection.
+//    Must be called from a worker thread. Returns the lambda's result.
+//---------------------------------------------------------
+
+std::string Agent::runInGuiThread(std::function<string()> fn) {
+      if (QThread::currentThread() == qApp->thread())
+            return fn();
+      std::string result;
+      QMetaObject::invokeMethod(this, [&fn, &result]() { result = fn(); }, Qt::BlockingQueuedConnection);
+      return result;
+      }
+
+//---------------------------------------------------------
+//   executeToolImpl
+//    Synchronous tool execution — runs in a worker thread.
+//    Tools that touch GUI objects (LSP, MCP, Network) are
+//    delegated back to the GUI thread via runInGuiThread().
+//---------------------------------------------------------
+
+std::string Agent::executeToolImpl(const std::string& functionName, const json& arguments) {
       // --- MCP Tool Check ---
+      Debug("<{}> {}", functionName, arguments.dump(4));
       if (const AgentRole* role = agentRole()) {
             for (const QString& serverId : role->mcpServers) {
                   McpServer* server = _mcpManager->getServer(serverId);
                   if (server) {
                         for (const auto& tool : server->getTools()) {
                               if (tool.name == functionName) {
-                                    QEventLoop loop;
-                                    std::string result;
-                                    server->callTool(functionName, arguments, [&](const json& res) {
-                                          result = res.dump();
-                                          loop.quit();
-                                          });
-                                    loop.exec();
-                                    return result;
+                                    // MCP tools use Qt signals/slots and must run in the GUI thread.
+                                    return runInGuiThread(
+                                        [&functionName, &arguments, server]() -> std::string {
+                                              QEventLoop loop;
+                                              std::string result;
+                                              server->callTool(functionName, arguments, [&](const json& res) {
+                                                    result = res.dump();
+                                                    loop.quit();
+                                                    });
+                                              loop.exec();
+                                              return result;
+                                              });
                                     }
                               }
                         }
@@ -219,6 +266,33 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
                   };
             return info.dump(2);
             }
+      else if (functionName == "llm_info") {
+            json info;
+            info["model"]         = model.name.toStdString();
+            info["modelId"]       = model.modelIdentifier.toStdString();
+            info["api"]           = model.api.toStdString();
+            info["contextBudget"] = session()->contextBudget();
+            info["historyTokens"] = session()->totalTokens;
+
+            const LlmInfo li = currentLlmInfo();
+            if (li.valid()) {
+                  json discovered;
+                  discovered["architecture"]         = li.architecture.toStdString();
+                  discovered["family"]               = li.family.toStdString();
+                  discovered["parameterSize"]        = li.parameterSize.toStdString();
+                  discovered["quantization"]         = li.quantization.toStdString();
+                  discovered["trainedContextLength"] = li.trainedContextLength;
+                  discovered["runtimeContextLength"] = li.runtimeContextLength;
+                  discovered["effectiveContext"]     = li.effectiveContextLength();
+                  discovered["capabilities"]         = json::array();
+                  for (const auto& c : li.capabilities)
+                        discovered["capabilities"].push_back(c.toStdString());
+                  info["discovered"] = discovered;
+                  }
+            else
+                  info["discovered"] = nullptr;
+            return info.dump(2);
+            }
       else if (functionName == "extract_video_frames") {
             if (!arguments.contains("video_file") || !arguments["video_file"].is_string() ||
                 !arguments.contains("start_number") || !arguments["start_number"].is_number())
@@ -232,18 +306,7 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             if (arguments.contains("interval") && arguments["interval"].is_number())
                   interval = arguments["interval"].get<double>();
 
-            QEventLoop loop;
-            QFutureWatcher<std::string> watcher;
-            QObject::connect(&watcher, &QFutureWatcher<std::string>::finished, &loop, &QEventLoop::quit);
-
-            QFuture<std::string> future =
-                QtConcurrent::run([this, video_file, start_number, count, interval]() {
-                      return extractVideoFrames(video_file, start_number, count, interval);
-                      });
-            watcher.setFuture(future);
-            loop.exec();
-
-            return future.result();
+            return extractVideoFrames(video_file, start_number, count, interval);
             }
 
       else if (functionName == "run_valgrind") {
@@ -277,7 +340,7 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
             if (!arguments.contains("symbol") || !arguments["symbol"].is_string())
                   return "Error: Parameter 'symbol' missing.";
             QString symbol = QString::fromStdString(arguments["symbol"].get<std::string>());
-            return findSymbol(symbol);
+            return runInGuiThread([this, symbol]() { return findSymbol(symbol); });
             }
 
       if (!arguments.contains("path") || !arguments["path"].is_string())
@@ -291,20 +354,21 @@ std::string Agent::executeTool(const std::string& functionName, const json& argu
 
       // Lokale Datei-Operationen ausführen
       if (functionName == "get_file_outline")
-            return getFileOutline(path);
+            return runInGuiThread([this, path]() { return getFileOutline(path); });
       else if (functionName == "get_diagnostics")
-            return getDiagnostics(path);
+            return runInGuiThread([this, path]() { return getDiagnostics(path); });
       else if (functionName == "find_references") {
             if (!arguments.contains("line") || !arguments["line"].is_number() ||
                 !arguments.contains("column") || !arguments["column"].is_number())
                   return "Error: Parameters 'line' and 'column' are missing.";
             int line   = arguments["line"].get<int>();
             int column = arguments["column"].get<int>();
-            return findReferences(path, line, column);
+            return runInGuiThread(
+                [this, path, line, column]() { return findReferences(path, line, column); });
             }
 
       else if (functionName == "format") {
-            return formatSource(path);
+            return runInGuiThread([this, path]() { return formatSource(path); });
             }
 
       return "Error: Unknown tool (" + functionName + ").";
@@ -403,7 +467,7 @@ string Agent::searchProject(const QString& query, const QString& filePattern) {
       if (result.length() > 4000) {
             result.resize(4000);
             result += "\n... [Too many results, output truncated]";
-                                                                                                                                                                                                                  }
+                                                                                                                                                                                                                                    }
 #endif
       return result;
       }
@@ -533,7 +597,6 @@ string Agent::writeFile(const QString& ipath, const QString& content) {
 // ---------------------------------------------------------
 // Tool 5: fetch_web_documentation
 // ---------------------------------------------------------
-
 string Agent::fetchWebDocumentation(const QString& urlString) {
       QUrl url(urlString);
       if (!url.isValid() || (url.scheme() != "http" && url.scheme() != "https"))
@@ -575,8 +638,8 @@ string Agent::fetchWebDocumentation(const QString& urlString) {
 //   replaceLines
 //---------------------------------------------------------
 
-string Agent::replaceLines(const QString& ipath, int startLine, int linesToDelete,
-                           const QString& replaceText) {
+string Agent::replaceLines(
+    const QString& ipath, int startLine, int linesToDelete, const QString& replaceText) {
       QString path = normalizePath(ipath);
       if (!QFile::exists(path)) {
             Debug("File <{}> ipath <{}> does not exist", path, ipath);
@@ -608,8 +671,8 @@ string Agent::replaceLines(const QString& ipath, int startLine, int linesToDelet
       f->undo()->beginMacro();
       f->undo()->push(new Patch(f, start, charsToRemove, insertStr, Cursor(), Cursor()));
       f->undo()->endMacro();
-      return std::format("success: replaced {} lines at line {} in {}.", endLine - startLine, startLine + 1,
-                         path);
+      return std::format(
+          "success: replaced {} lines at line {} in {}.", endLine - startLine, startLine + 1, path);
       }
 
 //---------------------------------------------------------
@@ -622,6 +685,7 @@ string Agent::getGitStatus() {
       process.setWorkingDirectory(projRoot);
       process.start("git", QStringList() << "status");
       process.waitForFinished();
+      process.close();
 
       string out(process.readAllStandardOutput());
       if (out.empty())
@@ -645,6 +709,7 @@ string Agent::getGitDiff(const QString& path) {
 
       process.start("git", args);
       process.waitForFinished();
+      process.close();
 
       string result(process.readAllStandardOutput());
       if (result.empty())
@@ -671,6 +736,7 @@ string Agent::getGitLog(int limit) {
       // Nutzt das kompakte oneline Format, um Kontext zu sparen
       process.start("git", QStringList() << "log" << "-n" << QString::number(limit) << "--oneline");
       process.waitForFinished();
+      process.close();
 
       string out(process.readAllStandardOutput());
       if (out.empty())
@@ -687,7 +753,7 @@ string Agent::createGitCommit(const QString& message) {
       if (!isExecuteMode())
             return std::format("Plan Mode Active: Commit '{}' was NOT executed. This is a read-only "
                                "simulation. No commit was created.",
-                               message);
+                message);
 
       QString projRoot = QDir::cleanPath(_editor->projectRoot());
       QProcess process;
@@ -700,6 +766,7 @@ string Agent::createGitCommit(const QString& message) {
       // 2. Commit
       process.start("git", QStringList() << "commit" << "-a" << "-m" << message);
       process.waitForFinished();
+      process.close();
 
       std::string err(process.readAllStandardError());
       std::string out(process.readAllStandardOutput());
@@ -857,34 +924,68 @@ string Agent::runBashCommand(const QString& command) {
       // Implementation: We use Bubblewrap (bwrap) for sandboxing as it perfectly balances host-tool
       // compatibility with strict write restrictions to the project directory. To run as the 'ai'
       // user, we prepend 'sudo -u ai' if the user exists.
+      //
+      // If the model is configured with protected=false, tools run directly on the host machine
+      // without any sandboxing.
 
-      QString program = "bwrap";
+      QString program;
       QStringList args;
 
-      struct passwd* pw = getpwnam("ai");
-      if (pw) {
-            program = "sudo";
-            args << "-u" << "ai" << "-n" << "bwrap";
+      if (isProtected()) {
+            program = "bwrap";
+
+            struct passwd* pw = getpwnam("ai");
+            if (pw) {
+                  program = "sudo";
+                  args << "-u" << "ai" << "-n" << "bwrap";
+                  }
+
+            args << "--ro-bind" << "/" << "/" << (isExecuteMode() ? "--bind" : "--ro-bind") << projRoot
+                 << projRoot << "--dev" << "/dev"
+                 << "--proc" << "/proc"
+                 << "--tmpfs" << "/tmp"
+                 << "--unshare-all"
+                 << "--share-net"
+                 //           << "--chdir" << buildDir
+                 << "--chdir" << projRoot << "/bin/sh" << "-c" << command;
+            }
+      else {
+            // Run directly on the host machine (no sandbox)
+            program = "sh";
+            args << "-c" << command;
             }
 
-      args << "--ro-bind" << "/" << "/" << (isExecuteMode() ? "--bind" : "--ro-bind") << projRoot << projRoot
-           << "--dev" << "/dev"
-           << "--proc" << "/proc"
-           << "--tmpfs" << "/tmp"
-           << "--unshare-all"
-           << "--share-net"
-           //           << "--chdir" << buildDir
-           << "--chdir" << projRoot << "/bin/sh" << "-c" << command;
-
       QProcess process;
+            {
+            std::lock_guard lock(_toolProcessMutex);
+            _currentToolProcess = &process;
+            }
       process.start(program, args);
 
-      // Warten, bis der Build fertig ist (ohne Timeout, da Kompilieren dauern kann)
-      process.waitForFinished(-1);
+      // Poll for completion instead of blocking forever, so we can check _toolStopRequested.
+      while (!process.waitForFinished(200)) {
+            if (_toolStopRequested.load()) {
+                  process.kill();
+                  process.waitForFinished(1000);
+                  break;
+                  }
+            }
+
+            {
+            std::lock_guard lock(_toolProcessMutex);
+            _currentToolProcess = nullptr;
+            }
+
+      if (_toolStopRequested.load())
+            return "[Tool execution was stopped by the user.]";
 
       // 5. Ergebnisse auslesen
       string stdOut(process.readAllStandardOutput());
       string stdErr(process.readAllStandardError());
+
+      // Close all pipe file descriptors immediately — QProcess keeps them
+      // open until the destructor runs, which can exhaust the FD limit.
+      process.close();
 
       string result  = std::format("Command executed: {}\n", command);
       result        += std::format("Exit Code: {}\n\n", process.exitCode());
@@ -1119,8 +1220,54 @@ std::string Agent::runValgrindCommand(const QString& executable, const QString& 
 
       QProcess process;
       process.setWorkingDirectory(projRoot);
-      process.start("sh", QStringList() << "-c" << cmd);
-      process.waitForFinished(-1);
+
+            {
+            std::lock_guard lock(_toolProcessMutex);
+            _currentToolProcess = &process;
+            }
+      if (isProtected()) {
+            // Run valgrind inside the bwrap sandbox
+            QString program = "bwrap";
+            QStringList bwrapArgs;
+
+            struct passwd* pw = getpwnam("ai");
+            if (pw) {
+                  program = "sudo";
+                  bwrapArgs << "-u" << "ai" << "-n" << "bwrap";
+                  }
+
+            bwrapArgs << "--ro-bind" << "/" << "/" << (isExecuteMode() ? "--bind" : "--ro-bind") << projRoot
+                      << projRoot << "--dev" << "/dev"
+                      << "--proc" << "/proc"
+                      << "--tmpfs" << "/tmp"
+                      << "--unshare-all"
+                      << "--share-net"
+                      << "--chdir" << projRoot << "/bin/sh" << "-c" << cmd;
+            process.start(program, bwrapArgs);
+            }
+      else {
+            // Run directly on the host machine (no sandbox)
+            process.start("sh", QStringList() << "-c" << cmd);
+            }
+
+      // Poll for completion instead of blocking forever, so we can check _toolStopRequested.
+      while (!process.waitForFinished(200)) {
+            if (_toolStopRequested.load()) {
+                  process.kill();
+                  process.waitForFinished(1000);
+                  break;
+                  }
+            }
+
+            {
+            std::lock_guard lock(_toolProcessMutex);
+            _currentToolProcess = nullptr;
+            }
+
+      process.close();
+
+      if (_toolStopRequested.load())
+            return "[Tool execution was stopped by the user.]";
 
       return compressValgrindOutput(xmlFile);
       }
@@ -1201,8 +1348,13 @@ std::string Agent::extractVideoFrames(const QString& videoFile, int startNumber,
 
       AVFrame* frame    = av_frame_alloc();
       AVFrame* frameRGB = av_frame_alloc();
-      if (!frame || !frameRGB)
+      if (!frame || !frameRGB) {
+            av_frame_free(&frame);
+            av_frame_free(&frameRGB);
+            avcodec_free_context(&codecCtx);
+            avformat_close_input(&formatCtx);
             return "Error: Could not allocate frames.";
+            }
 
       int targetWidth  = codecCtx->width;
       int targetHeight = codecCtx->height;
@@ -1214,12 +1366,11 @@ std::string Agent::extractVideoFrames(const QString& videoFile, int startNumber,
 
       int numBytes    = av_image_get_buffer_size(AV_PIX_FMT_RGB24, targetWidth, targetHeight, 1);
       uint8_t* buffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
-      av_image_fill_arrays(frameRGB->data, frameRGB->linesize, buffer, AV_PIX_FMT_RGB24, targetWidth,
-                           targetHeight, 1);
+      av_image_fill_arrays(
+          frameRGB->data, frameRGB->linesize, buffer, AV_PIX_FMT_RGB24, targetWidth, targetHeight, 1);
 
-      struct SwsContext* swsCtx =
-          sws_getContext(codecCtx->width, codecCtx->height, codecCtx->pix_fmt, targetWidth, targetHeight,
-                         AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
+      struct SwsContext* swsCtx = sws_getContext(codecCtx->width, codecCtx->height, codecCtx->pix_fmt,
+          targetWidth, targetHeight, AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
 
       int64_t seekTarget = startNumber * AV_TIME_BASE;
       av_seek_frame(formatCtx, -1, seekTarget, AVSEEK_FLAG_BACKWARD);
@@ -1243,10 +1394,10 @@ std::string Agent::extractVideoFrames(const QString& videoFile, int startNumber,
 
                               if (frameTime >= nextFrameTime) {
                                     sws_scale(swsCtx, (uint8_t const* const*)frame->data, frame->linesize, 0,
-                                              codecCtx->height, frameRGB->data, frameRGB->linesize);
+                                        codecCtx->height, frameRGB->data, frameRGB->linesize);
 
                                     QImage img(frameRGB->data[0], targetWidth, targetHeight,
-                                               frameRGB->linesize[0], QImage::Format_RGB888);
+                                        frameRGB->linesize[0], QImage::Format_RGB888);
 
                                     QByteArray jpegData;
                                     QBuffer qbuffer(&jpegData);

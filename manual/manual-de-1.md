@@ -43,7 +43,7 @@ Der Editor hat native Git-Unterstützung integriert (basierend auf libgit2 in gi
 
 ### Architektur und Technik
   * C++23 & CMake: Modernes C++ gepaart mit einem CMake-Buildsystem.
-  * Qt6: Verwendet für die grafische Benutzeroberfläche (Widgets, Splitter, Menüs). Styling erfolgt auch über Qt Stylesheets (style.qss).
+  * Qt6: Verwendet für die grafische Benutzeroberfläche (Widgets, Splitter, Menüs). Styling erfolgt auch über Qt Stylesheets (`src/light.qss`, `src/dark.qss`).
   * Bibliotheken: Nutzt nlohmann::json stark für das Parsen und Erzeugen von LSP-Nachrichten,
   LLM-Prompts/Tool-Calls und das Speichern von Settings/Sitzungen.
 
@@ -131,11 +131,11 @@ LS alles weitere automatisch.
 
 ### **Globale Kommandos**
 
-      [F1]                Sichert geänderte Dateien und Beendet den Editor.
-      [Shift+F1]          Sichert
-      [Ctrl+K, Ctrl+Q]    Beendet den Editor **ohne** geänderte Dateien zurückzuschreiben.
-      [Escape]            "Enter" Kommando: öffnet Eingabefenster auf der Statuszeile zur Eingabe von Parmetern
-      [Enter <name> F3]   öffnet Datei `name` in neuem Kontextfenster
+      [F1]                CMD_SAVE_QUIT: Sichert geänderte Dateien und beendet den Editor.
+      [Shift+F1]          CMD_QUIT: Beendet den Editor **ohne** geänderte Dateien zurückzuschreiben.
+      [Ctrl+K, Ctrl+Q]    CMD_QUIT: Beendet den Editor **ohne** geänderte Dateien zurückzuschreiben.
+      [Escape]            CMD_ENTER: "Enter" Kommando: öffnet Eingabefenster auf der Statuszeile zur Eingabe von Parametern
+      [Enter <name> F3]   CMD_ENTER_ADD_FILE: öffnet Datei `name` in neuem Kontextfenster
 
 
 ### **Cursor Kommandos**
@@ -172,7 +172,9 @@ LS alles weitere automatisch.
 
 ### **Datei Kommandos**
 
-      [Ctrl+K,  Ctrl+S]            CMD_SAVE
+      [Ctrl+K,  Ctrl+W]            CMD_SAVE
+      [Ctrl+K,  Ctrl+S]            CMD_SAVE_STATE   -- Editor-Zustand merken
+      [Ctrl+K,  Ctrl+R]            CMD_RESTORE_STATE -- Editor-Zustand wiederherstellen
       [Ctrl+K,  Ctrl+K; F4]        CMD_KONTEXT_COPY
       [Ctrl+K,  Ctrl+J; Shift+F3]  CMD_KONTEXT_PREV
       [Ctrl+K,  Ctrl+L; F3]        CMD_KONTEXT_NEXT
@@ -209,8 +211,8 @@ NPed unterstützt drei Arten von Selektionen:
                                           bei leerer Selektion in den Copy Buffer und löscht sie dann.
       [F9]              CMD_PUT           Insertiert den Copy Buffer (Paste/Put) an die aktuelle
                                           Cursor Position.
-      [MMT]             Paste             Kopiert den Inhalt des System Clipboards an die
-                                          Cursor Position.
+      [MMB]             Paste             Kopiert den Inhalt des System Clipboards an die
+                                          Cursor Position (mittlere Maustaste).
 
 ### **IDE Kommandos**
 
@@ -228,7 +230,7 @@ wird von der editierbaren Textdarstellung auf eine gerenderte 'nur lesen' Darste
 eine Liste von Funktions- bzw. Methodennamen gezeigt. Du kannst den Cursor auf eine Funktion positionieren und wieder in
 die Textdarstellung zurückschalten um blitzschnell zu dieser Funktion zu navigieren.
 
-      [Ctrl+B]                      CMD_VIEW_BUGS
+      [Ctrl+B]                      CMD_VIEW_BUGS (CMD_ANNOTATIONS)
       [F10]                         CMD_GOTO_TYPE_DEFINITION
       [F11]                         CMD_GOTO_IMPLEMENTATION
       [F12]                         CMD_GOTO_DEFINITION
@@ -238,10 +240,12 @@ die Textdarstellung zurückschalten um blitzschnell zu dieser Funktion zu navigi
       [Ctrl+Shift+M]                CMD_UNFOLD_ALL
       [Ctrl+<]                      CMD_FOLD_TOGGLE
       [Ctrl+O, Ctrl+H]              CMD_FUNCTION_HEADER
-      [Ctrl+O, Ctrl+G]              CMD_GIT_TOGGLE
+      [Ctrl+O, Ctrl+G]              CMD_TOGGLE_GIT
+      [Ctrl+I]                      CMD_TOGGLE_AI (Hover / AI Panel)
+      [Ctrl+C]                      CMD_TOGGLE_CONFIG
       [Ctrl+F12]                    CMD_GOTO_BACK
-      [Ctrl+H]                      CMD_SHOW_INFO
-      [Enter <name> Ctrl+F]         Erzeugt leere c++ Funktion mit Namen `name`
+      [Ctrl+V]                      CMD_VIEW_FUNCTIONS
+      [Enter <name> Ctrl+F]         CMD_ENTER_CREATE_FUNCTION: Erzeugt leere c++ Funktion mit Namen `name`
 
 ## 3. AI Agent
 ### 3.1 AI-Models
@@ -380,7 +384,17 @@ Du kannst neue Rollen erstellen sowie bestehende verändern oder löschen.
 
 ### 3.5 Prompts
 
-TODO: canned prompts
+Häufig benützte Prompts können als *Canned Prompts* (Name, Beschreibung und Prompt-Text)
+in den Einstellungen (`AI - Canned Prompts`) gespeichert werden. Im AI-Panel sind sie über
+den Glühbirnen-Button neben dem Prompt-Eingabefeld erreichbar.
+
+### 3.6 MCP-Server
+
+MCP ("Model Context Protocol") ist ein offener Standard, der es KI-Modellen ermöglicht, nahtlos auf
+Daten und Werkzeuge aus verschiedenen Quellen zuzugreifen. Die Server werden in den
+Einstellungen (`MCP Servers`) konfiguriert; jeder Server besitzt eine `id`, `command`, `args`,
+einen optionalen `env`-String, ein `enabled`-Flag und eine optionale `url` (für SSE-Server).
+Die Server werden erst beim Absenden einer Anfrage an das LLM gestartet.
 
 
 ## 4. Installation
@@ -414,4 +428,4 @@ dann:
       sudo systemctl disable apport.service
 
 ## 5. Examples
-[Examples](manual/examples.md)
+[Examples](examples.md)

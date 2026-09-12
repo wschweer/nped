@@ -39,11 +39,11 @@ void Logger::write(std::ostream& f, MsgType t, const MsgLogContext& c, const std
       if (&f == &std::cerr) {
             // color messages
             if (t == MsgType::Critical)
-                  f << std::format("\033[31m{}({}:{}, {}): {}\033[0m\n", type, c.file, c.line, c.function,
-                                   msg);
+                  f << std::format(
+                      "\033[31m{}({}:{}, {}): {}\033[0m\n", type, c.file, c.line, c.function, msg);
             else if (t == MsgType::Warning)
-                  f << std::format("\033[33m{}({}:{}, {}): {}\033[0m\n", type, c.file, c.line, c.function,
-                                   msg);
+                  f << std::format(
+                      "\033[33m{}({}:{}, {}): {}\033[0m\n", type, c.file, c.line, c.function, msg);
             else
                   f << std::format("{}({}:{}, {}): {}\n", type, c.file, c.line, c.function, msg);
             }
@@ -91,7 +91,10 @@ void Logger::write(MsgType t, const MsgLogContext& c, const std::string& msg) {
             }
       if (f.is_open()) {
             write(f, t, c, msg);
-            //  flush(f); // this slows down things a bit but saves last messages before a crash
+            // Re-enabled for the "Too many open files" investigation:
+            // this slows things down a bit but saves the last messages
+            // before a crash (qFatal/SIGTRAP bypasses destructors).
+            f.flush();
             }
       }
 

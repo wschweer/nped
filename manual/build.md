@@ -1,38 +1,57 @@
 ## Build
 
+### Prerequisites
+
+- A C++23 compiler: `clang++` (preferred) or `g++`
+- Qt 6 (>= 6.5) with the modules: Core, Gui, Widgets, Network, WebEngineCore,
+  WebEngineWidgets, WebChannel, DBus, PrintSupport and Concurrent
+- libgit2 (Git integration)
+- md4c and md4c-html (Markdown rendering)
+- FFmpeg libraries: libavcodec, libavformat, libavutil, libswscale
+- `clangd` (language server for C/C++, used at runtime)
+- Bubblewrap (`bwrap`) for sandboxing the AI agent's shell commands
+
+### Build
+
 - create a build directory if not already exists:
-- enter build directory
-- configure by calling cmake
+
+```
+mkdir build
+cd build
+```
+
+- configure by calling cmake (tell cmake the path of your Qt installation if it is
+  not found automatically):
+
+```
+export CMAKE_PREFIX_PATH=***YourPath***/Qt/6.x.x/gcc_64
+cmake -D CMAKE_CXX_COMPILER=clang++ -G Ninja ..
+```
+
+or if you want to use the gcc compiler:
+
+```
+cmake -G Ninja ..
+```
+
 - build the app
 
 ```
-mkdir build
-cd build
-cmake -G Ninja ..
-cmake --build .
+cmake --build . --parallel 32
 ```
 
-or if you want to use the clang compiler:
+There is a helper `Makefile` with convenience targets:
 
 ```
-mkdir build
-cd build
-cmake -D CMAKE_CXX_COMPILER=clang++ -G Ninja ..
-cmake --build .
+make nped    # build and run
+make t       # run the built binary
+make d       # debug with gdb
+make v       # valgrind
+make init    # wipe build dir and configure with clang
 ```
 
-usually you need to tell the build system the path of your local Qt installation:
+- start the app (one or more files must be given)
 
 ```
-export CMAKE_PREFIX_PATH=***YourPath***/Qt/6.11.0/gcc_64
-mkdir build
-cd build
-cmake -D CMAKE_CXX_COMPILER=clang++ -G Ninja ..
-cmake --build .
-```
-
-start the app
-
-```
-./nped ../editor.cpp
+./nped ../src/editor.cpp
 ```

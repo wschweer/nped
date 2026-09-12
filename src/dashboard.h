@@ -39,5 +39,7 @@ class Dashboard : public QWidget
       void addWidget(QWidget* widget, int row = 0);
       void addAction(QAction* action, int row = 0);
       void setTokenCount(size_t tokens);
+      ///< Show the history token usage relative to the model's budget.
+      void setTokenBudget(size_t tokens, size_t budget);
       void addStretch(int row = 0);
       };

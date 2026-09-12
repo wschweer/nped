@@ -13,26 +13,27 @@
 #include <QDir>
 #include <QFile>
 #include <QIODevice>
+#include <QMessageBox>
 #include <QRegularExpression>
 #include <QTextStream>
-#include <fcntl.h>
-#include <cstring>
 #include <cerrno>
+#include <cstring>
+#include <fcntl.h>
 #include <unistd.h>
-#include <QMessageBox>
 
-#include <vector>
+#include <QEventLoop>
+#include <QTimer>
 #include <algorithm> // Für std::find_if
 #include <optional>  // Für std::optional
-#include <QEventLoop>
-#include <QTimer>
+#include <unordered_set>
+#include <vector>
 
 #include <QEventLoop>
 
 #include <QTimer>
 
-#include "editor.h"
 #include "agent.h"
+#include "editor.h"
 #include "editwin.h"
 #include "file.h"
 #include "kontext.h"
@@ -50,7 +51,6 @@ using PropertyItems = std::vector<PropertyItem>;
 //---------------------------------------------------------
 //   evalPP
 //---------------------------------------------------------
-
 QString Editor::evalPP(const QString& pdata) {
       PropertyItems propertyItems;
       QStringList sl = pdata.split("\n");
@@ -95,7 +95,7 @@ QString Editor::evalPP(const QString& pdata) {
                   }
             else {
                   for (int i = 0; i < tokenList.size(); ++i) {
-                        //##P2  double raster     1.0 Raster \"\" .1 100.0 1 \"mm\"
+                        // ##P2  double raster     1.0 Raster \"\" .1 100.0 1 \"mm\"
                         switch (i) {
                               case 0:
                                     item["op"] = tokenList[i];
@@ -200,11 +200,13 @@ QString Editor::evalPP(const QString& pdata) {
                               jsonArgs += ", ";
                         jsonArgs += std::format("\\\"scriptable\\\":{}", item["scriptable"]);
                         }
-                  //                  jsonArgs = QString::fromStdString(jsonArgs).replace("\"", "\\\"").toStdString();
+                  //                  jsonArgs =
+                  //                  QString::fromStdString(jsonArgs).replace("\"",
+                  //                  "\\\"").toStdString();
                   result +=
                       std::format("      Property* {0}Property = PropertyMap::push_back(\"{0}\", ", name);
                   result += std::format("new Property(this, \"{}\", [this] {{ {}Changed(); }}, {}", name,
-                                        name, item["default"]);
+                      name, item["default"]);
                   if (jsonArgs.empty())
                         result += "));\n";
                   else
@@ -241,15 +243,15 @@ QString Editor::evalPP(const QString& pdata) {
             result += "            QSettings settings;\n";
             for (auto& item : propertyItems)
                   if (item.contains("persistent"))
-                        result += std::format("            settings.setValue(\"Properties/{0}\", {0}());\n",
-                                              item["name"]);
+                        result += std::format(
+                            "            settings.setValue(\"Properties/{0}\", {0}());\n", item["name"]);
             result += "            };\n";
             result += "      void restoreProperties() {\n";
             result += "            QSettings settings;\n";
             for (auto& item : propertyItems) {
                   if (item.contains("persistent")) {
                         result          += std::format("            set{}(settings.value(\"Properties/{}\").",
-                                                       item["Name"], item["name"]);
+                            item["Name"], item["name"]);
                         const auto type  = item.at("type");
                         if (type == "QString")
                               result += "toString());\n";
@@ -275,13 +277,13 @@ QString Editor::evalPP(const QString& pdata) {
             if (item.contains("ro"))
                   continue;
             if (item.contains("pr") && item["pr"] == "true") {
-                  result += std::format(
-                      "      void set{}({} v) {{ {}Property->setValue(QVariant::fromValue<{}>(v)); }}\n",
+                  result += std::format("      void set{}({} v) {{ "
+                                        "{}Property->setValue(QVariant::fromValue<{}>(v)); }}\n",
                       item["Name"], item.at("type"), item["name"], item.at("type"));
                   }
             else {
-                  result += std::format(
-                      "      void set{0}({1} v) {{ if (v != {2}()) {{ _{2} = v; emit {2}Changed(); }} }}\n",
+                  result += std::format("      void set{0}({1} v) {{ if (v != {2}()) {{ "
+                                        "_{2} = v; emit {2}Changed(); }} }}\n",
                       item["Name"], item.at("type"), item["name"]);
                   }
             }
@@ -295,13 +297,15 @@ QString Editor::evalPP(const QString& pdata) {
                   continue;
             if (item.contains("pr") && item["pr"] == "true") {
                   // QString proto() const { return get<QString>(protoProperty->value()); }
-                  //                  result += std::format("      {} {}() const {{ return get<{}>({}Property->value()); }}\n", item.at("type"), item["name"],
+                  //                  result += std::format("      {} {}() const {{ return
+                  //                  get<{}>({}Property->value()); }}\n", item.at("type"),
+                  //                  item["name"],
                   result += std::format("      {} {}() const {{ return {}Property->value().value<{}>(); }}\n",
-                                        item.at("type"), item["name"], item["name"], item.at("type"));
+                      item.at("type"), item["name"], item["name"], item.at("type"));
                   }
             else
-                  result += std::format("      {} {}() const {{ return _{};}}\n", item.at("type"),
-                                        item["name"], item["name"]);
+                  result += std::format(
+                      "      {} {}() const {{ return _{};}}\n", item.at("type"), item["name"], item["name"]);
             }
 
       result += "\n   public:\n";
@@ -319,7 +323,6 @@ void File::onFileChangedOnDisk(const QString& /*path*/) {
 //---------------------------------------------------------
 //   File
 //---------------------------------------------------------
-
 File::File(Editor* e, const QFileInfo& fi) : _fi(fi), editor(e) {
       f.setFileName(_fi.absoluteFilePath());
       _readOnly = !_fi.isWritable();
@@ -353,7 +356,6 @@ File::~File() {
 //---------------------------------------------------------
 //   readOnly
 //---------------------------------------------------------
-
 bool File::readOnly() const {
       return _readOnly;
       }
@@ -361,7 +363,6 @@ bool File::readOnly() const {
 //---------------------------------------------------------
 //   modified
 //---------------------------------------------------------
-
 bool File::modified() const {
       return _undo->dirty();
       }
@@ -369,7 +370,6 @@ bool File::modified() const {
 //---------------------------------------------------------
 //   load
 //---------------------------------------------------------
-
 bool File::load() {
       f.close(); // close if already open from a previous load/restore
       if (_readOnly) {
@@ -405,6 +405,8 @@ bool File::load() {
                         }
                   }
             }
+      QFileInfo fi(f);
+      _modificationTime = onDiskModificationTime();
 
       if (languageId() == "image") {
             _fileText = Lines(QString("[Image File: %1]").arg(_fi.fileName()));
@@ -452,9 +454,16 @@ bool File::load() {
       }
 
 //---------------------------------------------------------
+//   onDiskModificationTime
+//---------------------------------------------------------
+QDateTime File::onDiskModificationTime() const {
+      fi().refresh();
+      return fi().lastModified();
+      }
+
+//---------------------------------------------------------
 //   release
 //---------------------------------------------------------
-
 void File::release() {
       save();
       lcClose();
@@ -483,7 +492,6 @@ void File::release() {
 //---------------------------------------------------------
 //   restore
 //---------------------------------------------------------
-
 bool File::restore() {
       f.close(); // close if already open from a previous load/restore
       if (_readOnly) {
@@ -564,7 +572,6 @@ bool File::restore() {
 //---------------------------------------------------------
 //   lcOpen
 //---------------------------------------------------------
-
 void File::lcOpen() {
       if (!client)
             return;
@@ -588,7 +595,6 @@ void File::lcOpen() {
 //---------------------------------------------------------
 //   lcClose
 //---------------------------------------------------------
-
 void File::lcClose() {
       if (client && client->initialized())
             client->didCloseNotification(this);
@@ -598,7 +604,6 @@ void File::lcClose() {
 //   save
 //    return true on success
 //---------------------------------------------------------
-
 bool File::save() {
       if (!modified())
             return true;
@@ -734,7 +739,6 @@ bool File::save() {
 //---------------------------------------------------------
 //   updateOutline
 //---------------------------------------------------------
-
 void File::updateOutline() {
       if (!client)
             return;
@@ -751,7 +755,6 @@ void File::updateOutline() {
 //---------------------------------------------------------
 //   setBugs
 //---------------------------------------------------------
-
 void File::setBugs(const Lines& map) {
       _bugs = map;
       //      if (_viewMode == ViewMode::Bugs)
@@ -761,7 +764,6 @@ void File::setBugs(const Lines& map) {
 //---------------------------------------------------------
 //   setSearchResults
 //---------------------------------------------------------
-
 void File::setSearchResults(const Lines& map) {
       _searchResults = map;
       //      if (_viewMode == ViewMode::SearchResults)
@@ -771,7 +773,6 @@ void File::setSearchResults(const Lines& map) {
 //---------------------------------------------------------
 //   setLabel
 //---------------------------------------------------------
-
 void File::setLabel(int y, QChar c, QColor color) {
       if (y < 0 || y >= _fileText.size())
             y = _fileText.size() - 1;
@@ -782,7 +783,6 @@ void File::setLabel(int y, QChar c, QColor color) {
 //---------------------------------------------------------
 //   clearLabel
 //---------------------------------------------------------
-
 void File::clearLabel() {
       for (auto& l : _fileText)
             if (l.fold() == FoldMark::No)
@@ -794,7 +794,6 @@ void File::clearLabel() {
 //   indent
 //    "good enough" indent parser for C/C++
 //---------------------------------------------------------
-
 int File::indent(const Pos& pos) const {
       // find previous text line
       const Line* l;
@@ -853,7 +852,6 @@ int File::indent(const Pos& pos) const {
 //    the language server sees it.
 //    Here we also synchronize the language server.
 //--------------------------------------------------------------
-
 void File::patch(Patches& items) {
       if (readOnly()) {
             Critical("read only");
@@ -868,9 +866,9 @@ void File::patch(Patches& items) {
             if (!pi.empty()) {
                   nothingToRemove = false;
                   /* TODO                  if (!posValid(pi.startPos)) {
-                        Critical("invalid position col {} line {}", pi.startPos.col, pi.startPos.row);
-                        return;
-                                                                              }
+            Critical("invalid position col {} line {}", pi.startPos.col,
+         pi.startPos.row); return;
+                                                                                                                  }
 */
                   }
             }
@@ -903,7 +901,6 @@ void File::patch(Patches& items) {
 //   toOffset
 //    calculate the text byte offset from line/column
 //---------------------------------------------------------
-
 int File::toOffset(const Pos& p) {
       return distance(Pos(), p);
       }
@@ -921,7 +918,6 @@ int File::toOffset(const Pos& p) {
 //    Returns the distance (p2-p1) as number of QChars().
 //    Notice: unicode surrogates are not handled
 //-----------------------------------------------------------------------------
-
 int File::distance(Pos begin, Pos end) const {
       int n = fileRows();
       if (begin.row < 0 || begin.row > n) {
@@ -963,7 +959,6 @@ int File::distance(Pos begin, Pos end) const {
 //---------------------------------------------------------
 //   advance
 //---------------------------------------------------------
-
 Pos File::advance(const Pos& p, int dist) const {
       if (dist == 0)
             return p;
@@ -990,7 +985,6 @@ Pos File::advance(const Pos& p, int dist) const {
 //---------------------------------------------------------
 //   markExpansion
 //---------------------------------------------------------
-
 void File::markExpansion() {
       int lines        = _fileText.size();
       bool inExpansion = false;
@@ -1019,7 +1013,6 @@ void File::markExpansion() {
 //    "Ratliff" or "Banner" bracket indentation style,
 //    so we have to fix it here in a small hack.
 //---------------------------------------------------------
-
 void File::postprocessFormat() {
       //      int lines   = _fileText.size();
       auto cursor = editor->kontext()->cursor();
@@ -1027,26 +1020,39 @@ void File::postprocessFormat() {
       // TODO: scan from end to beginning, as we may insert new lines ?
       //       collect all patches and apply in one batch
       for (int i = 0; i < _fileText.size(); ++i) {
-            const Line& l = _fileText[i];
             // dont reformat anything in a string
-            if (!l.isString()) {
-                  auto s = l.qstring().trimmed();
+            if (!_fileText[i].isString()) {
+                  auto s = _fileText[i].qstring().trimmed();
                   if (!s.isEmpty() && (s[0] == '}' || s[0] == '{'))
                         undo()->push(new Patch(this, {0, i}, 0, QString(tab(), QChar(' ')), cursor, cursor));
                   }
             //
             // add an empty line after every top level closing "}" or "};"
             //
-            if ((l.qstring() == QString("      }") || l.qstring() == QString("      };")) &&
+            if ((_fileText[i].qstring() == QString("      }") ||
+                 _fileText[i].qstring() == QString("      };")) &&
                 !_fileText.nextLineIsEmpty(i)) {
                   undo()->push(new Patch(this, {0, i + 1}, 0, "\n", cursor, cursor));
                   ++i;
                   }
             //
+            // make sure there is an empty line after a comment block
+            // delimited by "//------" lines and before the following
+            // code/function. We detect the last line of such a block by
+            // checking that the current line starts with "//-----" and
+            // the next line is not a comment and not already empty.
+            //
+            if (i < _fileText.size() - 1 &&
+                _fileText[i].startsWith("//-----") &&
+                !_fileText.nextLineIsEmpty(i) &&
+                !_fileText[i + 1].qstring().trimmed().startsWith("//")) {
+                  undo()->push(new Patch(this, {0, i + 1}, 0, "\n", cursor, cursor));
+                  }
+            //
             // make sure there is an empty line before every comment block
             // starting with "//------"
             //
-            if (l.startsWith("//-----") && !_fileText.prevLineIsEmpty(i) && i &&
+            if (_fileText[i].startsWith("//-----") && !_fileText.prevLineIsEmpty(i) && i &&
                 !_fileText[i - 1].qstring().trimmed().startsWith("//")) {
                   undo()->push(new Patch(this, {0, i}, 0, "\n", cursor, cursor));
                   ++i;
@@ -1058,7 +1064,6 @@ void File::postprocessFormat() {
 //---------------------------------------------------------
 //   fileText
 //---------------------------------------------------------
-
 const Line& File::fileText(int row) const {
       static const Line emptyLine;
       if (_fileText.empty() || row >= _fileText.size())
@@ -1069,7 +1074,6 @@ const Line& File::fileText(int row) const {
 //---------------------------------------------------------
 //   add
 //---------------------------------------------------------
-
 void Marks::add(const Mark& newMark) {
       if (newMark.col1 >= newMark.col2) {
             Critical("bad mark: {} >= {}", newMark.col1, newMark.col2);
@@ -1078,11 +1082,14 @@ void Marks::add(const Mark& newMark) {
       // 2. Finde den Start- und End-Iterator für den zu ersetzenden Block.
 
       // it_start: Der *erste* Bereich, der *zumindest teilweise* vom neuen Bereich
-      //           betroffen ist (d.h. dessen Ende *hinter* dem Start des neuen Bereichs liegt).
+      //           betroffen ist (d.h. dessen Ende *hinter* dem Start des neuen
+      //           Bereichs liegt).
       auto it_start = std::find_if(begin(), end(), [&](const Mark& r) { return r.col2 > newMark.col1; });
 
-      // it_end: Der *erste* Bereich, der *nicht mehr* vom neuen Bereich betroffen ist
-      //         (d.h. dessen Start *hinter oder gleich* dem Ende des neuen Bereichs liegt).
+      // it_end: Der *erste* Bereich, der *nicht mehr* vom neuen Bereich betroffen
+      // ist
+      //         (d.h. dessen Start *hinter oder gleich* dem Ende des neuen Bereichs
+      //         liegt).
       auto it_end = std::find_if(it_start, end(), [&](const Mark& r) { return r.col1 >= newMark.col2; });
 
       // Wenn kein Start gefunden wurde oder der neue Bereich vor allem liegt,
@@ -1141,7 +1148,8 @@ void Marks::add(const Mark& newMark) {
             if (it->type == (it + 1)->type) {
                   it->col2 = (it + 1)->col2; // Erweitere den linken Bereich
                   erase(it + 1);             // Lösche den rechten Bereich
-                  // Der Iterator 'it' bleibt gültig und wird im nächsten Loop erneut geprüft
+                  // Der Iterator 'it' bleibt gültig und wird im nächsten Loop erneut
+                  // geprüft
                   }
             else {
                   it++; // Kein Merge, weiter zum nächsten
@@ -1152,7 +1160,6 @@ void Marks::add(const Mark& newMark) {
 //---------------------------------------------------------
 //   addMark
 //---------------------------------------------------------
-
 void File::addMark(int row, int idx1, int idx2, TextStyle::Style m) {
       if (row >= _fileText.size())
             return;
@@ -1163,7 +1170,6 @@ void File::addMark(int row, int idx1, int idx2, TextStyle::Style m) {
 //---------------------------------------------------------
 //   clearSearchMarks
 //---------------------------------------------------------
-
 bool File::clearSearchMarks() {
       int rv = false;
       for (auto& line : _fileText)
@@ -1175,7 +1181,6 @@ bool File::clearSearchMarks() {
 //---------------------------------------------------------
 //   unfold
 //---------------------------------------------------------
-
 void File::unfold(int row) {
       if (row >= fileRows())
             return;
@@ -1196,7 +1201,6 @@ void File::unfold(int row) {
 //---------------------------------------------------------
 //   setFoldFlag
 //---------------------------------------------------------
-
 void File::setFoldFlag(int row, bool folded) {
       setLabel(row, folded ? QChar(0x25b6) : QChar(0x25bc));
       }
@@ -1204,7 +1208,6 @@ void File::setFoldFlag(int row, bool folded) {
 //---------------------------------------------------------
 //   toggleFold
 //---------------------------------------------------------
-
 void File::toggleFold(int row) {
       const Line& l = fileText(row);
       if (l.fold() == FoldMark::Begin)
@@ -1214,7 +1217,6 @@ void File::toggleFold(int row) {
 //---------------------------------------------------------
 //   isFoldable
 //---------------------------------------------------------
-
 bool File::isFoldable(int row) const {
       const Line& l = fileText(row);
       return l.fold() != FoldMark::No;
@@ -1223,7 +1225,6 @@ bool File::isFoldable(int row) const {
 //---------------------------------------------------------
 //   foldAll
 //---------------------------------------------------------
-
 void File::foldAll(bool v) {
       Debug("{}", v);
       for (int row = 0; row < _fileText.size(); ++row) {
@@ -1236,7 +1237,6 @@ void File::foldAll(bool v) {
 //---------------------------------------------------------
 //   searchReplace
 //---------------------------------------------------------
-
 bool File::searchReplace(const QString& search, const QString& replaceText) {
       Debug("<{}> -- <{}>", search, replaceText);
 
@@ -1249,7 +1249,8 @@ bool File::searchReplace(const QString& search, const QString& replaceText) {
 
       QStringList l = _fileText.toStringList();
 
-      // Wir sammeln alle Treffer in einer Liste, um sie später rückwärts zu ersetzen
+      // Wir sammeln alle Treffer in einer Liste, um sie später rückwärts zu
+      // ersetzen
       QList<Pos> matches;
 
       if (numSearchLines == 1) {
@@ -1289,11 +1290,13 @@ bool File::searchReplace(const QString& search, const QString& replaceText) {
                   if (!l[i + numSearchLines - 1].startsWith(searchLines.last()))
                         continue;
 
-                  // Treffer gefunden! Spalte berechnen (Länge der Zeile minus Länge des Such-Anfangs)
+                  // Treffer gefunden! Spalte berechnen (Länge der Zeile minus Länge des
+                  // Such-Anfangs)
                   int col = l[i].length() - firstSearchLine.length();
                   matches.append({col, i});
 
-                  // Index voranschreiten lassen, um nicht innerhalb des gefundenen Blocks weiterzusuchen
+                  // Index voranschreiten lassen, um nicht innerhalb des gefundenen Blocks
+                  // weiterzusuchen
                   i += numSearchLines - 2;
                   }
             }
@@ -1318,7 +1321,6 @@ bool File::searchReplace(const QString& search, const QString& replaceText) {
 //   clearGitHistory
 //    Clean up git history entries
 //---------------------------------------------------------
-
 void File::clearGitHistory() {
       for (auto i : _gitHistory)
             delete i;
@@ -1330,9 +1332,66 @@ void File::clearGitHistory() {
 //---------------------------------------------------------
 //   setSymbols
 //---------------------------------------------------------
-
 void File::setSymbols(const json& j) {
       _symbols = j;
+
+      //---------------------------------------------------------
+      //   isForwardDeclaration
+      //    Check if a Class/Struct symbol at the given line is
+      //    just a forward declaration (e.g. "class Foo;") rather
+      //    than a full definition (e.g. "class Foo { ... };")
+      //---------------------------------------------------------
+
+      auto isForwardDeclaration = [this](int kind, int line) -> bool {
+            if (kind != 5 && kind != 22) // only Class and Struct
+                  return false;
+            if (line < 1 || line > static_cast<int>(_fileText.size()))
+                  return false;
+            const QString& s = _fileText.at(line - 1).qstring().trimmed();
+            // A forward declaration ends with ';' and does not contain '{'
+            // e.g.:  class Foo;   or   struct Bar;
+            return s.endsWith(';') && !s.contains('{');
+            };
+
+      // Qt macros that clangd reports as symbols but that have no
+      // informational value in the outline view. clangd may report the
+      // macro name itself or the methods it expands to (metaObject,
+      // qt_metacast, ...) — all of them map back to the macro source
+      // line. We filter by checking both the symbol name and the source
+      // line at the symbol location.
+      static const std::unordered_set<std::string> qtMacroNames = {
+         "Q_OBJECT",
+         "Q_GADGET",
+         "Q_NAMESPACE",
+         "Q_ENUM",
+         "Q_ENUM_NS",
+         "Q_ENUMS",
+         "Q_FLAG",
+         "Q_FLAG_NS",
+         "Q_FLAGS",
+         "Q_PROPERTY",
+         "Q_INVOKABLE",
+         "Q_SIGNAL",
+         "Q_SLOT",
+         "Q_SIGNALS",
+         "Q_SLOTS",
+         "Q_DECLARE_METATYPE",
+         "Q_DECLARE_INTERFACE",
+            };
+
+      // Check if the source line at the given 1-based line number is a
+      // Qt macro invocation (e.g. "Q_OBJECT", "Q_PROPERTY(...)").
+      auto isQtMacroLine = [this](int line) -> bool {
+            if (line < 1 || line > static_cast<int>(_fileText.size()))
+                  return false;
+            const QString& s = _fileText.at(line - 1).qstring().trimmed();
+            for (const auto& macro : qtMacroNames) {
+                  QString qmac = QString::fromStdString(macro);
+                  if (s == qmac || s.startsWith(qmac + "(") || s.startsWith(qmac + " "))
+                        return true;
+                  }
+            return false;
+            };
 
       //---------------------------------------------------------
       //   processSymbol
@@ -1347,11 +1406,36 @@ void File::setSymbols(const json& j) {
                   // Kinds: 5=Class, 6=Method, 12=Function, 3=Namespace, 22=Struct
                   if (kind == 5 || kind == 6 || kind == 12 || kind == 3 || kind == 22) {
                         std::string name = item["name"].get<std::string>();
-                        int line         = -1;
+                        // Skip Qt macro expansions (Q_OBJECT, Q_PROPERTY, ...)
+                        // Check both the symbol name and the source line:
+                        // clangd may report the macro name or the expanded
+                        // methods (metaObject, qt_metacast, ...), all mapping
+                        // back to the macro source line.
+                        if (qtMacroNames.contains(name)) {
+                              if (item.contains("children") && item["children"].is_array())
+                                    for (const auto& child : item["children"])
+                                          processSymbol(child, depth + 1);
+                              return;
+                              }
+                        int line = -1;
                         if (item.contains("location")) {
                               auto litem = item["location"];
                               if (litem.contains("range") && litem["range"].contains("start"))
                                     line = litem["range"]["start"]["line"].get<int>() + 1;
+                              // Skip symbols whose source line is a Qt macro
+                              if (isQtMacroLine(line)) {
+                                    if (item.contains("children") && item["children"].is_array())
+                                          for (const auto& child : item["children"])
+                                                processSymbol(child, depth + 1);
+                                    return;
+                                    }
+                              // Skip forward declarations of classes/structs
+                              if (isForwardDeclaration(kind, line)) {
+                                    if (item.contains("children") && item["children"].is_array())
+                                          for (const auto& child : item["children"])
+                                                processSymbol(child, depth + 1);
+                                    return;
+                                    }
                               std::string indent(depth * 2, ' ');
                               std::string kindStr;
                               switch (kind) {

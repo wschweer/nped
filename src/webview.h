@@ -74,7 +74,7 @@ class MarkdownWebView : public QWebEngineView
       void installFilterOnProxy();
       std::string getGithubCss() const;
       std::string getGithubDarkCss() const;
-
+      static QString postprocessGitHubAlerts(const QString& html);
     public slots:
       virtual void updateStyle();
       Editor* editor() const { return _editor; }

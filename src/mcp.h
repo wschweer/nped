@@ -163,6 +163,9 @@ class McpServer : public QObject
       Editor* _editor;
 
       bool initialized {false};
+      bool _started {false};
+      bool _ready {false};
+      bool _toolsDiscovered {false};
       bool handleRoot {false};
       int m_nextRequestId = 1;
       std::map<int, std::function<void(const json&)>> m_pendingRequests;
@@ -190,6 +193,9 @@ class McpServer : public QObject
       ~McpServer() override { stop(); }
       bool start();
       void stop();
+      bool isStarted() const { return _started; }
+      bool isReady() const { return _ready; }
+      bool isToolsDiscovered() const { return _toolsDiscovered; }
       const QString& id() const { return _id; }
       const QString& url() const { return _url; }
       // Available capabilities after initialization
@@ -236,6 +242,8 @@ class McpManager : public QObject
 
       void startAll();
       void stopAll();
+      void connectServers();
+      void waitForReady(const QStringList& ids, int timeoutMs = 10000);
 
       McpServer* getServer(const QString& id);
       };

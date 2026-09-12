@@ -98,3 +98,19 @@ void Dashboard::addAction(QAction* action, int row) {
 void Dashboard::setTokenCount(size_t tokens) {
       tokenLabel->setText(QString("Tokens: %1 k").arg(tokens / 1000));
       }
+
+//---------------------------------------------------------
+//   setTokenBudget
+//    Show the history token usage together with the budget that
+//    was derived from the model's (discovered) context window.
+//---------------------------------------------------------
+
+void Dashboard::setTokenBudget(size_t tokens, size_t budget) {
+      if (budget == 0) {
+            setTokenCount(tokens);
+            return;
+            }
+      const int percent = int(tokens * 100 / budget);
+      tokenLabel->setText(
+          QString("Tokens: %1 k / %2 k (%3 %)").arg(tokens / 1000).arg(budget / 1000).arg(percent));
+      }

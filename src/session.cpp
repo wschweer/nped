@@ -170,25 +170,135 @@ void Session::save() {
       }
 
 //---------------------------------------------------------
+//   estimateTokens
+//    Best-effort token estimate for a single message (~4 chars/token).
+//    Handles all message shapes used by the providers: plain "content"
+//    strings, Gemini "parts" arrays and assistant "tool_calls".
+//---------------------------------------------------------
+
+size_t Session::estimateTokens(const json& content) {
+      size_t chars = 0;
+      try {
+            if (content.contains("content")) {
+                  if (content["content"].is_string())
+                        chars += content["content"].get<std::string>().length();
+                  else if (!content["content"].is_null())
+                        chars += content["content"].dump(-1, ' ', false,
+                                     json::error_handler_t::replace).length();
+                  }
+            if (content.contains("parts") && content["parts"].is_array()) {
+                  for (const auto& part : content["parts"]) {
+                        if (part.contains("text") && part["text"].is_string())
+                              chars += part["text"].get<std::string>().length();
+                        if (part.contains("functionResponse"))
+                              chars += part["functionResponse"].dump(-1, ' ', false,
+                                           json::error_handler_t::replace).length();
+                        }
+                  }
+            if (content.contains("tool_calls") && content["tool_calls"].is_array())
+                  chars += content["tool_calls"].dump(-1, ' ', false,
+                               json::error_handler_t::replace).length();
+            if (content.contains("images") && content["images"].is_array())
+                  chars += content["images"].size() * 4000; // crude: ~1k tokens per image
+            }
+      catch (...) {
+            }
+      return chars / 4;
+      }
+
+//---------------------------------------------------------
+//   recalcTokens
+//    Recompute totalTokens from the currently active window
+//    without emitting a signal (callers batch updates).
+//---------------------------------------------------------
+
+void Session::recalcTokens() {
+      totalTokens     = 0;
+      size_t startIdx = _data.size() - activeEntries;
+
+      // The very first message is always kept in the payload when the window
+      // is truncated (see getActiveEntries), so it must be part of the budget.
+      if (startIdx > 0 && !_data.empty())
+            totalTokens += _data[0].tokens;
+
+      for (size_t i = startIdx; i < _data.size(); ++i)
+            totalTokens += _data[i].tokens;
+      }
+
+//---------------------------------------------------------
+//   discoveredContextWindow
+//    Return the context window of the current model as
+//    discovered from the provider (Ollama /api/tags, /api/show,
+//    /api/ps).  The runtime value (num_ctx actually in use) is
+//    preferred, otherwise the trained context length.  Returns 0
+//    if no provider metadata is available (e.g. for cloud
+//    providers configured manually).
+//---------------------------------------------------------
+
+size_t Session::discoveredContextWindow() const {
+      const LlmInfo info = agent->currentLlmInfo();
+      if (info.runtimeContextLength)
+            return info.runtimeContextLength;
+
+      // A num_ctx explicitly configured for an Ollama model is what the user
+      // sends to the provider, so it takes precedence over the (possibly much
+      // larger) trained context length until /api/ps confirms the runtime value.
+      const Model& m = agent->currentModelObj();
+      json cfg       = m.configJson();
+      if (cfg.contains("num_ctx") && cfg["num_ctx"].is_number_integer())
+            return cfg["num_ctx"].get<size_t>();
+
+      return info.trainedContextLength;
+      }
+
+//---------------------------------------------------------
+//   contextBudget
+//    Token budget for the active window, derived from the current
+//    model's context window. Trigger trimming at ~75 % of it to leave
+//    room for the response and to stay below the hard provider limit.
+//
+//    Precedence:
+//      1. context window discovered from the provider (LlmInfo:
+//         runtime num_ctx, configured num_ctx, trained size)
+//      2. configuration:"contextWindow" (explicit user override)
+//      3. defaultTokenBudget fallback
+//---------------------------------------------------------
+
+size_t Session::contextBudget() const {
+      size_t window = discoveredContextWindow();
+
+      if (window == 0) {
+            const Model& m = agent->currentModelObj();
+            json cfg       = m.configJson();
+            if (cfg.contains("contextWindow") && cfg["contextWindow"].is_number_integer())
+                  window = cfg["contextWindow"].get<size_t>();
+            }
+
+      if (window == 0)
+            return defaultTokenBudget; // no context window known
+
+      return window / 100 * budgetRatioPercent;
+      }
+
+//---------------------------------------------------------
 //   optimizeToolResponses
 //---------------------------------------------------------
 
 void Session::optimizeToolResponses() {
-      int toolAge        = 0;
-      size_t tokensSaved = 0;
+      int toolAge = 0;
 
       for (auto it = _data.rbegin(); it != _data.rend(); ++it) {
             std::string role = it->content.value("role", "");
             if (role == "tool" || role == "function") {
                   int maxLength = 0;
                   if (toolAge == 0)
-                        maxLength = 4000;
+                        maxLength = 4000 * 2;
                   else if (toolAge <= 2)
-                        maxLength = 1000;
+                        maxLength = 1000 * 2;
                   else if (toolAge <= 5)
-                        maxLength = 250;
+                        maxLength = 250 * 2;
                   else
-                        maxLength = 100;
+                        maxLength = 100 * 2;
 
                   if (it->content.contains("content") && it->content["content"].is_string()) {
                         std::string content = it->content["content"].get<std::string>();
@@ -203,105 +313,112 @@ void Session::optimizeToolResponses() {
                                                        content.substr(content.length() - keepTail);
 
                               it->content["content"] = newContent;
-
-                              size_t oldTokens = it->tokens;
-                              size_t newTokens = newContent.length() / 4;
-                              it->tokens       = newTokens;
-
-                              if (oldTokens > newTokens)
-                                    tokensSaved += (oldTokens - newTokens);
+                              it->tokens             = newContent.length() / 4;
                               }
                         }
                   toolAge++;
                   }
             }
 
-      if (tokensSaved > 0) {
-            if (totalTokens >= tokensSaved)
-                  totalTokens -= tokensSaved;
-            else
-                  totalTokens = 0;
-            emit tokensChanged(totalTokens);
-            }
+      recalcTokens();
       }
 
 //---------------------------------------------------------------------------------------
 //   trim
 //---------------------------------------------------------------------------------------
 
-bool Session::trim() {
-      // 0. Drop redundant repeated tool calls
-      std::map<std::string, std::string> toolSignatures;
-      for (const auto& item : _data) {
-            if (item.content.value("role", "") == "assistant" && item.content.contains("tool_calls")) {
-                  for (const auto& tc : item.content["tool_calls"]) {
-                        if (tc.contains("id") && tc.contains("function")) {
-                              std::string id  = tc["id"].get<std::string>();
-                              auto func       = tc["function"];
-                              std::string sig = func.value("name", "") + ":";
-                              if (func.contains("arguments")) {
-                                    if (func["arguments"].is_string())
-                                          sig += func["arguments"].get<std::string>();
-                                    else
-                                          sig += func["arguments"].dump(-1, ' ', false,
-                                                                        json::error_handler_t::replace);
+void Session::trim() {
+      // Reflect the message that was just appended before deciding anything.
+      recalcTokens();
+
+      // Cache the budget once — contextBudget() parses the model configuration.
+      const size_t budget = contextBudget();
+
+      const bool overBudget = effectiveTokens() > budget;
+      const bool overCount  = activeEntries > maxEntries;
+      if (!overBudget && !overCount) {
+            emit tokensChanged(totalTokens);
+            return;
+            }
+
+      // While a tool loop is running we must not drop messages (the assistant's
+      // tool_calls and their tool results form an inseparable unit), but we must
+      // still defend the token budget. Only shrink oversized tool outputs.
+      if (_toolLoopActive) {
+            optimizeToolResponses(); // recalculates tokens internally
+            // We have acted; wait for a fresh provider report before trusting the
+            // (now stale) reported context again.
+            lastReportedContextTokens = 0;
+            emit tokensChanged(totalTokens);
+            return;
+            }
+
+      // Cheap reductions first: collapse repeated tool calls, then shrink old
+      // tool outputs. Only worth doing when the budget is actually exceeded.
+      if (overBudget) {
+            // 0. Drop redundant repeated tool calls
+            std::map<std::string, std::string> toolSignatures;
+            for (const auto& item : _data) {
+                  if (item.content.value("role", "") == "assistant" &&
+                      item.content.contains("tool_calls")) {
+                        for (const auto& tc : item.content["tool_calls"]) {
+                              if (tc.contains("id") && tc.contains("function")) {
+                                    std::string id  = tc["id"].get<std::string>();
+                                    auto func       = tc["function"];
+                                    std::string sig = func.value("name", "") + ":";
+                                    if (func.contains("arguments")) {
+                                          if (func["arguments"].is_string())
+                                                sig += func["arguments"].get<std::string>();
+                                          else
+                                                sig += func["arguments"].dump(
+                                                    -1, ' ', false, json::error_handler_t::replace);
+                                          }
+                                    toolSignatures[id] = sig;
                                     }
-                              toolSignatures[id] = sig;
                               }
                         }
                   }
-            }
 
-      std::set<std::string> seenSignatures;
-      for (auto it = _data.rbegin(); it != _data.rend(); ++it) {
-            std::string role = it->content.value("role", "");
-            if (role == "tool" || role == "function") {
-                  std::string id = it->content.value("tool_call_id", "");
-                  if (!id.empty() && toolSignatures.count(id)) {
-                        std::string sig = toolSignatures[id];
-                        if (seenSignatures.count(sig)) {
-                              if (it->content.contains("content") && it->content["content"].is_string()) {
-                                    std::string oldContent = it->content["content"].get<std::string>();
-                                    std::string newContent = "[Repeated tool call omitted to save context]";
-                                    if (oldContent != newContent) {
-                                          it->content["content"] = newContent;
-                                          it->tokens             = newContent.length() / 4;
+            std::set<std::string> seenSignatures;
+            for (auto it = _data.rbegin(); it != _data.rend(); ++it) {
+                  std::string role = it->content.value("role", "");
+                  if (role == "tool" || role == "function") {
+                        std::string id = it->content.value("tool_call_id", "");
+                        if (!id.empty() && toolSignatures.count(id)) {
+                              std::string sig = toolSignatures[id];
+                              if (seenSignatures.count(sig)) {
+                                    if (it->content.contains("content") &&
+                                        it->content["content"].is_string()) {
+                                          std::string oldContent =
+                                              it->content["content"].get<std::string>();
+                                          std::string newContent =
+                                              "[Repeated tool call omitted to save context]";
+                                          if (oldContent != newContent) {
+                                                it->content["content"] = newContent;
+                                                it->tokens             = newContent.length() / 4;
+                                                }
                                           }
                                     }
-                              }
-                        else {
-                              seenSignatures.insert(sig);
+                              else {
+                                    seenSignatures.insert(sig);
+                                    }
                               }
                         }
                   }
+
+            optimizeToolResponses();
+            recalcTokens();
+
+            // We have acted on the estimate; the reported context is stale now.
+            lastReportedContextTokens = 0;
             }
 
-      optimizeToolResponses();
-
-      // Update tokens reflecting the modifications
-      setActiveEntries(activeEntries);
-
-      // 1. Wenn der letzte Turn eine Zusammenfassung war:
-      // Wir setzen activeEntries auf 2 (Zusammenfassungs-Anfrage und Modell-Antwort).
-      if (summaryRequested) {
-            Debug("****Summary Requested");
-            size_t n = 0;
-            for (auto it = _data.rbegin(); it != _data.rend(); ++it) {
-                  n++;
-                  if (it->content.value("role", "") == "user")
-                        break;
-                  }
-            activeEntries    = n;
-            summaryRequested = false;
-            setActiveEntries(activeEntries);
-            return false;
-            }
-
-      // 2. Klassisches Rolling Window mit Berücksichtigung von Größe (totalTokens) und Anzahl (maxEntries)
-      //    Safety: never trim below minEntries to guarantee the model always has
-      //    some context, even when no "user" boundary is found.
+      // Rolling window: shrink the active window until both the message cap and
+      // the token budget are satisfied, staying above minEntries and always
+      // cutting at a "user" turn boundary so turns stay coherent.
       size_t n = activeEntries;
-      while ((activeEntries > maxEntries || totalTokens > criticalTokenCount) && activeEntries > minEntries) {
+      while ((activeEntries > maxEntries || effectiveTokens() > budget) &&
+             activeEntries > minEntries) {
             activeEntries--;
             while (activeEntries > minEntries) {
                   size_t idx    = _data.size() - activeEntries;
@@ -310,26 +427,29 @@ bool Session::trim() {
                         break;
                   activeEntries--;
                   }
-            // Recalculate total tokens for the new active window
-            setActiveEntries(activeEntries);
+            recalcTokens();
+            // Once we have trimmed, our own estimate is authoritative until the
+            // provider reports the new (smaller) context.
+            lastReportedContextTokens = 0;
             }
-      if (n != activeEntries)
-            Debug("****Reduced History from {} to {} entries", n, activeEntries);
 
-      return summaryRequested;
+      setActiveEntries(activeEntries); // recompute + single tokensChanged signal
+
+      if (n != activeEntries)
+            Debug("****Reduced History from {} to {} entries ({} tokens)", n, activeEntries,
+                totalTokens);
       }
 
 //---------------------------------------------------------
 //   addResult
 //---------------------------------------------------------
 
-bool Session::addResult(const json& content, size_t tokens) {
+void Session::addResult(const json& content, size_t tokens) {
+      if (tokens == 0)
+            tokens = estimateTokens(content);
       _data.push_back({content, tokens});
-      totalTokens += tokens;
       activeEntries++;
-      bool needSummary = trim();
-      emit tokensChanged(totalTokens);
-      return needSummary;
+      trim(); // recomputes totalTokens, shrinks tool outputs and/or the window
       }
 
 //---------------------------------------------------------
@@ -339,19 +459,11 @@ bool Session::addResult(const json& content, size_t tokens) {
 void Session::setHistory(const json& h) {
       clear();
       for (const auto& item : h) {
-            // Approximation: 4 chars per token
-            size_t tokens = 0;
-            if (item.contains("parts")) {
-                  for (const auto& part : item["parts"])
-                        if (part.contains("text"))
-                              tokens += part["text"].get<std::string>().length() / 4;
-                  }
+            size_t tokens = estimateTokens(item);
             _data.push_back({item, tokens});
-            // note: totalTokens will be recomputed by the caller using setActiveEntries,
-            // or we assume all are active initially for backward compatibility
-            totalTokens += tokens;
-            activeEntries++;
             }
+      activeEntries = _data.size();
+      recalcTokens();
       emit tokensChanged(totalTokens);
       }
 
@@ -360,15 +472,8 @@ void Session::setHistory(const json& h) {
 //---------------------------------------------------------
 
 void Session::setActiveEntries(size_t a) {
-      activeEntries   = std::min(a, _data.size());
-      totalTokens     = 0;
-      size_t startIdx = _data.size() - activeEntries;
-
-      if (startIdx > 0 && !_data.empty())
-            totalTokens += _data[0].tokens;
-
-      for (size_t i = startIdx; i < _data.size(); ++i)
-            totalTokens += _data[i].tokens;
+      activeEntries = std::min(a, _data.size());
+      recalcTokens();
       emit tokensChanged(totalTokens);
       }
 
@@ -380,8 +485,12 @@ json Session::getActiveEntries() const {
       json arr        = json::array();
       size_t startIdx = _data.size() > activeEntries ? _data.size() - activeEntries : 0;
 
-      // Always include the very first user request if history is truncated
-      if (startIdx > 0 && !_data.empty())
+      // Always include the very first request if history is truncated — but only
+      // when it is a "user" message. Injecting a tool result at the head would
+      // produce an invalid conversation for Anthropic/OpenAI (tool result without
+      // a preceding tool_use).
+      if (startIdx > 0 && !_data.empty() &&
+          _data[0].content.value("role", "") == "user")
             arr.push_back(_data[0].content);
 
       for (size_t i = startIdx; i < _data.size(); ++i)
@@ -430,10 +539,14 @@ json Session::getActiveEntries() const {
 //---------------------------------------------------------
 
 void Session::addRequest(json content, size_t tokens) {
+      if (tokens == 0)
+            tokens = estimateTokens(content);
       _data.push_back({content, tokens});
-      totalTokens += tokens;
       activeEntries++;
-      emit tokensChanged(totalTokens);
+      // Also trim on requests so a long tool loop (which only issues addRequest)
+      // cannot grow the context unbounded — inside the loop trim() is limited to
+      // shrinking oversized tool outputs (see trim()).
+      trim();
       }
 
 //---------------------------------------------------------
@@ -442,9 +555,11 @@ void Session::addRequest(json content, size_t tokens) {
 
 void Session::clear() {
       _data.clear();
-      totalTokens   = 0;
-      activeEntries = 0;
-      savedEntries  = 0;
+      totalTokens               = 0;
+      lastReportedContextTokens = 0;
+      activeEntries             = 0;
+      savedEntries              = 0;
+      _toolLoopActive           = false;
       emit tokensChanged(totalTokens);
       }
 

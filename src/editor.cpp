@@ -10,52 +10,54 @@
 //=============================================================================
 
 #include <QApplication>
-#include <QTreeView>
-#include <QFileSystemModel>
-#include <QHeaderView>
-#include <QMainWindow>
 #include <QBoxLayout>
-#include <QToolBar>
 #include <QClipboard>
+#include <QComboBox>
 #include <QCompleter>
+#include <QDataStream>
 #include <QDir>
 #include <QFile>
-#include <QComboBox>
+#include <QFileSystemModel>
+#include <QHeaderView>
+#include <QKeyEvent>
 #include <QLabel>
+#include <QListWidget>
+#include <QMainWindow>
+#include <QMetaType>
+#include <QPainter>
+#include <QProgressBar>
 #include <QScrollBar>
 #include <QShortcut>
 #include <QSplitter>
 #include <QStackedWidget>
+#include <QStandardPaths>
 #include <QStatusBar>
+#include <QStringList>
 #include <QTextBrowser>
 #include <QTimer>
+#include <QToolBar>
 #include <QToolButton>
-#include <QKeyEvent>
-#include <QStringList>
-#include <QListWidget>
-#include <QProgressBar>
-#include <QMetaType>
-#include <QDataStream>
-#include <QPainter>
-#include <QStandardPaths>
+#include <QTime>
+#include <QTreeView>
 
 #include <functional>
-#include <thread>
 #include <vector>
 
+#include <cstdlib>
+#include <dirent.h>
+
+#include "agent.h"
+#include "completion.h"
 #include "editor.h"
 #include "editwin.h"
 #include "file.h"
 #include "kontext.h"
-#include "lsclient.h"
 #include "logger.h"
-#include "undo.h"
-#include "agent.h"
-#include "webview.h"
-#include "completion.h"
-#include "textstyle.h"
+#include "lsclient.h"
 #include "session.h"
-// #include "screenshot.h"
+#include "textstyle.h"
+#include "undo.h"
+#include "webview.h"
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -86,14 +88,18 @@ bool ProjectFileProxyModel::lessThan(const QModelIndex& left, const QModelIndex&
       if (leftIsDir && rightIsDir) {
             // Beide sind Verzeichnisse -> alphabetisch nach Name
             return QString::compare(left.data(QFileSystemModel::FileNameRole).toString(),
-                                    right.data(QFileSystemModel::FileNameRole).toString(),
-                                    Qt::CaseInsensitive) < 0;
+                       right.data(QFileSystemModel::FileNameRole).toString(), Qt::CaseInsensitive) < 0;
             }
 
-      // Beide sind Dateien -> erst nach Extension, dann nach Name
       QString leftName  = left.data(QFileSystemModel::FileNameRole).toString();
       QString rightName = right.data(QFileSystemModel::FileNameRole).toString();
 
+      // beide sind Dateien
+#if 1
+      // sortiere nur nach Namen
+      return QString::compare(leftName, rightName, Qt::CaseInsensitive) < 0;
+#else
+      // sortiere erst nach Extension, dann nach Name
       int leftDotPos   = leftName.lastIndexOf(".");
       int rightDotPos  = rightName.lastIndexOf(".");
       QString leftExt  = (leftDotPos != -1) ? leftName.mid(leftDotPos) : QString();
@@ -117,6 +123,7 @@ bool ProjectFileProxyModel::lessThan(const QModelIndex& left, const QModelIndex&
       QString leftBase  = (leftDotPos != -1) ? leftName.left(leftDotPos) : leftName;
       QString rightBase = (rightDotPos != -1) ? rightName.left(rightDotPos) : rightName;
       return QString::compare(leftBase, rightBase, Qt::CaseInsensitive) < 0;
+#endif
       }
 
 //---------------------------------------------------------
@@ -136,8 +143,8 @@ static QPixmap tintPixmap(const QPixmap& src, const QColor& color) {
 //   createStatefulIcon
 //---------------------------------------------------------
 
-QIcon Editor::createStatefulIcon(const QString& svgPath, const QColor& normalColor, const QColor& hoverColor,
-                                 const QColor& checkedColor) {
+QIcon Editor::createStatefulIcon(
+    const QString& svgPath, const QColor& normalColor, const QColor& hoverColor, const QColor& checkedColor) {
       QIcon icon;
       QPixmap basePixmap = QIcon(svgPath).pixmap(24, 24);
 
@@ -232,8 +239,8 @@ std::map<Cmd, ShortcutConfig> Editor::_shortcuts = {
          {           Cmd::CMD_SCREENSHOT,       {"CMD_SCREENSHOT", "Screen Shot", "Ctrl + O, Ctrl + O, Ctrl + P"}},
          {            Cmd::CMD_LINK_BACK,                           {"CMD_LINK_BACK", "Link Back", "Ctrl + PgUp"}},
          {         Cmd::CMD_LINK_FORWARD,                   {"CMD_LINK_FORWARD", "Link Forward", "Ctrl + PgDown"}},
-         {           Cmd::CMD_SAVE_STATE,             {"CMD_SAVE_STATE", "Save Editor State", "Ctrl + K, Ctrl + S"}},
-         {        Cmd::CMD_RESTORE_STATE,        {"CMD_RESTORE_STATE", "Restore Editor State", "Ctrl + K, Ctrl + R"}},
+         {           Cmd::CMD_SAVE_STATE,           {"CMD_SAVE_STATE", "Save Editor State", "Ctrl + K, Ctrl + S"}},
+         {        Cmd::CMD_RESTORE_STATE,     {"CMD_RESTORE_STATE", "Restore Editor State", "Ctrl + K, Ctrl + R"}},
       };
 
 //---------------------------------------------------------
@@ -350,6 +357,37 @@ void Editor::updateStyle() {
       }
 
 //---------------------------------------------------------
+//   countOpenFileDescriptors
+//    Debug helper for the "Too many open files" investigation:
+//    counts the open file descriptors of the current process.
+//
+//    Notes on /proc/self/fd (verified on Linux):
+//    - readdir() also returns "." and ".." entries, which
+//      must be skipped.
+//    - The directory handle itself shows up in the listing;
+//      it is excluded so the count reflects only the fds
+//      which were already open when we started counting.
+//---------------------------------------------------------
+
+static int countOpenFileDescriptors() {
+      DIR* dir = opendir("/proc/self/fd");
+      if (!dir)
+            return -1;
+
+      const int self = dirfd(dir);
+      int count      = 0;
+      while (const dirent* entry = readdir(dir)) {
+            if (entry->d_name[0] == '.') // skip "." and ".."
+                  continue;
+            if (std::atoi(entry->d_name) == self)
+                  continue;
+            ++count;
+            }
+      closedir(dir);
+      return count;
+      }
+
+//---------------------------------------------------------
 //   Editor
 //---------------------------------------------------------
 
@@ -362,7 +400,6 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
 
       bool found = false;
       for (const auto& project : _projects) {
-            Debug("{} {}", _projectRoot, project);
             if (_projectRoot == project) {
                   found = true;
                   break;
@@ -383,36 +420,36 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
          Action(getSC(Cmd::CMD_CHAR_RIGHT), [this] { kontext()->moveCursorRel(1, 0); }),
          Action(getSC(Cmd::CMD_CHAR_LEFT), [this] { kontext()->moveCursorRel(-1, 0); }),
          Action(getSC(Cmd::CMD_LINE_UP),
-                [this] {
-                      if (completionsPopup->isVisible()) {
-                            completionsPopup->up();
-                            return;
-                            }
-                      kontext()->moveCursorRel(0, -1);
-                      }),
+             [this] {
+                   if (completionsPopup->isVisible()) {
+                         completionsPopup->up();
+                         return;
+                         }
+                   kontext()->moveCursorRel(0, -1);
+                   }),
          Action(getSC(Cmd::CMD_LINE_DOWN),
-                [this] {
-                      if (completionsPopup->isVisible()) {
-                            completionsPopup->down();
-                            return;
-                            }
-                      kontext()->moveCursorRel(0, 1);
-                      }),
+             [this] {
+                   if (completionsPopup->isVisible()) {
+                         completionsPopup->down();
+                         return;
+                         }
+                   kontext()->moveCursorRel(0, 1);
+                   }),
          Action(getSC(Cmd::CMD_LINE_START), [this] { kontext()->moveCursorAbs(0, -1); }),
          Action(getSC(Cmd::CMD_LINE_END),
-                [this] { kontext()->moveCursorAbs(kontext()->currentLine().size(), -1); }),
+             [this] { kontext()->moveCursorAbs(kontext()->currentLine().size(), -1); }),
          Action(getSC(Cmd::CMD_LINE_TOP), [this] { kontext()->moveCursorTopLine(); }),
          Action(getSC(Cmd::CMD_LINE_BOTTOM), [this] { kontext()->moveCursorBottomLine(); }),
          Action(getSC(Cmd::CMD_PAGE_UP),
-                [this] {
-                      int n = (_editWidget->rows() * 3) / 4;
-                      kontext()->moveCursorRel(0, -n, MoveType::Page);
-                      }),
+             [this] {
+                   int n = (_editWidget->rows() * 3) / 4;
+                   kontext()->moveCursorRel(0, -n, MoveType::Page);
+                   }),
          Action(getSC(Cmd::CMD_PAGE_DOWN),
-                [this] {
-                      int n = (_editWidget->rows() * 3) / 4;
-                      kontext()->moveCursorRel(0, n, MoveType::Page);
-                      }),
+             [this] {
+                   int n = (_editWidget->rows() * 3) / 4;
+                   kontext()->moveCursorRel(0, n, MoveType::Page);
+                   }),
          Action(getSC(Cmd::CMD_FILE_BEGIN), [this] { kontext()->moveCursorAbs(-1, 0); }),
          Action(getSC(Cmd::CMD_FILE_END), [this] { kontext()->moveCursorAbs(-1, kontext()->rows() - 1); }),
          Action(getSC(Cmd::CMD_WORD_LEFT), [this] { kontext()->movePrevWord(); }),
@@ -435,10 +472,10 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
          Action(getSC(Cmd::CMD_RUBOUT), [this] { rubout(); }),
          Action(getSC(Cmd::CMD_CHAR_DELETE), [this] { deleteChar(); }),
          Action(getSC(Cmd::CMD_INSERT_LINE),
-                [this] {
-                      kontext()->moveCursorAbs(kontext()->currentLine().size(), -1);
-                      input("\n");
-                      }),
+             [this] {
+                   kontext()->moveCursorAbs(kontext()->currentLine().size(), -1);
+                   input("\n");
+                   }),
 
          Action(getSC(Cmd::CMD_TAB), [this] { insertTab(); }),
          Action(getSC(Cmd::CMD_PICK), [this] { pick(); }),
@@ -452,12 +489,12 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
          Action(getSC(Cmd::CMD_FORMAT), [this] { formatting(); }),
          Action(getSC(Cmd::CMD_VIEW_FUNCTIONS), [this] { toggleViewMode(); }),
          Action(getSC(Cmd::CMD_ANNOTATIONS),
-                [this] {
-                      if (kontext()->viewMode() == ViewMode::Annotations)
-                            setViewMode(ViewMode::File);
-                      else
-                            setViewMode(ViewMode::Annotations);
-                      }),
+             [this] {
+                   if (kontext()->viewMode() == ViewMode::Annotations)
+                         setViewMode(ViewMode::File);
+                   else
+                         setViewMode(ViewMode::Annotations);
+                   }),
          Action(getSC(Cmd::CMD_SEARCH_NEXT), [this] { searchNext(); }),
          Action(getSC(Cmd::CMD_SEARCH_PREV), [this] { searchPrev(); }),
          Action(getSC(Cmd::CMD_DELETE_WORD), [this] { deleteNextWord(); }),
@@ -472,13 +509,14 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
          Action(getSC(Cmd::CMD_TOGGLE_AI), [this] { hover(); }),
          Action(getSC(Cmd::CMD_TOGGLE_GIT), [this] { _gitButton->setChecked(!_gitButton->isChecked()); }),
          Action(getSC(Cmd::CMD_TOGGLE_PROJECT),
-                [this] { _projectButton->setChecked(!_projectButton->isChecked()); }),
-         Action(getSC(Cmd::CMD_TOGGLE_CONFIG),
-                [this] { configButton->setChecked(!configButton->isChecked()); }),
+             [this] { _projectButton->setChecked(!_projectButton->isChecked()); }),
+         Action(
+             getSC(Cmd::CMD_TOGGLE_CONFIG), [this] { configButton->setChecked(!configButton->isChecked()); }),
          Action(getSC(Cmd::CMD_FOLD_ALL), [this] { foldAll(); }),
          Action(getSC(Cmd::CMD_UNFOLD_ALL), [this] { unfoldAll(); }),
          Action(getSC(Cmd::CMD_FOLD_TOGGLE), [this] { foldToggle(); }),
-         //             Action(getSC(Cmd::CMD_SEARCH_LIST, [this] { setViewMode(ViewMode::SearchResults); }),
+         //             Action(getSC(Cmd::CMD_SEARCH_LIST, [this] {
+         //             setViewMode(ViewMode::SearchResults); }),
          Action(getSC(Cmd::CMD_RENAME), [this] { rename(); }),
          Action(getSC(Cmd::CMD_SCREENSHOT), [this] { screenshot(); }),
          Action(getSC(Cmd::CMD_SAVE_STATE), [this] { saveEditorState(); }),
@@ -625,7 +663,7 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       _projectComboBox = new QComboBox(_projectPanel);
       projectLayout->addWidget(_projectComboBox);
       connect(_projectComboBox, &QComboBox::activated, this,
-              [this](int index) { switchProject(_projectComboBox->itemText(index)); });
+          [this](int index) { switchProject(_projectComboBox->itemText(index)); });
       _projectTreeView = new QTreeView(_projectPanel);
       _projectModel    = new QFileSystemModel(this);
       _projectModel->setFilter(QDir::NoDotAndDotDot | QDir::AllEntries);
@@ -854,6 +892,24 @@ Editor::Editor(int argc, char** argv) : QMainWindow(nullptr) {
       lsUpdateTimer = new QTimer(this);
       lsUpdateTimer->setSingleShot(true);
       connect(lsUpdateTimer, &QTimer::timeout, [this] { kontext()->file()->updateOutline(); });
+
+#if 0
+      // Debug helper: trace the number of open file descriptors every 2 seconds.
+      // Background: "QProcess: Cannot create pipe (Too many open files)" crash.
+      // Output is flushed immediately by the logger so the last lines survive
+      // the SIGTRAP/qFatal crash. The tick counter is monotonically
+      // increasing (one tick per trace, ≈2s apart) to make correlation with
+      // the session history easier.
+      fdWatchTimer = new QTimer(this);
+      fdWatchBase  = countOpenFileDescriptors();
+      connect(fdWatchTimer, &QTimer::timeout, [this] {
+            const int fds   = countOpenFileDescriptors();
+            const int delta = fds - fdWatchBase;
+            Debug("fdwatch: {} tick={} open_fds={} (delta since start={})", QTime::currentTime().toString(),
+                ++fdWatchTicks, fds, delta);
+            });
+      fdWatchTimer->start(2000);
+#endif
 
       _editWidget->setFocus();
       _editWidget->installEventFilter(kl);
@@ -1090,37 +1146,40 @@ void Editor::initEnterWidget() {
          Action(getSC(Cmd::CMD_ENTER), [] {}),
 
          Action(getSC(Cmd::CMD_ENTER_ADD_FILE),
-                [this] {
-                      QString fn = enterLine->text();
-                      if (!fn.startsWith("/")) {
-                            QFileInfo fi(kontext()->file()->fi());
-                            fn = fi.absolutePath() + "/" + fn;
-                            }
-                      addFile(fn);
-                      setCurrentKontext(_kontextList.size() - 1);
-                      update();
-                      }),
+             [this] {
+                   QString fn = enterLine->text();
+                   if (!fn.startsWith("/")) {
+                         QFileInfo fi(kontext()->file()->fi());
+                         fn = fi.absolutePath() + "/" + fn;
+                         }
+                   addFile(fn);
+                   setCurrentKontext(_kontextList.size() - 1);
+                   update();
+                   }),
          Action(getSC(Cmd::CMD_ENTER_SEARCH),
-                [this] {
-                      startCmd();
-                      search(enterLine->text());
-                      endCmd();
-                      }),
+             [this] {
+                   startCmd();
+                   search(enterLine->text());
+                   endCmd();
+                   }),
          Action(getSC(Cmd::CMD_ENTER_CREATE_FUNCTION),
-                [this] {
-                      startCmd();
-                      kontext()->createFunction(enterLine->text());
-                      endCmd();
-                      }),
+             [this] {
+                   startCmd();
+                   kontext()->createFunction(enterLine->text());
+                   endCmd();
+                   }),
          Action(getSC(Cmd::CMD_ENTER_GOTO_LINE),
-                [this] {
-                      kontext()->gotoLine(enterLine->text());
-                      update();
-                      }),
-         /*         Action(getSC(Cmd::CMD_CHAR_LEFT),  [this] { enterLine->cursorBackward(false, 1); }),
-         Action(getSC(Cmd::CMD_WORD_LEFT),  [this] { enterLine->cursorWordBackward(false); }),
-         Action(getSC(Cmd::CMD_WORD_RIGHT), [this] { enterLine->cursorWordForward(false); }),
-         Action(getSC(Cmd::CMD_CHAR_RIGHT), [this] { enterLine->cursorForward(false, 1); })
+             [this] {
+                   kontext()->gotoLine(enterLine->text());
+                   update();
+                   }),
+         /*         Action(getSC(Cmd::CMD_CHAR_LEFT),  [this] {
+      enterLine->cursorBackward(false, 1); }), Action(getSC(Cmd::CMD_WORD_LEFT),
+      [this] { enterLine->cursorWordBackward(false); }),
+      Action(getSC(Cmd::CMD_WORD_RIGHT), [this] {
+      enterLine->cursorWordForward(false); }),
+      Action(getSC(Cmd::CMD_CHAR_RIGHT), [this] {
+      enterLine->cursorForward(false, 1); })
 */
             };
 
@@ -1460,7 +1519,8 @@ void Editor::quitCmd() {
 //---------------------------------------------------------
 
 void Editor::saveAll() {
-      // weird code: f->save() might expand macros and therefore needs a valid undo() stack
+      // weird code: f->save() might expand macros and therefore needs a valid
+      // undo() stack
       kontext()->file()->undo()->endMacro();
       for (auto f : files) {
             f->undo()->beginMacro();
@@ -1584,23 +1644,23 @@ void Editor::saveEditorState() {
             agentWidth = splitter->sizes()[splitter->indexOf(_sidePanelStack)];
 
       json j;
-      j["width"]	        = width();
-      j["height"]	       = height();
-      j["x"]               = x();
-      j["y"]               = y();
+      j["width"]  = width();
+      j["height"] = height();
+      j["x"]      = x();
+      j["y"]      = y();
 
       QByteArray geom = saveGeometry();
-      j["geometry"]	 = geom.toHex().toStdString();
+      j["geometry"]   = geom.toHex().toStdString();
 
       QByteArray splitterState = splitter->saveState();
       j["splitterState"]       = splitterState.toHex().toStdString();
 
-      j["aiVisible"]	  = _agent && _agent->isVisible();
-      j["gitVisible"]	 = _gitButton->isChecked();
+      j["aiVisible"]      = _agent && _agent->isVisible();
+      j["gitVisible"]     = _gitButton->isChecked();
       j["projectVisible"] = _projectButton->isChecked();
-      j["gitWidth"]	     = gitWidth;
-      j["projectWidth"]	 = projectWidth;
-      j["agentWidth"]	   = agentWidth;
+      j["gitWidth"]       = gitWidth;
+      j["projectWidth"]   = projectWidth;
+      j["agentWidth"]     = agentWidth;
 
       QString path = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
       QDir().mkpath(path);
@@ -1621,8 +1681,8 @@ void Editor::saveEditorState() {
 //---------------------------------------------------------
 
 void Editor::restoreEditorState() {
-      QString path = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
-      path += "/editor_state.json";
+      QString path  = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+      path         += "/editor_state.json";
       std::ifstream fs(path.toStdString());
       if (!fs.is_open()) {
             msg("No saved editor state found");
@@ -1638,56 +1698,56 @@ void Editor::restoreEditorState() {
                   restoreGeometry(geom);
                   }
             if (j.contains("splitterState")) {
-                  QByteArray sState = QByteArray::fromHex(
-                      QByteArray::fromStdString(j["splitterState"].get<std::string>()));
+                  QByteArray sState =
+                      QByteArray::fromHex(QByteArray::fromStdString(j["splitterState"].get<std::string>()));
                   splitter->restoreState(sState);
                   }
 
-            bool aiVis		= j.value("aiVisible", false);
-            bool gitVis		= j.value("gitVisible", false);
-            bool projVis	= j.value("projectVisible", false);
-            int gw			= j.value("gitWidth", 300);
-            int pw			= j.value("projectWidth", 300);
-            int aw			= j.value("agentWidth", 500);
+            bool aiVis   = j.value("aiVisible", false);
+            bool gitVis  = j.value("gitVisible", false);
+            bool projVis = j.value("projectVisible", false);
+            int gw       = j.value("gitWidth", 300);
+            int pw       = j.value("projectWidth", 300);
+            int aw       = j.value("agentWidth", 500);
 
-            gitWidth		= gw;
-            projectWidth	= pw;
-            agentWidth	= aw;
+            gitWidth     = gw;
+            projectWidth = pw;
+            agentWidth   = aw;
 
-            {
-            const QSignalBlocker blocker(_projectButton);
-            _projectButton->setChecked(projVis);
-            _projectPanel->setVisible(projVis);
-            if (projVis) {
-                  QList<int> sizes = splitter->sizes();
-                  sizes[splitter->indexOf(_projectPanel)] = projectWidth;
-                  splitter->setSizes(sizes);
-                  updateProjectPanel();
+                  {
+                  const QSignalBlocker blocker(_projectButton);
+                  _projectButton->setChecked(projVis);
+                  _projectPanel->setVisible(projVis);
+                  if (projVis) {
+                        QList<int> sizes                        = splitter->sizes();
+                        sizes[splitter->indexOf(_projectPanel)] = projectWidth;
+                        splitter->setSizes(sizes);
+                        updateProjectPanel();
+                        }
                   }
-            }
-            {
-            const QSignalBlocker blocker(aiButton);
-            aiButton->setChecked(aiVis);
-            if (aiVis) {
-                  _sidePanelStack->setVisible(true);
-                  _sidePanelStack->setCurrentWidget(agent());
-                  QList<int> sizes = splitter->sizes();
-                  sizes[splitter->indexOf(_sidePanelStack)] = agentWidth;
-                  splitter->setSizes(sizes);
+                  {
+                  const QSignalBlocker blocker(aiButton);
+                  aiButton->setChecked(aiVis);
+                  if (aiVis) {
+                        _sidePanelStack->setVisible(true);
+                        _sidePanelStack->setCurrentWidget(agent());
+                        QList<int> sizes                          = splitter->sizes();
+                        sizes[splitter->indexOf(_sidePanelStack)] = agentWidth;
+                        splitter->setSizes(sizes);
+                        }
                   }
-            }
-            {
-            const QSignalBlocker blocker(_gitButton);
-            _gitButton->setChecked(gitVis);
-            if (gitVis) {
-                  _sidePanelStack->setVisible(true);
-                  _sidePanelStack->setCurrentWidget(gitPanel());
-                  QList<int> sizes = splitter->sizes();
-                  sizes[splitter->indexOf(_sidePanelStack)] = gitWidth;
-                  splitter->setSizes(sizes);
-                  updateGitHistory();
+                  {
+                  const QSignalBlocker blocker(_gitButton);
+                  _gitButton->setChecked(gitVis);
+                  if (gitVis) {
+                        _sidePanelStack->setVisible(true);
+                        _sidePanelStack->setCurrentWidget(gitPanel());
+                        QList<int> sizes                          = splitter->sizes();
+                        sizes[splitter->indexOf(_sidePanelStack)] = gitWidth;
+                        splitter->setSizes(sizes);
+                        updateGitHistory();
+                        }
                   }
-            }
 
             // if neither AI nor Git is visible, hide the side panel stack
             if (!aiVis && !gitVis)
@@ -2887,6 +2947,7 @@ void Editor::initFont() {
 
 void Editor::showEvent(QShowEvent* event) {
       QMainWindow::showEvent(event);
+
       if (_gitPanel && _gitPanel->isVisible())
             updateGitHistory();
       }

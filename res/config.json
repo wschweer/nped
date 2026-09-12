@@ -188,15 +188,10 @@
                         "api",
                         "baseUrl",
                         "apiKey",
-                        "supportsThinking",
                         "stream",
-                        "temperature",
-                        "topP",
-                        "topK",
                         "maxTokens",
-                        "num_ctx",
-                        "num_predict",
-                        "minP"
+                        "configuration",
+                        "protected"
                   ],
                   "modelIdentifier": {
                         "type": "string",
@@ -221,43 +216,25 @@
                               "openai"
                         ]
                   },
-                  "supportThinking": {
-                        "type": "string",
-                        "label": "Support Thinking"
-                  },
-                  "temperature": {
-                        "type": "string",
-                        "label": "Temperature"
-                  },
-                  "topP": {
-                        "type": "string",
-                        "label": "topP"
-                  },
-                  "topK": {
-                        "type": "string",
-                        "label": "topK"
-                  },
                   "maxTokens": {
-                        "type": "string",
-                        "label": "max Tokens"
+                        "type": "int",
+                        "label": "max Tokens",
+                        "min": -1,
+                        "max": 2000000
                   },
-                  "num_ctx": {
-                        "type": "string",
-                        "label": "num_ctx"
-                  },
-                  "numPredict": {
-                        "type": "string",
-                        "label": "num Predict"
+                  "configuration": {
+                        "type": "textarea",
+                        "label": "Configuration (JSON)"
                   },
                   "stream": {
                         "type": "bool",
                         "label": "Stream"
                   },
-                  "readOnly": false,
-                  "supportsThinking": {
+                  "protected": {
                         "type": "bool",
-                        "label": "Supports Thinking"
+                        "label": "Protected (Sandbox)"
                   },
+                  "readOnly": false,
                   "title": "AI - Models"
             },
             {

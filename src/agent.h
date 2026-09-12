@@ -23,10 +23,15 @@
 // #include <map>
 #include <QVBoxLayout>
 #include <QDateTime>
+#include <QProcess>
+#include <atomic>
+#include <functional>
+#include <mutex>
 
 #include "logger.h"
 #include "types.h"
 #include "llm.h"
+#include "llminfo.h"
 #include "dashboard.h"
 #include "model.h"
 #include "attachmentbutton.h"
@@ -77,7 +82,7 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
       void dragEnterEvent(QDragEnterEvent* e) override {
             const QMimeData* m = e->mimeData();
             Debug("[DropAware] dragEnterEvent — hasImage: {} hasUrls: {} formats: {}", m->hasImage(),
-                  m->hasUrls(), m->formats());
+                m->hasUrls(), m->formats());
             if (m->hasImage() || (m->hasUrls() && !m->urls().isEmpty()))
                   e->acceptProposedAction();
             else
@@ -94,7 +99,7 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
       void dropEvent(QDropEvent* e) override {
             const QMimeData* m = e->mimeData();
             Debug("[DropAware] dropEvent — hasImage: {} hasUrls: {} formats: {}", m->hasImage(), m->hasUrls(),
-                  m->formats());
+                m->formats());
             QImage image;
             if (m->hasImage()) {
                   Debug("[DropAware] dropEvent — extracting image from imageData");
@@ -122,7 +127,7 @@ class DropAwarePlainTextEdit : public QPlainTextEdit
                                           if (image.loadFromData(raw)) {
                                                 Debug("[DropAware] dropEvent — decoded data: URI image, "
                                                       "size: {}",
-                                                      image.size());
+                                                    image.size());
                                                 break;
                                                 }
                                           }
@@ -193,6 +198,9 @@ class Agent : public QWidget
       QString _agentRoleName;
       bool isRetrying {false};
       bool _stopRequested {false};
+      std::atomic<bool> _toolStopRequested {false}; ///< set by stop() to abort running tool
+      QProcess* _currentToolProcess {nullptr};      ///< currently running QProcess (for kill on stop)
+      std::mutex _toolProcessMutex;                 ///< protects _currentToolProcess
       int retryPause {2000};
       QToolButton* cannedPromptsButton {nullptr};
       QToolButton* addAttachmentButton {nullptr}; ///< "+" button to add attachments
@@ -206,6 +214,15 @@ class Agent : public QWidget
       std::string _manifestPlan;
       std::string _manifestBuild;
 
+      ///< Metadata discovered from the LM provider (Ollama), persisted between
+      ///< runs in llm_info.json and consulted by Session::contextBudget().
+      LlmInfoStore _llmInfo;
+
+      void mergeShowInfo(const QString& modelId, const json& j);
+      void fetchModelDetails(const QStringList& ids);
+      void fetchRuntimeContext();
+      void refreshRuntimeContext();
+
       // Hilfsfunktionen
       void processData();
       std::vector<json> getMCPTools() const;
@@ -214,20 +231,7 @@ class Agent : public QWidget
       void reinitSystemPrompt(); // Punkt 4: implementiert
       QString truncateOutput(const QString& text, int maxChars);
 
-      QString handleRunBuildCommand(const json& args);
-      QString handleFetchWebDocumentation(const json& args);
-      QString handleGetGitStatus(const json& args);
-      QString handleGetGitDiff(const json& args);
-      QString handleGetGitLog(const json& args);
       string formatSource(const QString& path);
-      QString handleCreateGitCommit(const json& args);
-      QString handleSearchProject(const json& args);
-      QString handleFindSymbol(const json& args);
-      QString handleReadFile(const json& args);
-      QString handleReadFileLines(const json& args);
-      QString handleListDirectory(const json& args);
-      QString handleWriteFile(const json& args);
-      QString handleReplaceInFile(const json& args);
 
       std::string extractVideoFrames(const QString& video_file, int start_number, int count, double interval);
 
@@ -265,6 +269,7 @@ class Agent : public QWidget
 
     private slots:
       void fetchModels();
+      void refreshLlmInfo();
       void handleChatReadyRead();
       void handleChatFinished();
       void updateSpinner();
@@ -300,15 +305,26 @@ class Agent : public QWidget
       bool filterToolMessages = true;
       bool filterThoughts     = false;
       std::string getManifest() { return agentRole()->manifest.toStdString(); }
+      std::string getProjectInstructions() { return _editor->getProjectInstructions(); }
       static QString configPath();
       QString currentModel() const { return model.name; }
+      const Model& currentModelObj() const { return model; }
+      ///< Discovered provider metadata for a model (invalid if unknown).
+      LlmInfo llmInfoFor(const QString& modelId) const { return _llmInfo.get(modelId); }
+      ///< Discovered provider metadata for the currently selected model.
+      LlmInfo currentLlmInfo() const { return _llmInfo.get(model.modelIdentifier); }
       void setCurrentModel(const QString& s, bool clearChat = true);
       bool isExecuteMode() const { return agentRole()->rw; }
+      bool isProtected() const {
+            return model.protected_;
+            } ///< true: tools run in sandbox; false: tools run on host
       bool isWorking() const;
       void logContent(const json& part, std::string& text, std::string& thought);
       std::string formatToolCall(const std::string& name, const json& args, const std::string& result = "");
       std::string executeTool(const std::string& functionName, const json& arguments);
-
+      std::string executeToolImpl(const std::string& functionName, const json& arguments);
+      std::string runInGuiThread(std::function<std::string()> fn);
+      bool isToolStopped() const { return _toolStopRequested.load(); }
       // Output-Limits für LLM-Context-Window (Punkt 11)
       static constexpr int kBuildLogMaxChars  = 20000 * 10;
       static constexpr int kWebFetchMaxChars  = 80000;
@@ -330,4 +346,5 @@ class Agent : public QWidget
       McpManager* mcpManager() const { return _mcpManager; }
       void startAgent();
       void stopAgent();
+      void ensureMcpServersReady();
       };

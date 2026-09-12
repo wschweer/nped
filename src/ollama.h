@@ -33,6 +33,11 @@ class OllamaClient : public LLMClient
       std::atomic<bool> _abort {false};
       std::thread _thread;
 
+      ///< Token accounting reported by Ollama for the last request
+      ///< (prompt_eval_count = real size of the request context).
+      size_t _lastPromptEvalCount {0};
+      size_t _lastEvalCount {0};
+
       void processTools();
 
     public:

@@ -44,6 +44,7 @@ class File : public QObject
       bool _readOnly {false};
       UndoStack* _undo;
       QFile f;
+      QDateTime _modificationTime;  // when file was read
 
       json _symbols;
 
@@ -154,4 +155,7 @@ class File : public QObject
       void clearGitHistory();
       qint64 gitHistoryTimestamp() const { return _gitHistoryTimestamp; }
       void setGitHistoryTimestamp(qint64 ts) { _gitHistoryTimestamp = ts; }
+
+      QDateTime modificationTime() const { return _modificationTime; }
+      QDateTime onDiskModificationTime() const;
       };

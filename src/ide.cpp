@@ -57,3 +57,21 @@ bool Editor::initProject() {
             }
       return true;
       }
+
+//-------------------------------------------------------------------
+//   getProjectInstructions
+//    Read the file "NPED.md" from the project root.
+//    This file contains instructions for the LLM agent which are
+//    appended to the LLM-Manifest ("you are an c++ programmer...")
+//-------------------------------------------------------------------
+
+std::string Editor::getProjectInstructions() const {
+      QFile f(_projectRoot + "/NPED.md");
+      if (!f.open(QIODeviceBase::ReadOnly)) {
+            Debug("no NPED.md file");
+            return std::string();
+            }
+      auto ba = f.readAll();
+      f.close();
+      return ba.toStdString();
+      }

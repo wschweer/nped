@@ -78,8 +78,8 @@ void GeminiClient::sanitizeSchemaRecursive(json& schema, bool isRoot) {
             }
 
       // We only keep what's strictly necessary for a function declaration.
-      std::vector<std::string> allowedKeys = {"type",     "description", "properties",
-                                              "required", "items",       "enum"};
+      std::vector<std::string> allowedKeys = {
+         "type", "description", "properties", "required", "items", "enum"};
       for (auto it = schema.begin(); it != schema.end();) {
             if (it.value().is_null()) {
                   it = schema.erase(it);
@@ -145,9 +145,9 @@ json GeminiClient::prompt(QNetworkRequest* request) {
                   if (msg["content"].is_string())
                         msg["parts"] = json::array({{{"text", msg["content"]}}});
                   else
-                        msg["parts"] =
-                            json::array({{{"text", msg["content"].dump(-1, ' ', false,
-                                                                       json::error_handler_t::replace)}}});
+                        msg["parts"] = json::array(
+                                  {{{"text",
+                               msg["content"].dump(-1, ' ', false, json::error_handler_t::replace)}}});
                   msg.erase("content");
                   }
 
@@ -172,13 +172,20 @@ json GeminiClient::prompt(QNetworkRequest* request) {
             addMessage(msg);
             }
 
-      requestJson["contents"]         = contents;
-      requestJson["generationConfig"] = {
-               {"thinking_config",
-                {{"include_thoughts", true}, {"thinking_level", "MEDIUM"}}}, // LOW, MINIMAL, MEDIUM, HIGH
-               {    "temperature",                                     1.0}, // Reasoning-Modelle profitieren oft von etwas höherer Temperatur
-               {           "topP",                                    0.95}
-            };
+      requestJson["contents"] = contents;
+      // Generation config: sensible defaults, overridable per-model via the
+      // model's 'configuration' JSON (Gemini native key names).
+      const json cfg = model->configJson();
+      json generationConfig;
+      generationConfig["thinking_config"] = {
+               {"include_thoughts",     true},
+               {  "thinking_level", "MEDIUM"}
+            }; // LOW, MINIMAL, MEDIUM, HIGH
+      generationConfig["temperature"] = cfg.contains("temperature") ? cfg["temperature"] : json(1.0);
+      generationConfig["topP"]        = cfg.contains("topP") ? cfg["topP"] : json(0.95);
+      if (cfg.contains("top_k") && cfg["top_k"] >= 0.0)
+            generationConfig["topK"] = cfg["top_k"];
+      requestJson["generationConfig"] = generationConfig;
 
       currentContent.clear();
       _lastUsageMetadata.clear();
@@ -244,6 +251,8 @@ void GeminiClient::processTools() {
 
             std::string displayMsg;
             for (const auto& call : _currentToolCalls) {
+                  if (agent->isToolStopped())
+                        break;
                   if (!call.contains("functionCall")) {
                         Critical("ToolCall does not contain <functionCall>");
                         continue;
@@ -300,6 +309,16 @@ void GeminiClient::processTools() {
             agent->session()->addRequest(msg, 0);
             _currentToolCalls.clear();
 
+            // If the user pressed stop, inform the LLM.
+            if (agent->isToolStopped()) {
+                  json stopMsg;
+                  stopMsg["role"]  = "user";
+                  stopMsg["parts"] = json::array(
+                            {{{"text",
+                         "[Tool execution was stopped by the user. Remaining tool calls were skipped.]"}}});
+                  agent->session()->addRequest(stopMsg, 10);
+                  }
+
             try {
                   agent->sendMessage2();
                   }
@@ -338,21 +357,20 @@ void GeminiClient::dataFinished() {
       json responseContent = currentContent;
       currentContent.clear();
 
-      size_t totalTokens = 0;
+      // The reported totalTokenCount is the whole request context, not this
+      // message — store it for monitoring only.
       if (_lastUsageMetadata.contains("totalTokenCount"))
-            totalTokens = _lastUsageMetadata["totalTokenCount"].get<size_t>();
+            agent->session()->setReportedContextTokens(
+                _lastUsageMetadata["totalTokenCount"].get<size_t>());
 
       if (_currentToolCalls.empty()) {
-            // No tools: this is a final turn or a summary request
-            agent->session()->addResult(responseContent, totalTokens);
+            agent->session()->setToolLoopActive(false);
+            agent->session()->addResult(responseContent, 0);
             agent->stopAgent();
             }
       else {
-            // Tool calls detected: Add the assistant's call to history first
-            agent->session()->addRequest(responseContent, totalTokens);
-
-            // processTools() will execute the tools and internally call sendMessage2()
-            // to send the results back to the LLM.
+            agent->session()->setToolLoopActive(true);
+            agent->session()->addRequest(responseContent, 0);
             processTools();
             }
       }

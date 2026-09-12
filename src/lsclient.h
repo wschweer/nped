@@ -60,9 +60,9 @@ class LSclient : public QObject
 
       std::map<int, Callback> callbacks;
 
-      int stdinPipe[2], stdoutPipe[2], stderrPipe[2];
-      int stopFd;
-      std::thread* reader;
+      int stdinPipe[2] {-1, -1}, stdoutPipe[2] {-1, -1}, stderrPipe[2] {-1, -1};
+      int stopFd {-1};
+      std::thread* reader {nullptr};
       std::atomic<bool> running {false};
 
       LScapabilities scap; // server capabilities

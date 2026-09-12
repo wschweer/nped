@@ -81,8 +81,8 @@ void Gemini2Client::sanitizeSchemaRecursive(json& schema, bool isRoot) {
                   sanitizeSchemaRecursive(schema["items"], false);
             }
 
-      std::vector<std::string> allowedKeys = {"type",     "description", "properties",
-                                              "required", "items",       "enum"};
+      std::vector<std::string> allowedKeys = {
+         "type", "description", "properties", "required", "items", "enum"};
       for (auto it = schema.begin(); it != schema.end();) {
             if (it.value().is_null()) {
                   it = schema.erase(it);
@@ -128,10 +128,10 @@ json Gemini2Client::prompt(QNetworkRequest* request) {
             // MUST be a Content object, not a string
             requestJson["system_instruction"] = agent->getManifest();
 #if 0
-                                    {
-                                       { "role",                           "system"},
-                                       {"parts", {{{"text", agent->getManifest()}}}}
-                                    };
+                                                {
+                                                   { "role",                           "system"},
+                                                   {"parts", {{{"text", agent->getManifest()}}}}
+                                                };
 #endif
             }
       json inputParts    = json::array();
@@ -291,6 +291,8 @@ void Gemini2Client::processTools() {
 
             std::string displayMsg;
             for (const auto& call : _currentToolCalls) {
+                  if (agent->isToolStopped())
+                        break;
                   std::string callId = call.value("id", "");
                   std::string name   = call.value("name", "");
                   json args          = (call.contains("arguments") && call["arguments"].is_object())
@@ -312,11 +314,8 @@ void Gemini2Client::processTools() {
                         }
 
                   msg["parts"].push_back({
-                           {"function_result",
-                            {{"type", "function_result"},
-                             {"call_id", callId},
-                             {"name", name},
-                             {"result", result}}}
+                           {"function_result", {{"type", "function_result"}, {"call_id", callId}, {"name", name},
+                                                  {"result", result}}}
                         });
 
                   if (name == "extract_video_frames") {
@@ -347,6 +346,16 @@ void Gemini2Client::processTools() {
 
             agent->session()->addRequest(msg, 0);
             _currentToolCalls.clear();
+
+            // If the user pressed stop, inform the LLM.
+            if (agent->isToolStopped()) {
+                  json stopMsg;
+                  stopMsg["role"]  = "user";
+                  stopMsg["parts"] = json::array(
+                            {{{"text",
+                         "[Tool execution was stopped by the user. Remaining tool calls were skipped.]"}}});
+                  agent->session()->addRequest(stopMsg, 10);
+                  }
 
             try {
                   agent->sendMessage2();
@@ -407,12 +416,18 @@ void Gemini2Client::dataFinished() {
       else if (_lastUsageMetadata.contains("total_tokens"))
             totalTokens = _lastUsageMetadata["total_tokens"].get<size_t>();
 
+      // The reported usage is the whole request context, not this message —
+      // store it for monitoring only.
+      agent->session()->setReportedContextTokens(totalTokens);
+
       if (_currentToolCalls.empty()) {
-            agent->session()->addResult(responseContent, totalTokens);
+            agent->session()->setToolLoopActive(false);
+            agent->session()->addResult(responseContent, 0);
             agent->stopAgent();
             }
       else {
-            agent->session()->addRequest(responseContent, totalTokens);
+            agent->session()->setToolLoopActive(true);
+            agent->session()->addRequest(responseContent, 0);
             processTools();
             }
       }

@@ -26,14 +26,10 @@ struct Model {
       Q_PROPERTY(QString apiKey MEMBER apiKey)
       Q_PROPERTY(QString api MEMBER api)
       // --- Advanced parameters
-      Q_PROPERTY(bool supportsThinking MEMBER supportsThinking)
-      Q_PROPERTY(double temperature MEMBER temperature)
-      Q_PROPERTY(double topP MEMBER topP)
-      Q_PROPERTY(double topK MEMBER topK)
       Q_PROPERTY(int maxTokens MEMBER maxTokens)
-      Q_PROPERTY(int num_ctx MEMBER num_ctx)
-      Q_PROPERTY(int num_predict MEMBER num_predict)
+      Q_PROPERTY(QString configuration MEMBER configuration)
       Q_PROPERTY(bool stream MEMBER stream)
+      Q_PROPERTY(bool protected MEMBER protected_)
 
     public:
       bool dynamic {false}; // True if a model was added by the system and not the user,
@@ -44,19 +40,21 @@ struct Model {
       QString modelIdentifier;
       QString baseUrl;
       QString apiKey;
-      QString api;                   // "ollama", "gemini", "gemini2", "anthropic", "openai"
-      bool supportsThinking = false; ///< true: model supports Extended Thinking (e.g. claude-3-7-sonnet)
-      double temperature    = -1.0;  ///< <0: use API default
-      double topP           = -1.0;  ///< <0: use API default
-      double topK           = -1.0;  ///< <0: use API default
-      int maxTokens         = -1;    ///< <0: use per-client default
-      int num_ctx           = -1;
-      int num_predict       = -1;
-      bool stream           = true;
+      QString api;        ///< "ollama", "gemini", "gemini2", "anthropic", "openai"
+      int maxTokens = -1; ///< <0: use per-client default
+      ///< Provider-native options as a JSON object string, passed through to
+      ///< the provider unchanged, e.g. for Ollama
+      ///<   {"temperature": 0.7, "top_p": 0.9, "num_ctx": 8192}
+      ///< or for Anthropic {"thinking": {"type": "enabled", "budget_tokens": 4096}}.
+      QString configuration;
+      bool stream     = true;
+      bool protected_ = true; ///< true: run agent tools in sandbox (bwrap); false: run on host machine
       bool operator==(const Model&) const = default;
       json toJson() const;
       Model() {}
       Model(const json&);
+      ///< Parse the configuration JSON string into a JSON object ({} if empty/invalid).
+      json configJson() const;
       };
 
 using Models = QList<Model>;

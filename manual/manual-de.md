@@ -16,7 +16,7 @@ NPEd kombiniert die klassische, effiziente Bedienung bekannter Editoren mit mode
 
 ### Technische Basis
 *   **Modernes C++23 & CMake:** Leistungsstarkes Fundament für hohe Performance.
-*   **Qt6:** Robuste grafische Benutzeoberfläche mit flexiblem Styling (via `style.qss`).
+*   **Qt6:** Robuste grafische Benutzeroberfläche mit flexiblem Styling (via `src/light.qss` und `src/dark.qss`).
 *   **Daten-Handling:** Intensive Nutzung von `nlohmann::json` für eine effiziente Kommunikation mit dem LSP und die Verwaltung deiner Einstellungen.
 
 ---
@@ -104,7 +104,7 @@ Falls du unter Kubuntu/Ubuntu mit Core-Dumps arbeitest, musst du diese explizit 
 3. Deaktiviere den Dienst: `sudo systemctl disable apport.service`
 
 ## 5. Beispiele
-Weitere Anwendungsbeispiele findest du unter [Examples](manual/examples.md).
+Weitere Anwendungsbeispiele findest du unter [Examples](examples.md).
 
 ## 6. Kommando-Referenz
 
@@ -162,7 +162,8 @@ Hier findest du eine kompakte Übersicht aller verfügbaren Kommandos und der zu
 | `CMD_GOTO_TYPE_DEFINITION`| Zum Typ springen | <kbd>F10</kbd> |
 | `CMD_RENAME` | Symbol umbenennen | <kbd>Ctrl+O, Ctrl+R</kbd> |
 | `CMD_COMPLETIONS` | Autovervollständigung | <kbd>Ctrl+Tab</kbd>, <kbd>Shift+Tab</kbd> |
-| `CMD_TOGGLE_AI` | AI Panel anzeigen | <kbd>Ctrl+I</kbd> |
+| `CMD_TOGGLE_AI` | AI Panel anzeigen (Hover) | <kbd>Ctrl+I</kbd> |
 | `CMD_TOGGLE_GIT` | Git Panel anzeigen | <kbd>Ctrl+O, Ctrl+G</kbd> |
+| `CMD_TOGGLE_CONFIG` | Konfiguration anzeigen | <kbd>Ctrl+C</kbd> |
 
 *(Hinweis: Diese Liste enthält die wichtigsten Befehle. Weitere Funktionen können durch Kombinationen oder das Command-Entry-System erreicht werden.)*

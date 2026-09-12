@@ -323,6 +323,17 @@ void OpenAiClient::processTools() {
                   agent->chatDisplay->handleIncomingChunk(thinking, text);
 
                   agent->session()->addRequest(msg, 0);
+
+                  // Check if the user pressed stop while the tool was running.
+                  if (agent->isToolStopped()) {
+                        json stopMsg;
+                        stopMsg["role"] = "tool";
+                        stopMsg["content"] =
+                            "[Tool execution was stopped by the user. Remaining tool calls were skipped.]";
+                        stopMsg["name"] = "system";
+                        agent->session()->addRequest(stopMsg, 10);
+                        break;
+                        }
                   }
             }
       catch (const json::parse_error& e) {
@@ -361,14 +372,15 @@ void OpenAiClient::dataFinished() {
 
       currentContent.clear();
 
-      size_t totalTokens = 0;
-
+      // Let the session estimate per-message tokens (0 -> estimateTokens()).
       if (_currentToolCalls.empty()) {
-            agent->session()->addResult(responseContent, totalTokens);
+            agent->session()->setToolLoopActive(false);
+            agent->session()->addResult(responseContent, 0);
             agent->stopAgent();
             }
       else {
-            agent->session()->addRequest(responseContent, totalTokens);
+            agent->session()->setToolLoopActive(true);
+            agent->session()->addRequest(responseContent, 0);
             processTools();
             }
       }

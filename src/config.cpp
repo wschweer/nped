@@ -296,9 +296,9 @@ void Editor::loadSettings() {
       file.close();
       QJsonObject config = QJsonDocument::fromJson(s).object();
 
-      QJsonArray sc = config["shortcuts"].toArray();
-      for (int i = 0; i < sc.size(); ++i) {
-            QJsonObject obj  = sc[i].toObject();
+      QJsonArray shortcutsArr = config["shortcuts"].toArray();
+      for (int i = 0; i < shortcutsArr.size(); ++i) {
+            QJsonObject obj  = shortcutsArr[i].toObject();
             QString id       = obj["id"].toString();
             QString sequence = obj["sequence"].toString();
             for (auto& [cmd, sc] : _shortcuts) {
@@ -309,9 +309,9 @@ void Editor::loadSettings() {
                   }
             }
       if (config.contains("projects")) {
-            QJsonArray sc = config["projects"].toArray();
-            for (int i = 0; i < sc.size(); ++i) {
-                  QJsonObject obj = sc[i].toObject();
+            QJsonArray projectsArr = config["projects"].toArray();
+            for (int i = 0; i < projectsArr.size(); ++i) {
+                  QJsonObject obj = projectsArr[i].toObject();
                   QString path    = obj["path"].toString();
                   _projects.push_back(path);
                   }
@@ -319,9 +319,9 @@ void Editor::loadSettings() {
 
       if (config.contains("cannedPrompts")) {
             _cannedPrompts.clear();
-            QJsonArray sc = config["cannedPrompts"].toArray();
-            for (int i = 0; i < sc.size(); ++i) {
-                  QJsonObject obj = sc[i].toObject();
+            QJsonArray cpArr = config["cannedPrompts"].toArray();
+            for (int i = 0; i < cpArr.size(); ++i) {
+                  QJsonObject obj = cpArr[i].toObject();
                   CannedPrompt cp;
                   cp.name        = obj["name"].toString();
                   cp.description = obj["description"].toString();
@@ -332,9 +332,9 @@ void Editor::loadSettings() {
 
       if (config.contains("agentRoles")) {
             _agentRoles.clear();
-            QJsonArray sc = config["agentRoles"].toArray();
-            for (int i = 0; i < sc.size(); ++i) {
-                  QJsonObject obj = sc[i].toObject();
+            QJsonArray rolesArr = config["agentRoles"].toArray();
+            for (int i = 0; i < rolesArr.size(); ++i) {
+                  QJsonObject obj = rolesArr[i].toObject();
                   AgentRole ar;
                   ar.name     = obj["name"].toString();
                   ar.manifest = obj["manifest"].toString();

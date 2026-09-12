@@ -387,9 +387,21 @@ void LSclient::readerLoop() {
                         }
                   }
             }
-      close(fds[0].fd);
-      close(fds[1].fd);
-      close(fds[2].fd);
+      // Close the ACTUAL file descriptors (not the poll-struct fds).
+      // fds[1].fd may already have been set to -1 when stderr hit EOF,
+      // in which case close(fds[1].fd) would be a no-op and stderrPipe[0]
+      // (the real fd) would leak. Close the member fds directly instead;
+      // the closefd helper is idempotent and sets each to -1 so the
+      // destructor does not double-close.
+      auto closefd = [](int& fd) {
+            if (fd != -1) {
+                  ::close(fd);
+                  fd = -1;
+                  }
+            };
+      closefd(stdoutPipe[0]);
+      closefd(stderrPipe[0]);
+      closefd(stopFd);
       }
 
 //---------------------------------------------------------
@@ -397,11 +409,29 @@ void LSclient::readerLoop() {
 //---------------------------------------------------------
 
 bool LSclient::start(const std::string& path, const std::vector<std::string>& args) {
-      // Erstellen der drei Pipes
+      // Erstellen der drei Pipes (mit FD_CLOEXEC, so dass fork+exec
+      // in anderen Code-Pfaden die Pipes nicht versehentlich vererbt)
       if (pipe(stdinPipe) == -1 || pipe(stdoutPipe) == -1 || pipe(stderrPipe) == -1) {
             Critical("pipe failed: {}", strerror(errno));
             return false;
             }
+      // Set FD_CLOEXEC on all pipe ends in the parent so that any
+      // fork+exec (e.g. bash_command, build_project) does not leak
+      // these file descriptors to child processes.
+      auto setCloexec = [](int fd) {
+            if (fd != -1) {
+                  int flags = fcntl(fd, F_GETFD);
+                  if (flags != -1)
+                        fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
+                  }
+            };
+      setCloexec(stdinPipe[0]);
+      setCloexec(stdinPipe[1]);
+      setCloexec(stdoutPipe[0]);
+      setCloexec(stdoutPipe[1]);
+      setCloexec(stderrPipe[0]);
+      setCloexec(stderrPipe[1]);
+      setCloexec(stopFd);
 
       connect(this, &LSclient::isRunning, this, [this] { initializeRequest(); });
       pid_t pid = fork();
@@ -416,10 +446,16 @@ bool LSclient::start(const std::string& path, const std::vector<std::string>& ar
             dup2(stdoutPipe[1], STDOUT_FILENO);
             dup2(stderrPipe[1], STDERR_FILENO);
 
-            // Schließen der nicht benötigten Enden im Kind
+            // Schließen ALLER Original-Pipe-Enden im Kind (auch die dup2'ten,
+            // da dup2 sie bereits auf STDIN/STDOUT/STDERR kopiert hat)
+            close(stdinPipe[0]);
             close(stdinPipe[1]);
             close(stdoutPipe[0]);
+            close(stdoutPipe[1]);
             close(stderrPipe[0]);
+            close(stderrPipe[1]);
+            if (stopFd != -1)
+                  close(stopFd);
 
             // Argument-Vektor vorbereiten (execvp erwartet char* const*)
             std::vector<char*> c_args;
@@ -437,9 +473,12 @@ bool LSclient::start(const std::string& path, const std::vector<std::string>& ar
       else { // --- ELTERNPROZESS ---
             // Schließen der Enden, die der Kindprozess nutzt
             close(stdinPipe[0]);
+            stdinPipe[0] = -1;
             close(stdoutPipe[1]);
+            stdoutPipe[1] = -1;
             close(stderrPipe[1]);
-            reader = new std::thread(&LSclient::readerLoop, this);
+            stderrPipe[1] = -1;
+            reader        = new std::thread(&LSclient::readerLoop, this);
             }
       return true;
       }
@@ -449,7 +488,7 @@ bool LSclient::start(const std::string& path, const std::vector<std::string>& ar
 //---------------------------------------------------------
 
 bool LSclient::write(const std::string& txt) {
-      if (!running)
+      if (!running || stdinPipe[1] == -1)
             return false;
       size_t total = 0;
       while (total < txt.size()) {
@@ -474,9 +513,7 @@ bool LSclient::write(const std::string& txt) {
 //---------------------------------------------------------
 //   writeMessage
 //---------------------------------------------------------
-
 //                               "Content-Type: application/vscode-jsonrpc; charset=utf-8"
-
 bool LSclient::writeMessage(const std::string& json) {
       return write(std::format("Content-Length: {}\r\n\r\n{}", json.length(), json));
       }
@@ -583,8 +620,8 @@ LSclient::LSclient(Editor* e, const std::string& n) {
       _name  = n;
       editor = e;
       stopFd = eventfd(0, EFD_NONBLOCK);
-      connect(this, &LSclient::notificationReceived, this, &LSclient::handleNotification,
-              Qt::QueuedConnection);
+      connect(
+          this, &LSclient::notificationReceived, this, &LSclient::handleNotification, Qt::QueuedConnection);
       connect(this, &LSclient::responseReceived, this, &LSclient::handleResponse, Qt::QueuedConnection);
       }
 
@@ -596,9 +633,15 @@ LSclient::~LSclient() {
                   fd = -1;
                   }
             };
+      // stdinPipe[1] (write-end) was NEVER closed before — major FD leak.
+      // The reader thread closes stdoutPipe[0], stderrPipe[0], and stopFd,
+      // so we only close them here if the thread never ran.
+      closefd(stdinPipe[1]);
       closefd(stdoutPipe[0]);
       closefd(stderrPipe[0]);
       closefd(stopFd);
+      delete reader;
+      reader = nullptr;
       }
 
 //---------------------------------------------------------
@@ -608,11 +651,19 @@ LSclient::~LSclient() {
 void LSclient::stop() {
       if (running) {
             running = false;
-            uint64_t u {1};
-            ::write(stopFd, &u, sizeof(uint64_t));
+            if (stopFd != -1) {
+                  uint64_t u {1};
+                  ::write(stopFd, &u, sizeof(uint64_t));
+                  }
             }
       if (reader && reader->joinable())
             reader->join();
+      // Close the write-end of stdin so the language server gets EOF
+      // and can exit gracefully.
+      if (stdinPipe[1] != -1) {
+            ::close(stdinPipe[1]);
+            stdinPipe[1] = -1;
+            }
       }
 
 //---------------------------------------------------------
@@ -771,15 +822,25 @@ bool LSclient::processMessage(const std::string& message) {
             }
       if (response.contains("id")) {
             //*********************************************
-            //    handle responses
+            //    handle responses and server requests
+            //    A server response has "id" but no "method".
+            //    A server request has both "id" and "method".
             //*********************************************
-            try {
-                  int id = response["id"];
-                  emit responseReceived(id, response);
+            if (response.contains("method")) {
+                  // Server-to-client request: dispatch like a notification
+                  // but also emit responseReceived so handleResponse() can
+                  // send the required reply with the matching id.
+                  emit responseReceived(response["id"], response);
                   }
-            catch (...) {
-                  Critical("Server error: {}", response.dump(4));
-                  return true;
+            else {
+                  try {
+                        int id = response["id"];
+                        emit responseReceived(id, response);
+                        }
+                  catch (...) {
+                        Critical("Server error: {}", response.dump(4));
+                        return true;
+                        }
                   }
             }
       else {
@@ -859,8 +920,13 @@ void LSclient::handleResponse(int id, json response) {
                   json msg;
                   msg["id"]      = id;
                   msg["jsonrpc"] = "2.0";
+                  msg["result"]  = json::object();
                   writeMessage(msg.dump(-1, ' ', false, json::error_handler_t::replace));
                   editor->showProgress(true);
+                  return;
+                  }
+            else {
+                  Debug("unhandled server request id {} method {}", id, method.get<std::string>());
                   return;
                   }
             }

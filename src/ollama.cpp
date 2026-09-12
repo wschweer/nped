@@ -43,7 +43,7 @@ void OllamaClient::abort() {
 //---------------------------------------------------------
 
 void OllamaClient::setTools(const std::vector<json>& mcps) {
-      Debug("mcps {}", mcps.size());
+      //      Debug("mcps {}", mcps.size());
       try {
             tools = json::array();
             for (auto& tool : mcps) {
@@ -81,20 +81,24 @@ json OllamaClient::prompt(QNetworkRequest* request) {
       request->setUrl(url);
 
       json requestJson;
-      requestJson["model"]  = model->modelIdentifier.toStdString();
-      requestJson["stream"] = model->stream;
+      requestJson["model"]      = model->modelIdentifier.toStdString();
+      requestJson["stream"]     = model->stream;
+      requestJson["keep_alive"] = -1;
 
-      json options;
-      if (model->num_ctx > 0)
-            options["num_ctx"] = model->num_ctx;
-      if (model->num_predict > 0)
-            options["num_predict"] = model->num_predict; // -1 = infinite
-      if (model->temperature >= 0.0)
-            options["temperature"] = model->temperature;
-      if (model->topP >= 0.0)
-            options["top_p"] = model->topP;
-      if (model->topK >= 0.0)
-            options["top_k"] = model->topK;
+      // When tools are provided, do NOT force "format": "json".
+      // Ollama handles tool calls natively, and the JSON format constraint
+      // conflicts with tool calling — it causes the model to emit JSON-formatted
+      // text (including error messages) instead of plain text responses.
+      // Without tools, "format": "json" can still be useful for structured output.
+      if (tools.empty())
+            requestJson["format"] = "json";
+
+      // Pass the model's raw 'configuration' JSON straight through as the
+      // Ollama 'options' object instead of picking individual values.  The
+      // string is user-maintained, provider-native JSON; configJson() validates
+      // it and returns {} for empty/invalid input, so any option Ollama
+      // understands can be set without internal option handling here.
+      const json options = model->configJson();
       if (!options.empty())
             requestJson["options"] = options;
 
@@ -108,10 +112,10 @@ json OllamaClient::prompt(QNetworkRequest* request) {
       //=========================================
 
       json jmanifest;
-      auto manifest = agent->getManifest();
-      // think hack for gemma4
-      jmanifest["content"] = manifest;
-      jmanifest["role"]    = "system";
+      auto manifest         = agent->getManifest();
+      manifest             += agent->getProjectInstructions();
+      jmanifest["content"]  = manifest;
+      jmanifest["role"]     = "system";
       history.push_back(jmanifest);
 
       for (const auto& item : agent->session()->data()) {
@@ -158,6 +162,17 @@ void OllamaClient::processJsonItem(const json& item) {
             currentContent += "\nError: " + err + "\n";
             return;
             }
+
+      // Ollama reports the real token accounting in the final (done) chunk:
+      //   prompt_eval_count = tokens of the request context
+      //   eval_count        = tokens of the generated response
+      if (item.value("done", false)) {
+            if (item.contains("prompt_eval_count") && item["prompt_eval_count"].is_number())
+                  _lastPromptEvalCount = item["prompt_eval_count"].get<size_t>();
+            if (item.contains("eval_count") && item["eval_count"].is_number())
+                  _lastEvalCount = item["eval_count"].get<size_t>();
+            }
+
       if (!item.contains("message"))
             return;
       const auto& message = item["message"];
@@ -316,7 +331,19 @@ void OllamaClient::processTools() {
                   // Don't leak 'function' field to Ollama prompt if it doesn't need it
                   // Wait, prompt() only copies what it needs (role, content, tool_calls, name).
                   // So we can leave it in msg.
+                  // The session estimates the token footprint of the tool result itself.
                   agent->session()->addRequest(msg, 0);
+
+                  // Check if the user pressed stop while the tool was running.
+                  if (agent->isToolStopped()) {
+                        json stopMsg;
+                        stopMsg["role"] = "tool";
+                        stopMsg["content"] =
+                            "[Tool execution was stopped by the user. Remaining tool calls were skipped.]";
+                        stopMsg["name"] = "system";
+                        agent->session()->addRequest(stopMsg, 10);
+                        break;
+                        }
                   }
             }
       catch (const json::parse_error& e) {
@@ -359,14 +386,20 @@ void OllamaClient::dataFinished() {
 
       currentContent.clear();
 
-      size_t totalTokens = 0;
+      // Feed Ollama's own accounting into the session: prompt_eval_count is
+      // the real size of the request context (model specific tokenizer), so it
+      // is a far better basis for the history budget than our char/4 estimate.
+      agent->session()->setReportedContextTokens(_lastPromptEvalCount);
 
+      // Let the session estimate per-message tokens (0 -> estimateTokens()).
       if (_currentToolCalls.empty()) {
-            agent->session()->addResult(responseContent, totalTokens);
+            agent->session()->setToolLoopActive(false);
+            agent->session()->addResult(responseContent, 0);
             agent->stopAgent();
             }
       else {
-            agent->session()->addRequest(responseContent, totalTokens);
+            agent->session()->setToolLoopActive(true);
+            agent->session()->addRequest(responseContent, 0);
             processTools();
             }
       }

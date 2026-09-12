@@ -57,11 +57,14 @@
 #include "logger.h"
 #include "editor.h"
 #include "llm.h"
+#include "llminfo.h"
 #include "chatdisplay.h"
 #include "session.h"
 #include "screenshot.h"
 #include "undo.h"
 
+#include <memory>
+#include <sstream>
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
@@ -118,7 +121,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             });
 
       connect(modelMenu, &QComboBox::activated,
-              [this](int index) { setCurrentModel(_editor->models()[index].name); });
+          [this](int index) { setCurrentModel(_editor->models()[index].name); });
 
       sessionComboBox = new QComboBox(this);
       sessionComboBox->setMinimumWidth(166);
@@ -176,8 +179,8 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
             mcpTools = getMCPTools();
             if (llm)
                   llm->setTools(mcpTools);
-            addMessage("system", std::format("<br><i>[System: Role changed to <b>{}</b>]</i>",
-                                             _editor->agentRoleName()));
+            addMessage("system",
+                std::format("<br><i>[System: Role changed to <b>{}</b>]</i>", _editor->agentRoleName()));
             });
       connect(_mcpManager, &McpManager::toolsChanged, [this] {
             mcpTools = getMCPTools();
@@ -242,9 +245,16 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
 
       // Initialize token count
       dashboard->setTokenCount(session()->totalTokens);
-      // Connect token updates
-      connect(session(), &Session::tokensChanged,
-              [this](size_t tokens) { dashboard->setTokenCount(tokens); });
+      // Connect token updates; show usage relative to the model budget
+      connect(session(), &Session::tokensChanged, [this](size_t tokens) {
+            dashboard->setTokenBudget(tokens, session()->contextBudget());
+            });
+      connect(_editor, &Editor::modelsChanged, [this] {
+            dashboard->setTokenBudget(session()->totalTokens, session()->contextBudget());
+            });
+      connect(this, &Agent::modelChanged, [this] {
+            dashboard->setTokenBudget(session()->totalTokens, session()->contextBudget());
+            });
 
       connect(_editor, &Editor::textStylesLightChanged, this, &Agent::updateIcons);
       connect(_editor, &Editor::textStylesDarkChanged, this, &Agent::updateIcons);
@@ -346,6 +356,7 @@ Agent::Agent(Editor* e, QWidget* parent) : QWidget(parent), _editor(e) {
       connect(
           chatDisplay, &QWebEngineView::loadFinished, this, [this] { session()->load(QString()); },
           Qt::QueuedConnection | Qt::SingleShotConnection);
+      _llmInfo.load();
       fetchModels();
       spinnerTimer = new QTimer(this);
       connect(spinnerTimer, &QTimer::timeout, this, &Agent::updateSpinner);
@@ -393,7 +404,7 @@ QString Agent::configPath() {
 //---------------------------------------------------------
 
 void Agent::setCurrentModel(const QString& s, bool clearChat) {
-      Debug("<{}>", s);
+      //      Debug("<{}>", s);
       if (model.name == s)
             return;
       for (const auto& m : _editor->models()) {
@@ -403,12 +414,12 @@ void Agent::setCurrentModel(const QString& s, bool clearChat) {
                   delete llm;
                   llm = llmFactory(this, &model, mcpTools);
                   connect(llm, &LLMClient::incomingChunk, this,
-                          [this](const std::string& thoughtChunk, const std::string& textChunk) {
-                                if (filterThoughts)
-                                      chatDisplay->handleIncomingChunk("", textChunk);
-                                else
-                                      chatDisplay->handleIncomingChunk(thoughtChunk, textChunk);
-                                });
+                      [this](const std::string& thoughtChunk, const std::string& textChunk) {
+                            if (filterThoughts)
+                                  chatDisplay->handleIncomingChunk("", textChunk);
+                            else
+                                  chatDisplay->handleIncomingChunk(thoughtChunk, textChunk);
+                            });
                   currentRetryCount  = 0;
                   retryPause         = 2000;
                   rateLimitResetTime = QDateTime();
@@ -427,7 +438,16 @@ void Agent::setCurrentModel(const QString& s, bool clearChat) {
 
 //---------------------------------------------------------
 //   fetchModels
-//    request list of local available ollama models
+//    Request the list of locally available Ollama models and
+//    collect their metadata (context length, capabilities, ...).
+//
+//    Three Ollama endpoints are used:
+//      /api/tags  – cheap list; carries details.context_length and
+//                   capabilities for cloud models
+//      /api/show  – full model info (model_info.<arch>.context_length,
+//                   Modelfile parameters, architecture, ...)
+//      /api/ps    – models currently loaded, including the context
+//                   length Ollama actually uses at runtime
 //---------------------------------------------------------
 
 void Agent::fetchModels() {
@@ -442,6 +462,8 @@ void Agent::fetchModels() {
                   }
             try {
                   auto j = json::parse(reply->readAll().toStdString());
+                  QStringList ids;
+                  bool infoChanged = false;
                   for (const auto& model : j["models"]) {
                         std::string name = model["name"];
                         bool found       = false;
@@ -451,6 +473,36 @@ void Agent::fetchModels() {
                                     break;
                                     }
                               }
+
+                        // Remember the model for the follow-up /api/show query.
+                        ids << QString::fromStdString(name);
+
+                        // Cheap metadata already present in /api/tags.
+                        LlmInfo info = _llmInfo.get(QString::fromStdString(name));
+                        info.modelId = QString::fromStdString(name);
+                        if (model.contains("digest"))
+                              info.digest = QString::fromStdString(model["digest"]);
+                        if (model.contains("details")) {
+                              const auto& d = model["details"];
+                              if (d.contains("context_length") && d["context_length"].is_number())
+                                    info.trainedContextLength = d["context_length"].get<size_t>();
+                              if (d.contains("embedding_length") && d["embedding_length"].is_number())
+                                    info.embeddingLength = d["embedding_length"].get<size_t>();
+                              if (d.contains("family") && d["family"].is_string())
+                                    info.family = QString::fromStdString(d["family"]);
+                              if (d.contains("parameter_size") && d["parameter_size"].is_string())
+                                    info.parameterSize = QString::fromStdString(d["parameter_size"]);
+                              if (d.contains("quantization_level") && d["quantization_level"].is_string())
+                                    info.quantization = QString::fromStdString(d["quantization_level"]);
+                              }
+                        if (model.contains("capabilities") && model["capabilities"].is_array()) {
+                              info.capabilities.clear();
+                              for (const auto& c : model["capabilities"])
+                                    if (c.is_string())
+                                          info.capabilities << QString::fromStdString(c.get<std::string>());
+                              }
+                        infoChanged |= _llmInfo.merge(info);
+
                         if (found)
                               continue;
 
@@ -462,8 +514,14 @@ void Agent::fetchModels() {
                         m.dynamic         = true;
                         _editor->addModel(m);
                         }
-                  // Now we can select the last used model as saved in settings
 
+                  if (infoChanged)
+                        _llmInfo.save();
+
+                  // Enrich every model with /api/show (context length etc.).
+                  fetchModelDetails(ids);
+
+                  // Now we can select the last used model as saved in settings
                   if (!pendingModelName.isEmpty()) {
                         QString pending = pendingModelName;
                         pendingModelName.clear();
@@ -484,6 +542,207 @@ void Agent::fetchModels() {
       }
 
 //---------------------------------------------------------
+//   mergeShowInfo
+//    Extract the interesting fields of an /api/show response
+//    into an LlmInfo entry.
+//---------------------------------------------------------
+
+void Agent::mergeShowInfo(const QString& modelId, const json& j) {
+      LlmInfo info = _llmInfo.get(modelId);
+      info.modelId = modelId;
+
+      if (j.contains("details") && j["details"].is_object()) {
+            const auto& d = j["details"];
+            if (d.contains("family") && d["family"].is_string() && info.family.isEmpty())
+                  info.family = QString::fromStdString(d["family"]);
+            // /api/show reports parameter_size as a raw parameter count
+            // (e.g. "763205315794") while /api/tags uses the human readable
+            // form ("763B").  Keep the readable value if we already have one.
+            if (d.contains("parameter_size") && d["parameter_size"].is_string() &&
+                info.parameterSize.isEmpty())
+                  info.parameterSize = QString::fromStdString(d["parameter_size"]);
+            if (d.contains("quantization_level") && d["quantization_level"].is_string() &&
+                info.quantization.isEmpty())
+                  info.quantization = QString::fromStdString(d["quantization_level"]);
+            }
+
+      // /api/show reports parameter_size as a raw parameter count
+      // (e.g. "763205315794") which is unreadable; derive a human form
+      // ("763B") as a fallback when /api/tags had no value.
+      if (!info.parameterSize.isEmpty()) {
+            bool digits = true;
+            for (const QChar& c : info.parameterSize)
+                  if (!c.isDigit()) {
+                        digits = false;
+                        break;
+                        }
+            if (digits) {
+                  double v = info.parameterSize.toDouble();
+                  if (v >= 1e9)
+                        info.parameterSize = QString::number(v / 1e9, 'g', 4) + "B";
+                  else if (v >= 1e6)
+                        info.parameterSize = QString::number(v / 1e6, 'g', 4) + "M";
+                  }
+            }
+
+      if (j.contains("capabilities") && j["capabilities"].is_array()) {
+            info.capabilities.clear();
+            for (const auto& c : j["capabilities"])
+                  if (c.is_string())
+                        info.capabilities << QString::fromStdString(c.get<std::string>());
+            }
+
+      // model_info keys are prefixed with the architecture name, e.g.
+      // "qwen2.context_length" or "gemma4.context_length".
+      if (j.contains("model_info") && j["model_info"].is_object()) {
+            for (const auto& [key, value] : j["model_info"].items()) {
+                  if (key == "general.architecture" && value.is_string()) {
+                        info.architecture = QString::fromStdString(value.get<std::string>());
+                        continue;
+                        }
+                  if (!value.is_number())
+                        continue;
+                  auto endswith = [&key](const std::string& suffix) {
+                        return key.size() >= suffix.size() &&
+                               key.compare(key.size() - suffix.size(), suffix.size(), suffix) == 0;
+                        };
+                  if (endswith(".context_length"))
+                        info.trainedContextLength = value.get<size_t>();
+                  else if (endswith(".embedding_length"))
+                        info.embeddingLength = value.get<size_t>();
+                  else if (endswith(".block_count"))
+                        info.blockCount = value.get<int>();
+                  }
+            }
+
+      // The Modelfile may pin num_ctx; that value is what Ollama uses unless
+      // the request overrides it via options.num_ctx.
+      if (j.contains("parameters") && j["parameters"].is_string()) {
+            std::istringstream iss(j["parameters"].get<std::string>());
+            std::string line;
+            while (std::getline(iss, line)) {
+                  std::istringstream ls(line);
+                  std::string key;
+                  long long v = 0;
+                  if (ls >> key >> v && key == "num_ctx" && v > 0)
+                        info.modelfileNumCtx = int(v);
+                  }
+            }
+
+      if (_llmInfo.merge(info)) {
+            _llmInfo.save();
+            Debug("LLM info updated: {} -> {}", modelId, info.summary());
+            }
+      }
+
+//---------------------------------------------------------
+//   fetchModelDetails
+//    Query /api/show for every model and merge the results into
+//    the persisted LLM info cache.  Once all replies arrived the
+//    runtime context (/api/ps) is queried as well.
+//---------------------------------------------------------
+
+void Agent::fetchModelDetails(const QStringList& ids) {
+      if (ids.isEmpty()) {
+            fetchRuntimeContext();
+            return;
+            }
+
+      auto remaining = std::make_shared<int>(ids.size());
+      auto done      = [this, remaining]() {
+            if (--(*remaining) == 0) {
+                  fetchRuntimeContext();
+                  emit _editor->modelsChanged();
+                  }
+            };
+
+      for (const QString& modelId : ids) {
+            QNetworkRequest request(QUrl("http://localhost:11434/api/show"));
+            request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+            json body;
+            body["model"] = modelId.toStdString();
+
+            QNetworkReply* reply = networkManager->post(request, QByteArray::fromStdString(body.dump()));
+            connect(reply, &QNetworkReply::finished, this, [this, reply, modelId, done]() {
+                  reply->deleteLater();
+                  if (reply->error() == QNetworkReply::NoError) {
+                        try {
+                              mergeShowInfo(modelId, json::parse(reply->readAll().toStdString()));
+                              }
+                        catch (const json::parse_error& e) {
+                              Debug("show parse error for {}: {}", modelId, e.what());
+                              }
+                        catch (...) {
+                              Debug("show error for {}", modelId);
+                              }
+                        }
+                  else
+                        Debug("show request failed for {}: {}", modelId, reply->errorString());
+                  done();
+                  });
+            }
+      }
+
+//---------------------------------------------------------
+//   fetchRuntimeContext
+//    /api/ps lists the models currently loaded in memory together
+//    with the context length Ollama really uses.  This is the most
+//    reliable "num_ctx" and therefore the best basis for the
+//    history budget.
+//---------------------------------------------------------
+
+void Agent::fetchRuntimeContext() {
+      QNetworkRequest request(QUrl("http://localhost:11434/api/ps"));
+      QNetworkReply* reply = networkManager->get(request);
+      connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+            reply->deleteLater();
+            if (reply->error() != QNetworkReply::NoError)
+                  return;
+            try {
+                  auto j       = json::parse(reply->readAll().toStdString());
+                  bool changed = false;
+                  for (const auto& m : j.value("models", json::array())) {
+                        if (!m.contains("name") || !m.contains("context_length"))
+                              continue;
+                        QString id   = QString::fromStdString(m["name"].get<std::string>());
+                        LlmInfo info = _llmInfo.get(id);
+                        info.modelId = id;
+                        info.runtimeContextLength = m["context_length"].get<size_t>();
+                        changed |= _llmInfo.merge(info);
+                        }
+                  if (changed) {
+                        _llmInfo.save();
+                        emit _editor->modelsChanged();
+                        }
+                  }
+            catch (...) {
+                  }
+            });
+      }
+
+//---------------------------------------------------------
+//   refreshRuntimeContext
+//    Re-read /api/ps.  Called after the first answer so that the
+//    context length Ollama really uses (num_ctx) is picked up even
+//    though the model was not loaded when the app started.
+//---------------------------------------------------------
+
+void Agent::refreshRuntimeContext() {
+      if (currentLlmInfo().runtimeContextLength == 0)
+            fetchRuntimeContext();
+      }
+
+//---------------------------------------------------------
+//   refreshLlmInfo
+//    Re-discover the provider metadata (e.g. after the model list
+//    changed or from the config UI).
+//---------------------------------------------------------
+
+void Agent::refreshLlmInfo() {
+      fetchModels();
+      }
+
+//---------------------------------------------------------
 //   sendMessage
 //---------------------------------------------------------
 
@@ -497,6 +756,8 @@ void Agent::sendMessage(QString qtext) {
       msg["role"] = "user";
       if (model.api == "gemini" || model.api == "gemini2")
             msg["parts"] = json::array({{{"text", text}}});
+      else if (model.api == "ollama")
+            msg["content"] = text;
       else // ollama / anthropic / openai
             msg["content"] = text;
       // Attach all pending attachments (if any)
@@ -526,8 +787,10 @@ void Agent::sendMessage(QString qtext) {
       logContent(msg, logText, thought);
       addMessage("User", logText);
 
-      // Approximate token count: 4 chars per token
-      session()->addRequest(msg, text.length() / 4);
+      // Approximate token count is computed by the session (estimateTokens),
+      // which also accounts for attached images.
+      session()->setToolLoopActive(false);
+      session()->addRequest(msg, 0);
       sendMessage2();
       }
 
@@ -567,6 +830,16 @@ std::string Agent::truncateOutput(const std::string& text, int maxChars) {
 
 void Agent::stop() {
       _stopRequested = true;
+      _toolStopRequested.store(true);
+      session()->setToolLoopActive(false);
+
+      // Kill any running tool process so blocked QProcess-based tools unblock immediately.
+            {
+            std::lock_guard lock(_toolProcessMutex);
+            if (_currentToolProcess)
+                  _currentToolProcess->kill();
+            }
+
       if (currentReply) {
             currentReply->disconnect();
             currentReply->abort();
@@ -581,6 +854,23 @@ void Agent::stop() {
       stopAgent();
       }
 
+void Agent::ensureMcpServersReady() {
+      if (const AgentRole* role = agentRole()) {
+            QStringList serverIds;
+            for (const QString& id : role->mcpServers)
+                  serverIds.append(id);
+            if (!serverIds.isEmpty()) {
+                  Debug("ensureMcpServersReady: starting {} MCP server(s)", serverIds.size());
+                  _mcpManager->waitForReady(serverIds);
+                  // Refresh tools (in case the toolsChanged signal chain
+                  // has not fired yet, e.g. if the server had no tools cap)
+                  mcpTools = getMCPTools();
+                  if (llm)
+                        llm->setTools(mcpTools);
+                  }
+            }
+      }
+
 //---------------------------------------------------------
 //   sendMessage2
 //---------------------------------------------------------
@@ -588,11 +878,16 @@ void Agent::stop() {
 void Agent::sendMessage2() {
       if (_stopRequested) {
             _stopRequested = false;
-            startAgent();
+            // User pressed stop — don't send a new request to the LLM.
+            // The tool results (including a "stopped by user" message) are
+            // already in the session history for the next user message.
+            updateChatDisplay();
+            session()->save();
             return;
             }
       startAgent();
       retryPause = 2000;
+      ensureMcpServersReady();
 
       streamBuffer.clear();
       chatDisplay->startNewStreamingMessage(model.name.toStdString());
@@ -668,18 +963,18 @@ void Agent::handleChatFinished() {
                               // Safety margin (jitter)
                               waitMs += (rand() % 500);
 
-                              addMessage("system",
-                                         std::format("<br><font color='orange'><b>[Rate Limit]:</b> Pause "
-                                                     "for {} seconds...</font><br>",
-                                                     waitMs / 1000.0));
+                              addMessage(
+                                  "system", std::format("<br><font color='orange'><b>[Rate Limit]:</b> Pause "
+                                                        "for {} seconds...</font><br>",
+                                                waitMs / 1000.0));
                               }
                         // B: Server Error (5xx) -> Exponential Backoff
                         else {
                               waitMs = 2000 * std::pow(2, currentRetryCount);
-                              addMessage("system", std::format("<br><font color='orange'><b>[Server Error "
-                                                               "{}]:</b> Retry {}/{} in {}s...</font><br>",
-                                                               statusCode, currentRetryCount + 1, maxRetries,
-                                                               waitMs / 1000.0));
+                              addMessage("system",
+                                  std::format("<br><font color='orange'><b>[Server Error "
+                                              "{}]:</b> Retry {}/{} in {}s...</font><br>",
+                                      statusCode, currentRetryCount + 1, maxRetries, waitMs / 1000.0));
                               }
 
                         currentReply->deleteLater();
@@ -696,7 +991,7 @@ void Agent::handleChatFinished() {
                         Debug("too many reply's");
                         addMessage("system", std::format("<br><font color='red'><b>[Abort]:</b> "
                                                          "Too many attempts ({}).</font><br>",
-                                                         maxRetries));
+                                                 maxRetries));
                         }
                   }
 
@@ -716,8 +1011,8 @@ void Agent::handleChatFinished() {
             Debug("Network/API error {}: {}", int(currentReply->error()), errorMessage);
 
             // Show the error to the user in the UI
-            addMessage("system", std::format("<br><font color='red'><b>[Connection abort]:</b> {}</font><br>",
-                                             errorMessage));
+            addMessage("system",
+                std::format("<br><font color='red'><b>[Connection abort]:</b> {}</font><br>", errorMessage));
             currentReply->deleteLater();
             currentReply = nullptr;
 
@@ -735,6 +1030,10 @@ void Agent::handleChatFinished() {
       currentReply = nullptr;
 
       llm->dataFinished();
+
+      // Once the model is loaded, /api/ps reports the context length Ollama
+      // really uses; make sure our metadata reflects that.
+      refreshRuntimeContext();
 
       // Only wipe and rebuild the UI if the tool loop did not
       // start a new request
@@ -826,7 +1125,7 @@ void Agent::startNewSession() {
       session()->setName(session()->sessionName(true)); // create new session file name
       updateSessionList();
       addMessage("system", format("<i>[System: New session started: <b>{}</b>]</i><br>",
-                                  QFileInfo(session()->name()).fileName().toStdString()));
+                               QFileInfo(session()->name()).fileName().toStdString()));
       userInput->setFocus();
       }
 
@@ -864,8 +1163,8 @@ void Agent::renameCurrentSession() {
       QString currentBase = currentInfo.completeBaseName(); // ohne ".json"
 
       bool ok         = false;
-      QString newName = QInputDialog::getText(this, tr("Rename Session"), tr("New session name:"),
-                                              QLineEdit::Normal, currentBase, &ok);
+      QString newName = QInputDialog::getText(
+          this, tr("Rename Session"), tr("New session name:"), QLineEdit::Normal, currentBase, &ok);
 
       if (!ok || newName.trimmed().isEmpty())
             return;
@@ -918,7 +1217,7 @@ void Agent::updateSessionList() {
             QStringList filters;
             filters << "Session-*.json";
             QFileInfoList files = dir.entryInfoList(filters, QDir::Files,
-                                                    QDir::Time); // Sorted by time (newest first)
+                QDir::Time); // Sorted by time (newest first)
 
             for (const QFileInfo& fileInfo : files)
                   sessionComboBox->addItem(fileInfo.baseName(), fileInfo.absoluteFilePath());
@@ -1041,7 +1340,7 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                               msg += std::format("<img src=\"data:image/jpeg;base64,{}\" style=\"max-width: "
                                                  "500px; display: block; margin: "
                                                  "10px 0;\"/><br>",
-                                                 img.get<std::string>());
+                                  img.get<std::string>());
                               }
                         }
                   }
@@ -1076,7 +1375,7 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                                     size_t thinkEnd = s.find(endTag, thinkStart);
                                     if (thinkEnd != std::string::npos) {
                                           thought += s.substr(thinkStart + startTag.length(),
-                                                              thinkEnd - (thinkStart + startTag.length()));
+                                              thinkEnd - (thinkStart + startTag.length()));
                                           s.erase(thinkStart, thinkEnd + endTag.length() - thinkStart);
                                           }
                                     else {
@@ -1131,13 +1430,13 @@ void Agent::logContent(const json& content, std::string& msg, std::string& thoug
                                           continue;
                                     std::string output =
                                         std::format("\n\n<i>[System: Tool Response: {}()]</i>\n\n",
-                                                    fr["name"].get<std::string>());
+                                            fr["name"].get<std::string>());
                                     const json& response = fr["response"];
                                     std::string s;
                                     if (response.is_object() && response.contains("content") &&
                                         response["content"].is_string())
-                                          s = truncateOutput(response["content"].get<std::string>(),
-                                                             kChatResultMaxChars);
+                                          s = truncateOutput(
+                                              response["content"].get<std::string>(), kChatResultMaxChars);
                                     else
                                           s = response.dump(-1, ' ', false, json::error_handler_t::replace);
                                     msg += std::format("\n\n```\n{}\n```\n\n", s);
@@ -1233,7 +1532,7 @@ void Agent::onScreenshotReady(const QImage& image) {
 
       addMessage("system", std::format("<i>[Image #{} attached ({}×{} px) – will be sent with next prompt. "
                                        "Click 📷 to discard all.]</i><br>",
-                                       count, image.width(), image.height()));
+                               count, image.width(), image.height()));
       updateDataPanel();
       }
 
@@ -1387,7 +1686,7 @@ void Agent::onAttachmentSelected(int index) {
                   QString text = in.readAll();
                   file.close();
                   addMessage("attachment", std::format("[%1]\n```\n%2\n```", QFileInfo(att.label).fileName(),
-                                                       truncateOutput(text.toStdString(), 5000)));
+                                               truncateOutput(text.toStdString(), 5000)));
                   }
             }
       else if (att.type == AttachmentType::Image) {
@@ -1395,7 +1694,7 @@ void Agent::onAttachmentSelected(int index) {
             }
       else {
             addMessage("attachment", std::format("[Attachment: {}] ({})", QFileInfo(att.label).fileName(),
-                                                 QFileInfo(att.label).size()));
+                                         QFileInfo(att.label).size()));
             }
       }
 
@@ -1426,7 +1725,7 @@ void Agent::addAttachment() {
 
       // Use a custom filter that shows all files but highlights common types
       QFileDialog dialog(this, tr("Attach File"), "",
-                         tr("All Files (*)") + ";;" + imageFilter + ";;" + textFilter + ";;" + audioFilter);
+          tr("All Files (*)") + ";;" + imageFilter + ";;" + textFilter + ";;" + audioFilter);
       dialog.setFileMode(QFileDialog::ExistingFile);
       dialog.setViewMode(QFileDialog::Detail);
       dialog.setOption(QFileDialog::DontUseNativeDialog, false);
@@ -1439,12 +1738,12 @@ void Agent::addAttachment() {
             const QString filePath = selectedFiles[0];
             QFileInfo fileInfo(filePath);
             if (fileInfo.size() > kMaxAttachmentSize) {
-                  addMessage("system",
-                             QString("<i>[⚠️ File %1 is too large (%2 KB). Max allowed is %3 KB.]</i><br>")
-                                 .arg(fileInfo.fileName())
-                                 .arg(fileInfo.size() / 1024)
-                                 .arg(kMaxAttachmentSize / 1024)
-                                 .toStdString());
+                  addMessage(
+                      "system", QString("<i>[⚠️ File %1 is too large (%2 KB). Max allowed is %3 KB.]</i><br>")
+                                    .arg(fileInfo.fileName())
+                                    .arg(fileInfo.size() / 1024)
+                                    .arg(kMaxAttachmentSize / 1024)
+                                    .toStdString());
                   return;
                   }
             const QString fileName      = fileInfo.fileName();
@@ -1494,8 +1793,7 @@ void Agent::addAttachment() {
                   attachment.type = AttachmentType::Audio;
                   attachment.data = filePath.toUtf8().toBase64(); // Store path as base64
 
-                  addMessage(
-                      "system",
+                  addMessage("system",
                       QString("<i>[🔊 Audio #%1 attached (%2 KB) – will be sent with next prompt.]</i><br>")
                           .arg(_attachments.size() + 1)
                           .arg(QByteArray::number(QFileInfo(filePath).size() / 1024) + " KB")
@@ -1522,11 +1820,11 @@ void Agent::addAttachment() {
                         attachment.data = file.readAll();
                         file.close();
 
-                        addMessage("system",
-                                   std::format("<i>[📄 Text #{} attached ({} lines, {} KB) – will be "
-                                               "sent with next prompt.]</i><br>",
-                                               _attachments.size() + 1, attachment.data.count('\n') + 1,
-                                               QByteArray::number(attachment.data.size() / 1024) + " KB"));
+                        addMessage(
+                            "system", std::format("<i>[📄 Text #{} attached ({} lines, {} KB) – will be "
+                                                  "sent with next prompt.]</i><br>",
+                                          _attachments.size() + 1, attachment.data.count('\n') + 1,
+                                          QByteArray::number(attachment.data.size() / 1024) + " KB"));
                         }
                   else {
                         // Fallback if file can't be read
@@ -1542,8 +1840,7 @@ void Agent::addAttachment() {
                   attachment.type = AttachmentType::Other;
                   attachment.data = filePath.toUtf8().toBase64(); // Store path as base64
 
-                  addMessage(
-                      "system",
+                  addMessage("system",
                       QString("<i>[📁 File #%1 attached (%2 KB) – will be sent with next prompt.]</i><br>")
                           .arg(_attachments.size() + 1)
                           .arg(QByteArray::number(QFileInfo(filePath).size() / 1024) + " KB")
@@ -1605,10 +1902,20 @@ void Agent::startAgent() {
 //---------------------------------------------------------
 
 void Agent::stopAgent() {
+      //
+      // critical:
+      //    user modifications (editing) of file can get lost
+      //    if stopAgen() is called without startAgent();
+      //
       for (auto f : _editor->getFiles()) {
-            f->undo()->beginMacro();
-            f->load();
-            f->undo()->endMacro();
+            // check if on disk modification time is newer than in memory
+            if (f->onDiskModificationTime() < f->modificationTime()) {
+                  f->undo()->beginMacro();
+                  f->load();
+                  f->undo()->endMacro();
+                  }
+            else
+                  Debug("nothing changed for <{}>", f->path());
             }
       userInput->setEnabled(true);
       spinnerTimer->stop();

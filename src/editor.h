@@ -386,6 +386,9 @@ class Editor : public QMainWindow
 
       QTimer* cursorTimer;
       QTimer* lsUpdateTimer;
+      QTimer* fdWatchTimer {nullptr}; // debug: periodic open-fd trace
+      int fdWatchBase {0};            // debug: fd count at timer start
+      int fdWatchTicks {0};           // debug: tick counter for fdwatch trace
       Agent* _agent {nullptr};
 
       static const int agentMinimumWidth {500};
@@ -629,12 +632,12 @@ class Editor : public QMainWindow
             emit shortcutsChanged();
             }
       static QIcon createStatefulIcon(const QString& svgPath, const QColor& normalColor,
-                                      const QColor& hoverColor   = QColor(),
-                                      const QColor& checkedColor = QColor());
+          const QColor& hoverColor = QColor(), const QColor& checkedColor = QColor());
       void put();
       void setPickText(const QString& text, SelectionMode mode = SelectionMode::CharSelect);
       void saveEditorState();
       void restoreEditorState();
+      std::string getProjectInstructions() const;
       };
 
 //---------------------------------------------------------

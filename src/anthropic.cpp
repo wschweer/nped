@@ -65,9 +65,12 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
       request->setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
       request->setRawHeader("x-api-key", model->apiKey.toUtf8());
       request->setRawHeader("anthropic-version", "2023-06-01");
-      // Enable Extended Thinking when the model flag is set.
+      // Enable Extended Thinking when the provider-native "thinking" block is
+      // present in the model configuration, e.g.
+      //   {"thinking": {"type": "enabled", "budget_tokens": 4096}}
       // The beta header is required; thinking budget must be strictly < max_tokens.
-      const bool extendedThinking = model->supportsThinking;
+      const json cfg            = model->configJson();
+      const bool extendedThinking = cfg.contains("thinking");
       if (extendedThinking) {
             // Claude 4+ models support thinking as GA; beta header only needed for 3.x
             const std::string mid = model->modelIdentifier.toStdString();
@@ -89,27 +92,26 @@ json AnthropicClient::prompt(QNetworkRequest* request) {
       if (!tools.empty())
             anthropicRequest["tools"] = tools;
 
-      // Optional sampling parameters – only set when explicitly configured.
-      if (model->temperature >= 0.0)
-            anthropicRequest["temperature"] = model->temperature;
-      if (model->topP >= 0.0)
-            anthropicRequest["top_p"] = model->topP;
-
       if (extendedThinking) {
             // Extended Thinking: temperature/top_p/top_k are forbidden by the API.
-            // Budget must be >= 1024 and strictly < max_tokens.
-            const int thinkingBudget     = std::max(1024, maxTokens - 1000);
-            anthropicRequest["thinking"] = {
-                     {         "type",      "enabled"},
-                     {"budget_tokens", thinkingBudget}
-                  };
+            // Pass the configured block through verbatim when given; otherwise
+            // derive a budget that is >= 1024 and strictly < max_tokens.
+            if (cfg["thinking"].is_object())
+                  anthropicRequest["thinking"] = cfg["thinking"];
+            else {
+                  const int thinkingBudget = std::max(1024, maxTokens - 1000);
+                  anthropicRequest["thinking"] = {
+                           {         "type",      "enabled"},
+                           {"budget_tokens", thinkingBudget}
+                        };
+                  }
             }
       else {
             // Optional sampling parameters – only without thinking.
-            if (model->temperature >= 0.0)
-                  anthropicRequest["temperature"] = model->temperature;
-            if (model->topP >= 0.0)
-                  anthropicRequest["top_p"] = model->topP;
+            if (cfg.contains("temperature") && cfg["temperature"].is_number() && cfg["temperature"] >= 0.0)
+                  anthropicRequest["temperature"] = cfg["temperature"];
+            if (cfg.contains("top_p") && cfg["top_p"].is_number() && cfg["top_p"] >= 0.0)
+                  anthropicRequest["top_p"] = cfg["top_p"];
             }
 
       // Reset token counters for this new request
@@ -547,12 +549,21 @@ void AnthropicClient::processTools(json resolvedToolCalls) {
                   agent->logContent(msg, text, thinking);
                   agent->chatDisplay->handleIncomingChunk(thinking, text);
 
-                  // Context-reduction strategy: count actual tool result tokens so
-                  // the history manager's budget is accurate and trim() fires correctly.
-                  // Previously every tool result was stored with 0 tokens, hiding their
-                  // true footprint from the rolling-window and summary logic.
-                  const size_t toolTokens = (result.size() + functionName.size()) / 4;
-                  agent->session()->addRequest(msg, toolTokens);
+                  // Context-reduction: the session estimates the token footprint of
+                  // the tool result itself (tokens == 0 -> estimateTokens()).
+                  agent->session()->addRequest(msg, 0);
+
+                  // Check if the user pressed stop while the tool was running.
+                  if (agent->isToolStopped()) {
+                        // Inject a tool result informing the LLM that execution was halted.
+                        json stopMsg;
+                        stopMsg["role"] = "tool";
+                        stopMsg["content"] =
+                            "[Tool execution was stopped by the user. Remaining tool calls were skipped.]";
+                        stopMsg["name"] = "system";
+                        agent->session()->addRequest(stopMsg, 10);
+                        break;
+                        }
                   }
             }
       catch (const json::parse_error& e) {
@@ -617,20 +628,24 @@ void AnthropicClient::dataFinished() {
       currentThinkingBlock = json::object();
       _currentToolCalls.clear();
 
-      // Use real token counts reported by the Anthropic API.
-      const size_t totalTokens = _inputTokens + _outputTokens;
+      // The API reports the total context for the request (prompt + completion),
+      // not the size of this single message. Keep it for monitoring only and let
+      // the session estimate the per-message tokens itself (tokens == 0).
+      agent->session()->setReportedContextTokens(_inputTokens + _outputTokens);
 
       if (resolvedToolCalls.empty()) {
-            // Plain text response — let the history manager decide whether a summary is needed.
-            agent->session()->addResult(responseContent, totalTokens);
+            // Plain text response — finalize the turn and let the history manager trim.
+            agent->session()->setToolLoopActive(false);
+            agent->session()->addResult(responseContent, 0);
             agent->stopAgent();
             }
       else {
             // Store the assistant turn (with tool_calls) and immediately execute the tools.
             // processTools() receives the fully resolved list by value so it is independent
             // of _currentToolCalls, which has already been cleared above.
+            agent->session()->setToolLoopActive(true);
             responseContent["tool_calls"] = resolvedToolCalls;
-            agent->session()->addRequest(responseContent, totalTokens);
+            agent->session()->addRequest(responseContent, 0);
             processTools(std::move(resolvedToolCalls));
             }
       }
